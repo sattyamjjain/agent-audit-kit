@@ -15,12 +15,15 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import textwrap
 import time
+import warnings
 from pathlib import Path
 from typing import Callable
 
@@ -45,6 +48,7 @@ from agent_audit_kit.scanners._helpers import (
     loads_jsonc,
     loads_toml,
     parse_python,
+    python_nesting_bound,
     refusing_overflow,
 )
 
@@ -270,6 +274,147 @@ def test_a_crafted_python_source_never_takes_the_process_down(shape: str) -> Non
     )
     assert out.returncode == 0, (out.returncode, out.stderr[-500:])
     assert out.stdout.strip() in ("parsed", "refused"), out.stdout
+
+
+# ---------------------------------------------------------------------------
+# The screen before 3.11: a source too deep for the parser is refused unparsed
+# ---------------------------------------------------------------------------
+
+# Crafted shapes, each `n` levels deep: the ones that crashed 3.9 or 3.10, and
+# the other operator chains the grammar nests without a bracket.
+_DEEP_SHAPES: dict[str, Callable[[int], str]] = {
+    "unary_plus": lambda n: "x = " + "+" * n + "a\n",
+    "lambda_defaults": lambda n: "x = " + "lambda a=" * n + "1: a" * n + "\n",
+    "binop_chain": lambda n: "x = a" + "+a" * n + "\n",
+    "minus_minus": lambda n: "x = " + "--a" * n + "\n",
+    "not_chain": lambda n: "x = " + "not " * n + "a\n",
+    "ternary": lambda n: "x = " + "a if a else " * n + "a\n",
+    "power": lambda n: "x = a" + "**a" * n + "\n",
+    "attribute_chain": lambda n: "x = a" + ".a" * n + "\n",
+    "call_chain": lambda n: "x = a" + "()" * n + "\n",
+    "lambda_body": lambda n: "x = " + "lambda: " * n + "a\n",
+    "fstring_field": lambda n: "x = f'{a" + "+a" * n + "}'\n",
+    "elif_ladder": lambda n: "if a:\n    pass\n" + "elif a:\n    pass\n" * n,
+    # The tokenizer stops brackets at 200 levels, so this one never reaches the screen's limit.
+    "nested_brackets": lambda n: "x = " + "(" * n + "a" + ")" * n + "\n",
+}
+
+
+def _tree_depth(tree: ast.AST) -> int:
+    best, stack = 0, [(tree, 1)]
+    while stack:
+        node, depth = stack.pop()
+        best = max(best, depth)
+        stack.extend((child, depth + 1) for child in ast.iter_child_nodes(node))
+    return best
+
+
+def _not_parsed(source: str | bytes, filename: str) -> ast.Module:
+    raise AssertionError("a source past the screen reached the parser")
+
+
+@pytest.mark.parametrize("shape", sorted(_DEEP_SHAPES))
+def test_the_screen_bound_is_never_below_the_tree_depth(shape: str) -> None:
+    for n in (1, 20, 150):
+        source = _DEEP_SHAPES[shape](n)
+        assert python_nesting_bound(source) >= _tree_depth(ast.parse(source)), (shape, n)
+    assert python_nesting_bound("") >= _tree_depth(ast.parse(""))
+
+
+@pytest.mark.parametrize("shape", sorted(set(_DEEP_SHAPES) - {"nested_brackets"}))
+def test_before_3_11_a_source_past_the_screen_is_refused_without_a_parse(
+    shape: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Before 3.11 the parser has no depth check and segfaults on these shapes
+    inside the source caps (3.9.6 has no depth guard at all; 3.9.25 and 3.10
+    guard the recursive rules, not the left-recursive chains). Parsed on the
+    large-stack worker instead, one costs up to 0.35 s and 380 MB; the screen
+    refuses it in one linear pass."""
+    monkeypatch.setattr(_helpers, "_SCREEN_SOURCES", True)
+    monkeypatch.setattr(_helpers, "_ast_parse", _not_parsed)
+    with collecting_refusals() as refused, pytest.raises(RefusedSource):
+        parse_python(_DEEP_SHAPES[shape](21_000), "x.py")
+    assert refused["x.py"].startswith("Python source nests deeper than")
+    with pytest.raises(RecursionError):  # without a path it propagates, as the parser's own refusal does
+        parse_python(_DEEP_SHAPES[shape](21_000), None)
+
+
+def test_real_code_is_far_inside_the_screen() -> None:
+    """On 100,303 real files (eight interpreters' standard libraries and every
+    package in a 2,000-distribution site-packages) the highest bound was 4,585,
+    a 562-term polynomial sympy generates (sympy/polys/numberfields/
+    resolvent_lookup.py), and the 99.9th percentile 65; each file's bound was
+    at least its tree's depth. Here: that polynomial's shape, the longest real
+    `elif` ladder (162, snowballstemmer's Serbian stemmer), and a sample of
+    this interpreter's standard library."""
+    polynomial = (
+        "RESOLVENTS = {\n    (6, 1): [\n        lambda s1, s2, s3: (s1**6\n"
+        + "            - 12*s1**4*s2*s3 + 9*s2**3\n" * 281
+        + "        ),\n    ],\n}\n"
+    )
+    ladder = "def stem(w):\n    if w == 'a0':\n        return 0\n" + "".join(
+        f"    elif w == 'a{i}':\n        return {i}\n" for i in range(1, 163)
+    )
+    for source in (polynomial, ladder):
+        assert _tree_depth(ast.parse(source)) <= python_nesting_bound(source) <= 5_000
+    stdlib = []
+    for folder, subfolders, names in os.walk(sysconfig.get_paths()["stdlib"]):
+        subfolders[:] = [name for name in subfolders if name != "site-packages"]
+        stdlib.extend(Path(folder, name) for name in names if name.endswith(".py"))
+    sample = sorted(stdlib)[::5]
+    checked = 0
+    for path in sample:
+        source = path.read_text(encoding="utf-8", errors="replace")
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                tree = ast.parse(source)
+        except SyntaxError:
+            continue
+        assert _tree_depth(tree) <= python_nesting_bound(source) < _helpers._PY_MAX_NESTING, path
+        checked += 1
+    assert checked > 100  # 127 to 375 on Python 3.9 to 3.14
+
+
+def test_the_screen_reads_a_crafted_source_in_linear_time() -> None:
+    """Each shape the screen reads in a pass of its own: a string of escapes, an
+    f-string of fields, a chain, an `elif` ladder and indentation that churns.
+    At these sizes a pass that restarted per escape or per field takes over
+    5 s; the screen takes a few hundredths."""
+    def source(n: int) -> str:
+        return (
+            "s = '" + "\\'" * n + "'\n"
+            + "f = f'" + "{a}" * n + "'\n"
+            + "x = a" + "+a" * n + "\n"
+            + "if a:\n    pass\n" + "elif a:\n    pass\n" * (n // 4)
+            + "".join(" " * (i % 40) + "pass\n" for i in range(n // 4))
+        )
+
+    small, large = source(10_000), source(100_000)
+    _grows_linearly(lambda: _helpers._nesting_bound(small), lambda: _helpers._nesting_bound(large))
+
+
+def test_each_source_is_screened_once_however_many_scanners_parse_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scanners run one after another over every file, so a cache of the last
+    few sources missed on any project with more files than it held, and each
+    file was screened again by every scanner that parsed it."""
+    monkeypatch.setattr(_helpers, "_SCREEN_SOURCES", True)
+    monkeypatch.setattr(_helpers, "_BOUNDS", {})
+    screened: list[str] = []
+    real = _helpers._nesting_bound
+
+    def counting(source: str) -> int:
+        screened.append(source)
+        return real(source)
+
+    monkeypatch.setattr(_helpers, "_nesting_bound", counting)
+    files = {f"pkg/m{i}.py": _PY_HINTS + f"@mcp.tool()\ndef f{i}(url):\n    return requests.get(url)\n"
+             for i in range(40)}
+    _write(tmp_path, files)
+    run_scan(tmp_path, strict_loading=True)
+    assert len(screened) == len(set(screened)) == len(files)
 
 
 def _child(code: str, *args: str, timeout: float = 120) -> str:

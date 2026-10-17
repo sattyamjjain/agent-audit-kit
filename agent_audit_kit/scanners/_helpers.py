@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import bisect
 import errno
+import hashlib
 import io
 import ipaddress
 import json
@@ -2032,7 +2033,10 @@ def refusing_overflow(path: Path | str, what: str = "syntax tree") -> Iterator[N
     try:
         yield
     except _OVERFLOW as exc:
-        refuse(path, f"{what} too deep for this scanner to walk ({type(exc).__name__})")
+        if isinstance(exc, _TooDeepToParse):
+            refuse(path, str(exc))
+        else:
+            refuse(path, f"{what} too deep for this scanner to walk ({type(exc).__name__})")
 
 
 class RefusedJSON(json.JSONDecodeError):
@@ -2086,17 +2090,241 @@ def loads_json(text: str | bytes, path: Path | str | None) -> Any:
 # Windows file name.
 _PARSE_FILENAME = "/dev/null/<aak>"
 
-# CPython before 3.11 builds the syntax tree recursively in C with no depth
-# check, so a crafted source inside the readers' caps overflows the C stack and
-# the process dies (exit 139), past any `except`: 3.9.6 segfaults on 42,000
-# nested lambda defaults (545 KB) or 212,000 unary `+`, and 3.10.19 on a flat
-# 132,000-term `a+a+...` chain (263 KB). 3.11 added the check and raises
-# RecursionError or MemoryError instead. Before 3.11 the parse therefore runs
-# on a worker thread whose stack holds any source a reader caps at 1 MB: on
-# those two versions the deepest crafted 1 MB sources overflow 64 MB and parse
-# in 256 MB.
+# Before 3.11 CPython parses and builds the syntax tree recursively in C with no
+# depth check, so a deep enough source overflows the C stack and the process
+# dies (exit 139), past any `except`: 3.9.6 on a 120,000-term `a**a**...` chain
+# or 42,000 nested lambda defaults, 3.10.19 on a flat 132,000-term `a+a+...`
+# chain (263 KB).
+# 3.9.25 and 3.10 refuse a deep recursive rule (MemoryError) but still build a
+# left-recursive chain's tree recursively. 3.11 checks the depth and raises
+# RecursionError or MemoryError instead. Before 3.11 a source therefore goes
+# through `python_nesting_bound` first, and one whose bound passes
+# `_PY_MAX_NESTING` is refused unparsed. The lowest crash measured, on 3.9.6,
+# 3.9.25 and 3.10.19 with the default 8 MB stack, came at a bound of 120,000
+# (that `a**a**...` chain; the lambda defaults, three levels each, came next at
+# 126,000); the highest bound in 100,303 real files was 4,585 (see
+# tests/test_refused_files.py).
+_SCREEN_SOURCES = sys.version_info < (3, 11)
+_PY_MAX_NESTING = 20_000
+# Defense in depth for a shape the screen does not foresee: before 3.11 the
+# parse runs on a worker thread with 32 times the main thread's stack. The
+# deepest crafted 1 MB sources overflow 64 MB and parse in 256 MB; one of
+# 500 KB cost 0.2 to 0.35 s and 250 to 380 MB a parse on 3.9.6, once for each
+# scanner that parsed it, which the screen spares.
 _PARSE_STACK_BYTES = 256 * 1024 * 1024
 _parse_worker: tuple[int, ThreadPoolExecutor] | None = None
+
+# One token of Python source, for the screen. A string is only opened here; its
+# end is found by `_py_string_end`. Numbers are spelled out so that `1..real`
+# leaves its attribute dots to be counted.
+_PY_TOKEN_RE = re.compile(
+    r"(?P<str>[rRbBuUfF]{0,2}(?:'''|\"\"\"|'|\"))"
+    r"|(?P<name>[^\W\d]\w*)"
+    r"|(?P<num>(?:0[xXoObB][0-9a-fA-F_]+|\d[\d_]*(?:\.[\d_]*)?(?:[eE][+-]?[\d_]+)?"
+    r"|\.\d[\d_]*(?:[eE][+-]?[\d_]+)?)[jJ]?)"
+    r"|(?P<comment>\#[^\r\n]*)"
+    r"|(?P<cont>\\\r?\n)"
+    r"|(?P<nl>\r?\n|\r)"
+    r"|(?P<blank>[ \t\f]+)"
+    r"|(?P<open>[(\[{])"
+    r"|(?P<close>[)\]}])"
+    r"|(?P<sep>[,;])"
+    r"|(?P<colon>:(?!=))"
+    r"|(?P<op>\*\*=?|//=?|>>=?|<<=?|->|:=|!=|[-+*/%@&|^=<>]=?|[~.!$?`])"
+    r"|(?P<other>.)",
+    re.DOTALL,
+)
+# Keywords that join or wrap an expression, each a level at most.
+_PY_CHAIN_WORDS = frozenset({"and", "or", "not", "if", "else", "in", "is", "lambda", "await", "yield", "for", "async"})
+_PY_STRING_END_RE = {
+    quote: re.compile(r"\\.|" + re.escape(quote) + ("" if len(quote) == 3 else r"|\n"), re.DOTALL)
+    for quote in ("'''", '"""', "'", '"')
+}
+_FSTRING_FIELD_RE = re.compile(r"\{\{|\}\}|\{")
+
+
+def _py_string_end(src: str, start: int, quote: str, end: int) -> int:
+    """Index past the string whose body starts at `start`. A backslash escapes
+    the next character, raw or not; a one-line string ends at a line break."""
+    pattern = _PY_STRING_END_RE[quote]
+    while True:
+        m = pattern.search(src, start, end)
+        if m is None:
+            return end
+        if m.group()[0] != "\\":
+            return m.end()
+        start = m.end()
+
+
+def _fstring_depth(src: str, start: int, end: int) -> int:
+    """A number no smaller than how deep the replacement fields of the f-string
+    body `src[start:end]` nest, nested f-strings included: two levels for each
+    f-string and one for each operator, keyword, bracket, colon or comma in a
+    field. Before 3.12 a field is one token to the tokenizer, but the parser
+    parses its expression, as deep as it is (131,000 terms crashed 3.9).
+    Iterative: a nested f-string's body goes on a work list."""
+    total = 0
+    bodies = [(start, end)]
+    while bodies:
+        pos, stop = bodies.pop()
+        total += 2
+        while True:
+            brace = _FSTRING_FIELD_RE.search(src, pos, stop)
+            if brace is None:
+                break
+            pos, depth = brace.end(), (1 if brace.group() == "{" else 0)
+            while pos < stop and depth:
+                m = _PY_TOKEN_RE.match(src, pos, stop)
+                assert m is not None  # `other` matches any character
+                kind, tok = m.lastgroup, m.group()
+                pos = m.end()
+                if kind == "open":
+                    depth += 1
+                    total += 1
+                elif kind == "close":
+                    depth -= 1
+                    total += 1 if depth else 0
+                elif kind in ("op", "colon", "sep") or (kind == "name" and tok in _PY_CHAIN_WORDS):
+                    total += 1
+                elif kind == "str":
+                    quote = tok.lstrip("rRbBuUfF")
+                    body_end = _py_string_end(src, pos, quote, stop)
+                    if "f" in tok[: len(tok) - len(quote)].lower():
+                        bodies.append((pos, max(pos, body_end - len(quote))))
+                    pos = body_end
+    return total
+
+
+def _indent_width(blank: str) -> int:
+    width = 0
+    for char in blank:
+        width = (width // 8 + 1) * 8 if char == "\t" else 0 if char == "\f" else width + 1
+    return width
+
+
+def _nesting_bound(src: str) -> int:
+    """A number no smaller than the depth of the tree `ast.parse(src)` would
+    build, read in one linear pass that never recurses.
+
+    Within a bracket each element, between commas, counts one level for every
+    operator, chaining keyword (`not`, `and`, `if` ... `else`, `lambda`, ...),
+    colon and call or subscript trailer, plus its deepest bracket; the elements
+    of a bracket are siblings, so the bracket counts its deepest element plus
+    one. Commas of a lambda's parameters (until its `:`) do not end the element,
+    because the body nests inside the lambda. A logical line adds the `elif`
+    ladders around it, two levels for each enclosing indentation and four for
+    the statement, and an f-string adds what its fields hold
+    (`_fstring_depth`). Every way a tree can nest one level deeper is counted,
+    and only siblings take the maximum rather than the sum, so the bound is
+    never below the tree's depth; it was not on any of 100,303 real files, where
+    it reached 4,585 at most and 65 at the 99.9th percentile (see
+    `_PY_MAX_NESTING`).
+    """
+    best = 1  # the module
+    frames = [[0, 0, 0, 0]]  # per open bracket: chain, deepest bracket, deepest element, lambdas awaiting `:`
+    ladders: list[list[int]] = []  # [indent, elifs] of each open if-elif ladder, outermost first
+    elifs = 0
+    indents: list[int] = []
+    at_line_start, line_indent, context = True, 0, 0
+    pos, n = 0, len(src)
+    while pos < n:
+        m = _PY_TOKEN_RE.match(src, pos)
+        assert m is not None  # `other` matches any character
+        kind, tok = m.lastgroup, m.group()
+        pos = m.end()
+        if kind in ("blank", "comment", "cont"):
+            if kind == "blank" and at_line_start and len(frames) == 1:
+                line_indent = _indent_width(tok)
+            continue
+        if kind == "nl":
+            if len(frames) == 1:
+                if not at_line_start:
+                    frame = frames[0]
+                    best = max(best, context + max(frame[2], frame[0] + frame[1]))
+                    frames[0] = [0, 0, 0, 0]
+                at_line_start, line_indent = True, 0
+            continue
+        if at_line_start and len(frames) == 1:
+            at_line_start = False
+            while indents and indents[-1] > line_indent:
+                indents.pop()
+            if not indents or indents[-1] < line_indent:
+                indents.append(line_indent)
+            while ladders and ladders[-1][0] > line_indent:
+                elifs -= ladders.pop()[1]
+            word = tok if kind == "name" else ""
+            if word == "elif":
+                if not ladders or ladders[-1][0] != line_indent:
+                    ladders.append([line_indent, 0])
+                ladders[-1][1] += 1
+                elifs += 1
+            elif word != "else" and ladders and ladders[-1][0] == line_indent:
+                elifs -= ladders.pop()[1]
+            context = elifs + 2 * len(indents) + 4
+        frame = frames[-1]
+        if kind == "name":
+            if tok in _PY_CHAIN_WORDS:
+                frame[0] += 1
+                if tok == "lambda":
+                    frame[3] += 1
+        elif kind == "op":
+            frame[0] += 1
+        elif kind == "str":
+            quote = tok.lstrip("rRbBuUfF")
+            end = _py_string_end(src, pos, quote, n)
+            if "f" in tok[: len(tok) - len(quote)].lower():
+                frame[0] += _fstring_depth(src, pos, max(pos, end - len(quote)))
+            pos = end
+        elif kind == "open":
+            frames.append([0, 0, 0, 0])
+        elif kind == "close":
+            if len(frames) > 1:
+                done = frames.pop()
+                frame = frames[-1]
+                frame[1] = max(frame[1], max(done[2], done[0] + done[1]) + 1)
+                frame[0] += 1
+        elif kind == "sep":
+            if frame[3]:
+                frame[0] += 1
+            else:
+                frame[2] = max(frame[2], frame[0] + frame[1])
+                frame[0] = frame[1] = 0
+        elif kind == "colon":
+            frame[0] += 1
+            if frame[3]:
+                frame[3] -= 1
+    while len(frames) > 1:  # brackets the text never closed
+        done = frames.pop()
+        frames[-1][1] = max(frames[-1][1], max(done[2], done[0] + done[1]) + 1)
+    frame = frames[0]
+    return max(best, context + max(frame[2], frame[0] + frame[1]))
+
+
+# Each source's bound, by a digest of its text. Scanners run one after another
+# over every file, so the screen is asked about a file once by each scanner that
+# parses it, 27 for a file that opens every gate: a cache of the last few
+# sources missed on any project with more files than it held. A 16-byte digest
+# and an int a file keep 65,536 files to about 6 MB, and the table is emptied
+# when full, so a long-lived process (`aak watch`, the language server) stays
+# bounded.
+_BOUNDS: dict[bytes, int] = {}
+_BOUNDS_MAX = 65_536
+
+
+def python_nesting_bound(src: str) -> int:
+    """`_nesting_bound(src)`, computed once for each distinct text."""
+    key = hashlib.blake2b(src.encode("utf-8", "surrogatepass"), digest_size=16).digest()
+    bound = _BOUNDS.get(key)
+    if bound is None:
+        bound = _nesting_bound(src)
+        if len(_BOUNDS) >= _BOUNDS_MAX:
+            _BOUNDS.clear()
+        _BOUNDS[key] = bound
+    return bound
+
+
+class _TooDeepToParse(RecursionError):
+    """The screen's refusal, for a caller that contains it with `refusing_overflow`."""
 
 
 def _parse_quietly(source: str | bytes, filename: str) -> ast.Module:
@@ -2132,17 +2360,32 @@ def _ast_parse(source: str | bytes, filename: str) -> ast.Module:
 
 
 def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
-    """`ast.parse(source)`, refusing a source nested too deep to parse.
+    """`ast.parse(source)`, refusing a source the interpreter cannot parse safely.
 
     CPython's parser raises RecursionError on deep nesting (`"--a" * 12000` on
     3.11 and later) and MemoryError on a long run of unary operators (`"+" *
-    36000` on 3.10 and later); before 3.11 the parse runs where it cannot take
-    the process down (see `_ast_parse`). The parse is given a filename no file
-    has (`_PARSE_FILENAME`), never `path`. The refusal is recorded against
-    `path` and raised as `RefusedSource`, a SyntaxError. A caller without the
-    path passes None and contains the overflow, which then propagates, with
+    36000` on 3.10 and later). Before 3.11 it can segfault instead, so a
+    source whose `python_nesting_bound` passes `_PY_MAX_NESTING` is refused
+    before it is parsed, and the parse runs where it cannot take the process
+    down (see `_ast_parse`). The parse is given a filename no file has
+    (`_PARSE_FILENAME`), never `path`. The refusal is recorded against `path`
+    and raised as `RefusedSource`, a SyntaxError. A caller without the path
+    passes None and contains the overflow, which then propagates, with
     `refusing_overflow` where it has the path.
     """
+    if _SCREEN_SOURCES:
+        text = source if isinstance(source, str) else source.decode("utf-8", errors="replace")
+        bound = python_nesting_bound(text)
+        if bound > _PY_MAX_NESTING:
+            version = f"{sys.version_info[0]}.{sys.version_info[1]}"
+            reason = (
+                f"Python source nests deeper than Python {version}'s parser handles safely "
+                f"(a bound of {bound:,} levels, over its {_PY_MAX_NESTING:,})"
+            )
+            if path is None:
+                raise _TooDeepToParse(reason)
+            refuse(path, reason)
+            raise RefusedSource(reason)
     try:
         return _ast_parse(source, _PARSE_FILENAME)
     except _OVERFLOW as exc:
