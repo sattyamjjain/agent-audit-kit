@@ -549,6 +549,10 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
     covering `.env`, so the fix reported the finding fixed and wrote nothing. The
     patterns go at the end, where the last match decides, so a template the file took
     back with `!` (`!.env.example`) is taken back again after them.
+
+    The decision uses the rule's read; the write appends to the whole file, byte for
+    byte. Rewritten from that read, bounded to 1,000,000 bytes and decoded with
+    replacement, a longer file lost its tail and a byte that is not UTF-8 became U+FFFD.
     """
     from agent_audit_kit.scanners.secret_exposure import (
         _ENV_TEMPLATE_SUFFIXES,
@@ -560,18 +564,19 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
 
     gitignore = project_root / ".gitignore"
     try:
-        content = (_read_gitignore(project_root) or "") if gitignore.is_file() else ""
         names = [path.name for path in _root_env_files(project_root)] or [".env"]
-        rules = _gitignore_rules(content)
+        rules = _gitignore_rules(_read_gitignore(project_root) or "")
         if not all(_gitignore_ignores(rules, name) for name in names):
+            raw = gitignore.read_bytes() if gitignore.is_file() else b""
+            templates = tuple(suffix.encode() for suffix in _ENV_TEMPLATE_SUFFIXES)
             kept = [
-                line.strip() for line in content.splitlines()
-                if line.strip().startswith("!") and line.strip().lower().endswith(_ENV_TEMPLATE_SUFFIXES)
+                line.strip() for line in raw.splitlines()
+                if line.strip().startswith(b"!") and line.strip().lower().endswith(templates)
             ]
-            new_content = content.rstrip() + "\n\n# Environment files\n.env\n.env.*\n"
-            new_content += "".join(f"{line}\n" for line in kept)
+            new_content = raw.rstrip() + b"\n\n# Environment files\n.env\n.env.*\n"
+            new_content += b"".join(line + b"\n" for line in kept)
             if not dry_run:
-                gitignore.write_text(new_content.lstrip("\n"), encoding="utf-8")
+                gitignore.write_bytes(new_content.lstrip(b"\n"))
         return FixAction(
             "AAK-SECRET-006",
             ".gitignore",

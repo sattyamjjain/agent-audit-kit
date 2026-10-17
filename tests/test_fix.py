@@ -171,6 +171,21 @@ class TestFixEnvGitignoreAgreesWithTheRule:
         assert fix.applied is True
         assert (tmp_path / ".gitignore").read_text() == ".env*\n"
 
+    def test_the_fix_appends_to_the_whole_gitignore_and_keeps_every_byte(self, tmp_path: Path) -> None:
+        """The fix rewrote `.gitignore` from the scanner's read, bounded to 1,000,000 bytes
+        and decoded with replacement, so a longer file lost its tail and a byte that is
+        not UTF-8 came back as U+FFFD."""
+        (tmp_path / ".env").write_text("A=1\n")
+        (tmp_path / ".env.example").write_text("A=\n")
+        original = b"# caf\xe9\n" + b"# filler line\n" * 80_000 + b"build/\n!.env.example\n"
+        (tmp_path / ".gitignore").write_bytes(original)
+
+        fix = _fix_env_gitignore(tmp_path, dry_run=False)
+
+        assert fix.applied is True
+        written = (tmp_path / ".gitignore").read_bytes()
+        assert written == original.rstrip() + b"\n\n# Environment files\n.env\n.env.*\n!.env.example\n"
+
 
 # ---------------------------------------------------------------------------
 # _write_fix_log
