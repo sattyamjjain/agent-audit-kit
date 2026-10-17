@@ -67,10 +67,13 @@ from typing import Iterator
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    find_line_numbers,
+    first_offsets,
     in_skip_dir,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
+    newline_line,
     strip_jsonc,
 )
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
@@ -93,13 +96,16 @@ RULE_IDS = frozenset({_RULE_CHAIN, _RULE_SHARED_STATE, _RULE_UNDERDECLARED})
 MAX_PATH_NODES = 3
 
 # Above this many components the graph is not built and this pass reports nothing.
-# Path enumeration is O(n**depth), so some bound is required; the number is set
-# from measurement rather than taste. Uncapped, one component reaching egress
-# through a config of N servers costs roughly 7ms at 60 nodes, 65ms at 200, 150ms
-# at 300 and 410ms at 500. 200 keeps the worst case inside the sub-100ms budget
-# the project advertises while putting the silent zone far beyond anything real:
-# the largest config in the 748-config public corpus is nowhere near it, and
-# AAK-MCP-004 already reports a server count above 10 as its own finding.
+# Some bound is required, since the graph has an edge for nearly every pair of
+# components; the number is set from measurement rather than taste. Enumerating
+# every path, as this pass did through 0.6.22, was cubic in the components: 200
+# servers, a third of them fetch tools, a third holding secrets and a third
+# remote, took 3.4 to 4.6 seconds, not the 65 ms this comment used to give, which
+# was measured with one untrusted source. `_chain_findings` now works through each
+# source's neighbours as sets, and the same config takes about 50 ms. 200 puts the
+# silent zone far beyond anything real: the largest config in the 748-config
+# public corpus is nowhere near it, and AAK-MCP-004 already reports a server count
+# above 10 as its own finding.
 #
 # The consequence is stated in AAK-COMPOSE-001's `limitations`, because a bound
 # that produces silence is indistinguishable from a clean result unless it is
@@ -317,12 +323,45 @@ def _server_key_lines(raw: str, maps: list[tuple[str, dict[str, object]]]) -> di
     for map_key, servers in maps:
         anchor = re.search(r'"' + re.escape(map_key) + r'"\s*:', text)
         start = anchor.end() if anchor else 0
-        for n in servers:
-            name = str(n)
-            key = re.compile(r'"' + re.escape(name) + r'"\s*:').search(text, start)
-            line = text.count("\n", 0, key.start()) + 1 if key else find_line_number(raw, f'"{name}"')
+        names = [str(n) for n in servers]
+        offsets = _key_offsets(text, start, names)
+        find_line_numbers(raw, (f'"{name}"' for name in names if offsets[name] is None))
+        for name in names:
+            offset = offsets[name]
+            line = newline_line(text, offset) if offset is not None else find_line_number(raw, f'"{name}"')
             lines.setdefault(name, line or 0)
     return lines
+
+
+# A quoted string followed by a colon, tried at every quote. Each try reads to the
+# next quote and past the blanks after it, so each character is read for the one
+# quote before it.
+_QUOTED_KEY_RE = re.compile(r'(?=("[^"]*")\s*:)')
+_COLON_AHEAD_RE = re.compile(r"\s*:")
+
+
+def _key_offsets(text: str, start: int, names: list[str]) -> dict[str, int | None]:
+    """Where `"name"` followed by a colon first starts at or after `start`, per name.
+
+    A regex search per name, from `start` to that server's key, made N servers
+    cost N times the file, and a compiled pattern each. A name with no quote in
+    it is a whole quoted string, so one pass over the file finds every key of
+    that kind. A name holding a quote, which a JSON key can only spell with an
+    escape, is searched for with the others like it in one pass, and each
+    occurrence is checked for its colon.
+    """
+    keyed: dict[str, int] = {}
+    for match in _QUOTED_KEY_RE.finditer(text, start):
+        keyed.setdefault(match.group(1)[1:-1], match.start())
+    offsets: dict[str, int | None] = {name: keyed.get(name) for name in names if '"' not in name}
+    odd = [name for name in names if '"' in name]
+    if odd:
+        tail = text[start:]
+        for name, offset in zip(odd, first_offsets(tail, [f'"{name}"' for name in odd])):
+            while offset >= 0 and not _COLON_AHEAD_RE.match(tail, offset + len(name) + 2):
+                offset = tail.find(f'"{name}"', offset + 1)
+            offsets[name] = start + offset if offset >= 0 else None
+    return offsets
 
 
 def _mcp_nodes(project_root: Path) -> list[_Node]:
@@ -352,6 +391,7 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
         # Every entry of every map bounds a block, a non-object one included, as
         # when only `mcpServers` was read.
         name_lines = _server_key_lines(raw, maps)
+        find_line_numbers(raw, (name for name, line in name_lines.items() if not line))
         ordered = sorted(name_lines.items(), key=lambda kv: kv[1])
         total_lines = raw.count("\n") + 1
         spans: dict[str, tuple[int, int]] = {}
@@ -538,6 +578,73 @@ def _edges(nodes: list[_Node]) -> dict[tuple[str, str], set[tuple[str, str]]]:
     return adj
 
 
+def _chain_hits(
+    nodes: list[_Node],
+) -> dict[tuple[str, str], tuple[list[_Node], dict[tuple[str, str], _Node]]]:
+    """Each untrusted source's representative shortest chain and the egress nodes it reaches."""
+    by_key = {n.key: n for n in nodes}
+    adj = _edges(nodes)
+    # source key -> (representative shortest path, every reachable egress node)
+    hits: dict[tuple[str, str], tuple[list[_Node], dict[tuple[str, str], _Node]]] = {}
+
+    def record(path: list[_Node]) -> None:
+        rep, sinks = hits.setdefault(path[0].key, (list(path), {}))
+        if len(path) < len(rep):
+            hits[path[0].key] = (list(path), sinks)
+        sinks[path[-1].key] = path[-1]
+
+    # A chain qualifies when no node in it holds the whole chain (that is a
+    # single-artifact finding, owned by whichever rule already reports it), it
+    # starts at untrusted input, ends at egress, and a node before the egress
+    # node carries the middle role: otherwise it is a two-role pair the
+    # single-artifact rules already describe.
+    #
+    # The chains are taken in the order a depth-first walk over sorted
+    # neighbours meets them, which decides each source's representative path and
+    # the order of its egress nodes. Walking every path made a dense graph of N
+    # components cost N**MAX_PATH_NODES. The walk now stops one node short: the
+    # chains that end one step further all end at that step's egress neighbours,
+    # which are found together as a set of nodes (one bit each, in sorted key
+    # order), and an egress node the source already reaches adds nothing but a
+    # repeat, since a chain of the longest kind never replaces a shorter one.
+    keys = sorted(by_key)
+    bit = {key: 1 << index for index, key in enumerate(keys)}
+    neighbours = {key: sum(bit[b] for b in adj.get(key, ())) for key in keys}
+    egress = sum(
+        bit[key] for key, n in by_key.items()
+        if n.caps.performs_network_egress and not n.caps.holds_whole_chain
+    )
+
+    def extend(path: list[_Node], on_path: int, sensitive: bool, reached: list[int]) -> None:
+        # `sensitive`: a node of `path` carries the middle role.
+        for mid_key in sorted(adj.get(path[-1].key, ())):
+            mid = by_key[mid_key]
+            if bit[mid_key] & on_path or mid.caps.holds_whole_chain:
+                continue
+            if sensitive and mid.caps.performs_network_egress:
+                record([*path, mid])
+                reached[0] |= bit[mid_key]
+            if len(path) + 2 > MAX_PATH_NODES:
+                continue
+            carried = sensitive or mid.caps.touches_sensitive
+            if len(path) + 2 < MAX_PATH_NODES:
+                extend([*path, mid], on_path | bit[mid_key], carried, reached)
+            elif carried:
+                new = neighbours[mid_key] & egress & ~reached[0] & ~on_path
+                reached[0] |= new
+                while new:
+                    low = new & -new
+                    record([*path, mid, by_key[keys[low.bit_length() - 1]]])
+                    new ^= low
+
+    for node in nodes:
+        if node.caps.reads_untrusted_input and not node.caps.holds_whole_chain:
+            found = hits.get(node.key)
+            reached = [sum(bit[key] for key in found[1]) if found else 0]
+            extend([node], bit[node.key], node.caps.touches_sensitive, reached)
+    return hits
+
+
 def _chain_findings(nodes: list[_Node]) -> list[Finding]:
     """Ordered paths of 2..MAX_PATH_NODES carrying untrusted input to egress.
 
@@ -549,45 +656,7 @@ def _chain_findings(nodes: list[_Node]) -> list[Finding]:
     findings: list[Finding] = []
     if len(nodes) < 2:
         return findings
-
-    by_key = {n.key: n for n in nodes}
-    adj = _edges(nodes)
-    # source key -> (representative shortest path, every reachable egress node)
-    hits: dict[tuple[str, str], tuple[list[_Node], dict[tuple[str, str], _Node]]] = {}
-
-    def _qualifies(path: list[_Node]) -> bool:
-        # Every node must individually pass: a node holding the whole chain is a
-        # single-artifact finding and belongs to whichever rule already owns it.
-        if any(n.caps.holds_whole_chain for n in path):
-            return False
-        if not path[0].caps.reads_untrusted_input:
-            return False
-        if not path[-1].caps.performs_network_egress:
-            return False
-        # The middle role has to be carried by somebody other than the egress
-        # node, otherwise this is a two-role pair the single-artifact rules
-        # already describe.
-        return any(n.caps.touches_sensitive for n in path[:-1])
-
-    def walk(path: list[_Node]) -> None:
-        head = path[-1]
-        if len(path) >= 2 and _qualifies(path):
-            rep, sinks = hits.setdefault(path[0].key, (list(path), {}))
-            if len(path) < len(rep):
-                hits[path[0].key] = (list(path), sinks)
-            sinks[head.key] = head
-        if len(path) >= MAX_PATH_NODES:
-            return
-        for nxt_key in sorted(adj.get(head.key, ())):
-            nxt = by_key[nxt_key]
-            if any(nxt.key == p.key for p in path):
-                continue
-            walk(path + [nxt])
-
-    for node in nodes:
-        if node.caps.reads_untrusted_input and not node.caps.holds_whole_chain:
-            walk([node])
-
+    hits = _chain_hits(nodes)
     for source_key in sorted(hits):
         path, sinks = hits[source_key]
         arrow = " -> ".join(n.label() for n in path)
