@@ -1,4 +1,5 @@
-"""AAK-MCP-020: one MCP handler on two routes, authentication on only one.
+"""AAK-MCP-020 (one MCP handler on two routes, authentication on only one) and
+AAK-MCP-019 (a lookup keyed on the caller's input, answered before the auth check).
 
 AAK-MCPWN-001, the other rule in `mcp_middleware`, has its tests in
 `test_mcpwn.py`.
@@ -216,3 +217,148 @@ def test_the_rule_states_what_it_reads() -> None:
     assert "Go or TypeScript/JavaScript" in rule.description
     assert "Python servers are not read" in rule.limitations
     assert "AAK-MCPWN-001 reports is left to that rule" in rule.limitations
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-019: a lookup keyed on the caller's input, answered before auth
+# ---------------------------------------------------------------------------
+
+LOOKUP = "AAK-MCP-019"
+GATEWAY = (Path(__file__).parent / "fixtures" / "limitations" / LOOKUP / "positive" / "gateway.go").read_text(
+    encoding="utf-8"
+)
+
+
+def _lookups(tmp_path: Path, name: str, text: str) -> list[tuple[str, int | None]]:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    findings, _ = mcp_middleware.scan(tmp_path)
+    return [(f.file_path, f.line_number) for f in findings if f.rule_id == LOOKUP]
+
+
+def test_a_lookup_answered_404_before_the_token_check_is_reported(tmp_path: Path) -> None:
+    """The shape of SUSE/suse-ai-up's uniproxy REST MCP endpoints at fdd1812e."""
+    assert _lookups(tmp_path, "gateway.go", GATEWAY) == [("gateway.go", 21)]
+    findings, _ = mcp_middleware.scan(tmp_path)
+    evidence = next(f.evidence for f in findings if f.rule_id == LOOKUP)
+    assert "store.Get" in evidence and "`name`" in evidence and "line 22" in evidence and "line 27" in evidence
+
+
+NET_HTTP = """package mcp
+
+import "net/http"
+
+func Routes(mux *http.ServeMux, sessions SessionStore) {
+	mux.HandleFunc("/mcp/{session}", func(w http.ResponseWriter, r *http.Request) {
+		handleMCP(w, r, sessions)
+	})
+}
+
+func handleMCP(w http.ResponseWriter, r *http.Request, sessions SessionStore) {
+	session, ok := sessions.Lookup(r.PathValue("session"))
+	if !ok || session == nil {
+		http.Error(w, "unknown session", http.StatusNotFound)
+		return
+	}
+	if !validateBearerToken(r, session.Owner) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	session.Serve(w, r)
+}
+"""
+
+IF_HEADER = """package mcp
+
+func Register(r *gin.Engine, store Store) {
+	r.POST("/mcp/:tenant", func(c *gin.Context) { serveMCP(c, store) })
+}
+
+func serveMCP(c *gin.Context, store Store) {
+	if _, err := store.FindTenant(c.Param("tenant")); err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	if err := authenticate(c); err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+}
+"""
+
+
+@pytest.mark.parametrize(("name", "text", "line"), [("server.go", NET_HTTP, 12), ("tenant.go", IF_HEADER, 8)])
+def test_other_spellings_are_read(tmp_path: Path, name: str, text: str, line: int) -> None:
+    assert _lookups(tmp_path, name, text) == [(name, line)]
+
+
+@pytest.mark.parametrize("change", [
+    # The credential is checked first.
+    lambda t: t.replace(
+        '\tname := c.Param("name")\n',
+        '\tif err := checkClientToken(c, ""); err != nil {\n'
+        '\t\tc.JSON(http.StatusUnauthorized, gin.H{})\n\t\treturn\n\t}\n\tname := c.Param("name")\n',
+    ),
+    # The key is not the caller's: the server's own setting.
+    lambda t: t.replace("store.Get(c.Request.Context(), name)", "store.Get(c.Request.Context(), defaultAdapter)"),
+    # The miss is not answered "not found".
+    lambda t: t.replace("http.StatusNotFound", "http.StatusBadGateway"),
+    # The later 401 relays an upstream answer; no credential of the caller's is checked.
+    lambda t: t.replace("checkClientToken(c, adapter.Token)", "upstreamStatus(adapter)"),
+    # Behind auth middleware on the route, or on its group, the lookup runs after auth.
+    lambda t: t.replace('adapters.GET("/:name/tools", func', 'adapters.GET("/:name/tools", requireAuth(), func'),
+    lambda t: t.replace('r.Group("/api/v1/adapters")', 'r.Group("/api/v1/adapters", middleware.AuthRequired())'),
+    # Not registered in this file: what runs before it is unknown.
+    lambda t: t.replace('adapters.GET("/:name/tools", func(c *gin.Context) {\n\t\tlistMCPTools(c, store)\n\t})\n', ""),
+    # Nothing in the handler or its name says MCP.
+    lambda t: t.replace("listMCPTools", "listTools").replace("forwardMCP", "forward").replace('"tools/list"', '"list"'),
+])
+def test_quiet_variants(tmp_path: Path, change) -> None:
+    text = change(GATEWAY)
+    assert text != GATEWAY
+    assert _lookups(tmp_path, "gateway.go", text) == []
+
+
+@pytest.mark.parametrize("name", ["gateway_test.go", "testdata/gateway.go", "mocks/gateway.go"])
+def test_test_files_are_not_read_for_the_lookup_order(tmp_path: Path, name: str) -> None:
+    assert _lookups(tmp_path, name, GATEWAY) == []
+
+
+def test_the_lookup_rule_states_what_it_reads() -> None:
+    from agent_audit_kit.rules.builtin import RULES
+
+    rule = RULES[LOOKUP]
+    assert "Go MCP HTTP handler" in rule.description
+    assert "TypeScript, JavaScript and Python handlers are not read" in rule.limitations
+
+
+_LOOKUP_LEVEL = (
+    'r.GET("/mcp", func(c *gin.Context) {\n'
+    '\tx, err := s.Get(c.Param("n"))\n'
+    "\tif err != nil || x == nil { c.JSON(http.StatusNotFound, nil); return }\n"
+    "\tif e := auth(c); e != nil { c.JSON(http.StatusUnauthorized, nil); return }\n"
+)
+_CRAFTED_LOOKUPS = {
+    # Nested handlers, each a full instance of the shape.
+    "nested.go": "package x\nfunc R(r *gin.Engine) {\n" + _LOOKUP_LEVEL * 2_200 + "})\n" * 2_200 + "}\n",
+    # One handler holding a long run of `if` statements before its lookup.
+    "ifs.go": 'package x\nfunc R(r *gin.Engine) {\nr.GET("/mcp", func(c *gin.Context) {\n'
+    + "if a { c.JSON(http.StatusUnauthorized, auth(c)) }\n" * 9_000
+    + _LOOKUP_LEVEL.split("\n", 1)[1] + "})\n}\n",
+    # A long run of blocks on one line after a lookup: each is checked for an `if` once.
+    "blocks.go": 'package x\nfunc R(r *gin.Engine) {\nr.GET("/mcp", func(c *gin.Context) {\n'
+    + _LOOKUP_LEVEL.split("\n", 2)[1] + "\n" + "{}" * 230_000 + "\nStatusUnauthorized\n})\n}\n",
+    # Many lookups on one long line, none followed by an `if`.
+    "line.go": 'package x\nfunc R(r *gin.Engine) {\nr.GET("/mcp", func(c *gin.Context) {\n'
+    + 's.Get(c.Param("n")); ' * 25_000 + "\nif x { c.JSON(http.StatusNotFound, nil); return }\n})\n}\n",
+}
+
+
+@pytest.mark.parametrize("name", sorted(_CRAFTED_LOOKUPS))
+def test_a_crafted_handler_file_scans_in_linear_time(tmp_path: Path, name: str) -> None:
+    """About 400-500 KB each, under the scanner's 512 KB cap; each takes well under a second."""
+    (tmp_path / name).write_text(_CRAFTED_LOOKUPS[name], encoding="utf-8")
+    started = time.perf_counter()
+    mcp_middleware.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0

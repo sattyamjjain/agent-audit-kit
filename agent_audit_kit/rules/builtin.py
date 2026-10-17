@@ -3481,17 +3481,37 @@ _r(
 _r(
     "AAK-MCP-019",
     "MCP auth check runs after side-effect",
-    "An MCP handler performs work (e.g. db lookups, external calls) before "
-    "verifying authentication. This reveals existence/shape of protected "
-    "resources via timing and error channels.",
+    "A Go MCP HTTP handler looks a resource up by something the caller sent (a "
+    "path, query or form parameter), answers a miss with \"not found\" straight "
+    "away, and checks the caller's credential only after that, answering 401 or "
+    "403. A caller with no credential tells the two answers apart and learns which "
+    "resources exist, and the lookup runs for every caller.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Enforce authentication as the first step of every handler. Do not branch "
-    "on caller input before the auth check.",
+    "Check the caller's credential before the handler looks up anything the request "
+    "names. Where the credential to check depends on that resource (a per-adapter "
+    "auth setting), answer an unknown name and a refused credential the same way, "
+    "with one status and body, so the response does not reveal which names exist.",
     sarif_name="McpAuthAfterSideEffect",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-05"],
+    limitations=(
+        "Reads Go handlers only (net/http, gin, echo); TypeScript, JavaScript and "
+        "Python handlers are not read. It reports one form of the claim: a lookup on a "
+        "receiver (`store.Get`, `db.QueryRow`, `repo.FindByID`) whose argument is a "
+        "path, query or form parameter the handler read from the request, answered "
+        "\"not found\" by the `if` that holds it or the `if` on the next line, before "
+        "an `if` that calls a function named for authentication with the request and "
+        "answers 401 or 403. Other work before the check (dispatching the MCP request, "
+        "an outbound call, a write) is not reported, nor is a miss answered with "
+        "another status, a key taken from the request body, a lookup or a gate inside a "
+        "nested block or a helper, or a credential compared inline rather than through "
+        "a function. The handler must be registered in the same file, on a route with "
+        "no auth middleware or wrapper and no group or router-wide auth, so one "
+        "registered in another file is not read, and the handler's name or body must "
+        "mention MCP."
+    ),
 )
 
 _r(

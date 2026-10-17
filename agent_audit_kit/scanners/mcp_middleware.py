@@ -1,5 +1,6 @@
-"""MCP route rules: twin-route asymmetry (AAK-MCPWN-001) and one handler on an
-authenticated and an unauthenticated route (AAK-MCP-020).
+"""MCP route rules: twin-route asymmetry (AAK-MCPWN-001), one handler on an
+authenticated and an unauthenticated route (AAK-MCP-020), and a lookup keyed on
+the caller's input that is answered before the auth check (AAK-MCP-019).
 
 CVE-2026-33032 / MCPwn (nginx-ui, CVSS 9.8, KEV-listed 2026-04-13) was
 caused by two routes sharing a handler but only one being wrapped in an
@@ -18,8 +19,9 @@ a route's middleware is every argument between its path and its handler; a
 FastAPI route is its decorators up to the `def`. False-positive rate stays
 low because we only fire when two routes matching the MCP endpoint pattern
 live in the same file and one has a recognised auth marker while the other
-doesn't. AAK-MCP-020, at the end of this module, pairs routes by the handler
-they reach instead of by their paths.
+doesn't. AAK-MCP-020, further down, pairs routes by the handler they reach
+instead of by their paths, and AAK-MCP-019 reads the order of a Go handler's
+own statements.
 
 References:
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2026-33032
@@ -33,6 +35,7 @@ References:
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -44,7 +47,9 @@ from agent_audit_kit.scanners._http_routes import (
     TEST_FILE_RE,
     Call,
     CodeIndex,
+    GoHandler,
     find_calls,
+    go_handlers,
     is_mcp_endpoint_path,
 )
 
@@ -349,6 +354,9 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     if suffix != ".py" and _reads_shared_handlers(rel, text, go):
         index = index or CodeIndex(text, go=go)
         findings.extend(_shared_handler_findings(index, rel, {f.line_number for f in findings if f.line_number}))
+    if go and _reads_lookup_order(rel, text):
+        index = index or CodeIndex(text, go=True)
+        findings.extend(_lookup_before_auth_findings(index, rel))
     return findings
 
 
@@ -516,6 +524,7 @@ class _Reg:
     block: int
     start: int
     line: int
+    handler_at: int
 
 
 _PARAM_NAME_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)")
@@ -695,19 +704,19 @@ def _js_registrations(index: CodeIndex) -> tuple[list[_Reg], list[_Scope]]:
             continue
         handler, wrapper = _handler_identity(index, *spans[-1], go=False)
         middleware = [text[s:min(e, s + _NAME_WINDOW)] for s, e in spans[1:-1]]
-        regs.append(_reg(call.receiver, call.method.upper(), path, handler, wrapper, middleware, call, index))
+        regs.append(_reg(call.receiver, call.method.upper(), path, handler, wrapper, middleware, call, index, spans[-1][0]))
     return regs, scopes
 
 
 def _reg(
     receiver: str, method: str, path: str, handler: str | None, wrapper: str | None,
-    middleware: list[str], call: Call, index: CodeIndex,
+    middleware: list[str], call: Call, index: CodeIndex, handler_at: int,
 ) -> _Reg:
     kinds = [_classify(m) for m in middleware]
     auth = wrapper or next((m for m, k in zip(middleware, kinds) if k == "auth"), None)
     return _Reg(
         receiver, method, path, handler, auth, "unknown" in kinds,
-        index.block_of.get(call.paren, -1), call.start, index.line_of(call.start),
+        index.block_of.get(call.paren, -1), call.start, index.line_of(call.start), handler_at,
     )
 
 
@@ -757,7 +766,7 @@ def _go_registrations(index: CodeIndex, echo: bool) -> tuple[list[_Reg], list[_S
         handler, wrapper = _handler_identity(index, *handler_span, go=True)
         method = call.method.upper() if call.method not in ("Handle", "HandleFunc", "Any") else "ANY"
         middleware = [text[s:min(e, s + _NAME_WINDOW)] for s, e in middleware_spans]
-        regs.append(_reg(call.receiver, method, path, handler, wrapper, middleware, call, index))
+        regs.append(_reg(call.receiver, method, path, handler, wrapper, middleware, call, index, handler_span[0]))
     for m in _CALL_HEAD_RE.finditer(text):
         if not index.in_code(m.start()) or _classify(m.group(1)) != "auth":
             continue
@@ -837,6 +846,263 @@ def _reads_shared_handlers(rel: str, text: str, go: bool) -> bool:
     if go:
         return bool(_GO_SHARED_HEAD_RE.search(text)) and not GO_TEST_SERVER_RE.search(text)
     return bool(_JS_ROUTE_HEAD_RE.search(text))
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-019: a lookup keyed on the caller's input, answered before the auth check
+# ---------------------------------------------------------------------------
+#
+# The rule claims work done before the authentication check. The corpus held
+# one shape of it, and this check reads only that shape: a Go MCP handler looks
+# something up by what the caller sent (a path, query or form parameter),
+# answers a miss with "not found" in the very next statement, and only later
+# checks the caller's credential and answers 401 or 403. A caller with no
+# credential tells the two answers apart and learns which names exist, and the
+# lookup runs for anyone. SUSE/suse-ai-up's uniproxy is the real case: six REST
+# MCP endpoints look the adapter up by the name in the path, answer 404 for an
+# unknown one, and only then check that adapter's authentication.
+#
+# Each condition is there because a broader reading fired on safe code:
+#   - the lookup's key comes from the request: `config.Get()` before a token
+#     check reads the server's own settings (oawbz/filemanager);
+#   - the gate calls a function named for authentication with the request: a
+#     forwarding proxy that relays its upstream's 401 checks no credential of
+#     the caller's (SUSE's own proxy.go);
+#   - the handler is registered in the same file, on a route with no auth
+#     middleware or wrapper and no group or router-wide auth: behind
+#     middleware, the lookup runs after authentication.
+# Only the handler's own statements are read (nested blocks are skipped), and
+# each `if` is read for a bounded window, so nested handlers cost linear time.
+
+_MCP019 = "AAK-MCP-019"
+_MCP_MENTION_RE = re.compile(r"mcp|jsonrpc|tools/(?:call|list)", re.IGNORECASE)
+_NOT_FOUND_RE = re.compile(r"StatusNotFound|\b404\b|\bNotFound\(")
+_DENIED_RE = re.compile(r"StatusUnauthorized|StatusForbidden|\b40[13]\b")
+# A request value read by name: gin and echo `c.Param("id")`, `c.Query(...)`,
+# net/http `r.PathValue(...)`, `r.URL.Query().Get(...)`, gorilla `mux.Vars(r)`,
+# chi `chi.URLParam(r, ...)`. The receiver must be the handler's request.
+_INPUT_READ_WORDS = (
+    ".Param(", ".Query(", ".DefaultQuery(", ".PostForm(", ".QueryParam(", ".FormValue(", ".PathValue(",
+    ".URL.Query()", "mux.Vars(", "chi.URLParam(", ".Params.ByName(",
+)
+_INPUT_CALL = (
+    r"(?:(\w+)\.(?:Param|Query|DefaultQuery|PostForm|QueryParam|FormValue|PathValue|Params\.ByName"
+    r"|URL\.Query\(\)\.Get)\(|(?:mux\.Vars|chi\.URLParam)\(\s*(\w+))"
+)
+_INPUT_ASSIGN_RE = re.compile(r"(?<![\w.])(\w+)\s*:?=\s*" + _INPUT_CALL)
+_INPUT_EXPR_RE = re.compile(r"(?<![\w.])" + _INPUT_CALL)
+_LOOKUP_VERB_RE = re.compile(
+    r"Get|GetBy\w*|Find\w*|Lookup\w*|Load\w*|Fetch\w*|Read\w*|Query\w*|First|Retrieve\w*|Resolve\w*"
+)
+# A call on a receiver (`store.Get(`): a bare function call is not a lookup here.
+_METHOD_CALL_RE = re.compile(r"(?<![\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*\(")
+_GO_CALL_RE = re.compile(r"(?<![\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*\(")
+_IF_LINE_RE = re.compile(r"[ \t]*(?:\}[ \t]*else[ \t]+)?(if)\b")
+_WORD_RE = re.compile(r"\w+")
+_GATE_AUTH_RE = re.compile(r"auth|credential|token|api_?key|bearer|permission|signature|jwt", re.IGNORECASE)
+_NOT_LOOKUP_ROOTS = frozenset({
+    "bytes", "context", "errors", "filepath", "fmt", "http", "io", "json", "log", "math", "os", "path",
+    "regexp", "sort", "strconv", "strings", "sync", "time", "url",
+})
+# An `if` header is short; the gate's auth call sits near the top of its block.
+_IF_HEADER_WINDOW = 400
+_GATE_WINDOW = 1000
+_LINE_WINDOW = 200
+
+
+@dataclass(frozen=True)
+class _If:
+    at: int
+    block: int
+    close: int
+
+
+def _own_statements(index: CodeIndex, body: int, end: int) -> tuple[list[tuple[int, int]], dict[int, int]]:
+    """The text ranges of a body's own statements, and its nested blocks
+    (outermost only) as {open: close}: everything outside them."""
+    text = index.text
+    ranges: list[tuple[int, int]] = []
+    blocks: dict[int, int] = {}
+    start = search = body + 1
+    while search < end:
+        brace = text.find("{", search, end)
+        if brace < 0:
+            break
+        close = index.close.get(brace)
+        if close is None or close > end or not index.in_code(brace):
+            search = brace + 1
+            continue
+        ranges.append((start, brace))
+        blocks[brace] = close
+        start = search = close + 1
+    ranges.append((start, end))
+    return ranges, blocks
+
+
+def _own_ifs(index: CodeIndex, blocks: dict[int, int]) -> list[_If]:
+    """Each `if` among the body's own statements, with its block: a nested
+    block whose line opens with `if` (gofmt puts the `{` on the `if`'s line)."""
+    text = index.text
+    ifs: list[_If] = []
+    for block, close in blocks.items():
+        line_start = text.rfind("\n", max(0, block - _IF_HEADER_WINDOW), block) + 1
+        head = _IF_LINE_RE.match(text, line_start, block) if line_start else None
+        if head is not None and index.in_code(head.start(1)):
+            ifs.append(_If(head.start(1), block, close))
+    return ifs
+
+
+def _input_key(index: CodeIndex, paren: int, inputs: set[str], request: str) -> str | None:
+    """The argument of the call at ``paren`` that the caller supplied, if any."""
+    text = index.text
+    for s, e in index.args(paren) or []:
+        e = min(e, s + _NAME_WINDOW)
+        root = _DOTTED_RE.match(text, s, e)
+        if root is not None and root.group().split(".", 1)[0] in inputs:
+            return root.group()
+        expr = _INPUT_EXPR_RE.search(text, s, e)
+        if expr is not None and request in (expr.group(1), expr.group(2)):
+            return text[s:e]
+    return None
+
+
+def _miss_answer(
+    index: CodeIndex, start: int, paren: int, ifs: list[_If], ats: list[int], by_at: dict[int, int],
+) -> int | None:
+    """The index in ``ifs`` of the `if` that answers the lookup at ``start``
+    with "not found": the `if` whose header holds the lookup, or the one on
+    the next line that tests a name the lookup assigned."""
+    text = index.text
+    pos = bisect_right(ats, start) - 1
+    if pos >= 0 and ifs[pos].block > start:
+        found = pos
+    else:
+        close = index.close.get(paren)
+        line_start = text.rfind("\n", max(0, start - _LINE_WINDOW), start) + 1
+        if close is None or not line_start:
+            return None
+        newline = text.find("\n", close, close + _LINE_WINDOW)
+        if newline < 0 or text[close + 1:newline].strip():
+            return None
+        nxt = by_at.get(_skip_blank(text, newline, min(len(text), newline + _LINE_WINDOW)))
+        if nxt is None:
+            return None
+        assigned = set(_WORD_RE.findall(text, line_start, start))
+        if not assigned & set(_WORD_RE.findall(text, ifs[nxt].at, ifs[nxt].block)):
+            return None
+        found = nxt
+    branch = ifs[found]
+    if not _NOT_FOUND_RE.search(text, branch.block, branch.close) or "return" not in text[branch.block:branch.close]:
+        return None
+    return found
+
+
+def _is_gate(index: CodeIndex, branch: _If, request: str) -> bool:
+    """An `if` that calls a function named for authentication with the request
+    (or a value read from it) and answers 401 or 403."""
+    text = index.text
+    window = min(branch.close, branch.at + _GATE_WINDOW)
+    if not _DENIED_RE.search(text, branch.block, window):
+        return False
+    for m in _GO_CALL_RE.finditer(text, branch.at, window):
+        if not _GATE_AUTH_RE.search(m.group(1)) or _NOT_AUTH_RE.search(m.group(1)):
+            continue
+        for s, e in index.args(m.end() - 1) or []:
+            arg = _DOTTED_RE.match(text, s, min(e, s + _NAME_WINDOW))
+            if arg is not None and arg.group().split(".", 1)[0] == request:
+                return True
+    return False
+
+
+def _lookup_before_auth(index: CodeIndex, handler: GoHandler) -> tuple[int, str, str, int, int] | None:
+    """(offset, lookup, key, not-found line, gate line) of the first lookup in
+    the handler that the caller's input keys and that is answered before any
+    authentication gate."""
+    text = index.text
+    ranges, blocks = _own_statements(index, handler.body_start, handler.body_end)
+    ifs = _own_ifs(index, blocks)
+    if not ifs:
+        return None
+    ats = [branch.at for branch in ifs]
+    by_at = {at: i for i, at in enumerate(ats)}
+    inputs = {
+        m.group(1)
+        for a, b in ranges
+        for m in _INPUT_ASSIGN_RE.finditer(text, a, b)
+        if handler.request in (m.group(2), m.group(3))
+    }
+    first_gate: int | None = None
+    checked = 0
+    for a, b in ranges:
+        for m in _METHOD_CALL_RE.finditer(text, a, b):
+            callee = m.group(1)
+            root, _, verb = callee.rpartition(".")
+            first = root.split(".", 1)[0]
+            if first in _NOT_LOOKUP_ROOTS or first == handler.request or not _LOOKUP_VERB_RE.fullmatch(verb):
+                continue
+            if not index.in_code(m.start()):
+                continue
+            paren = m.end() - 1
+            key = _input_key(index, paren, inputs, handler.request)
+            if key is None:
+                continue
+            miss = _miss_answer(index, m.start(), paren, ifs, ats, by_at)
+            if miss is None:
+                continue
+            while first_gate is None and checked < len(ifs):
+                if _is_gate(index, ifs[checked], handler.request):
+                    first_gate = checked
+                checked += 1
+            if first_gate is None or first_gate <= miss:
+                return None
+            return (m.start(), callee, key, index.line_of(ifs[miss].at), index.line_of(ifs[first_gate].at))
+    return None
+
+
+def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
+    text = index.text
+    regs, scopes = _go_registrations(index, echo='"github.com/labstack/echo' in text)
+    by_name: dict[str, list[_Reg]] = {}
+    by_at: dict[int, list[_Reg]] = {}
+    for reg in regs:
+        if reg.handler is not None:
+            by_name.setdefault(reg.handler, []).append(reg)
+        by_at.setdefault(reg.handler_at, []).append(reg)
+    mentions = [m.start() for m in _MCP_MENTION_RE.finditer(text)]
+    findings: list[Finding] = []
+    for handler in go_handlers(index):
+        if handler.name is None:
+            routes = by_at.get(handler.start, [])
+        else:
+            routes = by_name.get(handler.name, []) + by_name.get("delegate:" + handler.name, [])
+        if not routes or any(r.auth is not None or _covered(r, scopes) for r in routes):
+            continue
+        near = bisect_right(mentions, handler.body_end) - bisect_right(mentions, handler.body_start)
+        if not near and not (handler.name and _MCP_MENTION_RE.search(handler.name)):
+            continue
+        found = _lookup_before_auth(index, handler)
+        if found is None:
+            continue
+        offset, lookup, key, miss_line, gate_line = found
+        label = handler.name or f"the handler for {routes[0].method} {routes[0].path!r}"
+        findings.append(make_finding(
+            _MCP019,
+            rel,
+            f"{label} looks up `{lookup}` by the caller's `{key[:60]}` and answers not found "
+            f"(line {miss_line}) before it checks the caller's credential (line {gate_line}), so a "
+            "caller with no credential learns which names exist",
+            line_number=index.line_of(offset),
+        ))
+    return findings
+
+
+def _reads_lookup_order(rel: str, text: str) -> bool:
+    """Whether AAK-MCP-019 reads this Go file."""
+    if TEST_FILE_RE.search(Path(rel).as_posix()) or GO_TEST_SERVER_RE.search(text):
+        return False
+    if not _MCP_MENTION_RE.search(text) or not any(word in text for word in _INPUT_READ_WORDS):
+        return False
+    return bool(_NOT_FOUND_RE.search(text)) and bool(_DENIED_RE.search(text))
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
