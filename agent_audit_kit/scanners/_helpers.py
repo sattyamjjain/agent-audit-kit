@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import threading
 import unicodedata
 from array import array
 from bisect import bisect_right
@@ -301,17 +302,24 @@ class _TextLookups:
 # it ever looks up in at once; keeping more would only hold dead files in memory.
 _TEXT_LOOKUPS: OrderedDict[str, _TextLookups] = OrderedDict()
 _TEXT_LOOKUPS_KEPT = 4
+# Scans can run in threads at once, and they share the memo. Finding a text's
+# entry and moving it to the end are two steps, and without the lock another
+# thread could evict the entry between them, which raised KeyError. What an entry
+# keeps is filled in without it: two threads that work out the same answer for
+# one text store the same value.
+_TEXT_LOOKUPS_LOCK = threading.Lock()
 
 
 def _lookups(text: str) -> _TextLookups:
-    entry = _TEXT_LOOKUPS.get(text)
-    if entry is None:
-        entry = _TEXT_LOOKUPS[text] = _TextLookups()
-        if len(_TEXT_LOOKUPS) > _TEXT_LOOKUPS_KEPT:
-            _TEXT_LOOKUPS.popitem(last=False)
-    else:
-        _TEXT_LOOKUPS.move_to_end(text)
-    return entry
+    with _TEXT_LOOKUPS_LOCK:
+        entry = _TEXT_LOOKUPS.get(text)
+        if entry is None:
+            entry = _TEXT_LOOKUPS[text] = _TextLookups()
+            if len(_TEXT_LOOKUPS) > _TEXT_LOOKUPS_KEPT:
+                _TEXT_LOOKUPS.popitem(last=False)
+        else:
+            _TEXT_LOOKUPS.move_to_end(text)
+        return entry
 
 
 def _line_ends(text: str, entry: _TextLookups) -> array[int]:

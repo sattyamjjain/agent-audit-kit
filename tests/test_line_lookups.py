@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import ast
 import random
+import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -226,6 +228,34 @@ def test_lookups_answer_the_same_after_their_text_is_evicted() -> None:
             # An equal text read again is a different object with the same answers.
             assert find_line_number("".join(list(text)), f"key{i}") == 3
     assert len(_helpers._TEXT_LOOKUPS) <= _helpers._TEXT_LOOKUPS_KEPT
+
+
+def test_lookups_from_several_threads_at_once() -> None:
+    """Scans can run in threads at once, and the texts they look up in share one
+    memo: finding an entry and moving it to the end are two steps, and another
+    thread could evict it between them (KeyError)."""
+    texts = [f"line {i}\nkey here\n" * 3 for i in range(2 * _helpers._TEXT_LOOKUPS_KEPT)]
+    errors: list[BaseException] = []
+
+    def work() -> None:
+        try:
+            for _ in range(3_000):
+                for text in texts:
+                    assert find_line_number(text, "key") == 2
+        except BaseException as exc:  # noqa: BLE001 - every failure is reported below
+            errors.append(exc)
+
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    try:
+        threads = [threading.Thread(target=work) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    finally:
+        sys.setswitchinterval(interval)
+    assert not errors, [f"{type(e).__name__}: {e}"[:80] for e in errors[:3]]
 
 
 # ---------------------------------------------------------------------------
