@@ -13092,10 +13092,16 @@ _r(
     "check with no readable baseline has checked nothing, and the evidence "
     "says why the file could not be used. So does any scanner, against one "
     "file, when it refuses that file: one nested deeper than Python's JSON, "
-    "TOML or Python parser takes, or YAML nested past 100 levels or grown by "
-    "its aliases past their bound. The refusal costs that file alone; the "
-    "scanner went on with every other file, and the evidence names the "
-    "scanner, the file and the reason.",
+    "TOML or Python parser takes (before Python 3.11, whose parser has no "
+    "depth check, a Python source a linear screen bounds past 20,000 levels "
+    "is refused before it is parsed; one just under that bound is parsed, at "
+    "up to 13 s and 135 MB for a 480 KB file), a Python syntax tree deeper "
+    "than the scanner's walk takes (a walk runs with a recursion limit of "
+    "10,000 frames, about 3,300 levels for the walk that takes the most "
+    "frames a level; the deepest of 100,303 real files has 569), or YAML "
+    "nested past 100 levels or grown by its aliases past their bound. The "
+    "refusal costs that file alone; the scanner went on with every other "
+    "file, and the evidence names the scanner, the file and the reason.",
     Severity.INFO,
     Category.AGENT_CONFIG,
     "If the evidence names an input file, repair it. For the tool-pin file, "

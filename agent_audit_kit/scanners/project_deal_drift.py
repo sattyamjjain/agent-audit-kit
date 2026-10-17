@@ -35,6 +35,7 @@ from ._helpers import (
     read_text_capped,
     refusing_overflow,
     unparse,
+    walk_tree,
 )
 
 
@@ -146,7 +147,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 return
             # Decorator suppresses.
             for dec in func.decorator_list:
-                src = ast.unparse(dec) if hasattr(ast, "unparse") else ""
+                src = unparse(dec)
                 if _PARITY_DECORATOR_RE.search(src):
                     return
             child = _llm_sink_call(func)
@@ -166,7 +167,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 line_number=child.lineno,
             ))
 
-    V().visit(tree)
+    walk_tree(V().visit, tree)
     return findings
 
 

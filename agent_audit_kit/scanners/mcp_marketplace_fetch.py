@@ -35,6 +35,7 @@ from ._helpers import (
     parse_python,
     read_text_capped,
     refusing_overflow,
+    walk_tree,
 )
 
 
@@ -143,7 +144,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str], t
                     ))
                     return
 
-    V().visit(tree)
+    walk_tree(V().visit, tree)
     return findings
 
 

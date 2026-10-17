@@ -5,7 +5,7 @@ import string
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, refusing_overflow, walk_tree
 
 # ---- Tool decorator names to recognise ----
 _TOOL_DECORATORS: frozenset[str] = frozenset({
@@ -1335,16 +1335,24 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         file_facts = _FileFacts(tree)
         imported: dict[str, str] | None = None
 
-        # Walk top-level and nested function definitions
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if _is_tool_function(node):
-                    imported = _import_names(tree) if imported is None else imported
-                    findings.extend(_analyse_tool_function(node, rel_path, file_facts=file_facts, imported=imported))
-                elif _is_call_tool_handler(node):
-                    imported = _import_names(tree) if imported is None else imported
-                    findings.extend(_analyse_tool_function(
-                        node, rel_path, call_tool_handler=True, imported=imported,
-                    ))
+        # Walk top-level and nested function definitions. Item reads and a
+        # handler's branches are followed recursively, so each function is
+        # analysed through `walk_tree`, and a file too deep even for that is
+        # refused alone, its findings with it.
+        with refusing_overflow(py_path):
+            file_findings: list[Finding] = []
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if _is_tool_function(node):
+                        imported = _import_names(tree) if imported is None else imported
+                        file_findings.extend(walk_tree(
+                            _analyse_tool_function, node, rel_path, file_facts=file_facts, imported=imported,
+                        ))
+                    elif _is_call_tool_handler(node):
+                        imported = _import_names(tree) if imported is None else imported
+                        file_findings.extend(walk_tree(
+                            _analyse_tool_function, node, rel_path, call_tool_handler=True, imported=imported,
+                        ))
+            findings.extend(file_findings)
 
     return findings, scanned_files

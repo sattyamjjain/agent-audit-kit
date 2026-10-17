@@ -26,6 +26,7 @@ from ._helpers import (
     read_text_capped,
     refusing_overflow,
     source_lines,
+    walk_tree,
 )
 
 
@@ -163,7 +164,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                     _scan_call(child, body, searched)
             self.generic_visit(node)
 
-    V().visit(tree)
+    walk_tree(V().visit, tree)
     if findings:
         scanned.add(rel)
     return findings

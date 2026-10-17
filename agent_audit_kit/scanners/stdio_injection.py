@@ -47,6 +47,8 @@ from agent_audit_kit.scanners._helpers import (
     make_finding,
     parse_python,
     read_text_capped,
+    refusing_overflow,
+    unparse,
 )
 from agent_audit_kit.scanners._versions import ZERO, admits, parse_range
 
@@ -310,7 +312,7 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
         if not _args_reference_taint(call, taint_names_in_file):
             continue
 
-        snippet = ast.unparse(call) if hasattr(ast, "unparse") else fqn
+        snippet = unparse(call)
         findings.append(
             make_finding(
                 "AAK-STDIO-001",
@@ -399,7 +401,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in _iter_python_files(project_root):
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
-        findings.extend(_check_python_file(path, project_root))
+        with refusing_overflow(path):
+            findings.extend(_check_python_file(path, project_root))
     for path in _iter_js_files(project_root):
         rel = str(path.relative_to(project_root))
         scanned.add(rel)

@@ -54,6 +54,7 @@ from ._helpers import (
     parse_python,
     read_text_capped,
     refusing_overflow,
+    unparse,
 )
 
 
@@ -202,10 +203,7 @@ def _names_in(node: ast.AST) -> set[str]:
 
 
 def _unparse(node: ast.AST) -> str:
-    try:
-        return ast.unparse(node)
-    except Exception:  # pragma: no cover - unparse is available on 3.9+
-        return ""
+    return unparse(node)
 
 
 def _command_arg_exprs(call: ast.Call) -> list[ast.expr]:

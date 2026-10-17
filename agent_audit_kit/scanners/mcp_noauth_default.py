@@ -32,7 +32,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, unparse
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, refusing_overflow, unparse
 
 _RULE_ID = "AAK-MCP-NOAUTH-DEFAULT"
 
@@ -250,7 +250,7 @@ def _scan_python(text: str, path: Path) -> list[tuple[int, str]]:
             if value.value.strip().lower() in _WEAK_SECRET_VALUES:
                 hits.append((lineno, "placeholder-secret"))
         elif isinstance(value, ast.Call):
-            fn = ast.unparse(value.func) if hasattr(ast, "unparse") else ""
+            fn = unparse(value.func)
             if fn in ("os.environ.get", "os.getenv"):
                 default = _env_default(value)
                 if isinstance(default, ast.Constant) and default.value == "":
@@ -437,10 +437,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except OSError:
             continue
 
-        hits = (
-            _scan_python(text, path) if path.suffix in _PY_SUFFIXES
-            else _scan_config(text)
-        )
+        hits: list[tuple[int, str]] = []
+        if path.suffix in _PY_SUFFIXES:
+            with refusing_overflow(path):
+                hits = _scan_python(text, path)
+        else:
+            hits = _scan_config(text)
         if not hits:
             continue
 

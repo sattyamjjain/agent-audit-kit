@@ -46,7 +46,14 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, sub_up_to_last
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    refusing_overflow,
+    sub_up_to_last,
+    unparse,
+)
 
 _RULE_ID = "AAK-LLM-SQL-RCE-001"
 
@@ -177,10 +184,7 @@ def _collect_tainted(tree: ast.AST) -> set[str]:
                 targets.extend(_target_names(node.target))
             if not targets:
                 continue
-            try:
-                rhs_src = ast.unparse(value)
-            except Exception:
-                rhs_src = ""
+            rhs_src = unparse(value)
             refs_tainted = any(
                 isinstance(x, ast.Name) and x.id in tainted
                 for x in ast.walk(value)
@@ -315,7 +319,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel_path = str(path.relative_to(project_root))
 
         if path.suffix in _PY_SUFFIXES:
-            flow_line = _arm_a_python(text, path)
+            flow_line = None
+            with refusing_overflow(path):
+                flow_line = _arm_a_python(text, path)
         else:
             flow_line = _arm_a_ts(text)
         priv = _arm_b(text)

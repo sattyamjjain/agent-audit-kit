@@ -52,6 +52,7 @@ from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
     make_finding,
     parse_python,
+    refusing_overflow,
     sub_up_to_last,
     unparse,
 )
@@ -118,9 +119,8 @@ _HEADER_TOKEN_RE = re.compile(r"headers(?:(?!headers).)*?(?:auth|bearer|token)",
 
 def _is_token_source_expr(value: ast.AST) -> bool:
     """True if expr reads a token from a request header / bearer extraction."""
-    try:
-        src = ast.unparse(value)
-    except Exception:
+    src = unparse(value)
+    if not src:
         return False
     return bool(_HEADER_SOURCE_RE.search(src) and _TOKEN_NAME_RE.search(
         # last identifier-ish token in the expr, best effort
@@ -233,11 +233,7 @@ def _scan_python(text: str, path: Path) -> int | None:
         if not tainted:
             continue
 
-        fn_src = ""
-        try:
-            fn_src = ast.unparse(fn)
-        except Exception:
-            pass
+        fn_src = unparse(fn)
         guarded = bool(_GUARD_RE.search(fn_src))
 
         # names bound to a path built from the token
@@ -394,7 +390,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except OSError:
             continue
 
-        line = _scan_python(text, path) if suf in _PY_SUFFIXES else _scan_regex(text)
+        line: int | None = None
+        if suf in _PY_SUFFIXES:
+            with refusing_overflow(path):
+                line = _scan_python(text, path)
+        else:
+            line = _scan_regex(text)
         if line is None:
             continue
 

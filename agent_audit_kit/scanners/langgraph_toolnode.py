@@ -17,7 +17,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow
+from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow, walk_tree
 
 
 # The imported names stop at the next `from langgraph.prebuilt import` on the
@@ -80,7 +80,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             ))
             self.generic_visit(node)
 
-    V().visit(tree)
+    walk_tree(V().visit, tree)
     return findings
 
 

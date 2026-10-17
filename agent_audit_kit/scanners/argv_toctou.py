@@ -39,7 +39,9 @@ from agent_audit_kit.scanners._helpers import (
     make_finding,
     parse_python,
     read_text_capped,
+    refusing_overflow,
     sub_up_to_last,
+    unparse,
 )
 
 _RULE_ID = "AAK-MCP-ARGV-TOCTOU-001"
@@ -107,10 +109,7 @@ def _is_rebuild(value: ast.AST, var: str) -> bool:
     """True if the RHS rebuilds/transforms the approved buffer."""
     if any(isinstance(s, ast.Name) and s.id == var for s in ast.walk(value)):
         return True  # derived from the approved var
-    try:
-        src = ast.unparse(value)
-    except Exception:
-        src = ""
+    src = unparse(value)
     if _REBUILD_CALL_RE.search(src):
         return True
     return isinstance(value, (ast.JoinedStr, ast.BinOp))
@@ -286,10 +285,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except OSError:
             continue
 
-        line = (
-            _scan_python(text, path) if path.suffix in _PY_SUFFIXES
-            else _scan_ts(text)
-        )
+        line: int | None = None
+        if path.suffix in _PY_SUFFIXES:
+            with refusing_overflow(path):
+                line = _scan_python(text, path)
+        else:
+            line = _scan_ts(text)
         if line is None:
             continue
 

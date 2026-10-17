@@ -64,6 +64,7 @@ from agent_audit_kit.scanners._helpers import (
     make_finding,
     parse_python,
     refusing_overflow,
+    walk_tree,
 )
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
@@ -437,7 +438,7 @@ def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
             continue
         if imported is None:
             imported = _import_names(tree)
-        found, reached = _analyse_py_function(node, rel, source, imported)
+        found, reached = walk_tree(_analyse_py_function, node, rel, source, imported)
         findings.extend(found)
         if found and reached:
             exec_tools.append(node.name)

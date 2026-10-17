@@ -64,6 +64,7 @@ from ._helpers import (
     refusing_overflow,
     source_lines,
     source_segment,
+    walk_tree,
 )
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
@@ -248,7 +249,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 ))
                 return
 
-    FuncVisitor().visit(tree)
+    walk_tree(FuncVisitor().visit, tree)
     return findings
 
 

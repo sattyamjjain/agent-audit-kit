@@ -27,6 +27,7 @@ from ._helpers import (
     make_finding,
     parse_python,
     read_text_capped,
+    refusing_overflow,
 )
 
 
@@ -547,5 +548,6 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             text = read_text_capped(path, _MAX_BYTES, errors="replace")
         except OSError:
             continue
-        findings.extend(_walk_python(text, path, project_root, scanned))
+        with refusing_overflow(path):
+            findings.extend(_walk_python(text, path, project_root, scanned))
     return findings, scanned

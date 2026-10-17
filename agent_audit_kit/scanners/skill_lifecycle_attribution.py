@@ -32,7 +32,15 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped
+from agent_audit_kit.scanners._helpers import (
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+    walk_tree,
+)
 
 
 # Heuristic: a function is treated as a Skill execute() if it is
@@ -103,6 +111,15 @@ def _function_qualifies_as_skill(fn: ast.FunctionDef | ast.AsyncFunctionDef, pat
     return False
 
 
+def _skill_functions(tree: ast.Module, path: Path) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """The functions in `tree` that qualify as a skill's execute, in walk order.
+    Run through `walk_tree`: the decorator check follows a call chain down."""
+    return [
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _function_qualifies_as_skill(node, path)
+    ]
+
+
 def _scan_function(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str] | None:
     """Return (lineno, evidence) if the function mutates persistent
     state without emitting an attribution call. Otherwise None."""
@@ -150,11 +167,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except SyntaxError:
             continue
         rel = str(path.relative_to(project_root))
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            if not _function_qualifies_as_skill(node, path):
-                continue
+        qualifies: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+        with refusing_overflow(path):
+            qualifies = walk_tree(_skill_functions, tree, path)
+        for node in qualifies:
             hit = _scan_function(node)
             if hit is None:
                 continue

@@ -26,7 +26,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow
+from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow, walk_tree
 
 
 _CREWAI_IMPORT_RE = re.compile(
@@ -268,7 +268,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                         ))
                         fired.add("2287")
 
-    V().visit(tree)
+    walk_tree(V().visit, tree)
 
     # Meta-rule: meta-finding only when all 4 sub-shapes fired in the file.
     if fired >= {"2275", "2285", "2286", "2287"}:

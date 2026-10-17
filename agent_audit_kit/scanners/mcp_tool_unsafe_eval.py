@@ -33,6 +33,7 @@ from agent_audit_kit.scanners._helpers import (
     parse_python,
     read_text_capped,
     refusing_overflow,
+    walk_tree,
 )
 
 
@@ -135,7 +136,13 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
         tree = parse_python(src, path)
     except SyntaxError:
         return findings
+    return walk_tree(_tool_findings, tree, rel)
 
+
+def _tool_findings(tree: ast.Module, rel: str) -> list[Finding]:
+    """The findings in each MCP tool of a parsed file. Run through `walk_tree`:
+    the decorator check follows a call chain down, and the visitor recurses."""
+    findings: list[Finding] = []
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
