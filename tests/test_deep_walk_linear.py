@@ -134,3 +134,88 @@ def test_crewai_finds_the_function_it_did_for_every_call() -> None:
             assert found.get(id(call)) is _old_outermost(tree, call), source[:300]
             checked += 1
     assert checked > 5_000
+
+
+# ---------------------------------------------------------------------------
+# stdio_injection: a sink's argument, searched once
+# ---------------------------------------------------------------------------
+
+
+def test_stdio_injection_searches_a_sink_argument_in_linear_time(tmp_path: Path) -> None:
+    """Every node of a sink's argument searched the argument below it again,
+    whether or not it found a taint source in the end: four calls on a
+    3,000-level argument took 33 s."""
+    _assert_linear(tmp_path, "stdio_injection", lambda n: (
+        "from mcp.server.fastmcp import FastMCP\nimport os\n\n\n@mcp.tool()\ndef run(arg):\n"
+        + "".join(f"    os.system(x{'[0]' * n})\n" for _ in range(4))), 300)
+
+
+def _old_node_references_taint(node: ast.AST) -> bool:
+    """`stdio_injection._node_references_taint` before it read each chain once."""
+    from agent_audit_kit.scanners import stdio_injection as m
+
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Name) and sub.id in m._TAINT_NAME:
+            return True
+        if isinstance(sub, ast.Attribute):
+            chain = []
+            cur: ast.expr = sub
+            while isinstance(cur, ast.Attribute):
+                chain.append(cur.attr)
+                cur = cur.value
+            if isinstance(cur, ast.Name):
+                chain.append(cur.id)
+                chain = list(reversed(chain))
+                for length in range(2, len(chain) + 1):
+                    if tuple(chain[:length][-2:]) in m._TAINT_ATTR_CHAINS:
+                        return True
+            if isinstance(cur, ast.Name) and len(chain) >= 2:
+                if (chain[-2], chain[-1]) in m._TAINT_ATTR_CHAINS:
+                    return True
+        if isinstance(sub, ast.Call) and m._call_fqn(sub.func) == "json.loads":
+            for arg in sub.args:
+                if _old_node_references_taint(arg):
+                    return True
+    return False
+
+
+def _old_args_reference_taint(call: ast.Call, taint_names: set[str]) -> bool:
+    for arg in call.args:
+        for sub in ast.walk(arg):
+            if isinstance(sub, ast.Name) and sub.id in taint_names:
+                return True
+            if _old_node_references_taint(sub):
+                return True
+    return False
+
+
+def test_the_stdio_taint_search_answers_as_it_did_on_every_shape() -> None:
+    from agent_audit_kit.scanners import stdio_injection
+
+    rng = random.Random(1020)
+    words = ["sys", "stdin", "process", "request", "req", "event", "body", "json", "query", "params", "read",
+             "x", "cmd", "os", "environ", "loads", "data", "arg"]
+
+    def expr(depth: int) -> str:
+        if depth <= 0 or rng.random() < 0.2:
+            return rng.choice(words)
+        inner = expr(depth - 1)
+        kind = rng.randrange(6)
+        if kind < 3:
+            return f"{inner}.{rng.choice(words)}"
+        if kind == 3:
+            return f"json.loads({inner})"
+        if kind == 4:
+            return f"{inner}({expr(depth - 2)})"
+        return f"{inner} + {expr(depth - 2)}"
+
+    differing = []
+    for _ in range(6_000):
+        source = f"os.system({expr(6)}, {expr(4)})"
+        call = ast.parse(source).body[0].value
+        assert isinstance(call, ast.Call)
+        names = set(rng.sample(words, 2)) | set(stdio_injection._TAINT_NAME)
+        if (stdio_injection._node_references_taint(call) != _old_node_references_taint(call)
+                or stdio_injection._args_reference_taint(call, names) != _old_args_reference_taint(call, names)):
+            differing.append(source)
+    assert not differing, differing[:3]

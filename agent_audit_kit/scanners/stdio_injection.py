@@ -188,11 +188,23 @@ def _call_fqn(func: ast.expr) -> str:
 
 
 def _node_references_taint(node: ast.AST) -> bool:
-    """Return True if an AST subtree references any known taint source."""
-    for sub in ast.walk(node):
+    """Return True if an AST subtree references any known taint source: a name
+    in `_TAINT_NAME`, or an attribute chain on a name with two neighbouring
+    parts in `_TAINT_ATTR_CHAINS` (`sys.stdin.read`).
+
+    In one walk. Each chain is read once, from its outermost attribute: the
+    chain of an attribute inside it is a prefix of its own, with no pair the
+    outer one lacks. It used to be read again from every attribute along it,
+    so a chain of n parts cost the square of n, and `json.loads(<arg>)` had its
+    argument searched again, though the argument lies inside `node` and the
+    walk reads it anyway (`json.loads(stdin.read())` is found by its `stdin`).
+    """
+    walked = list(ast.walk(node))
+    inner = {id(sub.value) for sub in walked if isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Attribute)}
+    for sub in walked:
         if isinstance(sub, ast.Name) and sub.id in _TAINT_NAME:
             return True
-        if isinstance(sub, ast.Attribute):
+        if isinstance(sub, ast.Attribute) and id(sub) not in inner:
             chain = []
             cur: ast.expr = sub
             while isinstance(cur, ast.Attribute):
@@ -200,23 +212,27 @@ def _node_references_taint(node: ast.AST) -> bool:
                 cur = cur.value
             if isinstance(cur, ast.Name):
                 chain.append(cur.id)
-                chain = list(reversed(chain))
-                for length in range(2, len(chain) + 1):
-                    if tuple(chain[: length][-2:]) in _TAINT_ATTR_CHAINS:
-                        return True
-                    # Match (prefix[-2], prefix[-1]) windows.
-                # fall through
-            # check "sys.stdin.read()" etc.
-            if isinstance(cur, ast.Name) and len(chain) >= 2:
-                if (chain[-2], chain[-1]) in _TAINT_ATTR_CHAINS:
+                chain.reverse()
+                if any(pair in _TAINT_ATTR_CHAINS for pair in zip(chain, chain[1:])):
                     return True
-        if isinstance(sub, ast.Call):
-            fqn = _call_fqn(sub.func)
-            if fqn == "json.loads":
-                # json.loads(stdin.read()) — tainted.
-                for arg in sub.args:
-                    if _node_references_taint(arg):
-                        return True
+    return False
+
+
+def _args_reference_taint(call: ast.Call, taint_names: set[str]) -> bool:
+    """True if a positional argument of `call` holds a name in `taint_names`
+    (the file's tool parameters and the stock taint names) or references a
+    taint source (`_node_references_taint`).
+
+    That holds for a node whenever it holds for one inside it, so it is asked
+    once, of the whole argument. Asked of every node of it, it read the
+    argument once a level, which cost the square of a nested argument's depth:
+    a call on a 3,000-level chain took 6 s, for each such call in the file.
+    """
+    for arg in call.args:
+        if _node_references_taint(arg):
+            return True
+        if any(isinstance(sub, ast.Name) and sub.id in taint_names for sub in ast.walk(arg)):
+            return True
     return False
 
 
@@ -278,15 +294,6 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
             if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
                 shell_true = True
 
-        def _args_reference_taint() -> bool:
-            for arg in call.args:
-                for sub in ast.walk(arg):
-                    if isinstance(sub, ast.Name) and sub.id in taint_names_in_file:
-                        return True
-                    if _node_references_taint(sub):
-                        return True
-            return False
-
         # An argv-list `subprocess.*(["cmd", arg], shell=False)` is the SAFE
         # form: the elements are handed to execve() directly, so a tainted
         # element is an argument, not a shell-injection vector. Only
@@ -300,7 +307,7 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
             if (isinstance(first_arg, ast.BinOp) and isinstance(first_arg.op, ast.Add)
                     and isinstance(first_arg.left, (ast.List, ast.Tuple))):
                 continue
-        if not _args_reference_taint():
+        if not _args_reference_taint(call, taint_names_in_file):
             continue
 
         snippet = ast.unparse(call) if hasattr(ast, "unparse") else fqn
