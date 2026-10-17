@@ -58,33 +58,41 @@ def _key(name: str) -> str:
     return rf"(?:\.\s*{name}\b|{_subscript(name)}|{_get(name)})"
 
 
-def _head(name: str) -> str:
-    """The first step of a chain: the bare word, or a subscript or `.get()` of it."""
-    return rf"(?:{name}\b|{_subscript(name)}|{_get(name)})"
+def _heads(name: str) -> list[str]:
+    """The first step of a chain: the bare word, or a subscript or `.get()` of it.
+
+    Each form is an arm of its own in the pattern below, so that every arm
+    starts with a literal. As one group inside an arm,
+    `(?:pull_request\\b|\\[...|\\.\\s*get...)`, the forms gave the regex engine no
+    first character to look for, and the search ran about seven times slower
+    than main's on ordinary text (0.24 s for 4.6 MB, main 0.03 s), which a
+    function nested 99 deep paid at every level (2.7 s at 507 KB).
+    """
+    return [rf"{name}\b", _subscript(name), _get(name)]
 
 
 # Title-shape sources from GitHub event payloads and env vars; the gh CLI's is
 # `_GH_PR_VIEW_RE`, below.
 _TITLE_SOURCE_RE = re.compile(
-    rf"""
-    (?:
-        pull_request\s*\.\s*title
-      | pull_request\s*\.\s*head\s*\.\s*ref
-      | issue\s*\.\s*title
-      | event\s*\.\s*pull_request\s*\.\s*title
-      | event\s*\.\s*issue\s*\.\s*title
-      | github\.event\.pull_request\.title
-      | github\.event\.issue\.title
-      | os\.environ\[\s*['"]PR_TITLE['"]\s*\]
-      | os\.environ\[\s*['"]GITHUB_HEAD_REF['"]\s*\]
-      | os\.getenv\(\s*['"]PR_TITLE['"]
-      | os\.getenv\(\s*['"]GITHUB_HEAD_REF['"]
-      | {_head('pull_request')}\s*{_key('title')}
-      | {_head('pull_request')}\s*{_key('head')}\s*{_key('ref')}
-      | {_head('issue')}\s*{_key('title')}
+    "|".join(
+        f"(?:{arm})"
+        for arm in (
+            r"pull_request\s*\.\s*title",
+            r"pull_request\s*\.\s*head\s*\.\s*ref",
+            r"issue\s*\.\s*title",
+            r"event\s*\.\s*pull_request\s*\.\s*title",
+            r"event\s*\.\s*issue\s*\.\s*title",
+            r"github\.event\.pull_request\.title",
+            r"github\.event\.issue\.title",
+            r"""os\.environ\[\s*['"]PR_TITLE['"]\s*\]""",
+            r"""os\.environ\[\s*['"]GITHUB_HEAD_REF['"]\s*\]""",
+            r"""os\.getenv\(\s*['"]PR_TITLE['"]""",
+            r"""os\.getenv\(\s*['"]GITHUB_HEAD_REF['"]""",
+            *(head + rf"\s*{_key('title')}" for head in _heads("pull_request")),
+            *(head + rf"\s*{_key('head')}\s*{_key('ref')}" for head in _heads("pull_request")),
+            *(head + rf"\s*{_key('title')}" for head in _heads("issue")),
+        )
     )
-    """,
-    re.VERBOSE,
 )
 # `gh pr view` with `title` anywhere after it, read apart. As the arm
 # `gh\s+pr\s+view.*?title` (with `.` matching newlines) it read to the end of the

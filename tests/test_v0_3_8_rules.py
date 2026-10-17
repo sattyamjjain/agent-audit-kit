@@ -217,6 +217,26 @@ def test_prtitle_ipi_reads_a_file_up_to_512_kb(tmp_path: Path, size: int, read: 
     assert bool(prtitle_scan(tmp_path)[0]) is read
 
 
+def test_prtitle_ipi_title_source_reads_plain_text_at_main_speed() -> None:
+    """The subscript and `.get()` forms were one group of alternatives inside two
+    arms, which gave the regex engine no first character to look for: the search
+    ran about seven times slower than main's arms on ordinary text, and a function
+    nested 99 deep paid it at every level (2.7 s at 507 KB, main 0.42 s). Each
+    form is an arm of its own now, starting with a literal."""
+    import re
+    import time
+
+    text = "x123 = 'abcdefghijklmnopqrstuvwxyz0123456789'\n" * 100_000
+    reference = re.compile(r"pull_request\s*\.\s*title|issue\s*\.\s*title|os\.getenv\(")
+    timings = []
+    for pattern in (reference, prtitle_ipi._TITLE_SOURCE_RE):
+        started = time.perf_counter()
+        assert pattern.search(text) is None
+        timings.append(time.perf_counter() - started)
+    base, title = timings
+    assert title < 3 * base + 0.05, (base, title)
+
+
 _FOUR_BACKSLASHES = "\\" * 4
 
 
