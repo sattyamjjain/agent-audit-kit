@@ -933,6 +933,19 @@ def test_secret_006_reads_the_project_root_only(tmp_path: Path) -> None:
     assert RULES["AAK-SECRET-006"].limitations.count("services/api/.env.test") == 1
 
 
+def test_secret_006_reads_the_first_megabyte_of_gitignore_and_says_so(tmp_path: Path) -> None:
+    """Main read the whole file; the read is bounded now, and git honours a pattern past
+    the bound, so a `.env` line after the first 1,000,000 bytes is reported as missing."""
+    (tmp_path / ".env").write_text("DATABASE_URL=postgres://localhost/app\n", encoding="utf-8")
+    filler = "# filler\n" * (1_000_000 // len("# filler\n") + 1)
+
+    (tmp_path / ".gitignore").write_text(".env\n" + filler, encoding="utf-8")
+    assert _secret_006(tmp_path) == []
+    (tmp_path / ".gitignore").write_text(filler + ".env\n", encoding="utf-8")
+    assert _secret_006(tmp_path) == [".env"]
+    assert "1,000,000 bytes" in RULES["AAK-SECRET-006"].limitations
+
+
 def test_secret_006_reads_a_gitignore_that_is_not_utf8(tmp_path: Path) -> None:
     (tmp_path / ".env").write_text("A=1\n", encoding="utf-8")
     (tmp_path / ".gitignore").write_bytes(b"\xff\xfe# caf\xe9\n.env\n")

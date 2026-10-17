@@ -1855,7 +1855,9 @@ _r(
     limitations=(
         "Looks for `.env` and `.env.*` files in the project root only, and reads only the "
         "root `.gitignore`. An env file in a subdirectory, such as `services/api/.env.test` "
-        "in a monorepo, is not examined, even when the project has no `.gitignore` at all."
+        "in a monorepo, is not examined, even when the project has no `.gitignore` at all. "
+        "The `.gitignore` is read up to its first 1,000,000 bytes, so an env file ignored "
+        "only by a line past that point is reported."
     ),
 )
 
