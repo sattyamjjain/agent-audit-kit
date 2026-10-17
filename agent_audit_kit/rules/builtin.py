@@ -7680,10 +7680,15 @@ _r(
         "pattern) counts only when its pattern is a string literal, or a name a module- "
         "or function-level assignment binds to one, that names `route` or `expert` (in "
         "any case), the words in the routing tokens `[ROUTE: ...]`, `<|route_id|>`, "
-        "`__route__=` and `{{expert: ...}}`, and its result is the description sent or "
-        "is assigned to a name the description uses. What the pattern removes is not "
-        "checked, so `re.sub(r\"route\", \"path\", doc)` counts, and a pattern built at "
-        "run time or held on a class never does."
+        "`__route__=` and `{{expert: ...}}`, and its result is a description built in "
+        "the same function (a `\"description\"` dict value, a `description=` keyword or "
+        "a `[\"description\"]` assignment) or is assigned to a name one uses. The "
+        "function is judged as a whole: one cleaned description clears it, even when "
+        "another tool's description goes out raw, the cleaned name is later rebound to "
+        "the raw text, or the keyword belongs to something else "
+        "(`argparse.ArgumentParser(description=re.sub(...))`). What the pattern removes "
+        "is not checked, so `re.sub(r\"route\", \"path\", doc)` counts, and a pattern "
+        "built at run time or held on a class never does."
     ),
 )
 

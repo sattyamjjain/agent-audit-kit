@@ -174,6 +174,9 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     except SyntaxError:
         return []
     module_patterns = _pattern_bindings(tree.body, {})
+    # Split once per file: each function used to split the whole text again to
+    # cut out its own lines, so 20,000 functions took 26 s.
+    lines = text.splitlines()
     findings: list[Finding] = []
 
     class V(ast.NodeVisitor):
@@ -186,7 +189,6 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             self.generic_visit(node)
 
         def _scan(self, func: ast.AST) -> None:
-            lines = text.splitlines()
             start = max(0, func.lineno - 1)  # type: ignore[attr-defined]
             end_lineno = getattr(func, "end_lineno", func.lineno) or func.lineno  # type: ignore[attr-defined]
             end = min(len(lines), end_lineno)

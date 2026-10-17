@@ -197,6 +197,26 @@ def test_deepseek_v4_reads_many_patterns_and_substitutions_in_linear_time(tmp_pa
     assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
 
 
+def test_deepseek_v4_many_functions_scale_linearly(tmp_path: Path) -> None:
+    """Each function's body was cut from a fresh `text.splitlines()` of the whole
+    file, so 20,000 functions took 26 s. At ten times the functions a linear
+    reader takes about ten times as long; the bounds are loose for slow CI runners."""
+    timings = []
+    for count in (1_500, 15_000):
+        lines = ["import deepseek", "import re"]
+        for i in range(count):
+            lines += [f"def f{i}(request):", "    data = request.json", "    return data"]
+        root = tmp_path / str(count)
+        root.mkdir()
+        (root / "app.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        started = time.perf_counter()
+        deepseek_scan(root)
+        timings.append(time.perf_counter() - started)
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 10.0, large
+
+
 # The review's cases (2026-10-17): a substitution counts when it is a call
 # written in code, its pattern can be read and names the routing tokens, and
 # its result is the description sent in the tools payload.
