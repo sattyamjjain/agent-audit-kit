@@ -625,21 +625,24 @@ _GLOB_CHARS = frozenset("*?[\\")
 
 def _trim_trailing_spaces(line: str) -> str:
     """``line`` without its trailing spaces, except one escaped with a backslash (git's
-    trim_trailing_spaces): tabs and leading whitespace are part of the pattern."""
-    end = len(line)
-    while end and line[end - 1] == " ":
-        backslashes = len(line[: end - 1]) - len(line[: end - 1].rstrip("\\"))
-        if backslashes % 2:
-            break
-        end -= 1
-    return line[:end]
+    trim_trailing_spaces): tabs and leading whitespace are part of the pattern.
+
+    One strip, and one count of the backslashes before the run: counting them again for
+    each trailing space sliced the line twice per space, so 999,990 spaces took 45 s.
+    """
+    stripped = line.rstrip(" ")
+    if len(stripped) == len(line):
+        return line
+    backslashes = len(stripped) - len(stripped.rstrip("\\"))
+    return stripped + " " if backslashes % 2 else stripped
 
 
-# POSIX classes inside a bracket expression, as git's wildmatch reads them (C locale).
+# POSIX classes inside a bracket expression, as git's wildmatch reads them: ASCII only,
+# and `space` is git's own four characters (sane_ctype), without C's \v and \f.
 _POSIX_CLASSES = {
     "alnum": "a-zA-Z0-9", "alpha": "a-zA-Z", "blank": " \\t", "cntrl": "\\x00-\\x1f\\x7f",
     "digit": "0-9", "graph": "!-~", "lower": "a-z", "print": " -~", "punct": "!-/:-@\\[-`{-~",
-    "space": " \\t\\n\\r\\x0b\\x0c", "upper": "A-Z", "xdigit": "0-9A-Fa-f",
+    "space": " \\t\\n\\r", "upper": "A-Z", "xdigit": "0-9A-Fa-f",
 }
 
 
@@ -651,6 +654,10 @@ def _bracket(glob: str, at: int) -> tuple[str, int] | None:
     (a reversed one matches nothing more); `[:alpha:]` and the other POSIX names are
     classes, and an unknown name, like a bracket that never closes, means the whole
     pattern matches nothing. A backslash makes the next character literal.
+
+    Like git, a `[:` looks ahead for the first `]`; every `[:` before that `]` shares it,
+    so it is looked for once: looking again for each one, `[` with 499,990 `[:` in it
+    took 7.7 s.
     """
     i = at + 1
     negated = glob[i : i + 1] in ("!", "^")
@@ -658,6 +665,7 @@ def _bracket(glob: str, at: int) -> tuple[str, int] | None:
     members: list[str] = []
     previous: str | None = None
     first = True
+    close = -1
     while True:
         if i >= len(glob):
             return None
@@ -683,7 +691,8 @@ def _bracket(glob: str, at: int) -> tuple[str, int] | None:
             previous = None
             continue
         elif ch == "[" and glob[i + 1 : i + 2] == ":":
-            close = glob.find("]", i + 2)
+            if close <= i:
+                close = glob.find("]", i + 2)
             if close < 0:
                 return None
             if close - 1 > i + 1 and glob[close - 1] == ":":
@@ -702,13 +711,15 @@ def _bracket(glob: str, at: int) -> tuple[str, int] | None:
 
 
 def _glob_segments(glob: str) -> list[tuple[re.Pattern[str], int]] | None:
-    """A gitignore glob for one name (no `/`) cut at its `*` runs into star-free segments,
-    each compiled to a fixed-length regex with its width; None when it can never match.
+    """A gitignore glob for a root name cut at its `*` runs into star-free segments, each
+    compiled to a fixed-length regex with its width; None when it can never match one.
 
     A segment holds only literal characters, `?` and classes, each one character wide, so
     no regex here has a quantifier to backtrack through. A glob translated whole, with
     each `*` as `.*`, took 3.9 s for `*a*a*a*a*a*a*a*b` against a 65-character name and
-    over 300 s with one more `a*`.
+    over 300 s with one more `a*`. A `/` outside a class, escaped or not, puts the pattern
+    below the root; inside one (`.env[!/]*`) git still reads the pattern against a root
+    name, where the class never meets a `/`.
     """
     segments: list[list[str]] = [[]]
     i = 0
@@ -719,9 +730,13 @@ def _glob_segments(glob: str) -> list[tuple[re.Pattern[str], int]] | None:
                 i += 1
             segments.append([])
             continue
+        if ch == "/":
+            return None
         if ch == "\\":
             if i + 1 >= len(glob):
                 return None  # a trailing backslash matches nothing, as in git
+            if glob[i + 1] == "/":
+                return None
             segments[-1].append(re.escape(glob[i + 1]))
             i += 2
         elif ch == "?":
@@ -765,21 +780,30 @@ def _glob_matches(segments: list[tuple[re.Pattern[str], int]], name: str) -> boo
     return len(name) - width >= pos and last.fullmatch(name, len(name) - width) is not None
 
 
+def _byte_chars(text: str) -> str:
+    """``text`` with each of its UTF-8 bytes as one character. git's wildmatch matches
+    bytes, so `?` or a class takes one byte: `.env.?` does not match `.env.` and an
+    e-acute, which is two bytes, and matched on code points it did. Undecodable bytes
+    come back through ``surrogateescape``, as the reader and the file system give them."""
+    return text.encode("utf-8", "surrogateescape").decode("latin-1")
+
+
 def _gitignore_rules(text: str) -> list[tuple[bool, str | list[tuple[re.Pattern[str], int]]]]:
     """The patterns of a root `.gitignore` that can match a root env file, each compiled
-    once, in order: ``(negated, matcher)``.
+    once, in order: ``(negated, matcher)``, over bytes (`_byte_chars`).
 
     Read as git reads them (gitignore(5), and `git check-ignore` in the tests): the
     caller drops a UTF-8 BOM; a line loses a trailing `\\r` and its trailing spaces
     unless one is escaped, and keeps its leading whitespace and tabs; `#` opens a comment
     and `!` a negation unless a backslash escapes them; a trailing `/` matches
     directories only; a leading `/` and leading `**/` segments still match the root,
-    while any other `/` puts the pattern below it. Only a pattern that can match a name
-    starting with `.` is kept, so a file of unrelated patterns costs one pass and no
-    compile.
+    while any other `/` outside a class puts the pattern below it. Only a pattern that
+    can match a name starting with `.` is kept, so a file of unrelated patterns costs one
+    pass and no compile. A run of leading `**/` is cut in one slice: cut one at a time,
+    each copied the rest of the line, and 333,320 of them took 5.2 s.
     """
     rules: list[tuple[bool, str | list[tuple[re.Pattern[str], int]]]] = []
-    for raw in text.split("\n"):
+    for raw in _byte_chars(text).split("\n"):
         line = _trim_trailing_spaces(raw[:-1] if raw.endswith("\r") else raw)
         if not line or line.startswith("#"):
             continue
@@ -788,13 +812,15 @@ def _gitignore_rules(text: str) -> list[tuple[bool, str | list[tuple[re.Pattern[
             line = line[1:]
         if not line or line.endswith("/"):
             continue
-        line = line[1:] if line.startswith("/") else line
-        while line.startswith("**/"):
-            line = line[3:]
-        if not line or "/" in line or line[0] not in ".*?[\\":
+        start = 1 if line.startswith("/") else 0
+        while line.startswith("**/", start):
+            start += 3
+        line = line[start:]
+        if not line or line[0] not in ".*?[\\":
             continue
         if not _GLOB_CHARS & set(line):
-            rules.append((negated, line))
+            if "/" not in line:
+                rules.append((negated, line))
             continue
         segments = _glob_segments(line)
         if segments is not None:
@@ -807,6 +833,7 @@ def _gitignore_ignores(
 ) -> bool:
     """Whether the rules of a root `.gitignore` (`_gitignore_rules`) ignore the root file
     ``name``: the last rule that matches decides, so `!` takes a file back out."""
+    name = _byte_chars(name)
     ignored = False
     for negated, matcher in rules:
         if matcher == name if isinstance(matcher, str) else _glob_matches(matcher, name):
@@ -815,17 +842,25 @@ def _gitignore_ignores(
 
 
 def _read_gitignore(project_root: Path) -> str | None:
-    """The root `.gitignore`, its first ``_GITIGNORE_MAX_BYTES``, or None if absent or
-    unreadable. Read as UTF-8 without a BOM, as git skips one."""
+    """The root `.gitignore` up to the last line that ends within its first
+    ``_GITIGNORE_MAX_BYTES``, or None if absent or unreadable. Read as UTF-8 without a
+    BOM, as git skips one, with undecodable bytes kept (``surrogateescape``).
+
+    A line the limit cuts in two is dropped: read as its head it is another pattern, and
+    `.env.local` cut to `.env` ignored `.env`, or `!.env.example` cut to `!.env` took it
+    back after `.env*`.
+    """
     gitignore = project_root / ".gitignore"
     if not gitignore.is_file():
         return None
     try:
         with gitignore.open("rb") as handle:
-            data = handle.read(_GITIGNORE_MAX_BYTES)
+            data = handle.read(_GITIGNORE_MAX_BYTES + 1)
     except OSError:
         return None
-    return data.decode("utf-8-sig", errors="replace")
+    if len(data) > _GITIGNORE_MAX_BYTES:
+        data = data[: data.rfind(b"\n", 0, _GITIGNORE_MAX_BYTES) + 1]
+    return data.decode("utf-8-sig", errors="surrogateescape")
 
 
 def _root_env_files(project_root: Path) -> list[Path]:

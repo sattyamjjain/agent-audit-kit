@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -849,6 +850,10 @@ _GITIGNORE_CASES = [
     b".env.[[:bogus:]]*\n", b".env.[[:alpha]*\n", b".env.[z-a]*\n", b".env.[a-]*\n", b".env.[]-z]*\n",
     b".env.[\\]l]*\n", b".env.[l\\-n]*\n", b".env.[[:alpha:]\n", b".env.[[:lower:][:digit:]]*\n",
     b".env.[!a-z]*\n", b".env.[*]*\n", b".env.[?]ocal\n", b".env.l[[]cal\n",
+    # A `/` inside a class: git still reads the pattern against a root name, where the
+    # class can never meet a `/`. Outside a class, it puts the pattern below the root.
+    b".env[!/]*\n", b".env.[/l]*\n", b".env[/]\n", b"**/.env[!/]*\n", b".env.[!/]ocal\n",
+    b"/.env[!/]*\n", b".env[!/]*/\n", b".env\\/x\n", b".env.[a/]*/x\n",
 ]
 
 
@@ -938,6 +943,125 @@ def test_a_gitignore_of_many_patterns_reads_in_linear_time(tmp_path: Path) -> No
     started = time.perf_counter()
     assert _secret_006(tmp_path) == [".env", ".env.local", ".env.prod", ".env.test"]
     assert time.perf_counter() - started < 5.0
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+# shape -> (one `.gitignore` line for n units, n at the smaller size, whether `.env` is
+# reported). At the larger size each line is still under the 1,000,000-byte read.
+_CRAFTED_GITIGNORE_LINES: dict[str, tuple[Callable[[int], str], int, bool]] = {
+    # Each trailing space sliced the line twice to count the backslashes before it:
+    # 999,990 of them took 45 s.
+    "trailing-spaces": (lambda n: ".env" + " " * n, 99_999, False),
+    "escaped-space-then-spaces": (lambda n: ".env\\" + " " * n, 99_999, True),
+    # Each `[:` inside a class looked for the class's `]` again: 499,990 took 7.7 s.
+    "posix-class-openers": (lambda n: ".env.[" + "[:" * n + "a]", 49_999, True),
+    # Each leading `**/` copied the rest of the line: 333,320 took 5.2 s.
+    "leading-double-stars": (lambda n: "**/" * n + ".env", 33_332, False),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_GITIGNORE_LINES))
+def test_a_crafted_gitignore_line_reads_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """One crafted line at two sizes 10 times apart, best of three. The larger may take 40
+    times the smaller's time plus a fixed slack, under an absolute bound that is loose for
+    slow CI runners; the quadratic reads needed 100 times or more."""
+    line, n, reported = _CRAFTED_GITIGNORE_LINES[shape]
+    times = []
+    for size in (n, 10 * n):
+        root = tmp_path / str(size)
+        root.mkdir()
+        (root / ".env").write_text("A=1\n", encoding="utf-8")
+        (root / ".gitignore").write_text(line(size) + "\n", encoding="utf-8")
+        assert _secret_006(root) == ([".env"] if reported else [])
+        times.append(_seconds(lambda: _secret_006(root)))
+    t_small, t_large = times
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+@pytest.mark.parametrize(
+    "head, last, kept, reported",
+    [
+        # Cut to `.env`, `.env.local` read as a pattern that ignores `.env`.
+        ("", ".env.local", 4, [".env"]),
+        # Cut to `!.env`, `!.env.example` after `.env*` took `.env` back.
+        (".env*\n", "!.env.example", 5, []),
+    ],
+)
+def test_secret_006_drops_the_gitignore_line_its_read_cuts_in_two(
+    tmp_path: Path, head: str, last: str, kept: int, reported: list[str]
+) -> None:
+    """The read stops at 1,000,000 bytes. A line it ends inside is dropped, not read as
+    its head, which is another pattern; git reads the whole line."""
+    text = head + "#" * (1_000_000 - len(head) - 1 - kept) + "\n" + last + "\n"
+    assert text[1_000_000 - kept : 1_000_000] == last[:kept]
+    (tmp_path / ".env").write_text("A=1\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text(text, encoding="utf-8")
+
+    assert _secret_006(tmp_path) == reported
+
+
+_NON_ASCII_NAMES = (".env.\u00e9", ".env.\u00e9t\u00e9", ".env.\u4e2d", ".env.\U0001f600")
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git to say what git ignores")
+@pytest.mark.parametrize(
+    "pattern",
+    [".env.?", ".env.??", ".env.???", ".env.????", ".env.[!a]", ".env.[!a][!a]", ".env.?t?", ".env.*",
+     ".env.[[:alpha:]]", ".env.\u00e9", ".env.?*", ".env.[\u00e9]", ".env.[!\u00e9]?"],
+)
+def test_secret_006_matches_a_non_ascii_name_byte_by_byte_as_git_does(tmp_path: Path, pattern: str) -> None:
+    """git's `?` and classes match one byte. Matched on code points, `.env.?` ignored
+    `.env.\u00e9`, two bytes in UTF-8, so the file went unreported where git commits it."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name in _NON_ASCII_NAMES:
+        (root / name).write_text("A=1\n", encoding="utf-8")
+    (root / ".gitignore").write_text(pattern + "\n", encoding="utf-8")
+
+    expected = sorted(name for name in _NON_ASCII_NAMES if not _git_ignores(root, name))
+
+    assert _secret_006(root) == expected
+
+
+_SPACE_NAMES = (".env.\t", ".env.\x0b", ".env.\x0c", ".env. ", ".env.x")
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git to say what git ignores")
+@pytest.mark.parametrize("pattern", [".env.[[:space:]]", ".env.[![:space:]]", ".env.[[:space:][:alpha:]]"])
+def test_secret_006_reads_space_as_gits_four_characters(tmp_path: Path, pattern: str) -> None:
+    """git's `[:space:]` is space, tab, newline and carriage return; Python's adds the
+    vertical tab and form feed."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name in _SPACE_NAMES:
+        (root / name).write_text("A=1\n", encoding="utf-8")
+    (root / ".gitignore").write_text(pattern + "\n", encoding="utf-8")
+
+    expected = sorted(name for name in _SPACE_NAMES if not _git_ignores(root, name))
+
+    assert _secret_006(root) == expected
+
+
+def test_secret_006_matches_case_sensitively_and_says_so(tmp_path: Path) -> None:
+    """As git does by default on Linux. With core.ignorecase, the macOS and Windows
+    default, git would also ignore `.env` here; the limitation says so."""
+    (tmp_path / ".env").write_text("A=1\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text(".ENV\n", encoding="utf-8")
+
+    assert _secret_006(tmp_path) == [".env"]
+    assert "core.ignorecase" in RULES["AAK-SECRET-006"].limitations
 
 
 def test_secret_006_reads_the_project_root_only(tmp_path: Path) -> None:
