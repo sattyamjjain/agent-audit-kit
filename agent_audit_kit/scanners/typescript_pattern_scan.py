@@ -48,7 +48,7 @@ _DANGEROUS_SINKS: list[tuple[re.Pattern[str], str, str]] = [
     # the file binds to the module or imports from it.
     (
         re.compile(
-            r"(?<![\w$.])child_process\s*\.\s*(?:exec|execSync|spawn|spawnSync)\s*\(",
+            r"(?<![\w$.])child_process\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\s*\(",
         ),
         "AAK-TAINT-001",
         "child_process exec/spawn call detected in MCP server file",
@@ -201,30 +201,54 @@ _JS_SUFFIXES = frozenset({".js", ".jsx", ".mjs", ".cjs"})
 _CP_MODULE = r"""['"](?:node:)?child_process['"]"""
 # `require('child_process')` or a dynamic `await import('child_process')`.
 _CP_LOAD = rf"(?:require|(?:await\s+)?import)\s*\(\s*{_CP_MODULE}\s*\)"
-_CP_METHODS = ("exec", "execSync", "spawn", "spawnSync")
+_CP_METHODS = frozenset({"exec", "execSync", "spawn", "spawnSync"})
+# An import or destructuring list, its body bounded. `[^}]*` read to the end of
+# the file from every unclosed `let {` or `import a, {`, so 80,000 of them
+# (0.48 MB) took 183 s and a 0.24 MB server.ts 34 s. A brace ends the list, and
+# no real one comes near 2,000 characters.
+_CP_LIST = r"\{([^{}]{0,2000})\}"
+# A dynamic import's promise and the callback it hands the module to:
+# `import('child_process').then(cp => ...)`, `.then((cp) => ...)`,
+# `.then(async function (cp) {...})`.
+_CP_THEN = (
+    rf"\bimport\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*then\s*\(\s*"
+    r"(?:async\b\s*)?(?:function\b\s*(?:[A-Za-z_$][\w$]*)?\s*)?"
+)
 # A name bound to the module: `const cp = require('child_process')` (not
 # `require(...).exec`), `const cp = await import(...)`, `import cp from ...`,
-# `import * as cp from ...`.
+# `import * as cp from ...`, TypeScript's `import cp = require(...)`, and the
+# parameter of a `.then` callback.
 _CP_ALIAS_RE = re.compile(
-    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}(?!\s*\.)"
-    rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^}}]*\}}\s*)?from\s*{_CP_MODULE}"
+    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}(?!\s*\??\.)"
+    rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^{{}}]{{0,2000}}\}}\s*)?from\s*{_CP_MODULE}"
+    rf"|\bimport\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*{_CP_MODULE}\s*\)"
+    rf"|{_CP_THEN}\(?\s*(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
 )
 # Names imported from it: `const { exec, spawn: run } = require(...)` or
 # `= await import(...)`, `import { execSync as sh } from ...`,
-# `import cp, { exec } from ...`.
+# `import cp, { exec } from ...`, and `.then(({ exec }) => ...)`.
 _CP_NAMED_RE = re.compile(
-    rf"\b(?:const|let|var)\s*\{{([^}}]*)\}}\s*=\s*{_CP_LOAD}"
-    rf"|\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?\{{([^}}]*)\}}\s*from\s*{_CP_MODULE}"
+    rf"\b(?:const|let|var)\s*{_CP_LIST}\s*=\s*{_CP_LOAD}"
+    rf"|\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?{_CP_LIST}\s*from\s*{_CP_MODULE}"
+    rf"|{_CP_THEN}\(\s*{_CP_LIST}"
 )
 _CP_MEMBER_RE = re.compile(
     rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}"
-    r"\s*\.\s*(?:exec|execSync|spawn|spawnSync)\b"
+    r"\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\b"
 )
-_IMPORT_ITEM_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*(?:(?::|\bas\b)\s*([A-Za-z_$][\w$]*))?\s*")
+# One item of such a list, matched stripped (`exec`, `spawn: run`,
+# `execSync as sh`): with a `\s*` at either end as well as around the separator,
+# two adjacent ones split a run of blanks every way.
+_CP_ITEM_RE = re.compile(r"([A-Za-z_$][\w$]*)(?:\s*(?::|\bas\b)\s*([A-Za-z_$][\w$]*))?")
+# A call: a bare name, or a method on a name through `.` or `?.`.
+_CALL_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*(?:\??\.\s*([A-Za-z_$][\w$]*)\s*)?\(")
+_CP_REQUIRE_CALL_RE = re.compile(
+    rf"\brequire\s*\(\s*{_CP_MODULE}\s*\)\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\s*\("
+)
 
 
-def _child_process_sink(source: str) -> re.Pattern[str]:
-    """AAK-TAINT-001's sink in this file: `exec`, `execSync`, `spawn` or `spawnSync`
+class _ChildProcessSink:
+    """AAK-TAINT-001's sink in one file: `exec`, `execSync`, `spawn` or `spawnSync`
     called on `child_process`, on a name the file binds to that module, on
     `require('child_process')` itself, or under a name imported from it.
 
@@ -233,25 +257,43 @@ def _child_process_sink(source: str) -> re.Pattern[str]:
     child process, CRITICAL. A wrapper such as `promisify(exec)`, execa or
     cross-spawn, and process APIs outside child_process (`Bun.spawn`, node-pty,
     an SSH client's `exec`), are not followed.
+
+    Each call's names are looked up in a set. They used to be joined into one
+    alternation that every position of every line tried in turn, so 10,000
+    bound names took 37 times as long as 1,000.
     """
+
+    def __init__(self, receivers: frozenset[str], names: frozenset[str]) -> None:
+        self.receivers = receivers
+        self.names = names
+
+    def search(self, line: str) -> bool:
+        if _CP_REQUIRE_CALL_RE.search(line):
+            return True
+        for m in _CALL_RE.finditer(line):
+            name, method = m.group(1), m.group(2)
+            if method is None:
+                if name in self.names:
+                    return True
+            elif method in _CP_METHODS and name in self.receivers:
+                return True
+        return False
+
+
+def _child_process_sink(source: str) -> _ChildProcessSink:
+    """The names `source` binds to child_process, and to its exec and spawn calls."""
     receivers = {"child_process"}
     names: set[str] = set()
     for m in _CP_ALIAS_RE.finditer(source):
-        receivers.add(m.group(1) or m.group(2))
+        receivers.add(next(g for g in m.groups() if g is not None))
     for m in _CP_NAMED_RE.finditer(source):
-        for item in (m.group(1) or m.group(2)).split(","):
-            parts = _IMPORT_ITEM_RE.fullmatch(item)
+        body = next(g for g in m.groups() if g is not None)
+        for item in body.split(","):
+            parts = _CP_ITEM_RE.fullmatch(item.strip())
             if parts and parts.group(1) in _CP_METHODS:
                 names.add(parts.group(2) or parts.group(1))
     names.update(m.group(1) for m in _CP_MEMBER_RE.finditer(source))
-    methods = "|".join(_CP_METHODS)
-    alternatives = [
-        rf"(?<![\w$.])(?:{'|'.join(map(re.escape, sorted(receivers)))})\s*\.\s*(?:{methods})\s*\(",
-        rf"\brequire\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*(?:{methods})\s*\(",
-    ]
-    if names:
-        alternatives.append(rf"(?<![\w$.])(?:{'|'.join(map(re.escape, sorted(names)))})\s*\(")
-    return re.compile("|".join(alternatives))
+    return _ChildProcessSink(frozenset(receivers), frozenset(names))
 
 
 def _is_bundle(name: str, source: str) -> bool:
@@ -348,7 +390,7 @@ def _scan_file(
         return findings
 
     cp_sink = _child_process_sink(source)
-    sinks = [
+    sinks: list[tuple[re.Pattern[str] | _ChildProcessSink, str, str]] = [
         (cp_sink if rule_id == "AAK-TAINT-001" else pattern, rule_id, description)
         for pattern, rule_id, description in _DANGEROUS_SINKS
         if not (is_js and rule_id in _TS_ONLY_RULES)

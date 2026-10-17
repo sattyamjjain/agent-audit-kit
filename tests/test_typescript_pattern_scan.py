@@ -319,6 +319,15 @@ _MCP_HEAD = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
     ("const { execSync } = await import('node:child_process');\nexecSync(cmd);", True),
     ("const cp = await import('child_process');\ncp.spawn(cmd);", True),
     ("let { spawn: run } = await import(\"child_process\");\nrun(cmd);", True),
+    # A dynamic import's promise, its callback naming the module or its members.
+    ("import('node:child_process').then((cp) => cp.exec(cmd));", True),
+    ("import('child_process').then(cp => cp.spawn(cmd));", True),
+    ("import('child_process').then(async function (cp) { cp.execSync(cmd); });", True),
+    ("import('node:child_process').then(({ execSync }) => execSync(cmd));", True),
+    # Optional chaining.
+    ("const cp = require('child_process');\ncp?.exec(cmd);", True),
+    ("child_process?.spawn(cmd);", True),
+    ("require('child_process')?.exec(cmd);", True),
 ])
 def test_taint_001_reads_exec_and_spawn_from_child_process_only(tmp_path: Path, code: str, fires: bool) -> None:
     for ext in ("js", "ts"):
@@ -326,6 +335,57 @@ def test_taint_001_reads_exec_and_spawn_from_child_process_only(tmp_path: Path, 
         hits = [f.rule_id for f in scan(tmp_path)[0] if f.rule_id == "AAK-TAINT-001"]
         (tmp_path / f"server.{ext}").unlink()
         assert bool(hits) is fires, (ext, code)
+
+
+def test_taint_001_reads_a_typescript_import_equals(tmp_path: Path) -> None:
+    (tmp_path / "server.ts").write_text(
+        _MCP_HEAD + "import cp = require('child_process');\ncp.exec(cmd);\n", encoding="utf-8"
+    )
+    assert [(f.rule_id, f.line_number) for f in scan(tmp_path)[0]] == [("AAK-TAINT-001", 3)]
+
+
+_HEAD = 'const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");\n'
+
+# Each case at a size and at ten times it, under the 1 MB the scanner reads.
+_CRAFTED = {
+    # An unclosed destructuring or import list: `[^}]*` read to the end of the
+    # file from every one, so 80,000 of them (0.48 MB) took 183 s.
+    "unclosed let": (4_000, lambda k: "let {\n" * k),
+    "unclosed import": (4_000, lambda k: "import a, {\n" * k),
+    # Names bound to child_process, each called: they became one alternation,
+    # tried at every position of every line.
+    "aliases": (1_500, lambda k: "".join(f"const cp{i} = require('child_process');\n" for i in range(k))
+                + "".join(f"cp{i}.exec(cmd);\n" for i in range(k))),
+    "renamed imports": (1_500, lambda k: "".join(f"const {{ exec: e{i} }} = require('child_process');\n" for i in range(k))
+                        + "".join(f"e{i}(cmd);\n" for i in range(k))),
+    # An import item padded with blanks: two adjacent `\s*` split them every way.
+    # Short lines between keep a JavaScript file from reading as a bundle.
+    "padded import item": (40, lambda k: (
+        "import { exec" + " " * 1_900 + "! } from 'child_process';\nconst a = 1;\nconst b = 2;\n"
+    ) * k),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_CRAFTED))
+@pytest.mark.parametrize("ext", ["js", "ts"])
+def test_child_process_bindings_scale_linearly(tmp_path: Path, case: str, ext: str) -> None:
+    """At ten times the size a linear reader takes about ten times as long, and a
+    quadratic one a hundred. The bounds are loose for slow CI runners."""
+    import time
+
+    size, build = _CRAFTED[case]
+    timings = []
+    for k in (size, size * 10):
+        root = tmp_path / str(k)
+        root.mkdir()
+        (root / f"server.{ext}").write_text(_HEAD + build(k), encoding="utf-8")
+        started = time.perf_counter()
+        _, scanned = scan(root)
+        timings.append(time.perf_counter() - started)
+        assert scanned == {f"server.{ext}"}, "the file must be read, not skipped"
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 10.0, large
 
 
 @pytest.mark.parametrize("text", [
