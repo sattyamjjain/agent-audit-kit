@@ -42,17 +42,78 @@ def test_a_regex_literal_hides_what_it_holds(regex: str) -> None:
 @pytest.mark.parametrize("before", [
     "x = ", "f(a, ", "[", "!", "a && ", "a || ", "c ? ", "c ? a : ", "{ ", "} ", "; ", "() => ", "\n",
     "return ", "typeof ", "case ", "k in ", "of ", "new ", "delete ", "void ", "throw ",
+    # A binary or unary operator, `export default`, and the `)` that closes a
+    # statement's header: the reader took the `/` after these for division, so
+    # a backtick in the literal opened a template that ran to the next backtick.
+    "x = p + ", "x = p - ", "x = p * ", "x = p ** ", "x = p % ", "x = p < ", "x = p > ", "x = p >> ",
+    "x = ~", "x = p ^ ", "x = -", "x = +", "export default ", "if (md) ", "} else if (md) ", "while (go) ",
+    "for (;;) ", "with (o) ",
 ])
 def test_a_regex_literal_is_read_where_an_expression_starts(before: str) -> None:
     text = f"{before}/`/;\n" + ROUTE + LATER
     assert _args(text, "route(") == ["'/mcp'", "handler"]
 
 
-@pytest.mark.parametrize("expr", ["a / b", "a / b / c", "x[i] / 2", "f() / g()", "n / 2 / k", "a.b / c", "x /= 2"])
+@pytest.mark.parametrize("expr", [
+    "a / b", "a / b / c", "x[i] / 2", "f() / g()", "n / 2 / k", "a.b / c", "x /= 2",
+    # `++` and `--` end an operand; a keyword after `.` is a property; an object
+    # literal's `}` ends an expression, unlike a block's.
+    "i++ / 2", "i-- / 2", "stats.in / 2", "range.of / 2", "o?.delete / 2", "({a: 1}).a / 2", "{a: 1} / 2",
+    "f(x) / 2", "if_ / 2",
+])
 def test_division_stays_division(expr: str) -> None:
     """Read as a regex, the first `/` would run to the `/` inside `'/mcp'`."""
     text = f"const q = {expr}; " + ROUTE
     assert _args(text, "route(") == ["'/mcp'", "handler"]
+
+
+@pytest.mark.parametrize("markup", [
+    "const v = <p>x</p>; ",
+    "const v = <p>{a}/{b}</p>; ",
+    "const v = <a href={u}/>; ",
+])
+def test_jsx_closing_tags_and_text_are_not_regex_literals(markup: str) -> None:
+    """`</p>`, a self-closing `/>` and text between JSX containers: read as a
+    regex, the `/` would run to the `/` inside `'/mcp'` on the same line."""
+    text = markup + ROUTE
+    assert _args(text, "route(") == ["'/mcp'", "handler"]
+
+
+@pytest.mark.parametrize("template", [
+    # A backtick inside a string inside a substitution (a Markdown fence).
+    "`${\"```\"}json`",
+    "`${\"```\"}json\\n${body}\\n${\"```\"}`",
+    # A template nested in a substitution, braces and a `}` in a string inside one.
+    "`a ${`b ${c} d`} e`",
+    "`${ {a: 1}.a } and ${f({x})}`",
+    "`${\"}\"}`",
+    # A regex literal holding a backtick inside a substitution.
+    "`${s.split(/`/).length}`",
+])
+def test_a_template_substitution_is_read_as_code(template: str) -> None:
+    """The reader took a template to run to the next backtick, so one inside a
+    substitution ended it early and the stray backtick after it opened another
+    that hid the code that followed."""
+    text = f"const t = {template};\n" + ROUTE + LATER
+    assert _args(text, "route(") == ["'/mcp'", "handler"]
+
+
+def test_a_template_with_no_substitution_is_a_plain_string() -> None:
+    text = "app.post(`/mcp`, h);\napp.post(`/mcp/${id}`, h);\napp.post(`/mcp\\${x}`, h);\n"
+    index = CodeIndex(text)
+    paths = []
+    for line_start in (0, text.index("app.post(`/mcp/$"), text.index("app.post(`/mcp\\")):
+        paren = text.index("(", line_start)
+        start, end = (index.args(paren) or [])[0]
+        paths.append(index.string_literal(start, end))
+    assert paths == ["/mcp", None, None]
+
+
+def test_code_in_a_substitution_is_code() -> None:
+    text = "const t = `${route('/x', a)}`;\n"
+    index = CodeIndex(text)
+    paren = text.index("route(") + len("route")
+    assert index.in_code(paren) and index.close.get(paren) == text.index(", a)") + len(", a")
 
 
 def test_a_division_broken_onto_the_next_line_stays_division() -> None:
@@ -98,6 +159,13 @@ _CRAFTED = {
     "slashes": "(/",
     "divisions": "a / ",
     "comments before a slash": "(/* c */ /x/)",
+    # Template substitutions, open, closed and holding templates, and the
+    # contexts read back from a `/`, a `{` or a `(`.
+    "nested substitutions": "`${",
+    "closed substitutions": "`${}",
+    "templates in substitutions": "`${`",
+    "statement headers": "if (x) /a/; ",
+    "object literals": "x = {a: 1} / 2; ",
 }
 
 

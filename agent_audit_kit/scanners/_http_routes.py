@@ -10,11 +10,12 @@ as far as `middleware.IPWhiteList(`, never saw `AuthRequired()`, and was silent
 on the nginx-ui router CVE-2026-33032 was found in.
 
 `CodeIndex` reads a Go or TS/JS file once instead: every bracket's partner and
-the commas directly inside each `(`, skipping strings and comments, in time
+the commas directly inside each `(`, skipping strings, comments, TS/JS regex
+literals and template text (a template's `${...}` is read as code), in time
 linear in the file. A closer whose kind is not open anywhere is ignored, and one
 that closes a deeper opener of its kind pops the openers above it, each opener
-once, so a stray bracket (a regex literal, JSX text) costs one pass, not a
-rescan. Python is read with `ast`.
+once, so a stray bracket (JSX text) costs one pass, not a rescan. Python is
+read with `ast`.
 """
 
 from __future__ import annotations
@@ -36,21 +37,33 @@ _CLASS_STOP_RE = re.compile(r"[\[\]\\\n]")
 _REGEX_FLAGS_RE = re.compile(r"[A-Za-z]*")
 _REGEX_WINDOW = 512
 # A `/` after one of these starts an expression, so it opens a regex literal:
-# the previous token, a character before it, or a keyword.
-_REGEX_AFTER_TOKENS = frozenset("([{},/")
-_REGEX_AFTER_CHARS = frozenset("(,=:[!&|?{};")
+# the previous token (`if)` is the `)` closing an `if`, `while`, `for` or
+# `with` header, after which a statement starts), a character before it, or a
+# keyword that is not a property (`.in`).
+_REGEX_AFTER_TOKENS = frozenset({"(", "[", "{", "}", ",", "/", "if)"})
+_REGEX_AFTER_CHARS = frozenset("(,=:[!&|?{};+-*%<>~^")
 _REGEX_AFTER_WORDS = frozenset({
     "return", "typeof", "case", "in", "of", "new", "delete", "void", "throw", "instanceof", "yield", "await",
-    "else", "do",
+    "else", "do", "default",
 })
+_HEADER_WORDS = frozenset({"if", "while", "for", "with"})
+# A `{` after one of these, after an operator, or after a `(`, `[` or `,` opens
+# an expression (an object literal, a JSX container), whose `}` a `/` divides.
+_EXPRESSION_WORDS = frozenset({
+    "return", "typeof", "case", "in", "of", "new", "delete", "void", "throw", "instanceof", "yield", "await",
+    "default",
+})
+_EXPRESSION_CHARS = frozenset("=:?!&|+-*%<>~^")
 # A literal up to where it closes or gives up: it is closed when the next
 # character is its own quote. Each pattern reads one way only (an escape is a
 # backslash and the character after it), so where it stops does not depend on
 # backtracking.
 _DQ_BODY_RE = re.compile(r'"(?:[^"\\\n]|\\.)*')
 _SQ_BODY_RE = re.compile(r"'(?:[^'\\\n]|\\.)*")
-_JS_TEMPLATE_BODY_RE = re.compile(r"`(?:[^`\\]|\\.)*", re.DOTALL)
 _GO_RAW_BODY_RE = re.compile(r"`[^`]*")
+# A TS/JS template's text, up to its closing backtick or a `${` that opens a
+# substitution, whose code the reader reads as code until the `}` that closes it.
+_JS_TEMPLATE_TEXT_RE = re.compile(r"(?:[^`\\$]|\\.|\$(?!\{))*", re.DOTALL)
 _NEWLINE_RE = re.compile(r"\n")
 _OPENERS = {")": "(", "]": "[", "}": "{"}
 
@@ -226,106 +239,15 @@ class CodeIndex:
         self._mask_ends: list[int] = []
         self._strings: dict[int, int] = {}
         self._newlines = [m.start() for m in _NEWLINE_RE.finditer(text)]
-        bodies = {'"': _DQ_BODY_RE, "'": _SQ_BODY_RE, "`": _GO_RAW_BODY_RE if go else _JS_TEMPLATE_BODY_RE}
-        token_re = _TOKEN_RE if go else _JS_TOKEN_RE
-        stack: list[tuple[str, int]] = []
-        braces: list[int] = []
-        open_count = {"(": 0, "[": 0, "{": 0}
-        # The last token that is not a comment, and where it ends: whether a
-        # `/` opens a regex literal depends on what precedes it.
-        prev_tok, prev_end = "", 0
-        regex = _RegexReader(text)
-        # Per quote, where a literal that never closed gave up. Every quote of
-        # that kind before it is an escaped one inside that literal, and a
-        # literal opened there reads on from it with the same escapes, so it
-        # gives up at the same place: it is skipped without reading again.
-        # Retrying each one read to the end of the line, or of the file for a
-        # template, once per escaped quote.
-        given_up = {'"': 0, "'": 0, "`": 0}
-        pos = 0
-        n = len(text)
-        while pos < n:
-            m = token_re.search(text, pos)
-            if m is None:
-                break
-            tok, at = m.group(), m.start()
-            if tok == "//":
-                end = text.find("\n", at)
-                end = n if end < 0 else end
-                self._mask(at, end)
-                pos = end
-                continue
-            if tok == "/*":
-                end = text.find("*/", at + 2)
-                end = n if end < 0 else end + 2
-                self._mask(at, end)
-                pos = end
-                continue
-            if tok == "/":
-                literal = regex.end(at) if self._opens_regex(at, prev_tok, prev_end) else None
-                if literal is not None:
-                    self._mask(at, literal)
-                    prev_tok, prev_end = "re", literal
-                else:
-                    prev_tok, prev_end = "/", at + 1
-                pos = prev_end
-                continue
-            if tok in "\"'`":
-                if at < given_up[tok]:
-                    pos = at + 1
-                    continue
-                body = bodies[tok].match(text, at)
-                end = body.end() if body is not None else n
-                if end >= n or text[end] != tok:
-                    given_up[tok] = end
-                    pos = at + 1
-                    continue
-                end += 1
-                self._mask(at, end)
-                self._strings[at] = end
-                prev_tok, prev_end = "str", end
-                pos = end
-                continue
-            prev_tok, prev_end = tok, at + 1
-            pos = at + 1
-            if tok in "([{":
-                stack.append((tok, at))
-                open_count[tok] += 1
-                if tok == "(":
-                    self.commas[at] = []
-                    self.block_of[at] = braces[-1] if braces else -1
-                elif tok == "{":
-                    braces.append(at)
-            elif tok == ",":
-                if stack and stack[-1][0] == "(":
-                    self.commas[stack[-1][1]].append(at)
-            else:
-                want = _OPENERS[tok]
-                if not open_count[want]:
-                    continue
-                while stack:
-                    kind, start = stack.pop()
-                    open_count[kind] -= 1
-                    if kind == "{":
-                        braces.pop()
-                    if kind == want:
-                        self.close[start] = at
-                        break
+        _Scan(self, go).run()
 
-    def _opens_regex(self, at: int, prev_tok: str, prev_end: int) -> bool:
-        """Whether the `/` at ``at`` starts an expression, and so a regex literal.
-
-        Read backwards to what precedes it, past blanks and comments, no
-        further than the previous token: one of `_REGEX_AFTER_CHARS`, `=>`, a
-        keyword of `_REGEX_AFTER_WORDS`, a previous token of
-        `_REGEX_AFTER_TOKENS`, or the start of the file opens one. After a
-        name, a number, `)`, `]` or a string it is division (`a / b`, `x[i] /
-        2`, `f() / g()`), on the next line too: JS inserts no semicolon before
-        a `/`, and a formatter breaks a long division with the `/` first on
-        the new line. A literal that does not close on its line is division
-        after all. Each stretch between tokens is read back once, so the file
-        costs one pass.
-        """
+    def _preceding(self, at: int, prev_end: int) -> tuple[int, int]:
+        """What comes before ``at``, read back past blanks and comments no further
+        than ``prev_end``, the end of the previous token: the position of the
+        character found (below ``prev_end`` when there is none), and where the
+        name ending there starts (one past it when that character is not part of
+        a name). Each stretch between tokens is read back once per token, so the
+        file costs one pass."""
         text = self.text
         q = at - 1
         k = len(self._mask_starts) - 1
@@ -337,17 +259,62 @@ class CodeIndex:
                 q -= 1
             else:
                 break
-        if q < prev_end:
-            return not prev_tok or prev_tok in _REGEX_AFTER_TOKENS
-        ch = text[q]
-        if ch in _REGEX_AFTER_CHARS or ch == ">" and text[q - 1:q] == "=":
-            return True
-        if not (ch.isalnum() or ch in "_$"):
-            return False
-        start = q
+        start = q + 1
         while start > prev_end and (text[start - 1].isalnum() or text[start - 1] in "_$"):
             start -= 1
-        return text[start:q + 1] in _REGEX_AFTER_WORDS
+        return q, start
+
+    def _word(self, q: int, start: int, words: frozenset[str]) -> bool:
+        """Whether the name at ``start:q + 1`` is one of ``words`` and not a
+        property: `stats.in / 2` divides."""
+        return start <= q and self.text[start:q + 1] in words and self.text[start - 1:start] != "."
+
+    def _opens_regex(self, at: int, prev_tok: str, prev_end: int) -> bool:
+        """Whether the `/` at ``at`` starts an expression, and so a regex literal.
+
+        It does after one of `_REGEX_AFTER_CHARS` (an operator or punctuation),
+        a keyword of `_REGEX_AFTER_WORDS`, a previous token of
+        `_REGEX_AFTER_TOKENS` (a block's `}`, the `)` of an `if (...)` header),
+        or at the start of the file. After a name, a number, `)`, `]`, an
+        object literal's `}`, `++`, `--` or a string it is division (`a / b`,
+        `x[i] / 2`, `f() / g()`, `i++ / 2`), on the next line too: JS inserts no
+        semicolon before a `/`, and a formatter breaks a long division with the
+        `/` first on the new line. A `/` straight after `<` closes a JSX tag
+        (`</p>`); a formatter puts a blank between `<` and the regex it
+        compares. A literal that does not close on its line is division after
+        all.
+        """
+        q, start = self._preceding(at, prev_end)
+        if q < prev_end:
+            return not prev_tok or prev_tok in _REGEX_AFTER_TOKENS
+        ch = self.text[q]
+        if ch in "+-":
+            return self.text[q - 1:q] != ch
+        if ch == "<":
+            return q < at - 1
+        if ch in _REGEX_AFTER_CHARS:
+            return True
+        return self._word(q, start, _REGEX_AFTER_WORDS)
+
+    def _opens_expression(self, at: int, prev_tok: str, prev_end: int, in_expression: bool) -> bool:
+        """Whether the `{` at ``at`` opens an expression, an object literal or a
+        JSX container, rather than a block: after an operator (but `=> {` opens
+        a body), a `(`, `[`, `,` or a `/` that divides, an expression keyword, or
+        a `{` that is itself an expression. Anything else is a block."""
+        q, start = self._preceding(at, prev_end)
+        if q < prev_end:
+            return prev_tok in ("(", "[", ",", "/") or prev_tok == "{" and in_expression
+        ch = self.text[q]
+        if ch == ">":
+            return self.text[q - 1:q] != "="
+        if ch in _EXPRESSION_CHARS:
+            return True
+        return self._word(q, start, _EXPRESSION_WORDS)
+
+    def _opens_header(self, at: int, prev_end: int) -> bool:
+        """Whether the `(` at ``at`` opens an `if`, `while`, `for` or `with` header."""
+        q, start = self._preceding(at, prev_end)
+        return q >= prev_end and self._word(q, start, _HEADER_WORDS)
 
     def _mask(self, start: int, end: int) -> None:
         self._mask_starts.append(start)
@@ -389,6 +356,170 @@ class CodeIndex:
         if self.text[start] == "`" and "${" in body:
             return None
         return body
+
+
+class _Scan:
+    """One pass over a file, filling in a `CodeIndex`: the reader's state."""
+
+    def __init__(self, index: CodeIndex, go: bool) -> None:
+        self.index = index
+        self.text = index.text
+        self.go = go
+        self.bodies = {'"': _DQ_BODY_RE, "'": _SQ_BODY_RE, "`": _GO_RAW_BODY_RE}
+        self.token_re = _TOKEN_RE if go else _JS_TOKEN_RE
+        self.stack: list[tuple[str, int]] = []
+        self.braces: list[int] = []
+        self.open_count = {"(": 0, "[": 0, "{": 0}
+        # The last token that is not a comment, and where it ends: whether a
+        # `/` opens a regex literal depends on what precedes it.
+        self.prev_tok, self.prev_end = "", 0
+        self.regex = _RegexReader(index.text)
+        # Per quote, where a literal that never closed gave up. Every quote of
+        # that kind before it is an escaped one inside that literal, and a
+        # literal opened there reads on from it with the same escapes, so it
+        # gives up at the same place: it is skipped without reading again.
+        # Retrying each one read to the end of the line, or of the file for a
+        # template, once per escaped quote.
+        self.given_up = {'"': 0, "'": 0, "`": 0}
+        # TS/JS only: the `{` that open an expression, the `(` that open an
+        # `if`/`while`/`for`/`with` header, and the `{` of each `${`.
+        self.expressions: set[int] = set()
+        self.headers: set[int] = set()
+        self.substitutions: set[int] = set()
+
+    def run(self) -> None:
+        text, n = self.text, len(self.text)
+        pos = 0
+        while pos < n:
+            m = self.token_re.search(text, pos)
+            if m is None:
+                break
+            tok, at = m.group(), m.start()
+            if tok in ("//", "/*"):
+                pos = self._comment(tok, at)
+            elif tok == "/":
+                pos = self._slash(at)
+            elif tok == "`" and not self.go:
+                pos = at + 1 if at < self.given_up["`"] else self._template(at, at + 1, opening=True)
+            elif tok in ('"', "'", "`"):
+                pos = self._string(tok, at)
+            elif tok in ("(", "[", "{"):
+                pos = self._open(tok, at)
+            elif tok == ",":
+                self.prev_tok, self.prev_end = tok, at + 1
+                if self.stack and self.stack[-1][0] == "(":
+                    self.index.commas[self.stack[-1][1]].append(at)
+                pos = at + 1
+            else:
+                pos = self._close(tok, at)
+
+    def _comment(self, tok: str, at: int) -> int:
+        text = self.text
+        if tok == "//":
+            end = text.find("\n", at)
+            end = len(text) if end < 0 else end
+        else:
+            end = text.find("*/", at + 2)
+            end = len(text) if end < 0 else end + 2
+        self.index._mask(at, end)
+        return end
+
+    def _slash(self, at: int) -> int:
+        literal = self.regex.end(at) if self.index._opens_regex(at, self.prev_tok, self.prev_end) else None
+        if literal is not None:
+            self.index._mask(at, literal)
+            self.prev_tok, self.prev_end = "re", literal
+        else:
+            self.prev_tok, self.prev_end = "/", at + 1
+        return self.prev_end
+
+    def _string(self, tok: str, at: int) -> int:
+        text = self.text
+        if at < self.given_up[tok]:
+            return at + 1
+        body = self.bodies[tok].match(text, at)
+        end = body.end() if body is not None else len(text)
+        if end >= len(text) or text[end] != tok:
+            self.given_up[tok] = end
+            return at + 1
+        end += 1
+        self.index._mask(at, end)
+        self.index._strings[at] = end
+        self.prev_tok, self.prev_end = "str", end
+        return end
+
+    def _template(self, start: int, pos: int, opening: bool) -> int:
+        """Template text from ``pos`` to its closing backtick or the next `${`.
+
+        ``start`` is the opening backtick, or the `}` that closed a
+        substitution. A `${` opens a `{` that the reader closes as code; its `}`
+        comes back here. Text that never closes is no template: like a string,
+        the code after the backtick (or the `}`) is read as code, and since no
+        backtick or `${` of its own stands before where it gave up, any backtick
+        before that point is an escaped one and gives up there too.
+        """
+        text = self.text
+        match = _JS_TEMPLATE_TEXT_RE.match(text, pos)
+        stop = match.end() if match is not None else len(text)
+        if stop < len(text) and text[stop] == "`":
+            self.index._mask(start, stop + 1)
+            if opening:
+                self.index._strings[start] = stop + 1
+            self.prev_tok, self.prev_end = "str", stop + 1
+            return stop + 1
+        if text.startswith("${", stop):
+            self.index._mask(start, stop + 2)
+            self.substitutions.add(stop + 1)
+            self._push("{", stop + 1)
+            self.prev_tok, self.prev_end = "{", stop + 2
+            return stop + 2
+        self.given_up["`"] = stop
+        return start + 1
+
+    def _open(self, tok: str, at: int) -> int:
+        if not self.go:
+            if tok == "(" and self.index._opens_header(at, self.prev_end):
+                self.headers.add(at)
+            elif tok == "{" and self.index._opens_expression(
+                at, self.prev_tok, self.prev_end, bool(self.braces) and self.braces[-1] in self.expressions,
+            ):
+                self.expressions.add(at)
+        self.prev_tok, self.prev_end = tok, at + 1
+        self._push(tok, at)
+        return at + 1
+
+    def _push(self, tok: str, at: int) -> None:
+        self.stack.append((tok, at))
+        self.open_count[tok] += 1
+        if tok == "(":
+            self.index.commas[at] = []
+            self.index.block_of[at] = self.braces[-1] if self.braces else -1
+        elif tok == "{":
+            self.braces.append(at)
+
+    def _close(self, tok: str, at: int) -> int:
+        """A closer whose kind is not open anywhere is ignored, and one that
+        closes a deeper opener of its kind pops the openers above it."""
+        self.prev_tok, self.prev_end = tok, at + 1
+        want = _OPENERS[tok]
+        if not self.open_count[want]:
+            return at + 1
+        start = -1
+        while self.stack:
+            kind, start = self.stack.pop()
+            self.open_count[kind] -= 1
+            if kind == "{":
+                self.braces.pop()
+            if kind == want:
+                self.index.close[start] = at
+                break
+        if start in self.substitutions:
+            return self._template(at, at + 1, opening=False)
+        if start in self.headers:
+            self.prev_tok = "if)"
+        elif start in self.expressions:
+            self.prev_tok = ")"
+        return at + 1
 
 
 @dataclass(frozen=True)
