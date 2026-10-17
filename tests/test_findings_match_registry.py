@@ -155,17 +155,8 @@ def _comparable(value: object) -> object:
     return list(value) if isinstance(value, (list, tuple)) else value
 
 
-# Fixtures hostile on purpose, which a scanner refuses and reports against the
-# file instead of reading (`scanners._helpers.refuse`). Any other refusal under
-# the scan roots fails below, so a real file refused by mistake still shows.
-DELIBERATE_REFUSALS = {"limitations/AAK-HOOK-001/blind_spot/skills/amplified/SKILL.md"}
-
-
 def test_no_scanner_crashed_under_the_scan_roots(emitted: list[Finding]) -> None:
-    crashed = [
-        f.evidence for f in emitted
-        if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL" and f.file_path not in DELIBERATE_REFUSALS
-    ]
+    crashed = [f.evidence for f in emitted if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
     assert not crashed, f"a scanner crashed, so the metadata check below is incomplete: {crashed}"
 
 
