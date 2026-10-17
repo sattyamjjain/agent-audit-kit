@@ -268,7 +268,9 @@ def _check_skill(path: Path, project_root: Path) -> list[Finding]:
 
     name = meta.get("name", "").strip().strip("\"'")
     if name and name not in _TRUSTED_NAMES:
-        for trusted in _TRUSTED_NAMES:
+        # In sorted order: the evidence names the first trusted name the skill
+        # resembles, and a frozenset's order changes with the hash seed.
+        for trusted in sorted(_TRUSTED_NAMES):
             if _looks_like(name.lower(), trusted):
                 findings.append(
                     make_finding(

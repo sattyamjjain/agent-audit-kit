@@ -38,12 +38,15 @@ _CAP_TO_RULE = {
 }
 
 _LANG_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".rs", ".java", ".kt"}
-_CONFIG_NAMES = {
+# A tuple, not a set: the files are read in this order, and a set of strings
+# iterates in an order that changes with each process's hash seed, so two runs
+# of `aak scan` listed the same findings in different orders.
+_CONFIG_NAMES = (
     ".mcp.json", "mcp.json", "claude_desktop_config.json",
     ".cursor/mcp.json", ".vscode/mcp.json", ".windsurf/mcp.json",
     ".amazonq/mcp.json", ".roo/mcp.json", ".kiro/mcp.json",
     "package.json", "pyproject.toml",
-}
+)
 _CONFIG_GLOBS = ("*.mcp.json", "*.mcp.yaml", "*.mcp.yml")
 _MAX_FILE_BYTES = 1_000_000
 
@@ -152,7 +155,7 @@ def _check_text(text: str, has_hint: bool, jsonc: bool = False) -> dict[str, int
         if m is not None:
             out[rule_id] = _line_of(text, m.start())
 
-    for rule_id in _json_capability_hits(text, jsonc):
+    for rule_id in sorted(_json_capability_hits(text, jsonc)):
         if rule_id not in out:
             cap = next(c for c, r in _CAP_TO_RULE.items() if r == rule_id)
             out[rule_id] = find_line_number(text, f'"{cap}"') or 1
