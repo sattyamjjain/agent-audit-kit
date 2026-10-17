@@ -394,3 +394,39 @@ def test_a_crafted_config_scans_in_linear_time(tmp_path: Path, shape: str) -> No
     findings, _ = scan(tmp_path)
     assert time.perf_counter() - started < 10.0
     assert _hits(findings) == []
+
+
+_CONDITIONAL_STOP = '''\
+import logging
+import os
+import sys
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("files")
+HOST = "0.0.0.0"
+API_TOKEN = os.environ.get("API_TOKEN")
+DEV = os.environ.get("DEV") == "1"
+
+if not API_TOKEN:
+    logging.warning("API_TOKEN is not set")
+    {stop}("refusing to start without API_TOKEN")
+'''
+
+
+@pytest.mark.parametrize(("stop", "warn_only"), [
+    ("(logging.warning if DEV else sys.exit)", False),  # ends in `sys.exit`
+    ("(DEV or sys.exit)", False),
+    ("(lambda: sys.exit)()", False),  # returns the function, but was always read as a stop
+    ("(logging.warning if DEV else lambda: sys.exit)", False),
+    ("(not (DEV or sys.exit))", True),  # the source ends in a bracket
+    ("(sys.exit if DEV else logging.warning)", True),
+])
+def test_a_stop_named_at_the_end_of_any_callee_is_read_as_one(tmp_path: Path, stop: str, warn_only: bool) -> None:
+    """A callee is judged by the end of its source, whatever kind of expression
+    it is: a rewrite that judged only names and attributes reported the first
+    gate here as warn-only (HIGH), where the rule had always read it as one
+    that stops in production."""
+    _write(tmp_path, "server.py", _CONDITIONAL_STOP.format(stop=stop))
+    findings, _ = scan(tmp_path)
+    assert ("Missing-secret check only logs a warning" in " ".join(f.evidence for f in findings)) is warn_only

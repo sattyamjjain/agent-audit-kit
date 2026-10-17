@@ -236,6 +236,14 @@ def test_the_stdio_taint_search_answers_as_it_did_on_every_shape() -> None:
     ("mcp_noauth_default", lambda n: (
         "from mcp.server.fastmcp import FastMCP\nHOST = '0.0.0.0'\nAPI_KEY = ''\n"
         "if not API_KEY:\n    x" + "().error" * n + "()\n"), 120),
+    # A callee that is neither a name nor an attribute ends as its last operand
+    # does, here `sys.exit` in brackets: 150 such callees nested around a call
+    # of n arguments. Reading each whole source re-read the arguments 150 times,
+    # 5.7 s at the larger size (the tokenizer nests no more than 200 brackets).
+    ("mcp_noauth_default", lambda n: (
+        "from mcp.server.fastmcp import FastMCP\nHOST = '0.0.0.0'\nAPI_KEY = ''\n"
+        "if not API_KEY:\n    warn()\n    " + "(" * 150 + "x(" + "a, " * n + "a)"
+        + " + (y if z else sys.exit))()" * 150 + "\n"), 10_000),
     ("project_deal_drift", lambda n: "import stripe\n\n\ndef set_price(item):\n    return f" + "()" * n + "\n", 300),
     # Every call built its callee's dotted name down to the bottom of the chain.
     ("mcp_stdio_params", lambda n: "import subprocess\n\n\n" + "".join(
@@ -279,11 +287,20 @@ _ATTRS = ["warning", "warn", "error", "fail", "exit", "abort", "register", "info
           "get_current_context", "on_exit", "messages", "create", "chat", "completions", "client"]
 
 
+# Expressions a callee can be that end as their last operand does, or in a
+# bracket the unparser adds: `{0}` is the operand at the end, `{1}` another.
+_ENDING_AS_AN_OPERAND = [
+    "({1} if {1} else {0})", "({0} if {1} else {1})", "({1} or {0})", "({1} and {0})", "(lambda: {0})",
+    "({1} + {0})", "({1} ** {0})", "({1} + ({1} if {1} else {0}))", "(-{0})", "(not {0})", "({1} < {0})",
+    "({1} < {1} in {0})", "(await {0})", "(y := {0})", "(yield {0})", "(lambda x=1: {1} or {0})",
+]
+
+
 def _random_expr(rng: random.Random, depth: int) -> str:
     if depth <= 0 or rng.random() < 0.25:
         return rng.choice(_NAMES)
     inner = _random_expr(rng, depth - 1)
-    kind = rng.randrange(8)
+    kind = rng.randrange(11)
     if kind < 3:
         return f"{inner}.{rng.choice(_ATTRS)}"
     if kind < 5:
@@ -293,7 +310,9 @@ def _random_expr(rng: random.Random, depth: int) -> str:
         return f"{inner}[{rng.choice(['0', repr(rng.choice(_NAMES))])}]"
     if kind == 6:
         return "f'{" + inner + "} " + rng.choice(_NAMES) + "'"
-    return repr(rng.choice(_NAMES) + "." + rng.choice(_ATTRS))
+    if kind == 7:
+        return repr(rng.choice(_NAMES) + "." + rng.choice(_ATTRS))
+    return rng.choice(_ENDING_AS_AN_OPERAND).format(inner, _random_expr(rng, depth - 2))
 
 
 def _random_body(rng: random.Random, depth: int = 3) -> str:

@@ -28,8 +28,10 @@ bind).
 from __future__ import annotations
 
 import ast
+import copy
 import re
 from pathlib import Path
+from typing import Any, Callable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, refusing_overflow, unparse
@@ -138,31 +140,110 @@ def _call_stops(name: str) -> bool:
 # The words `_call_stops` looks for in the receiver of a `.error` or `.fail` call.
 _RECEIVER_WORDS = {"error": ("parser",), "fail": ("ctx", "context")}
 
+# Callees whose source ends in a bracket, a quote or a digit, never in a name.
+_ENDS_IN_NO_NAME = (
+    ast.Call, ast.Subscript, ast.Constant, ast.JoinedStr, ast.List, ast.Tuple, ast.Set, ast.Dict,
+    ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
+)
+
+# For each kind of expression whose source can end in a name, the child the
+# unparser writes last: the source ends as that child's does, unless the child,
+# or the expression itself, is put in brackets.
+_LAST_CHILD: dict[type, Callable[[Any], Any]] = {
+    ast.IfExp: lambda node: node.orelse,
+    ast.BoolOp: lambda node: node.values[-1],
+    ast.BinOp: lambda node: node.right,
+    ast.UnaryOp: lambda node: node.operand,
+    ast.Compare: lambda node: node.comparators[-1],
+    ast.Lambda: lambda node: node.body,
+    ast.Await: lambda node: node.value,
+    ast.NamedExpr: lambda node: node.value,
+    ast.Yield: lambda node: node.value,
+    ast.YieldFrom: lambda node: node.value,
+    ast.Starred: lambda node: node.value,
+}
+
+_NO_ARGUMENTS = ast.arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None,
+                              defaults=[])
+
 
 def _callee_stops(func: ast.expr, plain: dict[str, set[int]]) -> bool:
     """`_call_stops` on the source of `func`, reading no more of it than the
     answer needs (see `_body_is_warn_only`).
 
-    Only a name or an attribute can end in a stop name: any other callee's
-    source ends in a bracket, a quote or a number. A receiver is read only for
-    `.error` and `.fail`, and not at all inside one already read without the
-    words they look for (`plain`, by the method's name).
+    A name is judged as it is, and an attribute by its own name, with its
+    receiver read only for `.error` and `.fail`, and not at all inside a callee
+    already read without the words they look for (`plain`, by the method's
+    name). Any other callee can end in a stop name too, the way the source it
+    was judged by did: `(logging.warning if dev else sys.exit)(...)` ends in
+    `sys.exit`, and so does `(lambda: sys.exit)()`, which returns the function
+    without calling it but was read as a stop all the same. Reading such a
+    source whole at every call made a callee nested n calls deep cost the
+    square of n, so only the path of children it ends with is followed (no
+    callee's path enters a call inside it, so each node is followed once), and
+    when that path ends in an attribute with a stop name, it alone is rendered
+    to see whether the unparser brackets any of it. The whole source is read
+    only for the receiver of a `.error` or `.fail` it ends in.
     """
     if isinstance(func, ast.Name):
         return _call_stops(func.id)
-    if not isinstance(func, ast.Attribute):
+    if isinstance(func, ast.Attribute):
+        if func.attr in _STOP_CALLS:
+            return True
+        words = _RECEIVER_WORDS.get(func.attr)
+        if words is None or id(func.value) in plain[func.attr]:
+            return False
+        receiver = unparse(func.value).lower()
+        if any(word in receiver for word in words):
+            return True
+        if receiver:
+            plain[func.attr].update(id(node) for node in ast.walk(func.value))
         return False
-    if func.attr in _STOP_CALLS:
-        return True
-    words = _RECEIVER_WORDS.get(func.attr)
-    if words is None or id(func.value) in plain[func.attr]:
+    if isinstance(func, _ENDS_IN_NO_NAME):
         return False
-    receiver = unparse(func.value).lower()
-    if any(word in receiver for word in words):
+    if type(func) not in _LAST_CHILD:  # a kind of expression this does not know: read it whole
+        return _call_stops(unparse(func))
+    path: list[Any] = [func]
+    while type(path[-1]) in _LAST_CHILD:
+        path.append(_LAST_CHILD[type(path[-1])](path[-1]))
+    leaf = path[-1]
+    if not isinstance(leaf, ast.Attribute) or (leaf.attr not in _STOP_CALLS and leaf.attr not in _RECEIVER_WORDS):
+        return False
+    if not unparse(_last_path_alone(path)).endswith("." + leaf.attr):
+        return False  # a bracket closes the source
+    if leaf.attr in _STOP_CALLS:
         return True
-    if receiver:
-        plain[func.attr].update(id(node) for node in ast.walk(func.value))
+    if id(func) in plain[leaf.attr]:
+        return False
+    source = unparse(func)
+    receiver = source[: -len(leaf.attr) - 1].lower()
+    if any(word in receiver for word in _RECEIVER_WORDS[leaf.attr]):
+        return True
+    if source:
+        plain[leaf.attr].update(id(node) for node in ast.walk(func))
     return False
+
+
+def _last_path_alone(path: list[Any]) -> ast.expr:
+    """The expressions on `path` (each the child its parent writes last, down
+    to an attribute), every other child replaced by a bare name. The unparser
+    brackets an expression by its kind, its operator and its place under its
+    parent, never by its siblings, so this source ends as the whole one does."""
+    node: Any = ast.Attribute(value=ast.Name(id="_", ctx=ast.Load()), attr=path[-1].attr, ctx=ast.Load())
+    for parent, child in zip(reversed(path[:-1]), reversed(path[1:])):
+        alone = copy.copy(parent)
+        for field, value in ast.iter_fields(parent):
+            if value is child:
+                setattr(alone, field, node)
+            elif isinstance(value, ast.expr):
+                setattr(alone, field, ast.Name(id="_", ctx=ast.Load()))
+            elif isinstance(value, list):
+                setattr(alone, field, [node if item is child else ast.Name(id="_", ctx=ast.Load())
+                                       if isinstance(item, ast.expr) else item for item in value])
+            elif isinstance(value, ast.arguments):
+                setattr(alone, field, _NO_ARGUMENTS)
+        node = alone
+    return node
 
 
 def _body_is_warn_only(body: list[ast.stmt]) -> bool:
