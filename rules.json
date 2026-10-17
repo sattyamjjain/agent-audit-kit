@@ -9598,7 +9598,7 @@
       "cve_references": [],
       "description": "A repository whose name or pyproject keywords declare it as an MCP server ships no SECURITY.md in the root, `docs/` or `.github/` (the three folders GitHub reads a security policy from) AND no `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
       "incident_references": [],
-      "limitations": "Treats a repository as an MCP server only when `mcp` appears in the name or keywords of the root pyproject.toml, package.json or .claude-plugin/marketplace.json. A server named without it (an `acme-tools` package whose keyword is `model-context-protocol` and which depends on the SDK), one declared in Cargo.toml or go.mod, and a package.json in a sub-directory are not recognised. A pyproject.toml or package.json over 2 MB is not read.",
+      "limitations": "Treats a repository as an MCP server only when `mcp` appears in the name or keywords of the root pyproject.toml, package.json or .claude-plugin/marketplace.json. A server named without it (an `acme-tools` package whose keyword is `model-context-protocol` and which depends on the SDK), one declared in Cargo.toml or go.mod, and a package.json in a sub-directory are not recognised. A pyproject.toml or package.json over 2 MB, or a .claude-plugin/marketplace.json over 1 MB, is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],

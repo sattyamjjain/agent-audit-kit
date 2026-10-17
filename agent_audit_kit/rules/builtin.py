@@ -6276,7 +6276,8 @@ _r(
         "`acme-tools` package whose keyword is `model-context-protocol` and which "
         "depends on the SDK), one declared in Cargo.toml or go.mod, and a "
         "package.json in a sub-directory are not recognised."
-        " A pyproject.toml or package.json over 2 MB is not read."
+        " A pyproject.toml or package.json over 2 MB, or a .claude-plugin/marketplace.json "
+        "over 1 MB, is not read."
     ),
 )
 
