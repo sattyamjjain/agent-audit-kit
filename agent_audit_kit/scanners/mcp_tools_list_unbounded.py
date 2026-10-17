@@ -7,8 +7,8 @@ aggregator. Hermes Agent's ``list_tools`` in ``tools/mcp_tool.py`` is the
 disclosed instance: read every tool, keep name, description and full input
 schema, return the lot. CWE-400 / CWE-789.
 
-``AAK-MCP-016`` looked like the match and is not. Its text is *"An MCP server
-endpoint accepts request bodies without a maximum-size limit"* — the **inbound
+``AAK-MCP-016`` looked like the match and is not. It reports an MCP endpoint
+that reads the whole request body with nothing limiting its size — the **inbound
 request**. This allocation is driven by the **upstream response**, a value that
 arrives from a different direction and that no body-size limit touches.
 Confirmed by scanning the disclosed shape against the whole engine before
