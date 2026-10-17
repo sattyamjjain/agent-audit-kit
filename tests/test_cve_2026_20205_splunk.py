@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.log_token_leak import scan
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-20205"
@@ -298,8 +299,9 @@ def test_a_file_of_closed_calls_with_quote_heavy_arguments_reads_in_linear_time(
 
 def test_calls_that_open_replace_repeatedly_read_in_linear_time(tmp_path: Path) -> None:
     """The redaction hint read `.replace(` with two unbounded `[^)]*` runs around a token
-    word, so each closed call of `.replace(token,` repeated cost about 110 ms and 80 of
-    them (0.31 MB) 8.9 s. Both runs are bounded now."""
+    word, so each closed call of `.replace(token,` repeated cost about 75 ms and 80 of
+    them (0.31 MB) about 6 s, on main as on this branch before the bound. Both runs are
+    bounded now, and the 80 calls take 0.1 s."""
     import time
 
     unit = ".replace(token,"
@@ -322,3 +324,31 @@ def test_calls_that_open_replace_repeatedly_read_in_linear_time(tmp_path: Path) 
 def test_a_replace_that_masks_the_credential_still_reads_as_redacted(tmp_path: Path, call: str) -> None:
     source = f"import logging\n\n\ndef login(masked, header, url, token, bearer_token):\n    {call}\n"
     assert _leaks(tmp_path, "auth.py", source) == []
+
+
+# ---------------------------------------------------------------------------
+# The two bounds that keep a crafted file linear are stated limits
+#
+# Main read a call of any length and every call in a file. A call whose arguments
+# run past 4,000 characters is now skipped, and a file is read only up to its first
+# 2,000,000 characters of call arguments, so the rule says both.
+# ---------------------------------------------------------------------------
+
+
+def _call_with_filler(width: int) -> str:
+    return f'logger.info("auth %s", access_token, "{"x" * width}")\n'
+
+
+def test_a_call_past_the_argument_window_is_not_read_and_the_rule_says_so(tmp_path: Path) -> None:
+    assert _leaks(tmp_path / "under", "auth.py", _call_with_filler(3_900)) == [1]
+    assert _leaks(tmp_path / "over", "auth.py", _call_with_filler(4_000)) == []
+    assert "4,000 characters" in RULES[_RULE].limitations
+
+
+def test_a_file_is_read_up_to_its_argument_budget_and_the_rule_says_so(tmp_path: Path) -> None:
+    benign = 'logger.info("' + "x" * 3_900 + '")\n'
+    leak = 'logger.info("auth %s", access_token)\n'
+    past_the_budget = benign * (2_000_000 // 3_900 + 2)
+    assert _leaks(tmp_path / "early", "auth.py", leak + past_the_budget) == [1]
+    assert _leaks(tmp_path / "late", "auth.py", past_the_budget + leak) == []
+    assert "2,000,000 characters" in RULES[_RULE].limitations
