@@ -884,16 +884,34 @@ def _shared_handler_findings(index: CodeIndex, rel: str, mcpwn_lines: set[int]) 
             twin = (any_twin if mcp_side(open_reg.path) else mcp_twin).twin_for(open_reg)
             if twin is None:
                 continue
-            shown = handler.split(":", 1)[-1] if handler.startswith("delegate:") else handler
             findings.append(make_finding(
                 _MCP020,
                 rel,
-                f"{open_reg.method} {open_reg.path!r} runs `{shown[:80]}` with no authentication, "
-                f"while {twin.method} {twin.path!r} (line {twin.line}) runs the same handler "
-                f"behind `{_SPACE_RE.sub(' ', twin.auth or '')[:60]}`",
+                f"{open_reg.method} {open_reg.path!r} runs {_named(handler.split(':', 1)[-1], 'the shared handler')} "
+                f"with no authentication, while {twin.method} {twin.path!r} (line {twin.line}) runs the same "
+                f"handler behind {_named(twin.auth or '', 'an inline middleware')}",
                 line_number=open_reg.line,
             ))
     return findings
+
+
+def _named(code: str, otherwise: str) -> str:
+    """How the evidence names a middleware or a handler: its name, with `()` or
+    `(...)` for a call, and never its arguments, which can hold a credential
+    (`gin.BasicAuth(gin.Accounts{"admin": "<password>"})` and express-basic-auth
+    carried the password into every output). ``otherwise`` describes code that
+    does not start with a name, such as an inline function."""
+    code = code.strip()
+    name = _DOTTED_RE.match(code)
+    if name is None:
+        return otherwise
+    rest = code[name.end():].lstrip()
+    if not rest:
+        return f"`{name.group()[:80]}`"
+    if rest.startswith("("):
+        args = "()" if rest[1:].lstrip().startswith(")") else "(...)"
+        return f"`{name.group()[:80]}{args}`"
+    return otherwise
 
 
 def _reads_shared_handlers(rel: str, text: str, go: bool) -> bool:
@@ -1138,7 +1156,8 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
     findings: list[Finding] = []
     for handler in go_handlers(index):
         if handler.name is None:
-            if not _all_open(by_at.get(handler.start, []), covered):
+            routes = by_at.get(handler.start, [])
+            if not _all_open(routes, covered):
                 continue
         elif not open_names.get(handler.name):
             continue

@@ -17,6 +17,8 @@ from typing import Callable
 import pytest
 
 import agent_audit_kit
+from agent_audit_kit.models import ScanResult
+from agent_audit_kit.output import console, json_report, sarif
 from agent_audit_kit.scanners import mcp_middleware
 from agent_audit_kit.scanners._http_routes import CodeIndex
 
@@ -445,6 +447,61 @@ def test_a_crafted_handler_file_scans_in_linear_time(tmp_path: Path, name: str) 
     started = time.perf_counter()
     mcp_middleware.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# No credential from a middleware's arguments reaches the evidence
+# ---------------------------------------------------------------------------
+
+PASSWORD = "PLACEHOLDER-pass-4417"
+
+
+@pytest.mark.parametrize(("name", "text", "shown"), [
+    ("router.go", 'package main\n\nimport "github.com/gin-gonic/gin"\n\n// mcp server\nfunc main() {\n'
+     f'\tr := gin.New()\n\tr.POST("/mcp", gin.BasicAuth(gin.Accounts{{"admin": "{PASSWORD}"}}), handleMCP)\n'
+     '\tr.GET("/mcp", handleMCP)\n}\n', "`gin.BasicAuth(...)`"),
+    ("server.js", 'const basicAuth = require("express-basic-auth");\nconst app = require("express")();\n'
+     f'app.post("/mcp", basicAuth({{ users: {{ admin: "{PASSWORD}" }} }}), handleMcp);\napp.get("/mcp", handleMcp);\n',
+     "`basicAuth(...)`"),
+    ("inline.js", 'const app = require("express")();\n'
+     f'app.post("/mcp", (req, res, next) => checkToken(req, "{PASSWORD}") && next(), handleMcp);\n'
+     'app.get("/mcp", handleMcp);\n', "an inline middleware"),
+    ("handler.js", 'const app = require("express")();\n'
+     f'app.post("/mcp", requireAuth, makeHandler("{PASSWORD}"));\napp.get("/mcp", makeHandler("{PASSWORD}"));\n',
+     "`requireAuth`"),
+], ids=["gin-basic-auth", "express-basic-auth", "inline-middleware", "handler-call"])
+def test_the_evidence_names_the_middleware_without_its_arguments(tmp_path: Path, name: str, text: str, shown: str) -> None:
+    """The evidence quoted the authenticated route's middleware text, so
+    gin.BasicAuth's and express-basic-auth's documented usage carried the
+    password into every output: console, JSON, SARIF, PR summaries,
+    notification webhooks and advisories."""
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    findings, _ = mcp_middleware.scan(tmp_path)
+    found = [f for f in findings if f.rule_id == RULE]
+    assert len(found) == 1 and shown in found[0].evidence, [f.evidence for f in found]
+    result = ScanResult(findings=findings)
+    for rendered in (
+        json_report.format_results(result),
+        sarif.format_results(result, project_root=tmp_path),
+        console.format_results(result),
+        found[0].evidence,
+    ):
+        assert PASSWORD not in rendered
+
+
+def test_a_handler_written_as_a_call_is_named_without_its_arguments(tmp_path: Path) -> None:
+    text = (
+        'const app = require("express")();\n'
+        f'app.post("/mcp", requireAuth, makeHandler("{PASSWORD}"));\napp.get("/mcp", makeHandler("{PASSWORD}"));\n'
+    )
+    (tmp_path / "server.js").write_text(text, encoding="utf-8")
+    findings, _ = mcp_middleware.scan(tmp_path)
+    assert [f.evidence.split(" with no", 1)[0] for f in findings] == ["GET '/mcp' runs `makeHandler(...)`"]
+
+
+def test_a_middleware_with_no_arguments_keeps_its_parentheses(tmp_path: Path) -> None:
+    own = mcp_middleware._shared_handler_findings(CodeIndex(NGINX_UI, go=True), "mcp/router.go", set())
+    assert "behind `middleware.AuthRequired()`" in own[0].evidence
 
 
 # ---------------------------------------------------------------------------
