@@ -195,6 +195,28 @@ def _refused(reason: str) -> str:
         pytest.param(
             b"base: &shared\n  - repo: a\nrepos: *shared\n", "would change beyond its repos list", id="an-aliased-list"
         ),
+        pytest.param(
+            b"shared: &one {repo: a}\nrepos:\n  - repo: b\n  - *one\n",
+            "would change beyond its repos list",
+            id="an-alias-as-the-last-item",
+        ),
+        pytest.param(b"repos: !!seq\n  - repo: a\n", "would change beyond its repos list", id="a-tagged-list"),
+        pytest.param(
+            b"base: &base {name: x, entry: x, language: system}\nrepos:\n  - repo: local\n    hooks:\n"
+            b"      - <<: *base\n        id: x\n",
+            "uses a YAML merge key (<<) on line 5, which AAK does not edit",
+            id="a-merge-key-in-a-hook",
+        ),
+        pytest.param(
+            b"base: &b {k: 1}\nother:\n  <<: *b\n  k: 2\n" + _BLACK.encode(),
+            "uses a YAML merge key (<<) on line 3, which AAK does not edit",
+            id="a-merge-key-overridden",
+        ),
+        pytest.param(
+            b"defaults: &d {fail_fast: true}\n<<: *d\n" + _BLACK.encode(),
+            "uses a YAML merge key (<<) on line 2, which AAK does not edit",
+            id="a-merge-key-at-the-top",
+        ),
     ],
 )
 def test_a_file_it_cannot_add_to_is_refused_and_left_as_it_was(tmp_path: Path, config: bytes, reason: str) -> None:
@@ -261,3 +283,187 @@ def test_nested_aliases_are_compared_in_linear_time(tmp_path: Path, levels: int)
 
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == "0 added agent-audit-kit pre-commit hook to .pre-commit-config.yaml"
+
+
+# ---------------------------------------------------------------------------
+# What PyYAML reads as it is, and what only libyaml reads
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("brk", ["\x85", "\u2028", "\u2029"], ids=["nel", "line-separator", "paragraph-separator"])
+def test_a_yaml_line_break_other_than_lf_and_cr_ends_the_last_item(tmp_path: Path, brk: str) -> None:
+    """YAML 1.1 also breaks lines at NEL, LS and PS. Read only at CR and LF, the last item
+    ran on to the next LF, past the next key, and the result was refused."""
+    before = _BLACK.rstrip("\n") + brk + "ci:\n  autofix_prs: false\n"
+
+    code, output, path = _install(tmp_path, before.encode())
+
+    assert (code, output) == (0, _ADDED)
+    assert path.read_bytes().decode() == _BLACK.rstrip("\n") + brk + _hook() + "ci:\n  autofix_prs: false\n"
+
+
+def test_a_nan_elsewhere_is_left_as_it_is(tmp_path: Path) -> None:
+    """`.nan` never equals itself, so a comparison by `==` read the file as changed."""
+    before = "threshold: .nan\n" + _BLACK
+
+    code, output, path = _install(tmp_path, before.encode())
+
+    assert (code, output) == (0, _ADDED)
+    assert path.read_bytes().decode() == before + _hook()
+
+
+def test_keys_that_differ_only_once_built_are_not_a_key_written_twice(tmp_path: Path) -> None:
+    """`1` and `"1"` are an int and a string, two keys; compared as written text they
+    read as one key written twice."""
+    before = '1: one\n"1": quoted\n' + _BLACK
+
+    code, output, path = _install(tmp_path, before.encode())
+
+    assert (code, output) == (0, _ADDED)
+    assert path.read_bytes().decode() == before + _hook()
+
+
+_TAB_AFTER_A_VALUE = "repos:\n- repo: {url}\n  rev: v0.5.0\t\n  hooks:\n  - id: {hook}\n"
+
+
+@pytest.mark.skipif(not yaml.__with_libyaml__, reason="needs PyYAML built with libyaml")
+def test_a_config_only_libyaml_reads_that_has_the_hook_says_so(tmp_path: Path) -> None:
+    """A tab after a value is refused by PyYAML's own parser and read by libyaml, which
+    pre-commit uses where PyYAML has it. The hook is there for pre-commit, so the command
+    says so and exits 0, as it did before it parsed the file."""
+    config = _TAB_AFTER_A_VALUE.format(url=_ENTRY["repo"], hook="agent-audit-kit").encode()
+
+    code, output, path = _install(tmp_path, config)
+
+    assert (code, output) == (0, _CONFIGURED)
+    assert path.read_bytes() == config
+
+
+_TWICE = (
+    "repos:\n- repo: {first}\n  rev: v1\n  hooks:\n  - id: {first_hook}\n"
+    "repos:\n- repo: {last}\n  rev: v1\n  hooks:\n  - id: {last_hook}\n"
+)
+
+
+@pytest.mark.skipif(not yaml.__with_libyaml__, reason="needs PyYAML built with libyaml")
+@pytest.mark.parametrize(
+    ("where", "configured"),
+    [("in-the-repos-pre-commit-reads", True), ("only-in-the-one-it-does-not", False)],
+)
+def test_a_key_written_twice_is_judged_by_the_copy_pre_commit_reads(tmp_path: Path, where: str, configured: bool) -> None:
+    """libyaml, like `safe_load`, keeps the last of two equal keys. The hook in the last
+    `repos` is the one pre-commit runs, so the command says so; in the first only, it is
+    not configured, and the file is refused as a key written twice."""
+    ours, black = (_ENTRY["repo"], "agent-audit-kit"), ("https://github.com/psf/black", "black")
+    first, last = (black, ours) if configured else (ours, black)
+    config = _TWICE.format(first=first[0], first_hook=first[1], last=last[0], last_hook=last[1]).encode()
+
+    code, output, path = _install(tmp_path, config)
+
+    if configured:
+        assert (code, output) == (0, _CONFIGURED)
+    else:
+        assert (code, output) == (2, _refused("does not parse as YAML (found the key 'repos' twice on line 6)"))
+    assert path.read_bytes() == config
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        pytest.param(_TAB_AFTER_A_VALUE.format(url="https://github.com/psf/black", hook="black"), id="without-the-hook"),
+        pytest.param(
+            "base: &b {id: agent-audit-kit}\n" + _TAB_AFTER_A_VALUE.format(url=_ENTRY["repo"], hook="x")
+            + "  - <<: *b\n",
+            id="with-it-behind-a-merge-key",
+        ),
+    ],
+)
+def test_a_config_only_libyaml_reads_is_otherwise_refused(tmp_path: Path, config: str) -> None:
+    code, output, path = _install(tmp_path, config.encode())
+
+    assert code == 2
+    assert output.startswith(
+        "Cannot add the hook: .pre-commit-config.yaml does not parse as YAML "
+        "(found character '\\t' that cannot start any token on line "
+    )
+    assert path.read_bytes() == config.encode()
+
+
+_DEEP_CHILD = (
+    "import sys\n"
+    "from click.testing import CliRunner\n"
+    "from agent_audit_kit.cli import cli\n"
+    "result = CliRunner().invoke(cli, ['install-precommit', sys.argv[1]])\n"
+    "print(result.exit_code, result.output.splitlines()[0])\n"
+)
+
+
+def test_a_file_only_libyaml_might_read_is_not_given_to_it_when_it_could_nest_deep(tmp_path: Path) -> None:
+    """libyaml composes in C and recurses without a limit: 60,000 nested `[` overflow an
+    8 MB stack and the process dies. A tab on line 3 stops PyYAML's parser long before
+    the 100,000 levels below it, so libyaml would meet all of them; it is asked only about
+    a file with at most 2,000 characters that can open a collection."""
+    config = (
+        _TAB_AFTER_A_VALUE.format(url=_ENTRY["repo"], hook="agent-audit-kit")
+        + "deep: " + "[" * 100_000 + "]" * 100_000 + "\n"
+    )
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / ".pre-commit-config.yaml").write_text(config)
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+
+    done = subprocess.run(
+        [sys.executable, "-c", _DEEP_CHILD, str(project)],
+        capture_output=True, text=True, timeout=60, env={**os.environ, "PYTHONPATH": str(package_root)},
+    )
+
+    assert done.returncode == 0, f"the process died ({done.returncode}): {done.stderr[-300:]}"
+    assert done.stdout.startswith("2 Cannot add the hook: .pre-commit-config.yaml does not parse as YAML (")
+    assert (project / ".pre-commit-config.yaml").read_text() == config
+
+
+# The command runs in a child process, so a build that expands every merge fails the test
+# on its timeout instead of holding the suite.
+_MERGE_CHILD = (
+    "import sys\n"
+    "from click.testing import CliRunner\n"
+    "from agent_audit_kit.cli import cli\n"
+    "result = CliRunner().invoke(cli, ['install-precommit', sys.argv[1]])\n"
+    "print(result.exit_code, result.output.splitlines()[0])\n"
+)
+
+
+def _merge_chain(n: int) -> str:
+    """Each mapping merges the one before it, so building it copies n**2/2 keys."""
+    lines = ["b0: &b0 {k0: 0}"] + [f"b{i}: &b{i} {{<<: *b{i - 1}, k{i}: {i}}}" for i in range(1, n)]
+    return "\n".join(lines) + "\n"
+
+
+def _merge_fanout(n: int) -> str:
+    """One mapping of 1,000 keys merged into n others: n * 1,000 keys copied."""
+    base = "base: &b\n" + "".join(f"  k{i}: {i}\n" for i in range(1000))
+    return base + "x:\n" + "".join("- <<: *b\n" for _ in range(n))
+
+
+@pytest.mark.parametrize(
+    "config",
+    [pytest.param(_merge_chain(14_000), id="merge-chain-574KB"), pytest.param(_merge_fanout(45_000), id="merge-fanout-417KB")],
+)
+def test_merge_keys_are_refused_before_anything_is_built(tmp_path: Path, config: str) -> None:
+    """PyYAML copies a merged mapping's keys into every mapping that merges it, and the
+    command built the file twice and compared the two. A 394 KB chain of merges took
+    48 s and a 1,000-key mapping merged 45,000 times (417 KB) took 35 s, each at about
+    1.6 GB; the 574 KB chain runs past this test's 60 s timeout. The tree is walked once
+    for a merge key before anything is built, and the file is refused."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / ".pre-commit-config.yaml").write_text(config + _BLACK)
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+
+    done = subprocess.run(
+        [sys.executable, "-c", _MERGE_CHILD, str(project)],
+        capture_output=True, text=True, timeout=60, env={**os.environ, "PYTHONPATH": str(package_root)},
+    )
+
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.startswith("2 Cannot add the hook: .pre-commit-config.yaml uses a YAML merge key (<<) on line ")

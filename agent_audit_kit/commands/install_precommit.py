@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-from collections.abc import Hashable
+from collections.abc import Callable, Hashable
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -41,29 +41,49 @@ _ENTRY = {"repo": _REPO, "rev": f"v{__version__}", "hooks": [{"id": _HOOK_ID}]}
 # A real config is a few kilobytes. The parse is pure Python, so a crafted file is
 # refused above this size rather than read for seconds.
 _MAX_BYTES = 1_000_000
-_BREAK_RE = re.compile(r"\r\n|\r|\n")
+# Every line break YAML 1.1 reads: CR, LF, CRLF, NEL, LS and PS.
+_BREAKS = "\r\n\x85\u2028\u2029"
+_BREAK_RE = re.compile("\r\n|[\r\n\x85\u2028\u2029]")
+_MERGE = "tag:yaml.org,2002:merge"
+# libyaml composes in C and recurses without a limit: 60,000 nested `[` overflow an
+# 8 MB stack and kill the process. Collections cannot nest deeper than a file has
+# characters that can open one, and real configs have 17 to 329 of them.
+_LIBYAML_MAX_OPENERS = 2_000
 
 
 class _CannotAdd(Exception):
     """The entry cannot be added without changing the file otherwise; the message says why."""
 
 
+class _MergeKey(Exception):
+    """The file uses a YAML merge key (`<<`); ``line`` is the first one's, from 1."""
+
+    def __init__(self, line: int) -> None:
+        super().__init__(line)
+        self.line = line
+
+
 class _Loader(yaml.SafeLoader):
     """`yaml.SafeLoader` that refuses a mapping with a key written twice.
 
     `safe_load` keeps the last of two equal keys, so an entry added under the first
-    `repos:` would sit in a list pre-commit never reads.
+    `repos:` would sit in a list pre-commit never reads. Keys are compared as built,
+    so `1` and `"1"`, an int and a string, are two keys.
     """
 
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Hashable, Any]:
-        seen: set[str] = set()
-        for key, _ in node.value:
-            if isinstance(key, yaml.ScalarNode) and key.tag != "tag:yaml.org,2002:merge":
-                if key.value in seen:
-                    raise yaml.constructor.ConstructorError(
-                        None, None, f"found the key {key.value!r} twice", key.start_mark
-                    )
-                seen.add(key.value)
+        seen: set[Hashable] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                twice = key in seen
+            except TypeError:
+                continue  # an unhashable key, which the base class refuses with its own error
+            if twice:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"found the key {key!r} twice", key_node.start_mark
+                )
+            seen.add(key)
         return super().construct_mapping(node, deep=deep)
 
 
@@ -82,14 +102,67 @@ def _read_config(path: Path) -> bytes:
         return handle.read(_MAX_BYTES + 1)
 
 
-def _parse(text: str) -> tuple[yaml.Node | None, object]:
-    """``text``'s node tree, which says where each value is written, and its data."""
-    loader = _Loader(text)
+def _merge_line(node: yaml.Node) -> int | None:
+    """The line, from 1, of the first YAML merge key (`<<`) under ``node``, or None.
+
+    PyYAML copies a merged mapping's keys into every mapping that merges it while it
+    builds the data, so a chain of merges costs the square of its length and a large
+    mapping merged many times its size times theirs: a 394 KB chain took 48 s and
+    1.6 GB to build, twice over with the check of the result. The tree is walked once,
+    each node of it once, before anything is built.
+    """
+    first, stack, seen = None, [node], set()
+    while stack:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, yaml.MappingNode):
+            for key, value in current.value:
+                if key.tag == _MERGE and (first is None or key.start_mark.index < first.index):
+                    first = key.start_mark
+                stack.extend((key, value))
+        elif isinstance(current, yaml.SequenceNode):
+            stack.extend(current.value)
+    return None if first is None else first.line + 1
+
+
+def _parse(text: str, loader_class: Callable[[str], Any] = _Loader) -> tuple[yaml.Node | None, object]:
+    """``text``'s node tree, which says where each value is written, and its data.
+    Raises `_MergeKey` for a file that uses a merge key, before building anything."""
+    loader = loader_class(text)
     try:
         node = loader.get_single_node()
-        return node, (loader.construct_document(node) if node is not None else None)
+        if node is None:
+            return None, None
+        line = _merge_line(node)
+        if line is not None:
+            raise _MergeKey(line)
+        return node, loader.construct_document(node)
     finally:
         loader.dispose()
+
+
+def _configured_for_libyaml(text: str) -> bool:
+    """Whether libyaml, which pre-commit reads its config with where PyYAML has it,
+    reads ``text`` as already running the hook. libyaml takes some files PyYAML's own
+    parser refuses, such as a tab after a value; the hook is there for pre-commit, so
+    the command says so, as it did before it parsed the file. A merge key is refused
+    before anything is built, as for PyYAML's parser.
+
+    PyYAML's parser may have stopped long before the end of the file, so libyaml
+    would meet whatever follows, and its composer recurses in C without a limit.
+    It is asked only about a file with at most `_LIBYAML_MAX_OPENERS` characters
+    that can open a collection (`[`, `{`, `:`, `?`, `-`), which bounds how deep
+    anything in it can nest, whatever is quoted.
+    """
+    loader_class = getattr(yaml, "CSafeLoader", None)
+    if loader_class is None or sum(text.count(c) for c in "[{:?-") > _LIBYAML_MAX_OPENERS:
+        return False
+    try:
+        return _configured(_parse(text, loader_class)[1])
+    except (yaml.YAMLError, RecursionError, _MergeKey):
+        return False
 
 
 def _problem(exc: BaseException) -> str:
@@ -150,7 +223,7 @@ def _insert_at(text: str, end: int, column: int) -> int:
     """The start of the line after the content ending at ``end``, past comment lines
     indented deeper than ``column`` (a hook commented out under the last item), and
     before the blank lines and comments that belong to the next key."""
-    at = end if end == 0 or text[end - 1] in "\r\n" else _next_line(text, end)
+    at = end if end == 0 or text[end - 1] in _BREAKS else _next_line(text, end)
     while at < len(text):
         line = text[at:_next_line(text, at)]
         body = line.lstrip(" ")
@@ -171,7 +244,7 @@ def _same(a: object, b: object, seen: set[tuple[int, int]]) -> bool:
         if type(x) is not type(y):
             return False
         if not isinstance(x, (dict, list)):
-            if x != y:
+            if x != y and not (x != x and y != y):  # `.nan` never equals itself
                 return False
             continue
         if (id(x), id(y)) in seen:
@@ -193,7 +266,7 @@ def _adds_only_the_entry(old: object, new_text: str) -> bool:
     list, every other key as it was."""
     try:
         _, new = _parse(new_text)
-    except (yaml.YAMLError, RecursionError):
+    except (yaml.YAMLError, RecursionError, _MergeKey):
         return False
     old = {} if old is None else old
     repos = old.get("repos") if isinstance(old, dict) else None
@@ -215,7 +288,13 @@ def _with_hook(text: str, name: str) -> str | None:
     `repos` that is not a block list, or a result that reads as more than the entry."""
     try:
         root, data = _parse(text)
+    except _MergeKey as exc:
+        raise _CannotAdd(
+            f"{name} uses a YAML merge key (<<) on line {exc.line}, which AAK does not edit"
+        ) from exc
     except (yaml.YAMLError, RecursionError) as exc:
+        if _configured_for_libyaml(text):
+            return None
         raise _CannotAdd(f"{name} does not parse as YAML ({_problem(exc)})") from exc
     if _configured(data):
         return None
@@ -229,7 +308,7 @@ def _with_hook(text: str, name: str) -> str | None:
     repos = next(((k, v) for k, v in pairs if isinstance(k, yaml.ScalarNode) and k.value == "repos"), None)
     if repos is None:
         column = pairs[0][0].start_mark.column if pairs else 0
-        head = text if not text or text.endswith(("\n", "\r")) else text + newline
+        head = text if not text or text[-1] in _BREAKS else text + newline
         new = f"{head}{' ' * column}repos:{newline}{_entry(' ' * (column + 2), newline)}"
     else:
         key, value = repos
@@ -239,7 +318,7 @@ def _with_hook(text: str, name: str) -> str | None:
             at, indent = _insert_at(text, key.end_mark.index, key.start_mark.column), key.start_mark.column + 2
         else:
             raise _CannotAdd(f"{name} does not write repos as a block list")
-        lead = "" if at == 0 or text[at - 1] in "\r\n" else newline
+        lead = "" if at == 0 or text[at - 1] in _BREAKS else newline
         new = text[:at] + lead + _entry(" " * indent, newline) + text[at:]
     if not _adds_only_the_entry(data, new):
         raise _CannotAdd(f"{name} would change beyond its repos list")
