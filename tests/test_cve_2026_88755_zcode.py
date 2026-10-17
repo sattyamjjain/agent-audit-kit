@@ -190,10 +190,10 @@ def test_the_secret_autofix_leaves_a_zcode_map_alone(tmp_path: Path) -> None:
     server = {"s": {"command": "node", "env": {"API_KEY": _SECRET}}}
     body = _zcode(server)
     path = _write(tmp_path, ".zcode/config.json", body) / ".zcode" / "config.json"
-    assert _fix_secret_env_ref(path, dry_run=False) is None
+    assert _fix_secret_env_ref(path, tmp_path, dry_run=False) is None
     assert path.read_text(encoding="utf-8") == body
     control = _write(tmp_path, ".mcp.json", json.dumps({"mcpServers": server})) / ".mcp.json"
-    assert _fix_secret_env_ref(control, dry_run=False) is not None
+    assert _fix_secret_env_ref(control, tmp_path, dry_run=False) is not None
     assert json.loads(control.read_text(encoding="utf-8"))["mcpServers"]["s"]["env"] == {"API_KEY": "${API_KEY}"}
 
 

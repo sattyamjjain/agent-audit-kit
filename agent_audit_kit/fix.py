@@ -5,6 +5,7 @@ import json
 import os
 import re
 import stat
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -37,7 +38,8 @@ def run_fixes(project_root: Path, dry_run: bool = False) -> list[FixAction]:
     Performs a scan, identifies findings for rules marked as
     ``auto_fixable``, and applies the corresponding fix logic.
     When fixes are actually applied (not dry-run), a log file is
-    written to ``.agent-audit-kit/fix-log.json``.
+    written to ``.agent-audit-kit/fix-log.json``, or the reason it was
+    not is printed on stderr; the fixes stand either way.
 
     Args:
         project_root: The project root directory to scan and fix.
@@ -60,22 +62,41 @@ def run_fixes(project_root: Path, dry_run: bool = False) -> list[FixAction]:
             fixes.append(fix)
 
     if not dry_run and fixes:
-        _write_fix_log(project_root, fixes)
+        _log_fixes(project_root, fixes)
 
     return fixes
 
 
-def _write_fix_log(project_root: Path, fixes: list[FixAction]) -> None:
+def _log_fixes(project_root: Path, fixes: list[FixAction]) -> None:
+    """Write the fix log, or say on stderr why it was not written.
+
+    The fixes are already on disk by now, so a refused log is reported rather than
+    raised: `aak fix` and `suggest --apply-trivial` still list what they changed.
+    """
+    refused = _write_fix_log(project_root, fixes)
+    if refused is not None:
+        sys.stderr.write(f"fix: the fix log was not written: {refused}\n")
+
+
+def _write_fix_log(project_root: Path, fixes: list[FixAction]) -> str | None:
     """Write a JSON log of applied fixes to .agent-audit-kit/fix-log.json.
+
+    The log is the tool's own file, but the scanned repository can ship anything
+    under `.agent-audit-kit`: `Path.mkdir(exist_ok=True)` accepted a link to a
+    directory outside the project and `Path.write_text` followed a link at the log
+    itself, so the log was written wherever either pointed, and a regular file or a
+    dangling link in the directory's place raised after every fix had been applied.
+    The directory now comes from `_make_dir_inside_project` and the log goes through
+    `_write_inside_project`, like every recipe's file.
 
     Args:
         project_root: The project root directory.
         fixes: List of FixAction objects that were applied.
+
+    Returns:
+        None when the log was written, otherwise why it was not.
     """
     log_dir = project_root / ".agent-audit-kit"
-    log_dir.mkdir(exist_ok=True)
-    log_file = log_dir / "fix-log.json"
-
     log_data = {
         "timestamp": datetime.datetime.now().isoformat(),
         "fixes_applied": [
@@ -88,7 +109,11 @@ def _write_fix_log(project_root: Path, fixes: list[FixAction]) -> None:
             if fix.applied
         ],
     }
-    log_file.write_text(json.dumps(log_data, indent=2) + "\n")
+    refused = _make_dir_inside_project(log_dir, project_root)
+    if refused is not None:
+        return refused
+    log = _as_written(json.dumps(log_data, indent=2) + "\n")
+    return _write_inside_project(log_dir / "fix-log.json", log, project_root)
 
 
 # ---------------------------------------------------------------------------
@@ -97,13 +122,24 @@ def _write_fix_log(project_root: Path, fixes: list[FixAction]) -> None:
 # `aak fix` writes into the repository it scanned, and that repository decides what sits
 # at each path. Through `Path.write_text`, a `.gitignore` linked to a file outside the
 # project, such as a shell rc, had the fix's lines appended to that file, a dangling
-# link created the file it named, and a FIFO blocked the fix forever. A fix writes
-# through `_write_inside_project` instead; the other write paths here still need moving.
+# link created the file it named, and a FIFO blocked the fix forever, and every other
+# recipe wrote its file the same way. Each recipe now asks `_write_refusal` about the
+# file it edits before reading it, so it never reads through a link, reads only a
+# regular file (`_read_text`, `_read_bytes`), writes through `_write_inside_project`,
+# and reports a refusal as "Failed to fix: <reason>", in a dry run too. The fix log and
+# `aak pin`'s pin file go into a directory `_make_dir_inside_project` creates or accepts.
 # ---------------------------------------------------------------------------
 
 
 def _is_inside(path: Path, root: Path) -> bool:
     return path == root or root in path.parents
+
+
+def _name_in_project(path: Path, project_root: Path) -> str:
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
 
 
 def _write_refusal(path: Path, project_root: Path) -> str | None:
@@ -113,10 +149,7 @@ def _write_refusal(path: Path, project_root: Path) -> str | None:
     The test reads the path itself (`os.lstat`), so a symlink is refused even when it
     points inside the project, and so is a FIFO, a socket, a device or a directory.
     """
-    try:
-        name = str(path.relative_to(project_root))
-    except ValueError:
-        name = str(path)
+    name = _name_in_project(path, project_root)
     root = project_root.resolve()
     if not _is_inside(path.parent.resolve(), root):
         return f"{name} is in a directory outside the project"
@@ -146,6 +179,16 @@ def _write_inside_project(
     without waiting (O_NONBLOCK), and its descriptor must still be a regular file before
     a byte is written, so a link or a FIFO put in its place after the check is refused
     too.
+
+    O_NOFOLLOW guards only the last component of the path. A directory above the file
+    swapped for a link between the check and the open is followed, and the write lands
+    where that link points. The check runs here, right before the open, even when the
+    caller asked `_write_refusal` already, so the window is the time between resolving
+    the file's directory in that check and opening the file. Winning it takes a local
+    attacker changing the tree while `aak fix` or `aak pin` runs; a repository's
+    contents alone cannot. Closing it would take opening each directory relative to
+    the last without following a link (`os.open` with ``dir_fd`` and O_NOFOLLOW),
+    which would also refuse a link that stays inside the project, as this does not.
 
     Args:
         path: The file to write.
@@ -178,6 +221,89 @@ def _write_inside_project(
     return None
 
 
+def _make_dir_inside_project(path: Path, project_root: Path) -> str | None:
+    """Create the directory ``path`` when nothing is there and its parent resolves inside
+    ``project_root``. Returns None when ``path`` is a directory inside the project, or
+    why it is not; a refusal or an OS error is reported, never raised.
+
+    `os.mkdir` never follows a link at ``path``, so a dangling one creates nothing and
+    is refused, as is a regular file, a FIFO or anything else that is not a directory.
+    A link to a directory is followed like any directory above a file `_write_refusal`
+    allows: it may lead elsewhere inside the project, never out of it. A link loop
+    reads as not a directory before anything resolves it, since `Path.resolve` raises
+    on one before Python 3.13.
+    """
+    name = _name_in_project(path, project_root)
+    root = project_root.resolve()
+    if not _is_inside(path.parent.resolve(), root):
+        return f"{name} is in a directory outside the project"
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        if not path.is_dir():
+            return f"{name} is not a directory"
+        if not _is_inside(path.resolve(), root):
+            return f"{name} resolves outside the project"
+    except OSError as exc:
+        return f"{name} could not be created ({exc.strerror or exc})"
+    return None
+
+
+_READ_FLAGS = (
+    os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+)
+
+
+def _open_regular(path: Path) -> int:
+    """A descriptor to read ``path`` from, opened as `_write_inside_project` opens one to
+    write: without following a link or waiting on a FIFO, and only when it is a regular
+    file. Anything else raises OSError, as a missing file does.
+
+    A recipe asks `_write_refusal` before it reads, which refuses a link, a FIFO or a
+    directory by name; this refuses one put in the file's place after that look, so a
+    recipe never reads through a link or waits on a FIFO.
+    """
+    fd = os.open(path, _READ_FLAGS)
+    try:
+        regular = stat.S_ISREG(os.fstat(fd).st_mode)
+    except OSError:
+        os.close(fd)
+        raise
+    if not regular:
+        os.close(fd)
+        raise OSError(f"{path.name} is not a regular file")
+    return fd
+
+
+def _read_text(path: Path, encoding: str | None = None) -> str:
+    """``path``'s text as `Path.read_text` decodes it, with ``encoding`` (the locale's
+    when None) and universal newlines, read through `_open_regular`. The recipes read
+    with `Path.read_text` before, and decode the same way still, so a CRLF file comes
+    out with LF line ends as it did."""
+    with open(_open_regular(path), encoding=encoding) as handle:
+        return handle.read()
+
+
+def _read_bytes(path: Path) -> bytes:
+    """``path``'s bytes, read through `_open_regular`."""
+    with open(_open_regular(path), "rb") as handle:
+        return handle.read()
+
+
+def _as_written(text: str) -> bytes:
+    """The bytes `Path.write_text` wrote for ``text``: each newline as `os.linesep`, in
+    UTF-8. The recipes that wrote through it write the same bytes through
+    `_write_inside_project`. Those that passed no encoding wrote JSON, which
+    `json.dumps` keeps to ASCII, so the locale's encoding gave these bytes too."""
+    return text.replace("\n", os.linesep).encode("utf-8")
+
+
+def _write_json(path: Path, data: object, project_root: Path) -> str | None:
+    """Write ``data`` to ``path`` as the JSON recipes always have, indented by two with
+    a final newline, through `_write_inside_project`."""
+    return _write_inside_project(path, _as_written(json.dumps(data, indent=2) + "\n"), project_root)
+
+
 def _apply_fix(
     project_root: Path,
     rule_id: str,
@@ -200,23 +326,23 @@ def _apply_fix(
         return None
 
     if rule_id == "AAK-TRUST-001":
-        return _fix_enable_all_mcp(full_path, dry_run)
+        return _fix_enable_all_mcp(full_path, project_root, dry_run)
     elif rule_id == "AAK-TRUST-004":
-        return _fix_missing_deny(full_path, dry_run)
+        return _fix_missing_deny(full_path, project_root, dry_run)
     elif rule_id == "AAK-TRUST-007":
-        return _fix_missing_allowlist(full_path, dry_run)
+        return _fix_missing_allowlist(full_path, project_root, dry_run)
     elif rule_id == "AAK-SECRET-006":
         return _fix_env_gitignore(project_root, dry_run)
     elif rule_id == "AAK-SECRET-007":
-        return _fix_secret_env_ref(full_path, dry_run)
+        return _fix_secret_env_ref(full_path, project_root, dry_run)
     elif rule_id in _RAISED_PIN_RULES:
         return _fix_raised_pin(full_path, rule_id, project_root, dry_run)
     elif rule_id == "AAK-LITELLM-CVE-2026-30623-PIN-001":
-        return _fix_litellm_version(full_path, dry_run)
+        return _fix_litellm_version(full_path, project_root, dry_run)
     elif rule_id in _DEPENDENCY_FLOORS:
-        return _fix_dependency_floor(full_path, rule_id, dry_run)
+        return _fix_dependency_floor(full_path, rule_id, project_root, dry_run)
     elif rule_id == "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001":
-        return _fix_langgraph_toolnode(full_path, dry_run)
+        return _fix_langgraph_toolnode(full_path, project_root, dry_run)
     return None
 
 
@@ -267,7 +393,7 @@ def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
         if fix:
             fixes.append(fix)
     if not dry_run and fixes:
-        _write_fix_log(project_root, fixes)
+        _log_fixes(project_root, fixes)
     return fixes
 
 
@@ -339,19 +465,23 @@ def _fix_raised_pin(path: Path, rule_id: str, project_root: Path, dry_run: bool)
     )
 
 
-def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
+def _fix_litellm_version(path: Path, project_root: Path, dry_run: bool) -> FixAction:
     """Bump a vulnerable litellm pin to 1.83.7 (CVE-2026-30623).
 
     Rewrite line-based requirements*.txt manifests in place; refuse to
     touch lockfiles or pyproject.toml because their locking semantics make
-    a naive text bump unsafe.
+    a naive text bump unsafe. The manifest is read and written only as
+    `_write_refusal` allows (see "Writing inside the scanned project").
     """
     import re as _re
 
     rule_id = "AAK-LITELLM-CVE-2026-30623-PIN-001"
     min_version = "1.83.7"
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_text(path, encoding="utf-8")
     except OSError:
         return FixAction(rule_id, str(path), "Unable to read file", False)
 
@@ -364,7 +494,9 @@ def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
         if count == 0:
             return FixAction(rule_id, str(path), "No matching litellm pin", False)
         if not dry_run:
-            path.write_text(new_text, encoding="utf-8")
+            refused = _write_inside_project(path, _as_written(new_text), project_root)
+            if refused is not None:
+                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -394,17 +526,21 @@ _DEPENDENCY_FLOORS: dict[str, tuple[str, str, str]] = {
 }
 
 
-def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
+def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run: bool) -> FixAction:
     """Raise a vulnerable dependency to its vendor-published fixed version.
 
     Same posture as ``_fix_litellm_version``: rewrite line-based
     ``requirements*.txt`` and the ``package.json`` dependency maps, and refuse
     lockfiles or poetry's ``pyproject.toml``, whose locking semantics make a naive
-    text bump unsafe.
+    text bump unsafe, and read and write the manifest only as `_write_refusal`
+    allows.
     """
     name_pattern, min_version, label = _DEPENDENCY_FLOORS[rule_id]
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_text(path, encoding="utf-8")
     except OSError:
         return FixAction(rule_id, str(path), "Unable to read file", False)
 
@@ -425,7 +561,9 @@ def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
         if bumped == 0:
             return FixAction(rule_id, str(path), f"No matching {label} dep found", False)
         if not dry_run:
-            path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+            refused = _write_json(path, data, project_root)
+            if refused is not None:
+                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -442,7 +580,9 @@ def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
         if count == 0:
             return FixAction(rule_id, str(path), f"No matching {label} pin", False)
         if not dry_run:
-            path.write_text(new_text, encoding="utf-8")
+            refused = _write_inside_project(path, _as_written(new_text), project_root)
+            if refused is not None:
+                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -459,7 +599,7 @@ def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     )
 
 
-def _fix_langgraph_toolnode(path: Path, dry_run: bool) -> FixAction | None:
+def _fix_langgraph_toolnode(path: Path, project_root: Path, dry_run: bool) -> FixAction | None:
     """Apply the ``ToolNode([...]) -> ToolNode(tools=[...])`` codemod.
 
     The codemod itself already lived in ``autofix/langgraph_toolnode.py`` but was
@@ -468,13 +608,18 @@ def _fix_langgraph_toolnode(path: Path, dry_run: bool) -> FixAction | None:
     it. Wiring it here makes the existing claim true.
 
     Returns None when the codemod is a no-op, so an unchanged file never reports as
-    a fix (the rewrite is idempotent, so re-running is safe).
+    a fix (the rewrite is idempotent, so re-running is safe). A source file
+    `_write_refusal` refuses is reported before it is read, so a link is refused
+    whether or not the codemod would have changed what it names.
     """
     from agent_audit_kit.autofix.langgraph_toolnode import fix as _toolnode_fix
 
     rule_id = "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001"
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_text(path, encoding="utf-8")
     except OSError:
         return FixAction(rule_id, str(path), "Unable to read file", False)
 
@@ -482,10 +627,9 @@ def _fix_langgraph_toolnode(path: Path, dry_run: bool) -> FixAction | None:
     if new_text == text:
         return None
     if not dry_run:
-        try:
-            path.write_text(new_text, encoding="utf-8")
-        except OSError:
-            return FixAction(rule_id, str(path), "Failed to fix", False)
+        refused = _write_inside_project(path, _as_written(new_text), project_root)
+        if refused is not None:
+            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     return FixAction(
         rule_id,
         str(path),
@@ -494,13 +638,23 @@ def _fix_langgraph_toolnode(path: Path, dry_run: bool) -> FixAction | None:
     )
 
 
-def _fix_enable_all_mcp(path: Path, dry_run: bool) -> FixAction:
-    """Set enableAllProjectMcpServers to false."""
+def _fix_enable_all_mcp(path: Path, project_root: Path, dry_run: bool) -> FixAction:
+    """Set enableAllProjectMcpServers to false.
+
+    The settings file is read and written only as `_write_refusal` allows: the rule
+    reads a link, so a settings file linked out of the project reached this recipe,
+    which wrote the JSON over whatever the link named.
+    """
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction("AAK-TRUST-001", str(path), f"Failed to fix: {refused}", False)
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(_read_text(path))
         data["enableAllProjectMcpServers"] = False
         if not dry_run:
-            path.write_text(json.dumps(data, indent=2) + "\n")
+            refused = _write_json(path, data, project_root)
+            if refused is not None:
+                return FixAction("AAK-TRUST-001", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-001",
             str(path),
@@ -511,10 +665,14 @@ def _fix_enable_all_mcp(path: Path, dry_run: bool) -> FixAction:
         return FixAction("AAK-TRUST-001", str(path), "Failed to fix", False)
 
 
-def _fix_missing_deny(path: Path, dry_run: bool) -> FixAction:
-    """Add default deny rules to the permissions block."""
+def _fix_missing_deny(path: Path, project_root: Path, dry_run: bool) -> FixAction:
+    """Add default deny rules to the permissions block, reading and writing the
+    settings file only as `_write_refusal` allows."""
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction("AAK-TRUST-004", str(path), f"Failed to fix: {refused}", False)
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(_read_text(path))
         perms = data.setdefault("permissions", {})
         if not perms.get("deny"):
             perms["deny"] = [
@@ -523,7 +681,9 @@ def _fix_missing_deny(path: Path, dry_run: bool) -> FixAction:
                 "Bash(wget *)",
             ]
             if not dry_run:
-                path.write_text(json.dumps(data, indent=2) + "\n")
+                refused = _write_json(path, data, project_root)
+                if refused is not None:
+                    return FixAction("AAK-TRUST-004", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-004",
             str(path),
@@ -534,14 +694,20 @@ def _fix_missing_deny(path: Path, dry_run: bool) -> FixAction:
         return FixAction("AAK-TRUST-004", str(path), "Failed to fix", False)
 
 
-def _fix_missing_allowlist(path: Path, dry_run: bool) -> FixAction:
-    """Add an empty enabledMcpjsonServers allowlist."""
+def _fix_missing_allowlist(path: Path, project_root: Path, dry_run: bool) -> FixAction:
+    """Add an empty enabledMcpjsonServers allowlist, reading and writing the settings
+    file only as `_write_refusal` allows."""
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(_read_text(path))
         if "enabledMcpjsonServers" not in data:
             data["enabledMcpjsonServers"] = []
             if not dry_run:
-                path.write_text(json.dumps(data, indent=2) + "\n")
+                refused = _write_json(path, data, project_root)
+                if refused is not None:
+                    return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-007",
             str(path),
@@ -552,7 +718,7 @@ def _fix_missing_allowlist(path: Path, dry_run: bool) -> FixAction:
         return FixAction("AAK-TRUST-007", str(path), "Failed to fix", False)
 
 
-def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
+def _fix_secret_env_ref(path: Path, project_root: Path, dry_run: bool) -> FixAction | None:
     """Replace a literal secret in an MCP server ``env`` block with ``${KEY}``, or
     with ``${env:KEY}`` in VS Code's ``servers`` map, the form each client expands.
 
@@ -577,18 +743,21 @@ def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
     in ``autopr.NON_MECHANICAL``. It is a recipe ``aak fix`` will apply on request,
     not something AAK pushes.
 
-    Returns None when nothing matched, so a no-op never reports as a fix.
+    Returns None when nothing matched, so a no-op never reports as a fix. A config
+    `_write_refusal` refuses is reported before it is read, matched or not.
     """
     # Imported here rather than at module scope to keep fix.py free of a hard
     # dependency on any individual scanner module.
     from agent_audit_kit.scanners.secret_exposure import MCP_ENV_SECRET_KEYS
 
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction("AAK-SECRET-007", str(path), f"Failed to fix: {refused}", False)
     # Plain JSON only. A JSONC config (VS Code's `.vscode/mcp.json` allows comments
     # and trailing commas) is left alone: writing it back through `json.dumps`
     # would delete its comments.
     try:
-        original = path.read_text()
-        data = json.loads(original)
+        data = json.loads(_read_text(path))
     except (json.JSONDecodeError, OSError):
         return None
 
@@ -624,10 +793,9 @@ def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
         return None
 
     if not dry_run:
-        try:
-            path.write_text(json.dumps(data, indent=2) + "\n")
-        except OSError:
-            return FixAction("AAK-SECRET-007", str(path), "Failed to fix", False)
+        refused = _write_json(path, data, project_root)
+        if refused is not None:
+            return FixAction("AAK-SECRET-007", str(path), f"Failed to fix: {refused}", False)
 
     names = ", ".join(sorted(set(rewritten)))
     return FixAction(
@@ -653,7 +821,9 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
     that read, bounded to 1,000,000 bytes and decoded with replacement, a longer file lost
     its tail, and `rstrip()` turned a last line `secret\\ ` into `secret\\`, which git
     reads differently. A `.gitignore` that is a link, a FIFO or anything but a regular
-    file is refused, and so reported in a dry run too.
+    file is refused, and so reported in a dry run too, and the read takes only a regular
+    file (`_read_bytes`), so one put in its place after that look is not read through
+    or waited on either.
     """
     from agent_audit_kit.scanners.secret_exposure import (
         _ENV_TEMPLATE_SUFFIXES,
@@ -671,7 +841,10 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
             refused = _write_refusal(gitignore, project_root)
             if refused is not None:
                 return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
-            raw = gitignore.read_bytes() if gitignore.is_file() else b""
+            try:
+                raw = _read_bytes(gitignore)
+            except FileNotFoundError:
+                raw = b""
             templates = tuple(suffix.encode() for suffix in _ENV_TEMPLATE_SUFFIXES)
             kept = [
                 line.strip() for line in raw.splitlines()

@@ -1,17 +1,21 @@
 """Tests for agent_audit_kit.fix module."""
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
+from types import ModuleType
+from typing import NamedTuple
 
 import pytest
 from unittest.mock import patch
 
 import agent_audit_kit
+from agent_audit_kit import fix as fix_module
 from agent_audit_kit.fix import (
     FixAction,
     _apply_fix,
@@ -26,7 +30,8 @@ from agent_audit_kit.fix import (
     run_fixes,
 )
 from agent_audit_kit.models import Category, Finding, ScanResult, Severity
-from agent_audit_kit.rules.builtin import RuleDefinition
+from agent_audit_kit.rules.builtin import RULES, RuleDefinition
+from agent_audit_kit.scanners import _dependency_pins
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +78,7 @@ class TestFixEnableAllMcp:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text(json.dumps({"enableAllProjectMcpServers": True}))
 
-        fix = _fix_enable_all_mcp(cfg_file, dry_run=False)
+        fix = _fix_enable_all_mcp(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is True
         assert fix.rule_id == "AAK-TRUST-001"
 
@@ -85,7 +90,7 @@ class TestFixEnableAllMcp:
         original = json.dumps({"enableAllProjectMcpServers": True})
         cfg_file.write_text(original)
 
-        fix = _fix_enable_all_mcp(cfg_file, dry_run=True)
+        fix = _fix_enable_all_mcp(cfg_file, tmp_path, dry_run=True)
         assert fix.applied is False
         assert cfg_file.read_text() == original
 
@@ -93,7 +98,7 @@ class TestFixEnableAllMcp:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text("{bad json}")
 
-        fix = _fix_enable_all_mcp(cfg_file, dry_run=False)
+        fix = _fix_enable_all_mcp(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is False
         assert "Failed" in fix.description
 
@@ -347,6 +352,276 @@ class TestWriteInsideProject:
 
 
 # ---------------------------------------------------------------------------
+# Every recipe writes only inside the project
+# ---------------------------------------------------------------------------
+
+
+class _Recipe(NamedTuple):
+    """One write path of `aak fix`: the recipe in `agent_audit_kit.fix`, the file it
+    edits, and what it wrote there through `Path.write_text`, which every recipe but the
+    `.gitignore` and raised-pin ones used before moving onto `_write_inside_project`.
+    `before` holds CRLF and lone-CR line ends and a non-ASCII character where the
+    recipe reads them, so `after` pins the newline translation and the JSON escaping."""
+
+    id: str
+    rule_id: str
+    func: str
+    rel: str
+    before: bytes
+    after: bytes
+    said: str  # its description, in a dry run and once applied
+    unread: str  # what it says when a FIFO gets past the look before the read
+    reader: tuple[ModuleType, str]  # the read the swap test wraps
+    extra: tuple[tuple[str, bytes], ...] = ()
+
+
+_SETTINGS = ".claude/settings.json"
+_READ_TEXT = (fix_module, "_read_text")
+_RAISED = (_dependency_pins, "_regular_bytes")
+_RECIPES = [
+    _Recipe(
+        "trust-001", "AAK-TRUST-001", "_fix_enable_all_mcp", _SETTINGS,
+        b'{\r\n  "enableAllProjectMcpServers": true,\r\n  "note": "caf\xc3\xa9"\r\n}\r\n',
+        b'{\n  "enableAllProjectMcpServers": false,\n  "note": "caf\\u00e9"\n}\n',
+        "Set enableAllProjectMcpServers to false", "False Failed to fix", _READ_TEXT,
+    ),
+    _Recipe(
+        "trust-004", "AAK-TRUST-004", "_fix_missing_deny", _SETTINGS,
+        b'{"permissions": {"allow": ["*"]}}',
+        b'{\n  "permissions": {\n    "allow": [\n      "*"\n    ],\n    "deny": [\n'
+        b'      "Bash(rm -rf *)",\n      "Bash(curl *)",\n      "Bash(wget *)"\n    ]\n  }\n}\n',
+        "Added default deny rules", "False Failed to fix", _READ_TEXT,
+    ),
+    _Recipe(
+        "trust-007", "AAK-TRUST-007", "_fix_missing_allowlist", _SETTINGS,
+        b'{"other": "data"}',
+        b'{\n  "other": "data",\n  "enabledMcpjsonServers": []\n}\n',
+        "Added empty enabledMcpjsonServers allowlist", "False Failed to fix", _READ_TEXT,
+    ),
+    _Recipe(
+        "secret-006", "AAK-SECRET-006", "_fix_env_gitignore", ".gitignore",
+        b"node_modules/\n",
+        b"node_modules/\n\n# Environment files\n.env\n.env.*\n",
+        "Added .env patterns to .gitignore", "False Failed to fix", (fix_module, "_read_bytes"),
+        ((".env", b"A=1\n"),),
+    ),
+    _Recipe(
+        "secret-007", "AAK-SECRET-007", "_fix_secret_env_ref", ".mcp.json",
+        b'{"mcpServers": {"a": {"command": "npx", "env": {"API_KEY": "literal-value"}}}}',
+        b'{\n  "mcpServers": {\n    "a": {\n      "command": "npx",\n      "env": {\n'
+        b'        "API_KEY": "${API_KEY}"\n      }\n    }\n  }\n}\n',
+        "Replaced literal secret with an environment reference for: API_KEY (export the "
+        "variable before starting the server, and rotate the exposed value)",
+        "None", _READ_TEXT,
+    ),
+    _Recipe(
+        "langchain-001", "AAK-LANGCHAIN-001", "_fix_raised_pin", "requirements.txt",
+        b"langchain-core==1.2.21\n", b"langchain-core>=1.2.22\n",
+        "Raised 1 langchain-core declaration(s) to >=1.2.22", "False Unable to read file", _RAISED,
+    ),
+    _Recipe(
+        "langchain-003", "AAK-LANGCHAIN-003", "_fix_raised_pin", "requirements.txt",
+        b"langchain-core==0.3.13\n", b"langchain-core>=0.3.14\n",
+        "Raised 1 langchain-core declaration(s) to >=0.3.14", "False Unable to read file", _RAISED,
+    ),
+    _Recipe(
+        "neo4j-001", "AAK-NEO4J-001", "_fix_raised_pin", "requirements.txt",
+        b"mcp-neo4j-cypher==0.2.1\n", b"mcp-neo4j-cypher>=0.6.0\n",
+        "Raised 1 mcp-neo4j-cypher declaration(s) to >=0.6.0", "False Unable to read file", _RAISED,
+    ),
+    _Recipe(
+        "litellm", "AAK-LITELLM-CVE-2026-30623-PIN-001", "_fix_litellm_version", "requirements.txt",
+        b"click\r\nlitellm==1.80.0\r\n", b"click\nlitellm>=1.83.7\n",
+        "Bumped 1 litellm pin(s) to >=1.83.7", "False Unable to read file", _READ_TEXT,
+    ),
+    _Recipe(
+        "flowise-npm", "AAK-FLOWISE-001", "_fix_dependency_floor", "package.json",
+        b'{"dependencies": {"flowise": "3.1.0"}}',
+        b'{\n  "dependencies": {\n    "flowise": ">=3.1.3"\n  }\n}\n',
+        "Bumped 1 flowise dep(s) to >=3.1.3 (package.json)", "False Unable to read file", _READ_TEXT,
+    ),
+    _Recipe(
+        "flowise-txt", "AAK-FLOWISE-001", "_fix_dependency_floor", "requirements.txt",
+        b"flowise==3.1.0\r\n", b"flowise>=3.1.3\n",
+        "Bumped 1 flowise pin(s) to >=3.1.3", "False Unable to read file", _READ_TEXT,
+    ),
+    _Recipe(
+        "toolnode", "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001", "_fix_langgraph_toolnode", "graph.py",
+        b"from langgraph.prebuilt import ToolNode\rnode = ToolNode([a, b])\r\n",
+        b"from langgraph.prebuilt import ToolNode\nnode = ToolNode(tools=[a, b])\n",
+        "Rewrote ToolNode(positional list) to ToolNode(tools=[...])", "False Unable to read file", _READ_TEXT,
+    ),
+]
+
+
+def _call(recipe: _Recipe, project: Path, rel: str, dry_run: bool) -> FixAction | None:
+    """Run the recipe itself on ``rel``, not `_apply_fix`, whose `is_file()` check would
+    keep a dangling link, a FIFO or a directory from reaching the recipe's own guard."""
+    func = getattr(fix_module, recipe.func)
+    given = {"path": project / rel, "rule_id": recipe.rule_id, "project_root": project, "dry_run": dry_run}
+    return func(**{name: value for name, value in given.items() if name in inspect.signature(func).parameters})
+
+
+def _projects(tmp_path: Path, recipe: _Recipe) -> tuple[Path, Path]:
+    """A project holding the recipe's other files, and a directory outside it."""
+    project, outside = tmp_path / "proj", tmp_path / "outside"
+    project.mkdir()
+    outside.mkdir()
+    for rel, body in recipe.extra:
+        (project / rel).write_bytes(body)
+    return project, outside
+
+
+def _placed(project: Path, rel: str) -> Path:
+    path = project / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+# The recipe runs in a child process, so a read or write that blocks on a FIFO fails the
+# test on its timeout instead of hanging the suite. "look" lets the FIFO through the
+# recipe's look before the read, so the read has to refuse it.
+_RECIPE_CHILD = (
+    "import inspect, sys\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit import fix\n"
+    "root, name, rule, rel, how = Path(sys.argv[1]), *sys.argv[2:]\n"
+    "if how == 'look':\n"
+    "    real, looks = fix._write_refusal, []\n"
+    "    fix._write_refusal = lambda *args: looks.append(1) if not looks else real(*args)\n"
+    "func = getattr(fix, name)\n"
+    "given = {'path': root / rel, 'rule_id': rule, 'project_root': root, 'dry_run': False}\n"
+    "action = func(**{k: v for k, v in given.items() if k in inspect.signature(func).parameters})\n"
+    "print(action if action is None else f'{action.applied} {action.description}')\n"
+)
+
+
+def test_the_table_holds_every_recipe_and_every_rule_aak_fix_fixes() -> None:
+    assert {recipe.rule_id for recipe in _RECIPES} == {rid for rid, rule in RULES.items() if rule.auto_fixable}
+    assert {recipe.func for recipe in _RECIPES} == {name for name in dir(fix_module) if name.startswith("_fix_")}
+
+
+@pytest.mark.parametrize("recipe", _RECIPES, ids=[recipe.id for recipe in _RECIPES])
+class TestEveryRecipeWritesOnlyInsideTheProject:
+    """A scanned repository decides what sits at each path a recipe edits. Through
+    `Path.write_text`, a settings file, manifest or source file linked to a file outside
+    the project had the fix written over that file, a dangling link created the file it
+    named, and a FIFO blocked `aak fix` forever. Each recipe asks `_write_refusal` before
+    it reads, reads only a regular file, and writes through `_write_inside_project`."""
+
+    def test_a_regular_file_is_written_byte_for_byte_as_before(self, tmp_path: Path, recipe: _Recipe) -> None:
+        project, _ = _projects(tmp_path, recipe)
+        path = _placed(project, recipe.rel)
+        path.write_bytes(recipe.before)
+
+        dry = _call(recipe, project, recipe.rel, dry_run=True)
+        assert dry is not None and (dry.applied, dry.description) == (False, recipe.said)
+        assert path.read_bytes() == recipe.before
+
+        done = _call(recipe, project, recipe.rel, dry_run=False)
+        assert done is not None and (done.applied, done.description) == (True, recipe.said)
+        assert path.read_bytes() == recipe.after
+
+    @pytest.mark.parametrize("dry_run", [False, True], ids=["write", "dry-run"])
+    def test_a_link_out_of_the_project_is_refused_and_its_target_left_alone(
+        self, tmp_path: Path, recipe: _Recipe, dry_run: bool
+    ) -> None:
+        project, outside = _projects(tmp_path, recipe)
+        target = outside / "target"
+        target.write_bytes(recipe.before)
+        _placed(project, recipe.rel).symlink_to(target)
+
+        action = _call(recipe, project, recipe.rel, dry_run)
+
+        assert action is not None
+        assert (action.applied, action.description) == (False, f"Failed to fix: {recipe.rel} is a symlink")
+        assert target.read_bytes() == recipe.before
+
+    def test_a_dangling_link_creates_nothing(self, tmp_path: Path, recipe: _Recipe) -> None:
+        project, outside = _projects(tmp_path, recipe)
+        _placed(project, recipe.rel).symlink_to(outside / "created-by-fix")
+
+        action = _call(recipe, project, recipe.rel, dry_run=False)
+
+        assert action is not None
+        assert (action.applied, action.description) == (False, f"Failed to fix: {recipe.rel} is a symlink")
+        assert not os.path.lexists(outside / "created-by-fix")
+
+    def test_a_directory_at_the_path_is_refused(self, tmp_path: Path, recipe: _Recipe) -> None:
+        project, _ = _projects(tmp_path, recipe)
+        _placed(project, recipe.rel).mkdir()
+
+        action = _call(recipe, project, recipe.rel, dry_run=False)
+
+        assert action is not None
+        assert (action.applied, action.description) == (False, f"Failed to fix: {recipe.rel} is not a regular file")
+
+    def test_a_file_under_a_directory_linked_out_of_the_project_is_refused(
+        self, tmp_path: Path, recipe: _Recipe
+    ) -> None:
+        if recipe.rel == ".gitignore":
+            pytest.skip("the .gitignore recipe edits the project root's own file, which has no directory above it")
+        project, outside = _projects(tmp_path, recipe)
+        rel = recipe.rel if "/" in recipe.rel else f"sub/{recipe.rel}"
+        top, below = rel.split("/", 1)
+        (outside / below).parent.mkdir(parents=True, exist_ok=True)
+        (outside / below).write_bytes(recipe.before)
+        (project / top).symlink_to(outside, target_is_directory=True)
+
+        action = _call(recipe, project, rel, dry_run=False)
+
+        assert action is not None
+        assert (action.applied, action.description) == (
+            False, f"Failed to fix: {rel} is in a directory outside the project"
+        )
+        assert (outside / below).read_bytes() == recipe.before
+
+    def test_a_link_put_in_place_after_the_read_is_refused_by_the_write(
+        self, tmp_path: Path, recipe: _Recipe, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The look before the read refuses every case above by itself, so this one swaps
+        the file for a link once it is read: only the write's own check stands between
+        the recipe and the link's target."""
+        project, outside = _projects(tmp_path, recipe)
+        target = outside / "target"
+        target.write_bytes(b"keep\n")
+        path = _placed(project, recipe.rel)
+        path.write_bytes(recipe.before)
+        module, name = recipe.reader
+        read = getattr(module, name)
+
+        def read_then_swap(*args: object, **kwargs: object) -> object:
+            data = read(*args, **kwargs)
+            path.unlink()
+            path.symlink_to(target)
+            return data
+
+        monkeypatch.setattr(module, name, read_then_swap)
+
+        action = _call(recipe, project, recipe.rel, dry_run=False)
+
+        assert action is not None
+        assert (action.applied, action.description) == (False, f"Failed to fix: {recipe.rel} is a symlink")
+        assert target.read_bytes() == b"keep\n"
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+    @pytest.mark.parametrize("how", ["fifo", "look"])
+    def test_a_fifo_is_refused_without_blocking(self, tmp_path: Path, recipe: _Recipe, how: str) -> None:
+        project, _ = _projects(tmp_path, recipe)
+        os.mkfifo(_placed(project, recipe.rel))
+        package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+
+        done = subprocess.run(
+            [sys.executable, "-c", _RECIPE_CHILD, str(project), recipe.func, recipe.rule_id, recipe.rel, how],
+            capture_output=True, text=True, timeout=30, env={**os.environ, "PYTHONPATH": str(package_root)},
+        )
+
+        assert done.returncode == 0, done.stderr
+        said = f"False Failed to fix: {recipe.rel} is not a regular file" if how == "fifo" else recipe.unread
+        assert done.stdout.strip() == said
+
+
+# ---------------------------------------------------------------------------
 # _write_fix_log
 # ---------------------------------------------------------------------------
 
@@ -377,6 +652,124 @@ class TestWriteFixLog:
         log_file = tmp_path / ".agent-audit-kit" / "fix-log.json"
         log = json.loads(log_file.read_text())
         assert len(log["fixes_applied"]) == 1
+
+
+_APPLIED = [FixAction("AAK-TRUST-001", ".claude/settings.json", "Set enableAllProjectMcpServers to false", True)]
+
+_LOG_CHILD = (
+    "import sys\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.fix import FixAction, _write_fix_log\n"
+    "print(_write_fix_log(Path(sys.argv[1]), [FixAction('AAK-TRUST-001', 'a.json', 'done', True)]))\n"
+)
+
+
+class TestTheFixLogIsWrittenOnlyInsideTheProject:
+    """`.agent-audit-kit/` is the tool's own directory, but the scanned repository can ship
+    anything under that name. `Path.mkdir(exist_ok=True)` accepted a link to a directory
+    outside the project and `Path.write_text` followed a link at the log itself, so the
+    log was written wherever either pointed, and a regular file or a dangling link named
+    `.agent-audit-kit` raised after every fix had been applied."""
+
+    def _projects(self, tmp_path: Path) -> tuple[Path, Path]:
+        project, outside = tmp_path / "proj", tmp_path / "outside"
+        project.mkdir()
+        outside.mkdir()
+        return project, outside
+
+    def test_the_log_and_its_directory_are_written_as_before(self, tmp_path: Path) -> None:
+        assert _write_fix_log(tmp_path, _APPLIED) is None
+
+        written = (tmp_path / ".agent-audit-kit" / "fix-log.json").read_bytes()
+        log = json.loads(written)
+        assert written == (json.dumps(log, indent=2) + "\n").encode()
+        assert list(log) == ["timestamp", "fixes_applied"]
+        assert log["fixes_applied"] == [
+            {"rule_id": "AAK-TRUST-001", "file": ".claude/settings.json",
+             "description": "Set enableAllProjectMcpServers to false"},
+        ]
+
+    def test_a_linked_log_is_refused_and_its_target_left_alone(self, tmp_path: Path) -> None:
+        project, outside = self._projects(tmp_path)
+        (outside / "rc").write_bytes(b"keep\n")
+        (project / ".agent-audit-kit").mkdir()
+        (project / ".agent-audit-kit" / "fix-log.json").symlink_to(outside / "rc")
+
+        assert _write_fix_log(project, _APPLIED) == ".agent-audit-kit/fix-log.json is a symlink"
+        assert (outside / "rc").read_bytes() == b"keep\n"
+
+    def test_a_dangling_linked_log_creates_nothing(self, tmp_path: Path) -> None:
+        project, outside = self._projects(tmp_path)
+        (project / ".agent-audit-kit").mkdir()
+        (project / ".agent-audit-kit" / "fix-log.json").symlink_to(outside / "created-by-fix")
+
+        assert _write_fix_log(project, _APPLIED) == ".agent-audit-kit/fix-log.json is a symlink"
+        assert not os.path.lexists(outside / "created-by-fix")
+
+    def test_a_directory_named_like_the_log_is_refused(self, tmp_path: Path) -> None:
+        (tmp_path / ".agent-audit-kit" / "fix-log.json").mkdir(parents=True)
+
+        assert _write_fix_log(tmp_path, _APPLIED) == ".agent-audit-kit/fix-log.json is not a regular file"
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+    def test_a_fifo_named_like_the_log_is_refused_without_blocking(self, tmp_path: Path) -> None:
+        (tmp_path / ".agent-audit-kit").mkdir()
+        os.mkfifo(tmp_path / ".agent-audit-kit" / "fix-log.json")
+        package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+
+        done = subprocess.run(
+            [sys.executable, "-c", _LOG_CHILD, str(tmp_path)], capture_output=True, text=True, timeout=30,
+            env={**os.environ, "PYTHONPATH": str(package_root)},
+        )
+
+        assert done.returncode == 0, done.stderr
+        assert done.stdout.strip() == ".agent-audit-kit/fix-log.json is not a regular file"
+
+    def test_a_directory_linked_out_of_the_project_is_refused(self, tmp_path: Path) -> None:
+        project, outside = self._projects(tmp_path)
+        (project / ".agent-audit-kit").symlink_to(outside, target_is_directory=True)
+
+        assert _write_fix_log(project, _APPLIED) == ".agent-audit-kit resolves outside the project"
+        assert os.listdir(outside) == []
+
+    def test_a_dangling_linked_directory_creates_nothing(self, tmp_path: Path) -> None:
+        project, outside = self._projects(tmp_path)
+        (project / ".agent-audit-kit").symlink_to(outside / "made-by-fix", target_is_directory=True)
+
+        assert _write_fix_log(project, _APPLIED) == ".agent-audit-kit is not a directory"
+        assert not os.path.lexists(outside / "made-by-fix")
+
+    def test_a_file_named_like_the_directory_is_refused(self, tmp_path: Path) -> None:
+        (tmp_path / ".agent-audit-kit").write_bytes(b"not a directory\n")
+
+        assert _write_fix_log(tmp_path, _APPLIED) == ".agent-audit-kit is not a directory"
+        assert (tmp_path / ".agent-audit-kit").read_bytes() == b"not a directory\n"
+
+    def test_a_directory_linked_inside_the_project_is_followed(self, tmp_path: Path) -> None:
+        """A link that stays inside the project is followed like any directory above a
+        file `_write_refusal` allows: the write still lands inside the project."""
+        (tmp_path / "build").mkdir()
+        (tmp_path / ".agent-audit-kit").symlink_to(tmp_path / "build", target_is_directory=True)
+
+        assert _write_fix_log(tmp_path, _APPLIED) is None
+        assert json.loads((tmp_path / "build" / "fix-log.json").read_text())["fixes_applied"]
+
+    def test_run_fixes_says_why_it_wrote_no_log_and_keeps_the_fixes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        project, outside = self._projects(tmp_path)
+        settings = _placed(project, _SETTINGS)
+        settings.write_text(json.dumps({"enableAllProjectMcpServers": True}))
+        (project / ".agent-audit-kit").symlink_to(outside, target_is_directory=True)
+
+        fixes = [fix for fix in run_fixes(project) if fix.rule_id == "AAK-TRUST-001"]
+
+        assert [fix.applied for fix in fixes] == [True]
+        assert json.loads(settings.read_text())["enableAllProjectMcpServers"] is False
+        assert capsys.readouterr().err == (
+            "fix: the fix log was not written: .agent-audit-kit resolves outside the project\n"
+        )
+        assert os.listdir(outside) == []
 
 
 # ---------------------------------------------------------------------------
@@ -560,7 +953,7 @@ class TestFixMissingDeny:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text(json.dumps({"permissions": {"allow": ["*"]}}))
 
-        fix = _fix_missing_deny(cfg_file, dry_run=False)
+        fix = _fix_missing_deny(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is True
         assert fix.rule_id == "AAK-TRUST-004"
 
@@ -573,7 +966,7 @@ class TestFixMissingDeny:
         original = json.dumps({"permissions": {"allow": ["*"]}})
         cfg_file.write_text(original)
 
-        fix = _fix_missing_deny(cfg_file, dry_run=True)
+        fix = _fix_missing_deny(cfg_file, tmp_path, dry_run=True)
         assert fix.applied is False
         assert cfg_file.read_text() == original
 
@@ -584,7 +977,7 @@ class TestFixMissingDeny:
         }))
         original = cfg_file.read_text()
 
-        fix = _fix_missing_deny(cfg_file, dry_run=False)
+        fix = _fix_missing_deny(cfg_file, tmp_path, dry_run=False)
         assert fix.rule_id == "AAK-TRUST-004"
         # File should remain unchanged since deny already exists
         assert cfg_file.read_text() == original
@@ -593,7 +986,7 @@ class TestFixMissingDeny:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text(json.dumps({"other": "data"}))
 
-        fix = _fix_missing_deny(cfg_file, dry_run=False)
+        fix = _fix_missing_deny(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is True
 
         data = json.loads(cfg_file.read_text())
@@ -604,7 +997,7 @@ class TestFixMissingDeny:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text("{invalid")
 
-        fix = _fix_missing_deny(cfg_file, dry_run=False)
+        fix = _fix_missing_deny(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is False
         assert "Failed" in fix.description
 
@@ -619,7 +1012,7 @@ class TestFixMissingAllowlist:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text(json.dumps({"other": "data"}))
 
-        fix = _fix_missing_allowlist(cfg_file, dry_run=False)
+        fix = _fix_missing_allowlist(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is True
         assert fix.rule_id == "AAK-TRUST-007"
 
@@ -632,7 +1025,7 @@ class TestFixMissingAllowlist:
         original = json.dumps({"other": "data"})
         cfg_file.write_text(original)
 
-        fix = _fix_missing_allowlist(cfg_file, dry_run=True)
+        fix = _fix_missing_allowlist(cfg_file, tmp_path, dry_run=True)
         assert fix.applied is False
         assert cfg_file.read_text() == original
 
@@ -641,7 +1034,7 @@ class TestFixMissingAllowlist:
         cfg_file.write_text(json.dumps({"enabledMcpjsonServers": ["server1"]}))
         original = cfg_file.read_text()
 
-        fix = _fix_missing_allowlist(cfg_file, dry_run=False)
+        fix = _fix_missing_allowlist(cfg_file, tmp_path, dry_run=False)
         assert fix.rule_id == "AAK-TRUST-007"
         # File should remain unchanged
         assert cfg_file.read_text() == original
@@ -650,7 +1043,7 @@ class TestFixMissingAllowlist:
         cfg_file = tmp_path / "settings.json"
         cfg_file.write_text("{invalid")
 
-        fix = _fix_missing_allowlist(cfg_file, dry_run=False)
+        fix = _fix_missing_allowlist(cfg_file, tmp_path, dry_run=False)
         assert fix.applied is False
         assert "Failed" in fix.description
 
@@ -659,7 +1052,7 @@ class TestRequirementPinRewrite:
     def test_blank_lines_and_indentation_are_kept(self, tmp_path: Path) -> None:
         req = tmp_path / "requirements.txt"
         req.write_text("click\n\n\n  litellm == 1.80.0\nrequests\n", encoding="utf-8")
-        assert _fix_litellm_version(req, dry_run=False).applied
+        assert _fix_litellm_version(req, tmp_path, dry_run=False).applied
         assert req.read_text(encoding="utf-8") == "click\n\n\n  litellm>=1.83.7\nrequests\n"
 
     def test_a_crafted_requirements_file_rewrites_in_linear_time(self, tmp_path: Path) -> None:
@@ -671,7 +1064,7 @@ class TestRequirementPinRewrite:
         req = tmp_path / "requirements.txt"
         req.write_text("\n" * 1_000_000 + "x\nlitellm" + " " * 1_000_000 + "x\n", encoding="utf-8")
         started = time.perf_counter()
-        _fix_litellm_version(req, dry_run=False)
+        _fix_litellm_version(req, tmp_path, dry_run=False)
         assert time.perf_counter() - started < 5.0
 
 
@@ -689,7 +1082,7 @@ class TestFixSecretEnvRef:
         path.write_text(json.dumps({
             "servers": {"gh": {"command": "npx", "env": {"GITHUB_TOKEN": "literal-value"}}},
         }))
-        action = _fix_secret_env_ref(path, dry_run=False)
+        action = _fix_secret_env_ref(path, tmp_path, dry_run=False)
         assert action is not None and action.applied
         data = json.loads(path.read_text())
         assert data == {
@@ -704,7 +1097,7 @@ class TestFixSecretEnvRef:
             "mcpServers": {"a": {"env": {"API_KEY": "one"}}},
             "servers": {"b": {"env": {"API_KEY": "two"}}},
         }))
-        assert _fix_secret_env_ref(path, dry_run=False) is not None
+        assert _fix_secret_env_ref(path, tmp_path, dry_run=False) is not None
         assert json.loads(path.read_text()) == {
             "mcpServers": {"a": {"env": {"API_KEY": "${API_KEY}"}}},
             "servers": {"b": {"env": {"API_KEY": "${env:API_KEY}"}}},
@@ -715,5 +1108,5 @@ class TestFixSecretEnvRef:
         path = tmp_path / "mcp.json"
         text = '{\n  // keep this\n  "servers": {"b": {"env": {"API_KEY": "two"}}}\n}\n'
         path.write_text(text)
-        assert _fix_secret_env_ref(path, dry_run=False) is None
+        assert _fix_secret_env_ref(path, tmp_path, dry_run=False) is None
         assert path.read_text() == text

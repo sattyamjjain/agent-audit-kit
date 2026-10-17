@@ -551,10 +551,12 @@ def suggest_cmd(
     for fix in fixes:
         click.echo(f"  {fix.rule_id}  {fix.file_path}", err=True)
     if not dry_run:
+        # This also said "log written to .agent-audit-kit/fix-log.json". `run_fixes`
+        # now refuses a log that would land outside the project, and says so on
+        # stderr, so the claim would contradict that line.
         click.echo(
-            "suggest: log written to .agent-audit-kit/fix-log.json. Review the "
-            "diff before committing — these are mechanical edits, not reviewed "
-            "changes.",
+            "suggest: review the diff before committing — these are mechanical "
+            "edits, not reviewed changes.",
             err=True,
         )
 
