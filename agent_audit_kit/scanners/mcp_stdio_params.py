@@ -395,29 +395,96 @@ _TS_TAINT_RE = re.compile(
 )
 
 
+# A `command:` or `args:` member of a transport's options object, quoted or not.
+_TS_SINK_KEY_RE = re.compile(r"""\s*["']?(?:command|args)["']?\s*:""")
+_TS_SINK_SPAN = 1024
+
+
+def _ts_sink_members(text: str, start: int, stop: int) -> list[str]:
+    """The top-level members of the options object a transport call opens.
+
+    Reads from `start`, just after `new StdioClientTransport(`, to the `)` that
+    closes the call, and never past `stop`. Strings and template literals are
+    skipped whole and brackets nest, so a `,` inside `args: [a, b]` does not end
+    the member.
+    """
+    members: list[str] = []
+    depth = 0
+    member_start = -1
+    quote = ""
+    i = start
+    while i < stop:
+        ch = text[i]
+        if quote:
+            if ch == "\\":
+                i += 1
+            elif ch == quote:
+                quote = ""
+        elif ch in "\"'`":
+            quote = ch
+        elif ch in "([{":
+            depth += 1
+            if depth == 1 and ch == "{":
+                member_start = i + 1
+        elif ch in ")]}":
+            if depth == 1 and member_start >= 0:
+                members.append(text[member_start:i])
+                member_start = -1
+            depth -= 1
+            if depth < 0:
+                break
+        elif ch == "," and depth == 1 and member_start >= 0:
+            members.append(text[member_start:i])
+            member_start = i + 1
+        i += 1
+    return members
+
+
 def _walk_ts_proximity(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
-    """Original heuristic: a taint marker within 1024 chars before the sink.
+    """Original heuristic: a taint marker within 1024 chars before the sink,
+    or in the sink's own `command` / `args`.
 
     Retained as the fallback for when the tree-sitter grammar is unavailable, so
     the package keeps working with no new hard dependency. It both over-fires
     (an unrelated source that happens to sit nearby) and under-fires (a real
     source that reaches the sink from beyond the window).
+
+    It used to read only the 1024 characters before `new
+    StdioClientTransport(`, so the most direct shape, `{ command:
+    req.body.command }` in the transport's own options, was CRITICAL with
+    tree-sitter and silent without it, and a default install has no
+    tree-sitter. The options are read up to the next transport at most, so a
+    file of transports that never close is read once.
     """
     findings: list[Finding] = []
-    for m in _TS_STDIO_TRANSPORT_RE.finditer(text):
-        window_start = max(0, m.start() - 1024)
-        window = text[window_start : m.start()]
-        if not _TS_TAINT_RE.search(window):
-            continue
+    sinks = list(_TS_STDIO_TRANSPORT_RE.finditer(text))
+    for n, m in enumerate(sinks):
+        stop = min(len(text), m.end() + _TS_SINK_SPAN)
+        if n + 1 < len(sinks):
+            stop = min(stop, sinks[n + 1].start())
+        own = any(
+            _TS_SINK_KEY_RE.match(member) and _TS_TAINT_RE.search(member)
+            for member in _ts_sink_members(text, m.end(), stop)
+        )
+        if not own:
+            window_start = max(0, m.start() - 1024)
+            window = text[window_start : m.start()]
+            if not _TS_TAINT_RE.search(window):
+                continue
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         line = text.count("\n", 0, m.start()) + 1
+        where = (
+            "has a network-controlled source (req.body / fetch / axios / "
+            "process.env / JSON.parse) written in its own command or args."
+            if own else
+            "is built shortly after a network-controlled source (req.body / "
+            "fetch / axios / process.env / JSON.parse)."
+        )
         findings.append(make_finding(
             "AAK-MCP-STDIO-CMD-INJ-002",
             rel,
-            "new StdioClientTransport({...}) is built shortly after a "
-            "network-controlled source (req.body / fetch / axios / "
-            "process.env / JSON.parse). OX MCP Apr-2026 class. "
+            f"new StdioClientTransport({{...}}) {where} OX MCP Apr-2026 class. "
             "[proximity heuristic — install tree-sitter for data-flow analysis]",
             line_number=line,
         ))

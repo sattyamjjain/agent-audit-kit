@@ -6744,7 +6744,13 @@ _r(
         "`request` forms), `process.env`, `JSON.parse` or an awaited fetch or axios "
         "call in that file. A config object passed in from another file "
         "(`connect(req.body)` in routes.ts, `connect(cfg)` in client.ts) is not "
-        "followed, with or without the optional tree-sitter extra."
+        "followed, with or without the optional tree-sitter extra. Without that "
+        "extra (`agent-audit-kit[taint]`) the rule falls back to proximity, and "
+        "the evidence ends `[proximity heuristic ...]`: a transport counts as "
+        "tainted when one of those sources is written in its own `command` or "
+        "`args`, or appears in the 1024 characters before it, whether or not it "
+        "flows in, so a source further back, such as a helper at the top of a "
+        "long file, is missed."
     ),
 )
 
