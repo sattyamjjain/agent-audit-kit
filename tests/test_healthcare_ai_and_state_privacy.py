@@ -100,21 +100,13 @@ def test_healthcare_mcp_json_with_mental_health_claim(tmp_path: Path) -> None:
     assert "AAK-HEALTHCARE-AI-001" in ids
 
 
-# The patterns matched one literal form each: a singular noun, a base-form
-# verb, `I am` but not `I'm`. So `patients` gave -004 no healthcare context,
-# `claims` did not satisfy -003, `approves` did not satisfy -002, and
-# `I'm your therapist` did not match -001, the CRITICAL Tennessee SB 1580 rule.
+# The patterns matched one literal form each, and the item asked for the
+# inflected ones. Each was measured on 632 healthcare READMEs and docs from
+# GitHub code search and shipped only if the findings it added were at least
+# 80% real: -001's `replacing`, -003's plural objects and -004's plurals added
+# none, so they ship; the rest fell far short and stay unmatched (below).
 _INFLECTED = [
-    ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm your therapist and I'm here to help."),
-    ("AAK-HEALTHCARE-AI-001", "I\u2019m a licensed psychologist."),
-    ("AAK-HEALTHCARE-AI-001", "This bot acts as your counselor."),
-    ("AAK-HEALTHCARE-AI-001", "It keeps acting as your therapist between sessions."),
-    ("AAK-HEALTHCARE-AI-001", "This service provides licensed therapy."),
-    ("AAK-HEALTHCARE-AI-001", "The app delivers psychotherapy."),
-    ("AAK-HEALTHCARE-AI-002", "The agent automatically approves prior authorization requests."),
-    ("AAK-HEALTHCARE-AI-002", "It autonomously denies claims."),
-    ("AAK-HEALTHCARE-AI-002", "Here no human determines coverage."),
-    ("AAK-HEALTHCARE-AI-002", "The bot is automatically approving prior authorizations."),
+    ("AAK-HEALTHCARE-AI-001", "The app is replacing your therapist for routine check-ins."),
     ("AAK-HEALTHCARE-AI-003", "The AI solely approves claims without human review."),
     ("AAK-HEALTHCARE-AI-003", "The AI solely denies benefits."),
     ("AAK-HEALTHCARE-AI-003", "The algorithm alone determines reimbursements."),
@@ -124,6 +116,26 @@ _INFLECTED = [
     ("AAK-HEALTHCARE-AI-004", "You are an assistant who answers questions about medications."),
     ("AAK-HEALTHCARE-AI-004", "You are an assistant who explains treatments and therapies."),
 ]
+
+# Measured and left out: on that sample 22 of the 351 findings -001's forms
+# added, and none of the 6 -002's added, were an AI's claim.
+_MEASURED_BELOW_THE_BAR = [
+    ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm your therapist and I'm here to help."),
+    ("AAK-HEALTHCARE-AI-001", "This bot acts as your counselor."),
+    ("AAK-HEALTHCARE-AI-001", "It keeps acting as your therapist between sessions."),
+    ("AAK-HEALTHCARE-AI-001", "This service provides licensed therapy."),
+    ("AAK-HEALTHCARE-AI-001", "The app delivers psychotherapy."),
+    ("AAK-HEALTHCARE-AI-002", "The agent automatically approves prior authorization requests."),
+    ("AAK-HEALTHCARE-AI-002", "It autonomously denies claims."),
+    ("AAK-HEALTHCARE-AI-002", "The bot is automatically approving prior authorizations."),
+]
+
+
+@pytest.mark.parametrize(("rule_id", "text"), _MEASURED_BELOW_THE_BAR)
+def test_a_form_measured_below_the_bar_is_not_matched(tmp_path: Path, rule_id: str, text: str) -> None:
+    (tmp_path / "prompt.md").write_text(text + "\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert rule_id not in {f.rule_id for f in findings}
 
 
 @pytest.mark.parametrize(("rule_id", "text"), _INFLECTED)
@@ -146,6 +158,63 @@ def test_a_near_miss_stays_silent(tmp_path: Path, rule_id: str, text: str) -> No
     (tmp_path / "prompt.md").write_text(text + "\n", encoding="utf-8")
     findings, _ = healthcare_ai.scan(tmp_path)
     assert rule_id not in {f.rule_id for f in findings}
+
+
+# Compliance text says what a product does not do: "does not provide therapy",
+# "never automatically approves". A match is skipped when not / never / no /
+# n't comes before it in its sentence. The first six are the review's; the
+# rest are base forms main reported.
+_NEGATED_OR_NOT_THE_AGENT = [
+    "Our assistant does not automatically deny claims; a licensed reviewer makes every determination.",
+    "The model never automatically approves prior authorization requests.",
+    "No AI alone denies claims at Acme Health: every denial is signed by a medical director.",
+    "This chatbot is not a therapist and never acts as your counselor.",
+    "We are not providing therapy, only scheduling.",
+    "I'm a licensed therapist and I built this app for my own clients.",
+    "This tool does not provide therapy.",
+    "We will never act as your therapist.",
+    "Acme's agent doesn't automatically approve coverage.",
+    "The agent does not\nautomatically approve coverage.",
+    "Our model does not replace your therapist.",
+]
+
+
+@pytest.mark.parametrize("text", _NEGATED_OR_NOT_THE_AGENT)
+def test_a_negated_or_non_agent_claim_is_not_reported(tmp_path: Path, text: str) -> None:
+    (tmp_path / "README.md").write_text("# Acme Health\n\n" + text + "\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert [f.rule_id for f in findings if f.rule_id in _CLAIM_RULES] == []
+
+
+_CLAIM_RULES = {"AAK-HEALTHCARE-AI-001", "AAK-HEALTHCARE-AI-002", "AAK-HEALTHCARE-AI-003"}
+
+
+@pytest.mark.parametrize(("text", "rule_id", "line"), [
+    # The negation belongs to another sentence or list item.
+    ("We do not store data.\nThe agent will automatically approve prior authorization requests.\n",
+     "AAK-HEALTHCARE-AI-002", 2),
+    ("- Never share PHI\n- The agent will automatically deny coverage\n", "AAK-HEALTHCARE-AI-002", 2),
+    # A claim after a negated one is reported, on its own line.
+    ("We never act as your therapist.\n\nBetween sessions the app can act as your therapist.\n",
+     "AAK-HEALTHCARE-AI-001", 3),
+    ("You are a supportive companion.\nI am your therapist and I am here for you.\n", "AAK-HEALTHCARE-AI-001", 2),
+])
+def test_a_claim_outside_a_negation_is_reported_on_its_line(
+    tmp_path: Path, text: str, rule_id: str, line: int
+) -> None:
+    (tmp_path / "persona.md").write_text(text, encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings if f.rule_id == rule_id] == [(rule_id, line)]
+
+
+def test_the_negation_reader_reads_a_crafted_file_in_linear_time(tmp_path: Path) -> None:
+    """A long run of claims with no sentence end: each looks back a fixed window."""
+    import time
+
+    (tmp_path / "persona.md").write_text("never act as your counselor " * 40_000, encoding="utf-8")
+    started = time.perf_counter()
+    healthcare_ai.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
 
 
 # ---------------------------------------------------------------------------

@@ -34,33 +34,33 @@ _SCAN_EXTS = {".md", ".json", ".yaml", ".yml", ".txt"}
 _MAX_FILE_BYTES = 512_000
 
 
-# Rules 001-004 matched one literal form of each word: a singular noun, a
-# base-form verb, `I am` but not `I'm`. So `I'm your therapist` missed the
-# CRITICAL Tennessee rule, `approves` missed 002, `claims` missed 003, and a
-# persona about `patients` gave 004 no healthcare context. Each now takes the
-# inflected forms of the words it already had (plural nouns; -s and -ing verbs;
-# the contraction), and nothing else.
-_PROFESSIONAL = r"(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)"
+# The item asked for the inflected forms of each rule's words. Each was measured
+# on 632 healthcare READMEs and docs from GitHub code search (pinned, every
+# finding read) and kept only if the findings it added were at least 80% real.
+# -001's contraction (`I'm your therapist`), `acts as` / `acting as`, `provides`
+# / `providing therapy` and `delivers` / `delivering psychotherapy` added 351
+# findings, 22 of them an AI's claim: they were mostly people describing
+# themselves or their work. -002's -s and -ing verbs and plural objects added
+# 6, none an AI deciding medical necessity. Those stay unmatched. `replacing`,
+# -003's plural objects and -004's plurals added none, and ship.
 
 # AAK-HEALTHCARE-AI-001: explicit mental-health-professional claim (TN SB 1580).
 # Intentionally strict: the TN bill targets explicit claims, not generic wellness help.
 _MENTAL_HEALTH_CLAIM_RE = re.compile(
-    rf"""\b(?:
-        I(?:\s+am|['\u2019]m)\s+(?:a|your)\s+(?:licensed\s+)?{_PROFESSIONAL}|
-        act(?:s|ing)?\s+as\s+(?:a|your)\s+(?:licensed\s+)?{_PROFESSIONAL}|
+    r"""\b(?:
+        I\s+am\s+(?:a|your)\s+(?:licensed\s+)?(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)|
+        act\s+as\s+(?:a|your)\s+(?:licensed\s+)?(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)|
         (?:qualified|licensed)\s+mental[- ]health\s+professional|
-        replace[sd]?\s+(?:a|your)\s+(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist)|
-        provid(?:e|es|ing)\s+(?:licensed\s+)?therapy|
-        deliver(?:s|ing)?\s+(?:licensed\s+)?psychotherapy
+        replac(?:e[sd]?|ing)\s+(?:a|your)\s+(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist)|
+        provide\s+(?:licensed\s+)?therapy|
+        deliver\s+(?:licensed\s+)?psychotherapy
     )\b""",
     re.IGNORECASE | re.VERBOSE,
 )
 
 # AAK-HEALTHCARE-AI-002: AI makes prior-auth / medical-necessity decisions
 _PRIOR_AUTH_AI_RE = re.compile(
-    r"\b(?:automatically|autonomously|without\s+physician|no\s+(?:human|clinician|physician))\s+"
-    r"(?:approv(?:e|es|ing)|den(?:y|ies|ying)|determin(?:e|es|ing)|decid(?:e|es|ing)|issu(?:e|es|ing))\s+"
-    r"(?:prior[- ]authorizations?|medical[- ]necessity|coverage|claims?)\b",
+    r"\b(?:automatically|autonomously|without\s+physician|no\s+(?:human|clinician|physician))\s+(?:approve|deny|determine|decide|issue)\s+(?:prior[- ]authorization|medical[- ]necessity|coverage|claim)\b",
     re.IGNORECASE,
 )
 
@@ -111,6 +111,41 @@ _CRISIS_RESPONSE_RE = re.compile(
     r"\b(?:988|911|crisis\s+line|emergency\s+services|call\s+(?:911|112|999))\b",
     re.IGNORECASE,
 )
+
+
+# Compliance text says what a product does not do: "does not automatically deny
+# claims", "never acts as your counselor", "No AI alone denies claims". The
+# inflected forms matched that at CRITICAL and HIGH, where the base forms had
+# matched none of it, so a claim is skipped when not / never / no / n't comes
+# before it in its sentence. A sentence ends at `.`, `!` or `?` before
+# whitespace, at a blank line, or where a list item, heading or table row
+# starts; a soft-wrapped line continues it. The look-back is a fixed window.
+_SENTENCE_END_RE = re.compile(r"[.!?](?=\s)|\n[ \t]*(?:\n|[-*+][ \t]|\d+[.)][ \t]|#|\|)")
+_NEGATION_RE = re.compile(r"\b(?:not|never|no)\b|n['\u2019]t\b", re.IGNORECASE)
+_SENTENCE_SPAN = 400
+
+
+def _negated(text: str, start: int) -> bool:
+    window = text[max(0, start - _SENTENCE_SPAN):start]
+    last = None
+    for last in _SENTENCE_END_RE.finditer(window):
+        pass
+    return bool(_NEGATION_RE.search(window[last.end():] if last else window))
+
+
+def _first_claim(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:
+    """The first match of ``pattern`` that is not negated."""
+    for m in pattern.finditer(text):
+        if not _negated(text, m.start()):
+            return m
+    return None
+
+
+def _line_of(raw: str, m: re.Match[str]) -> int | None:
+    """The match's own line; a match in the text pulled out of JSON falls back to the first line holding it."""
+    if m.end() <= len(raw):
+        return raw.count("\n", 0, m.start()) + 1
+    return find_line_number(raw, m.group(0))
 
 
 def _iter_files(project_root: Path) -> Iterable[Path]:
@@ -167,36 +202,36 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         except json.JSONDecodeError:
             pass
 
-    m = _MENTAL_HEALTH_CLAIM_RE.search(scan_body)
+    m = _first_claim(_MENTAL_HEALTH_CLAIM_RE, scan_body)
     if m:
         findings.append(
             make_finding(
                 "AAK-HEALTHCARE-AI-001",
                 rel,
                 f"Tennessee SB 1580 trigger: AI described as a mental-health professional ({m.group(0)!r})",
-                line_number=find_line_number(raw, m.group(0)),
+                line_number=_line_of(raw, m),
             )
         )
 
-    m = _PRIOR_AUTH_AI_RE.search(scan_body)
+    m = _first_claim(_PRIOR_AUTH_AI_RE, scan_body)
     if m:
         findings.append(
             make_finding(
                 "AAK-HEALTHCARE-AI-002",
                 rel,
                 f"AI decides prior-auth / medical necessity without licensed physician: {m.group(0)!r}",
-                line_number=find_line_number(raw, m.group(0)),
+                line_number=_line_of(raw, m),
             )
         )
 
-    m = _INSURANCE_AI_RE.search(scan_body)
+    m = _first_claim(_INSURANCE_AI_RE, scan_body)
     if m:
         findings.append(
             make_finding(
                 "AAK-HEALTHCARE-AI-003",
                 rel,
                 f"AI-only insurance coverage decision (Georgia/Iowa pattern): {m.group(0)!r}",
-                line_number=find_line_number(raw, m.group(0)),
+                line_number=_line_of(raw, m),
             )
         )
 

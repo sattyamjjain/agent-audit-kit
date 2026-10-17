@@ -5229,14 +5229,18 @@ _r(
     owasp_agentic_references=["ASI09"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches a short "
-        "phrase list, with its verb in the base, -s or -ing form and `I am` "
-        "contracted or not: `I am a/your therapist` (`I'm your therapist`), `act as "
-        "a/your counselor` (`acting as your counselor`), `provide therapy` "
-        "(`provides licensed therapy`), `deliver psychotherapy`, `replace your "
-        "therapist` and `licensed mental health professional`. A claim in the second "
-        "person, the way a system prompt is written (`You are a licensed "
-        "therapist`), is not matched, and neither is a persona written in a `.py` "
-        "file."
+        "phrase list: `I am a/your therapist`, `act as a/your counselor`, `provide "
+        "therapy`, `deliver psychotherapy`, `replace your therapist` (or replaces, "
+        "replaced, replacing) and `licensed mental health professional`, passing "
+        "over one with not, never, no or n't before it in its sentence. The "
+        "contraction `I'm your therapist`, `acts as` and `acting as your counselor`, "
+        "`provides` and `providing therapy`, and `delivers` and `delivering "
+        "psychotherapy` are not matched: on 632 healthcare READMEs and docs from "
+        "GitHub code search, 22 of the 351 findings they added were an AI's claim. "
+        "A claim in the second person (`You are a licensed therapist`), one in a "
+        "sentence that negates something before it (`If you are not in crisis, I am "
+        "your therapist`) and a persona written in a `.py` file are not matched "
+        "either."
     ),
 )
 
@@ -5255,12 +5259,18 @@ _r(
     sarif_name="HealthcareAiPriorAuthSolo",
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches an "
-        "adverb or a `no human` phrase, a decision verb in its base, -s or -ing form "
-        "and a decision object, as in `automatically approves prior authorization "
-        "requests`. A prefixed verb (`auto-denies medical necessity appeals`) and a "
-        "missing review stated after the object (`approves prior authorization "
-        "requests with no physician review`) are not matched, and neither is a rule "
-        "written in a `.py` file."
+        "adverb or a `no human` phrase, a verb in its base form and a singular "
+        "decision object, as in `automatically approve prior authorization`, "
+        "passing over one with not, never, no or n't before it in its sentence. The "
+        "third person, the -ing form and a plural object (`automatically approves "
+        "prior authorization requests`, `automatically deny claims`) are not "
+        "matched: on 632 healthcare READMEs and docs from GitHub code search, none "
+        "of the 6 findings they added was an AI deciding medical necessity. A "
+        "prefixed verb (`auto-denies medical necessity appeals`), a missing review "
+        "stated after the object (`with no physician review`), a decision in a "
+        "sentence that negates something before it (`If a reviewer is not "
+        "available, the agent will automatically approve ...`) and a rule written "
+        "in a `.py` file are not matched either."
     ),
 )
 
@@ -5279,9 +5289,12 @@ _r(
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `AI`, "
         "`algorithm` or `model`, then `only`, `solely` or `alone`, a decision verb "
-        "and an object, singular or plural, as in `AI solely denies claims`. "
-        "`AI-only coverage decisions` (a hyphen) and `the model alone decides "
-        "whether a benefit applies` (a clause in between) are not matched."
+        "and an object, singular or plural, as in `AI solely denies claims`, "
+        "passing over one with not, never, no or n't before it in its sentence. "
+        "`AI-only coverage decisions` (a hyphen), `the model alone decides whether a "
+        "benefit applies` (a clause in between) and a decision in a sentence that "
+        "negates something before it (`When no adjuster is free, the AI alone "
+        "decides coverage`) are not matched."
     ),
 )
 
