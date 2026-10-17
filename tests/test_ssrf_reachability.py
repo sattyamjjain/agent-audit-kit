@@ -619,6 +619,9 @@ _MAPPING_PRELUDE = _TOOL_PRELUDE + "import string\nfrom string import Template\n
     "    return requests.get(string.Template('https://$host/x').substitute(arguments)).text\n",
     "def proxy(host: str) -> str:\n    page = Template('https://${host}/x')\n"
     "    return requests.get(page.safe_substitute(host=host)).text\n",
+    # A `**` written after a key can replace it.
+    "def proxy(arguments: dict) -> str:\n"
+    "    return requests.get('https://%(host)s/x' % {'host': 'api.example.com', **arguments}).text\n",
 ])
 def test_a_caller_s_mapping_fills_the_host_however_it_is_written(tmp_path: Path, body: str) -> None:
     assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _MAPPING_PRELUDE + body)
@@ -636,6 +639,12 @@ def test_a_caller_s_mapping_fills_the_host_however_it_is_written(tmp_path: Path,
     "    return requests.get(string.Template('https://api.example.com/$path').substitute(arguments)).text\n",
     "def item(path: str) -> str:\n    page = Template('https://api.example.com/$$/$path')\n"
     "    return requests.get(page.substitute(path=path)).text\n",
+    # A key written after a `**` is the key's; one before it is replaced only
+    # by what that `**` holds, not by the dict's other entries.
+    "def item(arguments: dict) -> str:\n"
+    "    return requests.get('https://%(host)s/x' % {**arguments, 'host': 'api.example.com'}).text\n",
+    "def item(arguments: dict) -> str:\n    return requests.get(\n"
+    "        'https://%(host)s/%(path)s' % {'host': 'api.example.com', 'path': arguments['p'], **REGIONS}).text\n",
 ])
 def test_a_caller_s_mapping_after_a_fixed_host_is_not_a_caller_url(tmp_path: Path, body: str) -> None:
     assert _ids(tmp_path, "tool.py", _MAPPING_PRELUDE + body) & _SSRF_RULES == set()
@@ -1214,6 +1223,11 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
     "format-template": (lambda: _filled(
         _CYCLE_HEAD + "T = 'x" + "{}" * 255 + "'\n@mcp.tool()\ndef t(p: str) -> str:\n",
         "    requests.get(T.format())\n"), False),
+    # 7,000 keys a `**` written after them can replace, each read by a fetch:
+    # a key's value and the entries that can replace it are judged once each.
+    "replaceable-keys": (lambda: _TOOL_HEAD.replace("p: str", "arguments: dict") + "    d = {"
+        + "".join(f"'k{i}': 'a', " for i in range(7_000)) + "".join(f"**x{i}, " for i in range(7_000))
+        + "**arguments}\n" + "".join(f"    requests.get('https://%(k{i})s/' % d)\n" for i in range(7_000)), True),
 }
 
 

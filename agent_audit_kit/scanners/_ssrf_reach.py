@@ -800,6 +800,9 @@ class _CallerInput:
         self._text: dict[tuple[int, int], str] = {}
         self._joined_texts: dict[tuple[str, str, int], str] = {}
         self._mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]] = {}
+        # ids of the tuples `_mapping` makes for a key's value or what can
+        # replace it, whose parts are judged one by one, each once
+        self._either: set[int] = set()
 
     @classmethod
     def of_file(cls, tree: ast.AST) -> _CallerInput:
@@ -902,9 +905,15 @@ class _CallerInput:
                 if self._built_sets_host(_percent_pieces(template, cur.right, self._mapping), depth, nest + 1):
                     return True
             elif isinstance(cur, (ast.List, ast.Tuple, ast.Set)):
-                # The pieces of a URL a `.join` or a URL function has not been
-                # read as text: any of them can be the host.
-                stack.extend(cur.elts)
+                if id(cur) in self._either:
+                    # A key's value or the entries that can replace it: each
+                    # is judged once, however many keys a mapping has.
+                    if any(self.sets_host(part, depth, nest + 1) for part in cur.elts):
+                        return True
+                else:
+                    # The pieces of a URL a `.join` or a URL function has not
+                    # been read as text: any of them can be the host.
+                    stack.extend(cur.elts)
             elif isinstance(cur, ast.Dict):
                 # A mapping a template reads, or a `**` hands over, whole: any
                 # of its values can be the host, as can any value of a mapping
@@ -1013,9 +1022,12 @@ class _CallerInput:
         or a `dict(...)` call writes out under a constant key, and the
         expression any other key may come from, its `**` entries, entries under
         a computed key and the mapping `dict(...)` copies read together, or
-        None when it has none of those. A name bound once here to such a
-        mapping (`params = {"host": arguments["host"]}`) is read as it; any
-        other operand is all of that expression.
+        None when it has none of those. A key written before such an entry may
+        take its value from those entries instead, so `{"host": FIXED,
+        **arguments}` lets the caller set the host and `{**arguments, "host":
+        FIXED}` does not. A name bound once here to such a mapping (`params =
+        {"host": arguments["host"]}`) is read as it; any other operand is all
+        of that expression.
 
         Two or more such entries are read as one tuple made here, and the tuple
         is kept for as long as this scope's verdicts are. They are remembered
@@ -1033,17 +1045,29 @@ class _CallerInput:
         hit = self._mappings.get(id(target))
         if hit is None:
             keyed: dict[str, ast.expr] = {}
+            replaceable: list[str] = []
             others: list[ast.expr] = []
-            for key, value in _dict_entries(target):
+            # Read back to front, so the last value written under a key wins,
+            # and a key knows whether an entry without a constant key follows
+            # it (`{"host": FIXED, **arguments}`) and can replace its value.
+            for key, value in reversed(_dict_entries(target)):
                 if key is None:
                     others.append(value)
-                else:
+                elif key not in keyed:
                     keyed[key] = value
+                    if others:
+                        replaceable.append(key)
+            others.reverse()
             rest: ast.expr | None = None
             if len(others) == 1:
                 rest = others[0]
             elif others:
                 rest = ast.Tuple(elts=others, ctx=ast.Load())
+            if rest is not None:
+                for key in replaceable:
+                    either = ast.Tuple(elts=[keyed[key], rest], ctx=ast.Load())
+                    self._either.add(id(either))
+                    keyed[key] = either
             hit = self._mappings[id(target)] = (target, keyed, rest)
         return hit[1], hit[2]
 
