@@ -210,7 +210,7 @@ def _apply_fix(
     elif rule_id == "AAK-SECRET-007":
         return _fix_secret_env_ref(full_path, dry_run)
     elif rule_id in _RAISED_PIN_RULES:
-        return _fix_raised_pin(full_path, rule_id, dry_run)
+        return _fix_raised_pin(full_path, rule_id, project_root, dry_run)
     elif rule_id == "AAK-LITELLM-CVE-2026-30623-PIN-001":
         return _fix_litellm_version(full_path, dry_run)
     elif rule_id in _DEPENDENCY_FLOORS:
@@ -271,7 +271,7 @@ def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
     return fixes
 
 
-def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
+def _fix_raised_pin(path: Path, rule_id: str, project_root: Path, dry_run: bool) -> FixAction:
     """Raise a pinned package to its fix wherever the rule reads it.
 
     The bumps for these rules matched `name op version` at the start of a
@@ -287,10 +287,16 @@ def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
 
     The file is read and written without newline translation, so a CRLF
     manifest stays CRLF. A pyproject.toml change needs a re-lock to take effect,
-    and the action says so.
+    and the action says so. The manifest must be a regular file inside the
+    project (`_write_refusal`): a link, which the rule reads through, would have
+    the fix rewrite whatever it names, and a FIFO would block the read or the
+    write forever. One is refused before it is read, and reported in a dry run
+    too; the read takes only a regular file, and the write goes through
+    `_write_inside_project`, so one put in the manifest's place in between is
+    refused as well.
     """
     from agent_audit_kit.scanners import langchain_vuln, neo4j_cve
-    from agent_audit_kit.scanners._dependency_pins import raise_to_fix
+    from agent_audit_kit.scanners._dependency_pins import _regular_bytes, raise_to_fix
     from agent_audit_kit.scanners._manifest_deps import MAX_MANIFEST_BYTES
 
     pin, label = {
@@ -302,12 +308,17 @@ def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     name = path.name.lower()
     if not (name.endswith(".txt") or name == "pyproject.toml"):
         return FixAction(rule_id, str(path), f"{path.name} is not a manifest the {label} pin reads", False)
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     try:
         if path.stat().st_size > MAX_MANIFEST_BYTES:
             return FixAction(rule_id, str(path), f"{path.name} is over 2 MB, which the rule does not read", False)
-        with open(path, encoding="utf-8", newline="") as handle:
-            text = handle.read()
+        raw = _regular_bytes(path, MAX_MANIFEST_BYTES)
+        text = raw.decode("utf-8") if raw is not None else None
     except (OSError, UnicodeDecodeError):
+        text = None
+    if text is None:
         return FixAction(rule_id, str(path), "Unable to read file", False)
     result = raise_to_fix(path, text, pin)
     if result.refused:
@@ -316,8 +327,9 @@ def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     if not result.raised:
         return FixAction(rule_id, str(path), f"No {label} declaration admits a release below {floor}", False)
     if not dry_run:
-        with open(path, "w", encoding="utf-8", newline="") as handle:
-            handle.write(result.text)
+        refused = _write_inside_project(path, result.text.encode("utf-8"), project_root, mode="replace")
+        if refused is not None:
+            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     relock = "; re-lock the project to install it" if name == "pyproject.toml" else ""
     return FixAction(
         rule_id,

@@ -12,11 +12,15 @@ and checks that the rule no longer fires before it writes anything.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit import fix
 from agent_audit_kit.scanners import langchain_vuln, neo4j_cve
 
@@ -188,3 +192,74 @@ def test_a_manifest_over_the_limit_is_left_alone(tmp_path: Path) -> None:
     assert action is not None and not action.applied
     assert "over 2 MB" in action.description
     assert text == before
+
+
+@pytest.mark.parametrize("target", ["outside the project", "inside the project"])
+def test_a_symlinked_manifest_is_refused_and_its_target_left_alone(tmp_path: Path, target: str) -> None:
+    """The rule reads a requirements.txt through a link, so `aak fix` reaches one, and
+    writing through it rewrote whatever it named, inside the project or not. The write
+    goes through `_write_inside_project`, which refuses a link, and a dry run reports
+    the refusal too."""
+    project = tmp_path / "proj"
+    project.mkdir()
+    real = tmp_path / "outside.txt" if target == "outside the project" else project / "base.txt"
+    real.write_bytes(b"langchain-core==1.2.21\n")
+    (project / "requirements.txt").symlink_to(real)
+    assert _fires(project, "AAK-LANGCHAIN-001")
+    for dry_run in (True, False):
+        action = fix._apply_fix(project, "AAK-LANGCHAIN-001", "requirements.txt", dry_run=dry_run)
+        assert action is not None and not action.applied
+        assert action.description == "Failed to fix: requirements.txt is a symlink"
+    assert real.read_bytes() == b"langchain-core==1.2.21\n"
+
+
+# A child process runs the fix, so a read or write that blocks on a FIFO fails the
+# test on its timeout instead of hanging the suite. "look" lets the FIFO through the
+# look before the read, and "swap" replaces the manifest with a FIFO after it is
+# read, as a change in between would.
+_FIX_CHILD = (
+    "import os, sys\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit import fix\n"
+    "from agent_audit_kit.scanners import _dependency_pins\n"
+    "root, how = Path(sys.argv[1]), sys.argv[2]\n"
+    "path = root / 'requirements.txt'\n"
+    "if how == 'look':\n"
+    "    real, looks = fix._write_refusal, []\n"
+    "    fix._write_refusal = lambda *args: looks.append(1) if not looks else real(*args)\n"
+    "if how == 'swap':\n"
+    "    real = _dependency_pins.raise_to_fix\n"
+    "    def swapping(*args):\n"
+    "        result = real(*args)\n"
+    "        path.unlink()\n"
+    "        os.mkfifo(path)\n"
+    "        return result\n"
+    "    _dependency_pins.raise_to_fix = swapping\n"
+    "action = fix._fix_raised_pin(path, 'AAK-LANGCHAIN-001', root, dry_run=False)\n"
+    "print(action.applied, action.description)\n"
+)
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+@pytest.mark.parametrize(("how", "said"), [
+    ("fifo", "Failed to fix: requirements.txt is not a regular file"),
+    ("look", "Unable to read file"),
+    ("swap", "Failed to fix: requirements.txt is not a regular file"),
+], ids=["fifo", "look", "swap"])
+def test_a_fifo_named_like_the_manifest_is_refused_without_blocking(tmp_path: Path, how: str, said: str) -> None:
+    """A FIFO blocks the open that would read or write it until the other end comes.
+    The fix read the manifest after checking only its size, 0 for a FIFO, and wrote it
+    with `open(path, "w")`; both waited forever. A FIFO is refused before it is read;
+    one that gets past that look is refused by the read, which takes only a regular
+    file; and one put in the manifest's place after the read is refused by the write."""
+    if how != "swap":
+        os.mkfifo(tmp_path / "requirements.txt")
+    else:
+        (tmp_path / "requirements.txt").write_text("langchain-core==1.2.21\n", encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    done = subprocess.run(
+        [sys.executable, "-c", _FIX_CHILD, str(tmp_path), how], capture_output=True, text=True, timeout=30,
+        env={**os.environ, "PYTHONPATH": str(package_root)},
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == f"False {said}"
