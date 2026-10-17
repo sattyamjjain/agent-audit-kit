@@ -24,8 +24,26 @@ import re
 from bisect import bisect_right
 from dataclasses import dataclass
 
-# Strings, comments and the characters that shape argument lists.
+# Strings, comments and the characters that shape argument lists; in TS/JS also a
+# `/`, which may open a regex literal.
 _TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|["'`]""")
+_JS_TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|/|["'`]""")
+# A regex literal is read up to a fixed window: escapes, classes (in which `/`
+# does not close it), then flags. Outside a class each step jumps to the next
+# character that matters; a class is read by one pattern whose alternatives
+# start with different characters.
+_REGEX_STOP_RE = re.compile(r"[/\\\[\n]")
+_CLASS_BODY_RE = re.compile(r"(?:[^\]\\\n]|\\.)*\]")
+_REGEX_FLAGS_RE = re.compile(r"[A-Za-z]*")
+_REGEX_WINDOW = 512
+# A `/` after one of these starts an expression, so it opens a regex literal:
+# the previous token, a character before it, or a keyword.
+_REGEX_AFTER_TOKENS = frozenset("([{},/")
+_REGEX_AFTER_CHARS = frozenset("(,=:[!&|?{};")
+_REGEX_AFTER_WORDS = frozenset({
+    "return", "typeof", "case", "in", "of", "new", "delete", "void", "throw", "instanceof", "yield", "await",
+    "else", "do",
+})
 _DQ_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 _SQ_RE = re.compile(r"'(?:[^'\\\n]|\\.)*'")
 _JS_TEMPLATE_RE = re.compile(r"`(?:[^`\\]|\\.)*`", re.DOTALL)
@@ -80,6 +98,41 @@ def is_mcp_endpoint_path(path: str) -> bool:
     return False
 
 
+def _regex_literal_end(text: str, at: int, unclosed: list[int]) -> int | None:
+    """The end of the regex literal whose `/` is at ``at``, or None when none
+    closes on its line within `_REGEX_WINDOW` characters.
+
+    ``unclosed`` holds how far the last class that never closed was read. A
+    class opened before that point cannot close before it either (the escapes
+    after a `[` pair up the same way whichever `[` the reading started from),
+    so it is given up on at once: otherwise every `/[` of a long run of them
+    would reread the same window.
+    """
+    limit = min(len(text), at + _REGEX_WINDOW)
+    pos = at + 1
+    while True:
+        stop = _REGEX_STOP_RE.search(text, pos, limit)
+        if stop is None or stop.group() == "\n":
+            return None
+        pos = stop.end()
+        if stop.group() == "/":
+            flags = _REGEX_FLAGS_RE.match(text, pos, limit)
+            return flags.end() if flags else pos
+        if stop.group() == "\\":
+            if pos >= limit or text[pos] == "\n":
+                return None
+            pos += 1
+            continue
+        if pos < unclosed[0]:
+            return None
+        body = _CLASS_BODY_RE.match(text, pos, limit)
+        if body is None:
+            newline = text.find("\n", pos, limit)
+            unclosed[0] = limit if newline < 0 else newline
+            return None
+        pos = body.end()
+
+
 class CodeIndex:
     """Bracket partners, top-level commas and string spans of one Go or TS/JS file."""
 
@@ -95,13 +148,18 @@ class CodeIndex:
         self._strings: dict[int, int] = {}
         self._newlines = [m.start() for m in _NEWLINE_RE.finditer(text)]
         template = _GO_RAW_RE if go else _JS_TEMPLATE_RE
+        token_re = _TOKEN_RE if go else _JS_TOKEN_RE
         stack: list[tuple[str, int]] = []
         braces: list[int] = []
         open_count = {"(": 0, "[": 0, "{": 0}
+        # The last token that is not a comment, and where it ends: whether a
+        # `/` opens a regex literal depends on what precedes it.
+        prev_tok, prev_end = "", 0
+        unclosed = [0]
         pos = 0
         n = len(text)
         while pos < n:
-            m = _TOKEN_RE.search(text, pos)
+            m = token_re.search(text, pos)
             if m is None:
                 break
             tok, at = m.group(), m.start()
@@ -117,6 +175,15 @@ class CodeIndex:
                 self._mask(at, end)
                 pos = end
                 continue
+            if tok == "/":
+                literal = _regex_literal_end(text, at, unclosed) if self._opens_regex(at, prev_tok, prev_end) else None
+                if literal is not None:
+                    self._mask(at, literal)
+                    prev_tok, prev_end = "re", literal
+                else:
+                    prev_tok, prev_end = "/", at + 1
+                pos = prev_end
+                continue
             if tok in "\"'`":
                 pattern = _DQ_RE if tok == '"' else _SQ_RE if tok == "'" else template
                 s = pattern.match(text, at)
@@ -125,8 +192,10 @@ class CodeIndex:
                     continue
                 self._mask(at, s.end())
                 self._strings[at] = s.end()
+                prev_tok, prev_end = "str", s.end()
                 pos = s.end()
                 continue
+            prev_tok, prev_end = tok, at + 1
             pos = at + 1
             if tok in "([{":
                 stack.append((tok, at))
@@ -151,6 +220,43 @@ class CodeIndex:
                     if kind == want:
                         self.close[start] = at
                         break
+
+    def _opens_regex(self, at: int, prev_tok: str, prev_end: int) -> bool:
+        """Whether the `/` at ``at`` starts an expression, and so a regex literal.
+
+        Read backwards to what precedes it, past blanks and comments, no
+        further than the previous token: one of `_REGEX_AFTER_CHARS`, `=>`, a
+        keyword of `_REGEX_AFTER_WORDS`, a previous token of
+        `_REGEX_AFTER_TOKENS`, or the start of the file opens one. After a
+        name, a number, `)`, `]` or a string it is division (`a / b`, `x[i] /
+        2`, `f() / g()`), on the next line too: JS inserts no semicolon before
+        a `/`, and a formatter breaks a long division with the `/` first on
+        the new line. A literal that does not close on its line is division
+        after all. Each stretch between tokens is read back once, so the file
+        costs one pass.
+        """
+        text = self.text
+        q = at - 1
+        k = len(self._mask_starts) - 1
+        while q >= prev_end:
+            if k >= 0 and self._mask_ends[k] == q + 1 and self._mask_starts[k] >= prev_end:
+                q = self._mask_starts[k] - 1
+                k -= 1
+            elif text[q].isspace():
+                q -= 1
+            else:
+                break
+        if q < prev_end:
+            return not prev_tok or prev_tok in _REGEX_AFTER_TOKENS
+        ch = text[q]
+        if ch in _REGEX_AFTER_CHARS or ch == ">" and text[q - 1:q] == "=":
+            return True
+        if not (ch.isalnum() or ch in "_$"):
+            return False
+        start = q
+        while start > prev_end and (text[start - 1].isalnum() or text[start - 1] in "_$"):
+            start -= 1
+        return text[start:q + 1] in _REGEX_AFTER_WORDS
 
     def _mask(self, start: int, end: int) -> None:
         self._mask_starts.append(start)

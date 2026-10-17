@@ -276,6 +276,18 @@ def test_a_large_route_table_pairs_in_linear_time(
     _grows_linearly(tmp_path, name, build, count)
 
 
+# A regex literal holding a backtick: the reader took everything to the next
+# backtick as a template, and the routes after it with it.
+_REGEX_PRELUDE = "const fence = (s) => s.split(/`/).length;\n"
+
+
+def test_routes_after_a_regex_literal_are_still_read(tmp_path: Path) -> None:
+    text = EXPRESS.replace("const app = express();\n", "const app = express();\n" + _REGEX_PRELUDE) + (
+        "const banner = `listening on ${port}`;\n"
+    )
+    assert _one(tmp_path, "server.ts", text) == [("server.ts", 5), ("server.ts", 6)]
+
+
 def test_the_rule_states_what_it_reads() -> None:
     from agent_audit_kit.rules.builtin import RULES
 

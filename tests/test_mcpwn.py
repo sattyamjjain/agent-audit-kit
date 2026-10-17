@@ -83,6 +83,22 @@ def test_the_real_fix_is_quiet(tmp_path: Path) -> None:
     assert findings == []
 
 
+def test_routes_after_a_regex_literal_holding_a_backtick_are_read(tmp_path: Path) -> None:
+    """The bracket reader took a regex literal's backtick for a template and
+    read everything to the next backtick as one string; the regex reader this
+    replaced fired here."""
+    (tmp_path / "server.ts").write_text(
+        "import express from 'express';\n"
+        "const app = express();\n"
+        "const fence = (s) => s.split(/`/).length;\n"
+        "app.post('/mcp', requireAuth, handler);\n"
+        "app.post('/mcp_message', handler);\n"
+        "const banner = `listening on ${port}`;\n"
+    )
+    findings, _ = mcp_middleware.scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCPWN-001", 5)]
+
+
 def test_a_group_made_with_several_middlewares_covers_its_routes(tmp_path: Path) -> None:
     (tmp_path / "router.go").write_text(
         "package mcp\n"
