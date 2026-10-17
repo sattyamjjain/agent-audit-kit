@@ -130,11 +130,19 @@ def discover_cmd(path: str | None, verbose: bool, output_format: str) -> None:
 @click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def pin_cmd(path: str) -> None:
-    """Pin current MCP tool definitions for rug pull detection."""
-    from agent_audit_kit.pinning import create_pins
+    """Pin current MCP tool definitions for rug pull detection.
+
+    Exits 2 when the pin file cannot be written inside the project, for
+    instance because `.agent-audit-kit` is a link that leads out of it.
+    """
+    from agent_audit_kit.pinning import PIN_FILE, PinWriteError, create_pins
 
     project_root = Path(path)
-    count = create_pins(project_root)
+    try:
+        count = create_pins(project_root)
+    except PinWriteError as exc:
+        click.echo(f"Cannot pin: {exc}. {PIN_FILE} was not written.", err=True)
+        sys.exit(EXIT_ERROR)
     click.echo(f"Pinned {count} tool definition(s) to .agent-audit-kit/tool-pins.json")
 
 

@@ -92,23 +92,52 @@ def create_pins(project_root: Path) -> int:
     Writes a ``tool-pins.json`` file under ``.agent-audit-kit/`` in
     the project root. Each pin records the tool's name and its hash.
 
+    The scanned repository can ship anything under `.agent-audit-kit`, and
+    `Path.mkdir(exist_ok=True)` with `Path.write_text` took the pins through a
+    link to a directory outside the project, over the target of a link at the pin
+    file, and into a FIFO that blocked `aak pin` forever. The directory and the
+    file now go through the checks `aak fix` writes with
+    (`fix._make_dir_inside_project`, `fix._write_inside_project`).
+
     Args:
         project_root: The project root directory.
 
     Returns:
         The number of tools pinned.
+
+    Raises:
+        PinWriteError: the pin file, or the directory it goes in, is not one
+            those checks allow, or could not be written; nothing was written.
     """
+    # Imported here so the pin-drift scanner, which imports this module, does
+    # not pull in fix.py and the scan engine it imports.
+    from agent_audit_kit.fix import _as_written, _make_dir_inside_project, _write_inside_project
+
     tools = _discover_tools(project_root)
     pin_dir = project_root / ".agent-audit-kit"
-    pin_dir.mkdir(exist_ok=True)
-    pin_file = pin_dir / "tool-pins.json"
     pins = {key: {"hash": t["hash"], "name": t["name"]} for key, t in tools.items()}
-    pin_file.write_text(json.dumps(pins, indent=2))
+    refused = _make_dir_inside_project(pin_dir, project_root)
+    if refused is None:
+        text = _as_written(json.dumps(pins, indent=2))
+        refused = _write_inside_project(pin_dir / "tool-pins.json", text, project_root)
+    if refused is not None:
+        raise PinWriteError(refused)
     return len(pins)
 
 
 #: Where `create_pins` writes and `verify_pins` reads, relative to the project root.
 PIN_FILE = ".agent-audit-kit/tool-pins.json"
+
+
+class PinWriteError(OSError):
+    """`create_pins` wrote no pin file; the message says why.
+
+    The pin file or its directory is a link out of the project, a FIFO, or
+    anything else `fix._write_refusal` and `fix._make_dir_inside_project`
+    refuse, or the write failed. `pin` reports it on stderr and exits with an
+    error, since no baseline was recorded; an OS error used to end in a
+    traceback.
+    """
 
 
 class PinFileError(ValueError):
