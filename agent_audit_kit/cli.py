@@ -892,7 +892,9 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             ok, msg = emit_pdf(result, framework, Path(output_file))
         else:
             try:
-                ok, msg = emit_pdf_in(result, framework, Path.cwd())
+                # "." rather than the current directory's path, so the file is opened
+                # from the directory itself and no directory above it can move the write.
+                ok, msg = emit_pdf_in(result, framework, Path("."))
             except ReportWriteError as exc:
                 tail = "" if isinstance(exc.reason, _PartlyWritten) else f" {exc.name} was not changed."
                 click.echo(f"Cannot write the report: {exc}.{tail}", err=True)
@@ -1050,10 +1052,10 @@ def pipelock_import_cmd(
         # name, which a cloned repository decides: `Path.write_text` followed a link
         # there out of the project, created the file behind a dangling one and
         # blocked forever on a FIFO. It is written as `aak fix` writes, with the
-        # current directory as the project.
+        # current directory as the project, and by its relative name, so it is
+        # opened from the directory itself and no directory above it can move it.
         target = Path(".agent-audit-kit.yml")
-        cwd = Path.cwd()
-        refused = _write_inside_project(cwd / target, _as_written(out_text), cwd)
+        refused = _write_inside_project(target, _as_written(out_text), Path("."))
         if refused is not None:
             tail = "" if isinstance(refused, _PartlyWritten) else f" {target} was not changed."
             click.echo(f"Cannot import the policy: {refused}.{tail}", err=True)

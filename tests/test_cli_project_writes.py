@@ -355,6 +355,25 @@ def test_a_write_that_fails_part_way_says_the_file_may_be_partly_written(
     )
 
 
+@pytest.mark.parametrize(
+    "command", [c for c in _COMMANDS if c.id != "install-precommit"], ids=[c.id for c in _COMMANDS[1:]]
+)
+def test_the_default_target_is_opened_relative_to_the_current_directory(
+    tmp_path: Path, command: _Command, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The target was opened by its absolute path, built from `Path.cwd()`, so a directory
+    above the current one swapped for a link between the two would move the write. It is
+    opened by its relative name, which resolves from the current directory itself."""
+    project, elsewhere = _projects(tmp_path)
+    monkeypatch.setattr(Path, "cwd", classmethod(lambda cls: elsewhere))
+
+    result = _invoke(command, project, monkeypatch)
+
+    assert result.exit_code == 0, result.output
+    assert (project / command.rel).is_file()
+    assert os.listdir(elsewhere) == []
+
+
 # ---------------------------------------------------------------------------
 # pipelock import: the default target as before, and -o left to the user
 # ---------------------------------------------------------------------------
