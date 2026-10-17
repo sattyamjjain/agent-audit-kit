@@ -93,6 +93,8 @@ _REQUIREMENTS: tuple[tuple[str, str, bool | None], ...] = (
     ("commented-out pin above the fix", "# {p}=={a}\n{p}=={f}", False),
     ("hash option", "{p}=={a} --hash=sha256:0123abcd", True),
     ("one install, intersected", "{p}>={a}\n{p}=={f}", False),
+    # Stated in the limitations: no release satisfies both, and pip refuses the file too.
+    ("conflicting pins admit nothing", "{p}=={f}\n{p}=={a}", False),
     ("PEP 503 spelling", "{u}=={a}", True),
     ("prefix match on the affected release", "{p}=={a}.*", True),
     ("prefix match on the fix", "{p}=={f}.*", False),
@@ -121,6 +123,9 @@ _PYPROJECT: tuple[tuple[str, str, bool | None], ...] = (
     ("Poetry exact affected", _POETRY + '{p} = "{a}"\n', True),
     ("Poetry caret on the fix", _POETRY + '{p} = "^{f}"\n', False),
     ("Poetry table with extras", _POETRY + '{p} = { version = "<{f}", extras = ["cli"] }\n', True),
+    # Stated in the limitations. It cannot be a committed fixture: ruff parses every
+    # pyproject.toml under the paths it lints and fails on one that does not parse.
+    ("a pyproject.toml that does not parse", _HEAD + 'dependencies = ["{p}=={a}"\n', False),
 )
 
 # (label, package.json dependency value, fires?).

@@ -4335,7 +4335,11 @@ _r(
         "npm's `@langchain/*` packages have version lines of their own. The umbrella "
         "`langchain` and `langchain-community` distributions are not read either, "
         "because their version numbers are not langchain-core's, so a project that "
-        "pins only those is not reported. A manifest over 2 MB is not read."
+        "pins only those is not reported. Declarations of one install that no release "
+        "satisfies together (`langchain-core==1.2.22` beside `langchain-core==1.2.21` in "
+        "one requirements file) admit nothing and are not reported; pip refuses to "
+        "install them too. A pyproject.toml that does not parse and a manifest over "
+        "2 MB are not read."
     ),
 )
 
@@ -5815,7 +5819,11 @@ _r(
         "project root, taking the lowest version a range allows. An unpinned line is "
         "not reported, and uv.lock, `requirements/base.txt` and a `uvx "
         "mcp-neo4j-cypher==0.5.0 --read-only` launcher in .mcp.json are not read, "
-        "nor is a manifest over 2 MB. The source arm needs `read_only = "
+        "nor is a pyproject.toml that does not parse or a manifest over 2 MB. "
+        "Declarations of one install that no release satisfies together "
+        "(`mcp-neo4j-cypher==0.6.0` beside `mcp-neo4j-cypher==0.5.0` in one "
+        "requirements file) admit nothing and are not reported; pip refuses to install "
+        "them too. The source arm needs `read_only = "
         "True` and a `CALL apoc.` or `runWrite` reference in the same Python file, "
         "so a query kept in another module is not matched."
     ),
@@ -6355,9 +6363,11 @@ _r(
         "(`github:o/r#v1.20.0`, `sdk-1.20.0.tgz`, `workspace:^1.20.0`); a declaration "
         "that states no version (`\"latest\"`, a git reference to a commit or a branch, "
         "`workspace:*`) is not reported. `io.modelcontextprotocol.sdk:mcp-core` below 0.11.0 "
-        "is read as written in the root pom.xml and Gradle files. A lockfile "
-        "(uv.lock, package-lock.json), a manifest in a sub-directory and one over 2 MB "
-        "are not read."
+        "is read as written in the root pom.xml and Gradle files. Declarations of one "
+        "install that no release satisfies together (`mcp==1.23.0` beside `mcp==1.22.0` "
+        "in one requirements file) admit nothing and are not reported; pip refuses to "
+        "install them too. A lockfile (uv.lock, package-lock.json), a pyproject.toml "
+        "that does not parse, and a manifest in a sub-directory or over 2 MB are not read."
     ),
 )
 
@@ -6578,8 +6588,12 @@ _r(
         "`post`, `put`, `delete`, `request`, `urlopen`, `fetch` or `send`) that does "
         "not disable redirects. A guard under another name (`assert_public_url`), or a "
         "guard and a fetch in two separate, non-nested Python functions, is not "
-        "matched."
-        " A manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
+        "matched. In the version check, declarations of one install that no release "
+        "satisfies together (`langchain-text-splitters==1.1.2` beside "
+        "`langchain-text-splitters==1.1.1` in one requirements file) admit nothing and "
+        "are not reported; pip refuses to install them too. A pyproject.toml that does "
+        "not parse and a manifest over 2 MB are not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6633,8 +6647,12 @@ _r(
         "`langchain-openai` only, so "
         "on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's "
         "own source: that release resolves inside the guard, but the fetch "
-        "resolves the name again."
-        " A manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
+        "resolves the name again. Declarations of one install that no release "
+        "satisfies together (`langchain-openai==1.1.14` beside `langchain-openai==1.1.13` "
+        "in one requirements file) admit nothing and are not reported; pip refuses to "
+        "install them too. A pyproject.toml that does not parse and a manifest over "
+        "2 MB are not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
