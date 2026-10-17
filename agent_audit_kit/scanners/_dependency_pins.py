@@ -42,9 +42,11 @@ two cannot drift apart:
   merges them; an override (npm `overrides`, uv `override-dependencies`)
   replaces the regular entries; and a patched pin in another section does not
   clear a range in this one.
+- A git reference, an archive URL and a workspace spec are judged by the
+  release their tag, file name or range names (`_with_referenced_version`).
 - A declaration that states no version AAK can read (a bare name, `*`,
-  `latest`, a git or file reference) is reported only by a rule that always
-  reported one (`report_unversioned`).
+  `latest`, a file reference, a git reference to a commit or a branch) is
+  reported only by a rule that always reported one (`report_unversioned`).
 
 One finding per rule per file, on the line of the declaration that decided it.
 """
@@ -56,9 +58,14 @@ import json
 import threading
 from collections import OrderedDict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:  # Python < 3.11
+    import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_MANIFEST_BYTES,
@@ -66,9 +73,18 @@ from agent_audit_kit.scanners._manifest_deps import (
     declaration_lines,
     declarations,
     package_json_declarations,
+    pyproject_declarations,
     requirements_declarations,
 )
-from agent_audit_kit.scanners._versions import NONE, TOP, Ver, exact_version, intersect, parse_range
+from agent_audit_kit.scanners._versions import (
+    NONE,
+    TOP,
+    Ver,
+    exact_version,
+    intersect,
+    parse_range,
+    parse_version,
+)
 from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
     _admits_affected,
     _deciding_declaration,
@@ -130,8 +146,8 @@ class PinnedDependency:
         return f"{declaration.text!r}{where}{how}"
 
 
-def manifest_declarations(path: Path, text: str) -> list[Declaration]:
-    """The dependencies `path` declares, without the commands its scripts run.
+def _parsed(path: Path, text: str) -> tuple[list[Declaration], object]:
+    """The dependencies `path` declares as parsed, and the parsed document.
 
     Every requirements file is read as one, whatever its name, so
     `dev-requirements.txt` counts though it does not start with "requirements".
@@ -140,22 +156,162 @@ def manifest_declarations(path: Path, text: str) -> list[Declaration]:
     these rules reads the commands a script runs, and tokenising them was the
     costly part of reading the file: with shlex, quadratic in the length of one
     word, a 300 KB script word took 3.5 s to read for launches that were then
-    thrown away.
+    thrown away. A file that does not parse declares nothing, as in
+    `declarations`.
     """
     name = path.name.lower()
     if name.endswith(".txt"):
-        return requirements_declarations(text)
-    if name == "package.json":
-        # The same failures `declarations` reads as "no declarations": invalid
-        # JSON, and nesting deep enough to exhaust the stack.
-        try:
+        return requirements_declarations(text), None
+    try:
+        if name == "package.json":
             data = json.loads(text)
             if not isinstance(data, dict):
-                return []
-            return package_json_declarations({k: v for k, v in data.items() if k != "scripts"})
-        except (ValueError, RecursionError):
-            return []
-    return [d for d in declarations(path, text) if d.kind != "launch"]
+                return [], None
+            return package_json_declarations({k: v for k, v in data.items() if k != "scripts"}), data
+        if name == "pyproject.toml":
+            document = tomllib.loads(text)
+            return pyproject_declarations(document), document
+    except (ValueError, RecursionError):  # TOMLDecodeError and JSONDecodeError are ValueErrors
+        return [], None
+    return [d for d in declarations(path, text) if d.kind != "launch"], None
+
+
+def manifest_declarations(path: Path, text: str) -> list[Declaration]:
+    """The dependencies `path` declares, each with the version a reference names.
+
+    See `_with_referenced_version`: a git reference, an archive URL or a
+    workspace spec is judged by the release it names.
+    """
+    found, document = _parsed(path, text)
+    return [_with_referenced_version(d, document) for d in found]
+
+
+# What a git reference or archive names a release with. A tag counts only as
+# digits, a dot and a digit after an optional `v`, so a commit hash, a branch
+# and `HEAD` name none.
+_VCS_SCHEMES = ("git+", "hg+", "svn+", "bzr+")
+_ARCHIVES = (".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip", ".whl")
+
+
+def _digits(text: str) -> bool:
+    return bool(text) and all("0" <= c <= "9" for c in text)
+
+
+def _names_a_release(token: str) -> bool:
+    text = token[1:] if token[:1] in ("v", "V") else token
+    dot = text.find(".")
+    return dot > 0 and _digits(text[:dot]) and _digits(text[dot + 1:dot + 2])
+
+
+def _tag_release(tag: str) -> Ver | None:
+    """The release a tag names: `v1.2.3`, `1.2.3`, `name==1.2.3`, `release-1.2.3`."""
+    for candidate in (tag.rsplit("==", 1)[-1], tag.rsplit("-", 1)[-1], tag.rsplit("/", 1)[-1]):
+        if _names_a_release(candidate):
+            return parse_version(candidate)
+    return None
+
+
+def _archive_release(url: str) -> Ver | None:
+    """The release an archive's file name states: `sdk-1.20.0.tgz`,
+    `pkg-1.2.3.tar.gz`, `pkg-1.2.3-py3-none-any.whl`, GitHub's `v1.2.3.tar.gz`."""
+    name = url.split("#", 1)[0].split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1]
+    lowered = name.lower()
+    for suffix in _ARCHIVES:
+        if lowered.endswith(suffix):
+            for part in name[:-len(suffix)].split("-"):
+                if _names_a_release(part):
+                    return parse_version(part)
+    return None
+
+
+def _npm_reference(spec: str) -> str | None:
+    """The version an npm git, tarball or workspace spec names, as an npm range."""
+    if spec.startswith("workspace:"):
+        rest = spec[len("workspace:"):]
+        return rest if rest not in ("", "*", "^", "~") else None
+    if "#" in spec:  # github:o/r#v1.2.3, git+https://...#1.2.3, o/r#semver:^1.2.0
+        fragment = spec.rsplit("#", 1)[1]
+        if fragment.startswith("semver:"):
+            return fragment[len("semver:"):] or None
+        release = _tag_release(fragment)
+        return _dotted(release) if release else None
+    if spec.startswith(("http://", "https://")):
+        release = _archive_release(spec)
+        return _dotted(release) if release else None
+    return None
+
+
+def _pip_reference(text: str) -> str | None:
+    """The version a pip VCS or URL requirement names, as an exact pin: its tag
+    (`git+https://host/o/r@v1.2.3`, `@name==1.2.3`) or its archive's file name.
+    The tag is read after the repository path's last `@`, never from the
+    userinfo before the host."""
+    at = text.find("://")
+    if at == -1:
+        return None
+    start = at
+    while start > 0 and (text[start - 1].isalnum() or text[start - 1] in "+-."):
+        start -= 1
+    end = at + 3
+    while end < len(text) and not text[end].isspace():
+        end += 1
+    url = text[start:end]
+    if url.startswith(_VCS_SCHEMES):
+        location = url.split("#", 1)[0][url.find("://") + 3:]
+        slash = location.find("/")
+        repository = location[slash:] if slash != -1 else ""
+        release = _tag_release(repository.rsplit("@", 1)[1]) if "@" in repository else None
+    else:
+        release = _archive_release(url)
+    return f"=={_dotted(release)}" if release else None
+
+
+def _poetry_reference(declaration: Declaration, document: object) -> str | None:
+    """The release a Poetry git table's `tag` or `rev`, or a url table's archive,
+    names, as an exact pin."""
+    node = document
+    for key in declaration.path:
+        if isinstance(node, dict):
+            node = node.get(key)
+        elif isinstance(node, list) and isinstance(key, int) and 0 <= key < len(node):
+            node = node[key]
+        else:
+            return None
+    if not isinstance(node, dict):
+        return None
+    for key in ("tag", "rev"):
+        value = node.get(key)
+        release = _tag_release(value) if isinstance(value, str) else None
+        if release:
+            return f"=={_dotted(release)}"
+    url = node.get("url")
+    release = _archive_release(url) if isinstance(url, str) else None
+    return f"=={_dotted(release)}" if release else None
+
+
+def _with_referenced_version(declaration: Declaration, document: object) -> Declaration:
+    """`declaration`, with the version the reference it names states, if it names one.
+
+    A git reference, an archive URL and a workspace spec state a release: in
+    the tag (`github:o/r#v1.20.0`, `git+https://host/o/r@v1.1.13`, the LangChain
+    monorepo's `@langchain-openai==1.1.14`, a Poetry `tag`), in the file name
+    (`sdk-1.20.0.tgz`, a Poetry `url`), or in the range after `workspace:`. The first-number
+    readers took the version from there, and read as stating none,
+    AAK-DNS-REBIND-002 (HIGH) lost every one, while the two langchain SSRF
+    pins, which report an unversioned reference, reported a git requirement at
+    the patched release as stating no version, which no upgrade could clear. A
+    reference that names no release (a commit, a branch, `workspace:*`) still
+    states no version. The text stays as written, for the evidence and the line.
+    """
+    if declaration.dialect == "npm":
+        version = _npm_reference(declaration.version)
+    elif declaration.version:
+        return declaration
+    elif declaration.dialect == "poetry":
+        version = _poetry_reference(declaration, document)
+    else:
+        version = _pip_reference(declaration.text)
+    return declaration if version is None else replace(declaration, version=version)
 
 
 @dataclass(frozen=True)
@@ -296,10 +452,11 @@ def raise_to_fix(path: Path, text: str, pin: DependencyPin) -> Raised:
     satisfy, such as `>=1.2.22` beside a hashed `==1.2.21`.
     """
     table_pin = pin.as_table_pin()
+    found, document = _parsed(path, text)
     targets = [
-        d for d in manifest_declarations(path, text)
-        if _pin_applies(table_pin, d.ecosystem) and _names_match(table_pin, d)
-        and _admits_affected(table_pin, d)
+        (d, judged) for d, judged in ((d, _with_referenced_version(d, document)) for d in found)
+        if _pin_applies(table_pin, judged.ecosystem) and _names_match(table_pin, judged)
+        and _admits_affected(table_pin, judged)
     ]
     if not targets:
         return Raised(text, 0)
@@ -308,10 +465,13 @@ def raise_to_fix(path: Path, text: str, pin: DependencyPin) -> Raised:
     line_of = declaration_lines(path, text)
     lines = text.split("\n")
     refused: list[tuple[int | None, str]] = []
-    for declaration in targets:
+    for declaration, judged in targets:
         number = line_of(declaration)
         if number is None:
             refused.append((None, f"{declaration.text!r} is not written where AAK read it"))
+            continue
+        if judged is not declaration:
+            refused.append((number, "names its release in a git reference or URL; point that at a fixed release"))
             continue
         line, why = _raised_line(lines, number - 1, declaration, _raised_spec(declaration, pin.fixed))
         if why:

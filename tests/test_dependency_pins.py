@@ -358,3 +358,82 @@ def test_a_manifest_over_the_limit_is_not_read(tmp_path: Path) -> None:
     fired = {f.rule_id for module in _PYPROJECT_MODULES for f in module.scan(tmp_path)[0]}
     assert time.process_time() - started < 2.0
     assert not fired & {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-DNS-REBIND-002"}
+
+
+# A git reference, a tarball and a workspace spec state a version in the tag, the
+# file name or the range after `workspace:`. The first-number readers took it from
+# there; read as unversioned, AAK-DNS-REBIND-002 (HIGH) lost them, and the two
+# langchain SSRF pins reported a patched git requirement as stating no version.
+_PY_REFS: tuple[tuple[str, str, bool | None], ...] = (
+    ("pip VCS tag", "git+https://github.com/o/r@v{a}#egg={p}", True),
+    ("pip VCS tag, fixed", "git+https://github.com/o/r@v{f}#egg={p}", False),
+    ("editable, monorepo tag", "-e git+https://github.com/o/r@{p}=={a}#egg={p}&subdirectory=libs/x", True),
+    ("editable, monorepo tag, fixed", "-e git+https://github.com/o/r@{p}=={f}#egg={p}&subdirectory=libs/x", False),
+    ("PEP 508 direct reference", "{p} @ git+https://github.com/o/r@v{a}", True),
+    ("PEP 508 direct reference, fixed", "{p} @ git+https://github.com/o/r@v{f}", False),
+    ("sdist URL", "{p} @ https://files.example/{s}-{a}.tar.gz", True),
+    ("sdist URL, fixed", "{p} @ https://files.example/{s}-{f}.tar.gz", False),
+    ("commit", "git+https://github.com/o/r@4f2c1d9e8b7a#egg={p}", None),
+)
+
+_NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
+    ("GitHub tag", "github:o/r#v{a}", True),
+    ("GitHub tag, fixed", "github:o/r#v{f}", False),
+    ("git URL tag", "git+https://github.com/o/r.git#{a}", True),
+    ("git URL tag, fixed", "git+https://github.com/o/r.git#{f}", False),
+    ("git semver range", "o/r#semver:^{a}", True),
+    ("registry tarball", "https://registry.npmjs.org/{p}/-/{b}-{a}.tgz", True),
+    ("registry tarball, fixed", "https://registry.npmjs.org/{p}/-/{b}-{f}.tgz", False),
+    ("workspace range", "workspace:^{a}", True),
+    ("workspace range, fixed", "workspace:^{f}", False),
+    ("workspace, any", "workspace:*", None),
+    ("commit", "github:o/r#4f2c1d9e8b7a", None),
+)
+
+
+def _ref(template: str, pin: _Pin) -> str:
+    return pin.fill(template.replace("{s}", pin.package.replace("-", "_"))
+                    .replace("{b}", pin.package.rsplit("/", 1)[-1]))
+
+
+@pytest.mark.parametrize("pin", _PY_PINS, ids=str)
+@pytest.mark.parametrize(("label", "template", "fires"), _PY_REFS, ids=_ids(_PY_REFS))
+def test_a_python_reference_states_its_version(
+    tmp_path: Path, pin: _Pin, label: str, template: str, fires: bool | None
+) -> None:
+    (tmp_path / "requirements.txt").write_text(_ref(template, pin) + "\n", encoding="utf-8")
+    assert pin.fires(tmp_path) is _expect(fires, pin), label
+
+
+@pytest.mark.parametrize("pin", _PY_PINS, ids=str)
+@pytest.mark.parametrize(("table", "fires"), [
+    ('{ git = "https://github.com/o/r.git", tag = "v{a}" }', True),
+    ('{ git = "https://github.com/o/r.git", tag = "v{f}" }', False),
+    ('{ git = "https://github.com/o/r.git", tag = "{p}=={a}", subdirectory = "libs/x" }', True),
+    ('{ git = "https://github.com/o/r.git", rev = "4f2c1d9e8b7a" }', None),
+    ('{ url = "https://files.example/{s}-{a}.tar.gz" }', True),
+    ('{ url = "https://files.example/{s}-{f}.tar.gz" }', False),
+])
+def test_a_poetry_reference_states_its_version(tmp_path: Path, pin: _Pin, table: str, fires: bool | None) -> None:
+    (tmp_path / "pyproject.toml").write_text(_ref(_POETRY + "{p} = " + table + "\n", pin), encoding="utf-8")
+    assert pin.fires(tmp_path) is _expect(fires, pin)
+
+
+@pytest.mark.parametrize("pin", _NPM_PINS, ids=str)
+@pytest.mark.parametrize(("label", "template", "fires"), _NPM_REFS, ids=_ids(_NPM_REFS))
+def test_an_npm_reference_states_its_version(
+    tmp_path: Path, pin: _Pin, label: str, template: str, fires: bool | None
+) -> None:
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {pin.package: _ref(template, pin)}}), encoding="utf-8")
+    assert pin.fires(tmp_path) is _expect(fires, pin), label
+
+
+def test_a_token_in_a_git_url_stays_out_of_the_evidence(tmp_path: Path) -> None:
+    secret = "QZX" + "9f3a7b21Zq7Wm2Kd"
+    (tmp_path / "requirements.txt").write_text(
+        f"-e git+https://x-access-token:{secret}@github.com/o/r@v1.1.13#egg=langchain-openai\n", encoding="utf-8")
+    findings, _ = ssrf_toctou.scan(tmp_path)
+    [finding] = [f for f in findings if f.rule_id == "AAK-SSRF-TOCTOU-001"]
+    assert secret not in finding.evidence
+    assert "states no version" not in finding.evidence

@@ -107,6 +107,13 @@ def test_neo4j_fix_clears_the_rule(tmp_path: Path, name: str, before: str, after
     ("requirements.txt", "langchain-core \\\n    ==1.2.21\n", "continues onto the next line"),
     # The version sits on a line of its own, below the table header.
     ("pyproject.toml", '[tool.poetry.dependencies.langchain-core]\nversion = "1.2.21"\n', "on another line"),
+    # A reference names its release in a tag or a file name, which a range cannot replace.
+    ("requirements.txt", "-e git+https://github.com/langchain-ai/langchain@langchain-core==1.2.21"
+     "#egg=langchain-core&subdirectory=libs/core\n", "git reference or URL"),
+    ("requirements.txt", "langchain-core @ https://files.example/langchain_core-1.2.21.tar.gz\n",
+     "git reference or URL"),
+    ("pyproject.toml", _POETRY + 'langchain-core = { git = "https://github.com/langchain-ai/langchain.git", '
+     'tag = "langchain-core==1.2.21" }\n', "git reference or URL"),
 ])
 def test_a_declaration_it_cannot_rewrite_is_left_and_named(tmp_path: Path, name: str, before: str, why: str) -> None:
     (tmp_path / name).write_text(before, encoding="utf-8")
@@ -140,6 +147,7 @@ def test_dry_run_proposes_without_writing(tmp_path: Path) -> None:
 @pytest.mark.parametrize(("name", "body"), [
     ("requirements.txt", "langchain-core>=1.2.22\nlangchain==1.1.5\n"),
     ("requirements.txt", "langchain-core\n"),     # states no version; the rule does not report it
+    ("requirements.txt", "langchain-core @ git+https://github.com/o/r@v1.2.22\n"),   # a fixed tag
     ("package.json", '{"dependencies": {"@langchain/core": "0.3.10"}}'),
     ("app.py", "from langchain_core.prompts import load_prompt\n"),
 ])
