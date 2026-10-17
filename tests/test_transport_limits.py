@@ -447,7 +447,8 @@ def test_the_rule_states_what_it_reads() -> None:
     assert "helper" in limitations and "reverse proxy" in limitations
     # Each bound and skip, pinned by a test in this file.
     for stated in ("1,000,000 bytes", "160 characters", "aiohttp", "settings segment", "compares `len(body)`",
-                   "RequestSizeLimiter", "io.LimitReader", "within 80 characters", "within 300 characters"):
+                   "RequestSizeLimiter", "io.LimitReader", "within 80 characters", "within 300 characters",
+                   "on the comparison's own line", "no `}` between"):
         assert stated in limitations, stated
 
 
@@ -711,6 +712,28 @@ def test_a_content_length_middleware_counts_within_its_windows(
     project-wide limit when its `{` opens within 80 characters of the
     comparison and the 413 comes within 300 characters after it."""
     root = _write(tmp_path, {"server.go": GO_NETHTTP, "mw.go": _content_length_middleware(before_brace, before_413)})
+    assert _hits(root) == ([] if silenced else [("server.go", 14)])
+
+
+def _limit_middleware(test: str, respond: str) -> str:
+    return (
+        "package main\n\nimport \"net/http\"\n\nfunc limit(next http.Handler) http.Handler {\n"
+        "\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n"
+        f"\t\t{test}\n\t\t\t{respond}\n\t\t\treturn\n\t\t}}\n\t\tnext.ServeHTTP(w, r)\n\t}})\n}}\n"
+    )
+
+
+@pytest.mark.parametrize(("test", "respond", "silenced"), [
+    ("if r.ContentLength > maxBody {", 'http.Error(w, "too large", 413)', True),
+    # A `}` between the `{` and the 413, as a map literal before it has.
+    ("if r.ContentLength > maxBody {", 'writeJSON(w, map[string]string{"error": "too large"}, 413)', False),
+    # The `{` on the line after the comparison.
+    ("if r.ContentLength >\n\t\t\tmaxBody {", 'http.Error(w, "too large", 413)', False),
+], ids=["plain", "map-literal", "next-line"])
+def test_a_content_length_middleware_needs_its_brace_on_the_line_and_no_brace_before_the_413(
+    tmp_path: Path, test: str, respond: str, silenced: bool,
+) -> None:
+    root = _write(tmp_path, {"server.go": GO_NETHTTP, "mw.go": _limit_middleware(test, respond)})
     assert _hits(root) == ([] if silenced else [("server.go", 14)])
 
 
