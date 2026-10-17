@@ -11,6 +11,7 @@ One fixture and one splice test per supported format.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -293,3 +294,73 @@ def test_cli_warns_when_no_transcript_is_readable(tmp_path: Path) -> None:
         cli, ["scan", str(tmp_path), "--sessions", str(empty), "--format", "json"]
     )
     assert "no readable session transcript" in result.output
+
+
+# --- a hostile transcript -----------------------------------------------------
+#
+# A user passes --sessions a transcript an agent wrote, and an agent writes what
+# its tools returned. JSON's parser raised RecursionError past a fixed depth on
+# 3.9 to 3.13 (3.14 bounds it by the stack instead, so there a 100,000-level
+# text may be read), the adapters caught only ValueError, and a LangGraph
+# checkpoint was read by recursing down its `checkpoint` keys: any of these
+# stopped `aak scan --sessions` outright.
+
+_DEEP = "[" * 100_000 + "]" * 100_000
+_MAY_BE_READ = sys.version_info >= (3, 14)
+
+
+def test_a_checkpoint_nested_past_the_recursion_limit_is_read() -> None:
+    raw: dict = {"channel_values": {"messages": [
+        {"tool_calls": [{"name": "read_file", "args": {"path": "/etc/passwd"}}]}]}}
+    for _ in range(sys.getrecursionlimit() * 20):
+        raw = {"checkpoint": raw}
+    assert from_langgraph(raw) == [{"tool": "read_file", "arguments": {"path": "/etc/passwd"}}]
+
+
+def test_a_jsonl_line_too_deep_to_parse_costs_that_line_alone(tmp_path: Path) -> None:
+    from agent_audit_kit.scanners._helpers import collecting_refusals
+
+    rows = [json.dumps({"tool": "read_file", "args": {"path": "a"}}), _DEEP,
+            json.dumps({"tool": "read_file", "args": {"path": "b"}})]
+    path = tmp_path / "calls.jsonl"
+    path.write_text("\n".join(rows))
+    with collecting_refusals() as refused:
+        result = normalize_path(path)
+    assert result == ("jsonl", [{"tool": "read_file", "arguments": {"path": "a"}},
+                                {"tool": "read_file", "arguments": {"path": "b"}}])
+    assert list(refused) == [str(path)] or (_MAY_BE_READ and not refused)
+    assert from_jsonl("\n".join(rows)) == result[1]
+
+
+def test_an_argument_string_too_deep_to_parse_is_kept_as_a_string() -> None:
+    from agent_audit_kit.sessions.adapters import _as_arguments
+
+    text = '{"a":' * 100_000 + "1" + "}" * 100_000
+    got = _as_arguments(text)
+    assert got == {"arg": text} or (_MAY_BE_READ and isinstance(got, dict) and "a" in got)
+
+
+def test_a_transcript_too_deep_to_parse_is_refused_not_a_crash(tmp_path: Path) -> None:
+    """The scan finishes, says it is incomplete, and names the transcript, as a
+    refused file in the project does."""
+    from click.testing import CliRunner
+
+    from agent_audit_kit.cli import cli
+
+    transcripts = tmp_path / "transcripts"
+    transcripts.mkdir()
+    (transcripts / "deep.json").write_text(_DEEP)
+    (transcripts / "calls.jsonl").write_text(json.dumps({"tool": "read_file", "args": {"path": "a"}}))
+    project = tmp_path / "project"
+    project.mkdir()
+    out = tmp_path / "r.json"
+    res = CliRunner().invoke(cli, ["scan", str(project), "--sessions", str(transcripts),
+                                   "--format", "json", "-o", str(out)])
+    assert res.exception is None or isinstance(res.exception, SystemExit), res.exception
+    failures = [f["evidence"] for f in json.loads(out.read_text())["findings"]
+                if f["ruleId"] == "AAK-INTERNAL-SCANNER-FAIL"]
+    if _MAY_BE_READ and not failures:
+        assert res.exit_code == 0
+        return
+    assert res.exit_code == 1
+    assert len(failures) == 1 and "error=RefusedFile: " in failures[0] and "deep.json" in failures[0], failures

@@ -389,22 +389,30 @@ def _run_scan(
     # SDK traces, LangGraph checkpoints, raw JSONL) into that shape and runs the
     # same rule over them, unchanged.
     if sessions:
+        from agent_audit_kit.engine import _OPTIONAL_SCANNERS, _refused_file_findings
+        from agent_audit_kit.scanners._helpers import collecting_refusals
         from agent_audit_kit.sessions.adapters import load_transcripts, scan_sessions
 
         sessions_path = Path(sessions)
-        transcripts = load_transcripts(sessions_path)
-        if verbose:
-            for tpath, fmt, calls in transcripts:
-                click.echo(f"session: {tpath} ({fmt}, {len(calls)} calls)", err=True)
-        if not transcripts:
-            click.echo(
-                f"Warning: no readable session transcript found at {sessions} "
-                f"(supported: OpenAI Agents SDK traces, LangGraph checkpoint/thread "
-                f"state, JSONL of {{tool, args, ts}}, AAK *.session.json).",
-                err=True,
-            )
-        else:
-            result.findings.extend(scan_sessions(sessions_path, config_root=project_root))
+        # A transcript nested past what JSON's parser reads is refused, and
+        # reported as a refused file in the project is, so the scan says it is
+        # incomplete rather than passing on what it did not read.
+        with collecting_refusals() as refused:
+            transcripts = load_transcripts(sessions_path)
+            if verbose:
+                for tpath, fmt, calls in transcripts:
+                    click.echo(f"session: {tpath} ({fmt}, {len(calls)} calls)", err=True)
+            if not transcripts:
+                click.echo(
+                    f"Warning: no readable session transcript found at {sessions} "
+                    f"(supported: OpenAI Agents SDK traces, LangGraph checkpoint/thread "
+                    f"state, JSONL of {{tool, args, ts}}, AAK *.session.json).",
+                    err=True,
+                )
+            else:
+                result.findings.extend(scan_sessions(sessions_path, config_root=project_root))
+        splice = next(name for module, name, _ in _OPTIONAL_SCANNERS if module == "session_splice")
+        result.findings.extend(_refused_file_findings(splice, refused, project_root))
 
     # RUGPULL / pin-drift detection now lives in the scanners/pin_drift.py
     # scanner and runs as part of run_scan() above.

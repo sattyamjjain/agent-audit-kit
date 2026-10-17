@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import yaml
 
@@ -121,6 +121,41 @@ _USER_FACING_SURFACE_RE = re.compile(
 # Config-side parsing
 # --------------------------------------------------------------------------
 
+# A list item has no key; its pair is walked into but never yielded.
+_NO_KEY = object()
+
+
+def _pairs_depth_first(data: Any) -> Iterator[tuple[Any, Any]]:
+    """Every `(key, value)` of every mapping in a YAML/JSON document, in the
+    order the two walks below met them when they recursed: a pair, then
+    everything inside its value, then the next pair. Lists are entered at any
+    depth.
+
+    One frame per level took a config nested past the recursion limit, which
+    JSON's parser reads on Python 3.12 and later (about 10,000 levels), down
+    with the whole scanner. The walk keeps a stack of iterators instead.
+    """
+    stack: list[Iterator[tuple[Any, Any]]] = [_children(data)]
+    while stack:
+        pair = next(stack[-1], None)
+        if pair is None:
+            stack.pop()
+            continue
+        key, value = pair
+        if key is not _NO_KEY:
+            yield key, value
+        if isinstance(value, (dict, list)):
+            stack.append(_children(value))
+
+
+def _children(node: Any) -> Iterator[tuple[Any, Any]]:
+    if isinstance(node, dict):
+        return iter(node.items())
+    if isinstance(node, list):
+        return ((_NO_KEY, item) for item in node)
+    return iter(())
+
+
 def _extract_declared_locales(data: Any) -> set[str]:
     """Walk a YAML/JSON document looking for locale declarations. Recognises
     the common shapes: `locales: [en, fr]`, `languages: [en, es]`,
@@ -129,36 +164,27 @@ def _extract_declared_locales(data: Any) -> set[str]:
     `multilingual: true`, which names no locale, is read by
     `_declares_multilingual`."""
     found: set[str] = set()
-
-    def _visit(node: Any) -> None:
-        if isinstance(node, dict):
-            for key, val in node.items():
-                key_lower = str(key).lower()
-                if key_lower in {
-                    "locales", "languages", "supported_languages",
-                    "supported", "locale_set", "language_set",
-                }:
-                    if isinstance(val, list):
-                        for item in val:
-                            loc = _normalize_locale(str(item))
-                            if loc:
-                                found.add(loc)
-                    elif isinstance(val, str):
-                        for part in re.split(r"[,\s]+", val):
-                            loc = _normalize_locale(part)
-                            if loc:
-                                found.add(loc)
-                elif key_lower in {"locale", "language", "default_locale", "primary_locale"}:
-                    if isinstance(val, str):
-                        loc = _normalize_locale(val)
-                        if loc:
-                            found.add(loc)
-                _visit(val)
-        elif isinstance(node, list):
-            for item in node:
-                _visit(item)
-
-    _visit(data)
+    for key, val in _pairs_depth_first(data):
+        key_lower = str(key).lower()
+        if key_lower in {
+            "locales", "languages", "supported_languages",
+            "supported", "locale_set", "language_set",
+        }:
+            if isinstance(val, list):
+                for item in val:
+                    loc = _normalize_locale(str(item))
+                    if loc:
+                        found.add(loc)
+            elif isinstance(val, str):
+                for part in re.split(r"[,\s]+", val):
+                    loc = _normalize_locale(part)
+                    if loc:
+                        found.add(loc)
+        elif key_lower in {"locale", "language", "default_locale", "primary_locale"}:
+            if isinstance(val, str):
+                loc = _normalize_locale(val)
+                if loc:
+                    found.add(loc)
     return found
 
 
@@ -183,17 +209,20 @@ def _declares_multilingual(data: Any) -> bool:
     def _true(val: Any) -> bool:
         return val is True or (isinstance(val, str) and val.strip().lower() in {"true", "yes", "1"})
 
-    def _visit(node: Any, top: bool) -> bool:
+    # A stack, not a frame a level, as in `_pairs_depth_first`: recursing, with
+    # a generator frame for each `any`, took 3.9 past its recursion limit at
+    # 333 levels, inside the 500 a JSON file may nest.
+    stack: list[tuple[Any, bool]] = [(data, True)]
+    while stack:
+        node, top = stack.pop()
         if isinstance(node, dict):
             keys = {str(k).lower(): v for k, v in node.items()}
             if "multilingual" in keys and (top or keys.keys() & _AGENT_KEYS) and _true(keys["multilingual"]):
                 return True
-            return any(_visit(v, False) for v in node.values())
-        if isinstance(node, list):
-            return any(_visit(item, False) for item in node)
-        return False
-
-    return _visit(data, True)
+            stack.extend((v, False) for v in reversed(list(node.values())))
+        elif isinstance(node, list):
+            stack.extend((item, False) for item in reversed(node))
+    return False
 
 
 def _is_user_facing(data: Any, raw_text: str) -> bool:
@@ -203,28 +232,19 @@ def _is_user_facing(data: Any, raw_text: str) -> bool:
     - `role:` value matches one of `_USER_FACING_ROLES`;
     - raw text contains a user-facing marker phrase."""
     explicit = {"unset"}
-
-    def _walk(node: Any) -> None:
-        if isinstance(node, dict):
-            for k, v in node.items():
-                kl = str(k).lower()
-                if kl in {"user_facing", "userfacing", "is_user_facing"}:
-                    if v is True or (isinstance(v, str) and v.strip().lower() in {"true", "yes", "1"}):
-                        explicit.add("yes")
-                    elif v is False or (isinstance(v, str) and v.strip().lower() in {"false", "no", "0"}):
-                        explicit.add("no")
-                elif kl in {"surface", "audience", "channel"}:
-                    if isinstance(v, str) and _USER_FACING_SURFACE_RE.search(v):
-                        explicit.add("yes")
-                elif kl in {"role", "type", "kind"}:
-                    if isinstance(v, str) and v.strip().lower() in _USER_FACING_ROLES:
-                        explicit.add("yes")
-                _walk(v)
-        elif isinstance(node, list):
-            for item in node:
-                _walk(item)
-
-    _walk(data)
+    for k, v in _pairs_depth_first(data):
+        kl = str(k).lower()
+        if kl in {"user_facing", "userfacing", "is_user_facing"}:
+            if v is True or (isinstance(v, str) and v.strip().lower() in {"true", "yes", "1"}):
+                explicit.add("yes")
+            elif v is False or (isinstance(v, str) and v.strip().lower() in {"false", "no", "0"}):
+                explicit.add("no")
+        elif kl in {"surface", "audience", "channel"}:
+            if isinstance(v, str) and _USER_FACING_SURFACE_RE.search(v):
+                explicit.add("yes")
+        elif kl in {"role", "type", "kind"}:
+            if isinstance(v, str) and v.strip().lower() in _USER_FACING_ROLES:
+                explicit.add("yes")
 
     if "yes" in explicit:
         return True

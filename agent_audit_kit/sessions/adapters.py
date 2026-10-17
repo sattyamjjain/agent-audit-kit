@@ -48,6 +48,8 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+from agent_audit_kit.scanners._helpers import collecting_refusals, loads_json, refuse
+
 SUPPORTED_FORMATS = ("openai-agents", "langgraph", "jsonl", "aak")
 
 _MAX_FILE_BYTES = 20_000_000
@@ -73,7 +75,9 @@ def _as_arguments(raw: Any) -> dict:
         if text.startswith("{"):
             try:
                 parsed = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError, MemoryError):
+                # Not JSON, or nested past what JSON's parser reads: kept as
+                # the string it is, as an argument that does not parse was.
                 return {"arg": raw}
             if isinstance(parsed, dict):
                 return parsed
@@ -146,16 +150,16 @@ def from_openai_agents(raw: Any) -> list[dict] | None:
 # --------------------------------------------------------------------------
 
 def _langgraph_messages(raw: Any) -> list[dict] | None:
-    if not isinstance(raw, dict):
-        return None
-    for container in ("channel_values", "values", "state"):
-        holder = raw.get(container)
-        if isinstance(holder, dict) and isinstance(holder.get("messages"), list):
-            return [m for m in holder["messages"] if isinstance(m, dict)]
-    # A bare checkpoint sometimes nests one level deeper under "checkpoint".
-    checkpoint = raw.get("checkpoint")
-    if isinstance(checkpoint, dict):
-        return _langgraph_messages(checkpoint)
+    # A bare checkpoint sometimes nests one level deeper under "checkpoint",
+    # and a crafted one any number of levels. They are followed in a loop: one
+    # frame a level took a transcript nested past the recursion limit, which
+    # JSON's parser reads on Python 3.12 and later, down with the whole scan.
+    while isinstance(raw, dict):
+        for container in ("channel_values", "values", "state"):
+            holder = raw.get(container)
+            if isinstance(holder, dict) and isinstance(holder.get("messages"), list):
+                return [m for m in holder["messages"] if isinstance(m, dict)]
+        raw = raw.get("checkpoint")
     return None
 
 
@@ -205,8 +209,13 @@ def from_langgraph(raw: Any) -> list[dict] | None:
 # jsonl
 # --------------------------------------------------------------------------
 
-def from_jsonl(text: str) -> list[dict] | None:
-    """Raw JSONL of ``{tool, args, ts}`` → canonical calls."""
+def from_jsonl(text: str, path: Path | None = None) -> list[dict] | None:
+    """Raw JSONL of ``{tool, args, ts}`` → canonical calls.
+
+    A line nested past what JSON's parser reads is skipped, as an unparseable
+    one is, and refused against ``path`` when there is one, so a scan reports
+    the transcript it did not read in full.
+    """
     rows: list[dict] = []
     saw_json_object = False
     for line in text.splitlines():
@@ -214,8 +223,8 @@ def from_jsonl(text: str) -> list[dict] | None:
         if not line:
             continue
         try:
-            parsed = json.loads(line)
-        except ValueError:
+            parsed = loads_json(line, path)
+        except (ValueError, RecursionError, MemoryError):
             continue
         if not isinstance(parsed, dict):
             continue
@@ -302,15 +311,18 @@ def normalize_path(path: Path) -> tuple[str, list[dict]] | None:
     suffix = path.suffix.lower()
 
     if suffix in _JSONL_SUFFIXES:
-        calls = from_jsonl(text)
+        calls = from_jsonl(text, path)
         return ("jsonl", calls) if calls else None
 
     if suffix in _JSON_SUFFIXES:
         try:
-            raw = json.loads(text)
+            # Refused against the transcript when nested past what JSON's
+            # parser reads; RecursionError is no ValueError, and it stopped the
+            # whole scan.
+            raw = loads_json(text, path)
         except ValueError:
             # A .json file holding JSON-lines is common enough to be worth trying.
-            calls = from_jsonl(text)
+            calls = from_jsonl(text, path)
             return ("jsonl", calls) if calls else None
         return normalize(raw)
 
@@ -385,14 +397,25 @@ def scan_sessions(target: Path, config_root: Path | None = None) -> list[Any]:
 
         # staged relative path -> the transcript the user actually passed
         origin: dict[str, str] = {}
+        sources: dict[str, Path] = {}
         for index, (path, _fmt, calls) in enumerate(transcripts):
             staged = sessions_dir / f"{index:04d}-{path.name}.json"
             if staged.suffix != ".json":
                 staged = staged.with_suffix(".json")
-            staged.write_text(json.dumps({"calls": calls}), encoding="utf-8")
+            try:
+                staged_text = json.dumps({"calls": calls})
+            except (RecursionError, MemoryError):
+                refuse(path, "a call's arguments nested too deep to read (RecursionError)")
+                continue
+            staged.write_text(staged_text, encoding="utf-8")
             origin[staged.relative_to(staging).as_posix()] = _display_path(path, target)
+            sources[str(staged)] = path
 
-        findings, _evaluated = session_splice.scan(staging)
+        # A staged copy the rule refuses is refused against its transcript.
+        with collecting_refusals() as staged_refused:
+            findings, _evaluated = session_splice.scan(staging)
+        for staged_path, reason in staged_refused.items():
+            refuse(sources.get(staged_path, staged_path), reason)
 
         for finding in findings:
             real = origin.get(finding.file_path)
