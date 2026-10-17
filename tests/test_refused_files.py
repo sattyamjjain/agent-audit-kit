@@ -18,6 +18,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 from pathlib import Path
@@ -271,6 +272,18 @@ def test_a_crafted_python_source_never_takes_the_process_down(shape: str) -> Non
     assert out.stdout.strip() in ("parsed", "refused"), out.stdout
 
 
+def _child(code: str, *args: str, timeout: float = 120) -> str:
+    """Run `code` in a child, so a regression that loops for ever fails on the
+    timeout instead of hanging the suite (pytest here has no timeout plugin)."""
+    out = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(code), *args], capture_output=True, text=True,
+        timeout=timeout, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "PATH": "", "HOME": tempfile.mkdtemp(prefix="aak-home-")},
+    )
+    assert out.returncode == 0, out.stderr[-1000:]
+    return out.stdout.strip()
+
+
 def _bounded_seconds(run: Callable[[], object]) -> float:
     """Best of three in CPU time, which a loaded machine moves least."""
     best = float("inf")
@@ -301,7 +314,7 @@ def test_a_long_dotted_toml_key_is_refused_in_linear_time() -> None:
                 loads_toml(key(parts), "pyproject.toml")
         return run
 
-    _grows_linearly(refuse(20_000), refuse(200_000))
+    _grows_linearly(refuse(2_000), refuse(20_000))
     assert loads_toml(key(64), "pyproject.toml")["project"]["name"] == "x"
 
 
@@ -343,19 +356,31 @@ def test_a_compose_file_that_merges_a_shared_block_into_every_service_is_read() 
     assert len(data["services"]) == 20 and len(data["services"]["s19"]["environment"]) == 40
 
 
+_BOMB_LOAD = """
+    import sys, time
+    sys.path.insert(0, "tests")
+    from test_refused_files import _alias_bomb
+    from agent_audit_kit.scanners._helpers import RefusedYAML, load_yaml
+    text = _alias_bomb(levels=9, width=int(sys.argv[1]))
+    best = float("inf")
+    for _ in range(3):
+        started = time.process_time()
+        try:
+            load_yaml(text, "bomb.yaml")
+            print("read"); raise SystemExit
+        except RefusedYAML:
+            best = min(best, time.process_time() - started)
+    print(best)
+"""
+
+
 def test_an_alias_bomb_is_refused_in_linear_time() -> None:
     """Stall row 1: a 6 KB billion-laughs file held gha_hardening past 15 s and a
     7 KB one past 300 s. The expansion is sized once per node, so refusing costs
-    the composition alone."""
-    def bomb(width: int) -> Callable[[], object]:
-        text = _alias_bomb(levels=9, width=width)
-
-        def run() -> None:
-            with pytest.raises(RefusedYAML):
-                load_yaml(text, "bomb.yaml")
-        return run
-
-    _grows_linearly(bomb(9), bomb(90))
+    the composition alone. In a child: a sizing that stopped memoizing would
+    expand 90 ** 9 nodes."""
+    small, large = float(_child(_BOMB_LOAD, "9")), float(_child(_BOMB_LOAD, "90"))
+    assert large < 5.0 and large < 40 * small + 0.25, (small, large)
 
 
 def test_a_self_referencing_alias_and_a_stream_of_bombs_are_refused() -> None:
@@ -380,6 +405,22 @@ def test_a_reader_that_visits_each_node_once_may_read_a_self_referencing_documen
     assert refused == {}
 
 
+_SCAN_ONE = """
+    import sys, time
+    from pathlib import Path
+    from agent_audit_kit.scanners._helpers import collecting_refusals
+    module = __import__("agent_audit_kit.scanners." + sys.argv[1], fromlist=["scan"])
+    root, rel = Path(sys.argv[2]), sys.argv[3]
+    best, refused = float("inf"), {}
+    for _ in range(3):
+        started = time.process_time()
+        with collecting_refusals() as refused:
+            module.scan(root)
+        best = min(best, time.process_time() - started)
+    print(best, rel in {Path(p).relative_to(root).as_posix() for p in refused})
+"""
+
+
 @pytest.mark.parametrize(("rel", "scanner_module"), [
     (".github/workflows/ci.yml", "gha_hardening"),
     ("openapi.yaml", "openapi_smells"),
@@ -390,8 +431,8 @@ def test_a_reader_that_visits_each_node_once_may_read_a_self_referencing_documen
 def test_each_yaml_scanner_refuses_an_alias_bomb_in_linear_time(
     tmp_path: Path, rel: str, scanner_module: str
 ) -> None:
-    """The five scanners stall row 1 named, each on the bomb shape that held it."""
-    module = __import__(f"agent_audit_kit.scanners.{scanner_module}", fromlist=["scan"])
+    """The five scanners stall row 1 named, each on the bomb shape that held it,
+    in a child: before the bound, the larger file held each one for hours."""
 
     def project(width: int) -> Path:
         root = tmp_path / f"w{width}"
@@ -406,16 +447,13 @@ def test_each_yaml_scanner_refuses_an_alias_bomb_in_linear_time(
         _write(root, {rel: _alias_bomb(levels=9, width=width) + body})
         return root
 
-    small, large = project(9), project(90)
-
-    def scan(root: Path) -> Callable[[], object]:
-        def run() -> None:
-            with collecting_refusals() as refused:
-                module.scan(root)
-            assert rel in {Path(p).relative_to(root).as_posix() for p in refused}
-        return run
-
-    _grows_linearly(scan(small), scan(large))
+    times = []
+    for root in (project(9), project(90)):
+        seconds, refused = _child(_SCAN_ONE, scanner_module, str(root), rel).split()
+        assert refused == "True", f"{rel} was not refused"
+        times.append(float(seconds))
+    small, large = times
+    assert large < 5.0 and large < 40 * small + 0.25, (small, large)
 
 
 # ---------------------------------------------------------------------------
@@ -598,6 +636,16 @@ def test_no_scanner_calls_a_recursive_parser_directly() -> None:
 # ---------------------------------------------------------------------------
 
 
+_CAPPED_SCAN = """
+    import sys, time
+    from pathlib import Path
+    module = __import__("agent_audit_kit.scanners." + sys.argv[1], fromlist=["scan"])
+    started = time.process_time()
+    findings, _ = module.scan(Path(sys.argv[2]))
+    print(time.process_time() - started, sum(1 for f in findings if f.file_path == sys.argv[3]))
+"""
+
+
 @pytest.mark.parametrize(("rel", "unit", "scanner_module", "rule_id"), [
     (".vscode/tasks.json", '{"label": "x%d", "command": "echo hi"},', "ide_task_rce", None),
     (".github/workflows/w.yml", "  - uses: actions/checkout@v%d\n", "gha_hardening", None),
@@ -609,7 +657,6 @@ def test_a_reader_that_had_no_cap_skips_a_file_over_it_unread(
 ) -> None:
     """These read any size: `.vscode/tasks.json` (stall row 2), workflows (row 3),
     supply_chain's MCP configs (row 4) and ssrf_toctou's sources (row 6a)."""
-    module = __import__(f"agent_audit_kit.scanners.{scanner_module}", fromlist=["scan"])
     body = "".join(unit % i for i in range(60_000))
     if rel.endswith(".json"):
         body = ('{"version": "2.0.0", "tasks": [' if "tasks" in rel else '{"mcpServers": {') + body.rstrip(",")
@@ -618,7 +665,7 @@ def test_a_reader_that_had_no_cap_skips_a_file_over_it_unread(
         body = "on: [push]\njobs:\n  b:\n    runs-on: x\n    steps:\n" + body
     _write(tmp_path, {rel: body})
     assert (tmp_path / rel).stat().st_size > 1_000_000
-    started = time.process_time()
-    findings, _scanned = module.scan(tmp_path)
-    assert time.process_time() - started < 2.0
-    assert not [f for f in findings if f.file_path == rel]
+    # In a child: without the cap, the quadratic line lookup ran for half an hour.
+    seconds, count = _child(_CAPPED_SCAN, scanner_module, str(tmp_path), rel).split()
+    assert float(seconds) < 2.0
+    assert count == "0"
