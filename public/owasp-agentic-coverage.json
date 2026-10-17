@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T21:35:46Z",
+  "last_updated": "2026-10-17T10:16:37Z",
   "aak_version": "0.6.22",
   "rule_count": 408,
   "coverage": [
@@ -1323,7 +1323,7 @@
         },
         {
           "id": "AAK-MCP-019",
-          "severity": "high",
+          "severity": "medium",
           "cve_references": [],
           "aicm_references": []
         },

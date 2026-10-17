@@ -3504,7 +3504,7 @@ _r(
     "away, and checks the caller's credential only after that, answering 401 or "
     "403. A caller with no credential tells the two answers apart and learns which "
     "resources exist, and the lookup runs for every caller.",
-    Severity.HIGH,
+    Severity.MEDIUM,
     Category.MCP_CONFIG,
     "Check the caller's credential before the handler looks up anything the request "
     "names. Where the credential to check depends on that resource (a per-adapter "

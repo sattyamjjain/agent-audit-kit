@@ -2703,7 +2703,7 @@
         "MCP07:2025 Insufficient Authentication & Authorization"
       ],
       "rule_id": "AAK-MCP-019",
-      "severity": "high",
+      "severity": "medium",
       "title": "MCP auth check runs after a resource lookup"
     },
     {
@@ -10104,10 +10104,10 @@
     },
     "by_severity": {
       "critical": 92,
-      "high": 177,
+      "high": 176,
       "info": 3,
       "low": 17,
-      "medium": 119
+      "medium": 120
     },
     "total_cves_covered": 346,
     "total_rules": 408
