@@ -6,7 +6,7 @@
 cloned repository decides what sits at either path: a link to a file outside the project
 had that file rewritten, a dangling link created the file it named, a directory ended in
 a traceback, and a FIFO blocked the command forever. Both now ask `fix._write_refusal`
-before reading or writing, read through `fix._read_text` and write through
+before reading or writing, read only a regular file and write through
 `fix._write_inside_project`, and exit 2 with the reason when the file is refused.
 """
 
@@ -22,18 +22,11 @@ import pytest
 from click.testing import CliRunner, Result
 
 import agent_audit_kit
-from agent_audit_kit import __version__
-from agent_audit_kit import fix as fix_module
+from agent_audit_kit.commands import install_precommit
 from agent_audit_kit.cli import cli
 from agent_audit_kit.translators.pipelock import translate
 
 _POLICY = Path(__file__).parent / "fixtures" / "pipelock" / "policy_minimal.yaml"
-_HOOK = (
-    "  - repo: https://github.com/sattyamjjain/agent-audit-kit\n"
-    f"    rev: v{__version__}\n"
-    "    hooks:\n"
-    "      - id: agent-audit-kit\n"
-).encode()
 _AS_WRITTEN = translate(_POLICY).replace("\n", os.linesep).encode("utf-8")
 
 
@@ -195,46 +188,9 @@ def test_a_fifo_is_refused_without_blocking(tmp_path: Path, command: _Command, h
 
 
 # ---------------------------------------------------------------------------
-# install-precommit: a regular file is written byte for byte as before
+# install-precommit: a link swapped in after the read, and a config it cannot read
+# (what it writes into a regular file is pinned in tests/test_install_precommit.py)
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("before", "after"),
-    [
-        pytest.param(None, b"repos:\n" + _HOOK, id="created"),
-        pytest.param(
-            b"repos:\r\n  - repo: https://github.com/psf/black\r\n    rev: 24.1.0\r\n"
-            b"    hooks:\r\n      - id: black\r\n",
-            b"repos:\n  - repo: https://github.com/psf/black\n    rev: 24.1.0\n"
-            b"    hooks:\n      - id: black\n" + _HOOK,
-            id="crlf",
-        ),
-        pytest.param(
-            b"# caf\xc3\xa9\rrepos:\r  - repo: local\r\n\n  \t",
-            b"# caf\xc3\xa9\nrepos:\n  - repo: local\n" + _HOOK,
-            id="lone-cr-non-ascii-trailing-blanks",
-        ),
-    ],
-)
-def test_install_precommit_writes_a_regular_file_as_before(
-    tmp_path: Path, before: bytes | None, after: bytes, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """`Path.read_text` read with universal newlines and `Path.write_text` wrote each
-    newline as `os.linesep` in UTF-8; `fix._read_text` and `fix._as_written` do the same,
-    so a CRLF or lone-CR file still comes out with the platform's line ends."""
-    project, _ = _projects(tmp_path)
-    config = project / ".pre-commit-config.yaml"
-    if before is not None:
-        config.write_bytes(before)
-
-    result = _invoke(_COMMANDS[0], project, monkeypatch)
-
-    assert result.exit_code == 0, result.output
-    assert result.output == (
-        "added agent-audit-kit pre-commit hook to .pre-commit-config.yaml\nnext: run `pre-commit install`\n"
-    )
-    assert config.read_bytes() == after.replace(b"\n", os.linesep.encode())
 
 
 def test_install_precommit_refuses_a_link_put_in_place_after_the_read(
@@ -248,15 +204,15 @@ def test_install_precommit_refuses_a_link_put_in_place_after_the_read(
     target.write_bytes(b"keep\n")
     config = project / ".pre-commit-config.yaml"
     config.write_bytes(b"repos:\n")
-    read = fix_module._read_text
+    read = install_precommit._read_config
 
-    def read_then_swap(*args: object, **kwargs: object) -> str:
-        text = read(*args, **kwargs)  # type: ignore[arg-type]
+    def read_then_swap(path: Path) -> bytes:
+        data = read(path)
         config.unlink()
         config.symlink_to(target)
-        return text
+        return data
 
-    monkeypatch.setattr(fix_module, "_read_text", read_then_swap)
+    monkeypatch.setattr(install_precommit, "_read_config", read_then_swap)
 
     result = _invoke(_COMMANDS[0], project, monkeypatch)
 
