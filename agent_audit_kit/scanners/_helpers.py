@@ -447,11 +447,14 @@ def find_line_number(raw: str, key: object) -> int | None:
 # character, near what the automaton costs to build, so the choice stands.
 _ONE_PASS_KEYS = 12
 _ONE_PASS_KEY_CHARS = 150
-# The automaton keeps about 32 bytes a node (arrays for a node's only child,
-# a dict only where it branches), so it is built from as many keys as fit in
-# this many nodes, with one pass over the text per batch; keys that share a
-# prefix share its nodes. A key longer than `_ONE_PASS_LONGEST` is searched for
-# on its own instead: a text holds few of them, and one could fill a batch alone.
+# A pass holds about 30 bytes a node of the automaton for keys in Latin-1
+# (arrays for a node's only child, a dict only where it branches, then a failure
+# link, an output link and a queue slot), and 90 to 110 for keys beyond it,
+# whose every character is an object of its own: a full batch peaks near 63 MB,
+# or up to 230 MB. So it is built from as many keys as fit in this many nodes,
+# with one pass over the text per batch; keys that share a prefix share its
+# nodes. A key longer than `_ONE_PASS_LONGEST` is searched for on its own
+# instead: a text holds few of them, and one could fill a batch alone.
 _ONE_PASS_NODES = 1 << 21
 _ONE_PASS_LONGEST = 4096
 
