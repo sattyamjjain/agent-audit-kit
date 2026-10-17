@@ -16,6 +16,30 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-17 (v0.6.23): CVE-2026-33032 on the router it was found in
+
+No new disclosures. Since v0.3.2 (2026-04-20) the ledger has listed CVE-2026-33032
+(nginx-ui, MCPwn) on `AAK-MCPWN-001`, with `AAK-MCP-011`, `AAK-MCP-012` and
+`AAK-MCP-020` kept as secondary rules, and on those three alone since v0.3.0
+(2026-04-18); both rows are in the archive. None of the four reported `mcp/router.go`
+at nginx-ui's e8ee931e16af, the file the CVE was found in. `AAK-MCPWN-001` read each
+route's arguments only to the first `)`, which there closes `middleware.IPWhiteList()`,
+so the `middleware.AuthRequired()` after it on `/mcp` was never seen and neither route
+looked authenticated. Its fixture, a router with one middleware and a named handler, is
+simpler than the real one, and the rule fired on that. `AAK-MCP-020` had no scanner.
+`AAK-MCP-011` reads only FastAPI routes, and `AAK-MCP-012` only an allowlist named
+`ip_allowlist`, `allowed_ips` or `cidr_allowlist` assigned an empty value, where
+nginx-ui keeps a Go `IPWhiteList []string` that is empty until someone configures it.
+The rows claimed coverage the rules could not deliver on the code the CVE names.
+
+`AAK-MCPWN-001` now reads routes with a bracket matcher. It reports line 14, the
+`/mcp_message` route, at e8ee931e16af, and nothing at the fix, 413dc631eea8, which adds
+`middleware.AuthRequired()` to that route; a minimal reproduction of both versions is
+its fixture now. `AAK-MCP-020` has a detector that recognises the same router, and the
+line is reported once, by `AAK-MCPWN-001`. `AAK-MCP-011` and `AAK-MCP-012` are
+unchanged and still do not fire on it. The rows keep their dates, as earlier
+corrections did.
+
 ## 2026-10-17 (v0.6.23): one disclosure, a WordPress plugin, out of scope
 
 The watcher opened one `cve-response` issue at 04:26Z on 2026-10-17 (#1036), `sev/medium`.
