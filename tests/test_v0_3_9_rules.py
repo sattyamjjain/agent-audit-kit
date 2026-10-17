@@ -1,12 +1,18 @@
 """Smoke tests for the v0.3.9 rules (4 SAST scanners + autofix codemod)."""
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.autofix.langgraph_toolnode import fix as autofix_toolnode
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners import deepseek_v4_tool_injection
 from agent_audit_kit.scanners.deepseek_v4_tool_injection import scan as deepseek_scan
 from agent_audit_kit.scanners.langgraph_toolnode import scan as langgraph_scan
 from agent_audit_kit.scanners.project_deal_drift import scan as deal_scan
@@ -106,6 +112,11 @@ def test_langgraph_toolnode_autofix_idempotent() -> None:
 
 
 # -------------------- AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001 --------------------
+
+def _read(root: Path, text: str) -> list[Finding]:
+    """The DeepSeek reader on one file's text, called directly, so no file-size cap applies."""
+    return deepseek_v4_tool_injection._walk_python(text, root / "app.py", root, set())
+
 
 def test_deepseek_v4_tool_injection_vulnerable_fires(tmp_path: Path) -> None:
     src = (FIXTURES / "deepseek" / "vulnerable" / "agent.py").read_text()
@@ -291,6 +302,167 @@ def test_deepseek_v4_no_deepseek_hint_passes(tmp_path: Path) -> None:
     assert not any(
         f.rule_id == "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001" for f in findings
     )
+
+
+# Verification of the AST reader (2026-10-17, Medium): it copied the module's
+# pattern table for every function it judged and walked each function's whole
+# subtree four times, nested functions included, so many constants with many
+# functions grew with their product (53 s at 4 MB), and 95 nested functions over
+# 9,000 statements took 14.8 s (main 1.4 s). Each function's own body is read
+# once now, and a name is looked up through the scopes around it.
+
+def _consts_and_functions(count: int) -> str:
+    consts = "".join(f"P{i} = r'\\s+'\n" for i in range(count))
+    funcs = "".join(f"def f{i}(request):\n    return request.json\n" for i in range(count))
+    return "from openai import OpenAI\nclient = OpenAI(base_url='https://api.deepseek.com')\n" + consts + funcs
+
+
+def test_deepseek_v4_many_constants_and_functions_read_in_linear_time(tmp_path: Path) -> None:
+    """At ten times the constants and the functions a linear reader takes about
+    ten times as long; one that copies the table per function, a hundred."""
+    timings = []
+    for count in (4_000, 40_000):
+        started = time.perf_counter()
+        _read(tmp_path, _consts_and_functions(count))
+        timings.append(time.perf_counter() - started)
+    small, large = timings
+    assert large < 20 * small + 1.0, (small, large)
+
+
+def _nested(depth: int, statements: int) -> str:
+    """`depth` functions, each nested in the one before, the source read only at
+    the end of the innermost, below `statements` lines that name none."""
+    src = ["from openai import OpenAI", "client = OpenAI(base_url='https://api.deepseek.com')"]
+    for level in range(depth):
+        src.append("    " * level + f"def f{level}(request):")
+    src += ["    " * depth + f"a{i} = {i}" for i in range(statements)]
+    src.append("    " * depth + "doc = request.json")
+    src.append("    " * depth + "client.chat.completions.create(tools=[{'description': doc}])")
+    return "\n".join(src) + "\n"
+
+
+def test_deepseek_v4_nested_functions_read_in_linear_time(tmp_path: Path) -> None:
+    """Nesting 95 deep costs about what nesting 10 deep does over the same lines,
+    and every level still reports: each is tainted, sends a description and
+    cleans none."""
+    timings = []
+    for depth in (10, 95):
+        started = time.perf_counter()
+        findings = _read(tmp_path, _nested(depth, 9_000))
+        timings.append(time.perf_counter() - started)
+        assert len(findings) == depth
+    shallow, deep = timings
+    assert deep < 3 * shallow + 0.5, (shallow, deep)
+
+
+_NESTED_CLEAN = '''import re
+from flask import request
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.deepseek.com")
+ROUTE = r"\\[ROUTE:[^\\]]*\\]"
+
+
+def create_app():
+    @app.route("/chat")
+    def chat():
+        doc = request.json["doc"]
+@@INNER@@
+        return client.chat.completions.create(model="deepseek-chat", messages=[], tools=[{"description": @@DESC@@}])
+    return chat
+'''
+
+
+@pytest.mark.parametrize(("inner", "desc", "lines"), [
+    # Nothing cleaned: the route handler and the factory around it both report.
+    ("", "doc", [9, 11]),
+    # Cleaned in the nested handler: that clears the factory around it too.
+    ("        doc = sanitize_tool_description(doc)", "doc", []),
+    ("        clean = re.sub(ROUTE, \"\", doc)", "clean", []),
+])
+def test_deepseek_v4_a_nested_function_is_judged_with_the_one_around_it(
+    tmp_path: Path, inner: str, desc: str, lines: list[int]
+) -> None:
+    (tmp_path / "app.py").write_text(
+        _NESTED_CLEAN.replace("@@INNER@@", inner).replace("@@DESC@@", desc), encoding="utf-8"
+    )
+    assert sorted(f.line_number for f in deepseek_scan(tmp_path)[0]) == lines
+
+
+def test_deepseek_v4_a_closure_sees_the_names_around_it(tmp_path: Path) -> None:
+    """A pattern bound, or a description cleaned, in the function around a nested
+    one is read inside it, as Python resolves the name."""
+    src = (
+        "import re\nfrom flask import request\nfrom openai import OpenAI\n"
+        "client = OpenAI(base_url='https://api.deepseek.com')\n"
+        "def handler():\n"
+        "    pattern = r'__route__\\s*='\n"
+        "    doc = request.json['doc']\n"
+        "    clean = re.sub(pattern, '', doc)\n"
+        "    def send():\n"
+        "        raw = request.json['other']\n"
+        "        return client.chat.completions.create(tools=[{'description': clean}])\n"
+        "    return send()\n"
+    )
+    (tmp_path / "app.py").write_text(src, encoding="utf-8")
+    assert deepseek_scan(tmp_path)[0] == []
+
+
+def test_deepseek_v4_a_sibling_does_not_see_another_functions_names(tmp_path: Path) -> None:
+    """A name cleaned in one nested function is that function's own: its sibling,
+    and the function around both, send the raw text."""
+    src = (
+        "import re\nfrom flask import request\nfrom openai import OpenAI\n"
+        "client = OpenAI(base_url='https://api.deepseek.com')\n"
+        "def handler():\n"
+        "    def clean_it():\n"
+        "        clean = re.sub(r'\\[ROUTE:[^\\]]*\\]', '', request.json['doc'])\n"
+        "    def send():\n"
+        "        clean = request.json['doc']\n"
+        "        return client.chat.completions.create(tools=[{'description': clean}])\n"
+        "    return send()\n"
+    )
+    (tmp_path / "app.py").write_text(src, encoding="utf-8")
+    assert sorted(f.line_number for f in deepseek_scan(tmp_path)[0]) == [5, 8]
+
+
+_DEEPSEEK_HEAD = "from openai import OpenAI\nclient = OpenAI(base_url='https://api.deepseek.com')\n"
+
+
+# The source `\bopen\([^)]*\)\.read\(\)` read to the next `)` from every `open(`
+# (0.62 s at 100 KB, quadratic, on main too). A child process scans it at 505 KB,
+# so the old pattern fails on the timeout instead of holding the suite.
+_DEEPSEEK_CHILD = (
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners.deepseek_v4_tool_injection import scan\n"
+    "started = time.perf_counter()\n"
+    "findings, _ = scan(Path(sys.argv[1]))\n"
+    "print(time.perf_counter() - started, len(findings))\n"
+)
+
+
+def _deepseek_in_child(root: Path) -> tuple[float, int]:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _DEEPSEEK_CHILD, str(root)], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, count = done.stdout.split()
+    return float(elapsed), int(count)
+
+
+@pytest.mark.parametrize(("shape", "findings"), [
+    (_DEEPSEEK_HEAD + "def f(request):\n    s = '" + "open(" * 101_000 + "'\n", 0),
+    (_DEEPSEEK_HEAD + "def f(request):\n    s = '" + "open(" * 101_000 + "'\n"
+     "    doc = open(path).read()\n    return client.create(tools=[{'description': doc}])\n", 1),
+])
+def test_deepseek_v4_reads_its_sources_in_linear_time(tmp_path: Path, shape: str, findings: int) -> None:
+    (tmp_path / "app.py").write_text(shape, encoding="utf-8")
+    elapsed, count = _deepseek_in_child(tmp_path)
+    assert count == findings
+    assert elapsed < 5.0, elapsed
 
 
 # -------------------- AAK-TIKTOK-AGENT-HIJACK-001 --------------------
