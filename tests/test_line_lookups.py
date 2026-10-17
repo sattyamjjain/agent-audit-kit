@@ -271,7 +271,8 @@ def test_the_search_before_python_3_10_finds_what_str_find_finds(
 ) -> None:
     """The literal-pattern search, and, for a key over the pattern limit, the
     search through only the lines long enough to hold it, return the offset
-    `str.find` returns, from every start."""
+    `str.find` returns, from every start, negative and past the end included,
+    and for the empty key."""
     monkeypatch.setattr(_helpers, "_LINEAR_FIND", False)
     if longest is not None:
         monkeypatch.setattr(_helpers, "_LITERAL_LONGEST", longest)
@@ -279,13 +280,15 @@ def test_the_search_before_python_3_10_finds_what_str_find_finds(
     checked = 0
     for text in _generated_texts(seed=11, count=300, length=60):
         _helpers._TEXT_LOOKUPS.clear()
+        n = len(text)
+        starts = sorted({-n - 2, -n - 1, -n, -n // 2, -1, 0, 1, n // 3, n // 2, n - 1, n, n + 1, n + 2})
         for key in _keys_for(text, rng):
-            if not isinstance(key, str) or not key:
+            if not isinstance(key, str):
                 continue
-            for start in sorted({0, 1, len(text) // 3, len(text) // 2, len(text)}):
+            for start in starts:
                 assert _helpers.linear_find(text, key, start) == text.find(key, start), (text, key, start)
                 checked += 1
-    assert checked > 20_000
+    assert checked > 100_000
 
 
 def test_only_a_key_the_automaton_would_take_is_compiled_before_python_3_10(monkeypatch: pytest.MonkeyPatch) -> None:
