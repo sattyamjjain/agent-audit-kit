@@ -31,7 +31,7 @@ import ast
 import ipaddress
 import re
 import string
-from typing import Callable, Iterable, Iterator, NamedTuple
+from typing import Any, Callable, Iterable, Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
 from agent_audit_kit.scanners.taint_analysis import (
@@ -917,6 +917,11 @@ class _CallerInput:
         # ids of the tuples `_mapping` makes for a key's value or what can
         # replace it, whose parts are judged one by one, each once
         self._either: set[int] = set()
+        # How many times the nesting bound has stopped a read, counted across
+        # the file's scope and every tool's, and what was worked out under
+        # such a stop, kept per depth of nesting (`_remember`).
+        self._cuts: list[int] = file._cuts if file is not None else [0]
+        self._cut_memo: dict[tuple[int, Any, int], Any] = {}
 
     @classmethod
     def of_file(cls, tree: ast.AST) -> _CallerInput:
@@ -997,16 +1002,49 @@ class _CallerInput:
         `_py_addr_reach` does, so names that read each other do not multiply
         the work. A scope with no caller input, the file's, has none to find.
         """
-        if not self.params or depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+        if not self.params or depth > _PY_MAX_DEPTH:
             return False
+        if nest > _PY_MAX_NEST:
+            return bool(self._cut(False))
         key = (id(node), depth)
         hit = self._sets.get(key)
         if hit is None:
             # Reached again while it is being worked out, an expression adds
             # nothing to its own answer: the cycle ends here.
-            self._sets[key] = False
-            hit = self._sets[key] = self._sets_host(node, depth, nest)
+            hit = self._remember(self._sets, key, nest, False, lambda: self._sets_host(node, depth, nest))
         return hit
+
+    def _remember(self, table: dict[Any, Any], key: Any, nest: int, pending: Any, work: Callable[[], Any]) -> Any:
+        """`work()`, kept in `table` under `key`, which holds `pending` while it
+        is worked out so that a cycle back to it ends.
+
+        The tables key on an expression or a name and its depth, not on how
+        deeply it is nested, while the nesting bound (`_PY_MAX_NEST`) stops a
+        read 40 levels down. A result worked out under such a stop was kept
+        and handed to every later read: `u = p` first read 40 levels deep
+        cleared `requests.get(u)`, and a module base spelled 37 levels deep in
+        one tool cleared `BASE + host` in another. A result is kept in `table`
+        only when no stop fired under it; otherwise it is kept for this depth
+        of nesting alone, and whatever reads it is marked the same way."""
+        cut_key = (id(table), key, nest)
+        if cut_key in self._cut_memo:
+            self._cuts[0] += 1
+            return self._cut_memo[cut_key]
+        cuts = self._cuts[0]
+        table[key] = pending
+        value = work()
+        if self._cuts[0] == cuts:
+            table[key] = value
+        else:
+            del table[key]
+            self._cut_memo[cut_key] = value
+        return value
+
+    def _cut(self, value: Any) -> Any:
+        """`value`, from a read the nesting bound stopped, counted so that
+        nothing worked out from it is kept for another depth of nesting."""
+        self._cuts[0] += 1
+        return value
 
     def _sets_host(self, node: ast.AST, depth: int, nest: int) -> bool:
         # Read and attribute chains can be thousands long, so the parts of one
@@ -1116,9 +1154,10 @@ class _CallerInput:
         key = (name, depth)
         hit = self._name_sets.get(key)
         if hit is None:
-            self._name_sets[key] = False
             bound = self.values.get(name, []) + self.elements.get(name, [])
-            hit = self._name_sets[key] = any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound)
+            hit = self._remember(self._name_sets, key, nest, False, lambda: any(
+                self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound
+            ))
         return hit
 
     def _joined_list(self, node: ast.AST) -> tuple[str, str] | None:
@@ -1146,18 +1185,24 @@ class _CallerInput:
         owner = self._owner(name)
         if owner is not self:
             return owner._joined_sets_host(sep, name, depth, nest)
-        if not self.params or depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+        if not self.params or depth > _PY_MAX_DEPTH:
             return False
+        if nest > _PY_MAX_NEST:
+            return bool(self._cut(False))
         key = (_separator_class(sep), name, depth)
         hit = self._joined_sets.get(key)
         if hit is None:
-            self._joined_sets[key] = False
-            hit = False
-            if self._joined_has_caller(name, depth, nest):
-                items = self._list_of(name) or []
-                hit = self._built_sets_host(_pieces(_Run(items, 0, sep)), depth, nest + 1)
-            self._joined_sets[key] = hit
+            hit = self._remember(
+                self._joined_sets, key, nest, False, lambda: self._joined_list_sets_host(sep, name, depth, nest)
+            )
         return hit
+
+    def _joined_list_sets_host(self, sep: str, name: str, depth: int, nest: int) -> bool:
+        """`_joined_sets_host`'s work, past its checks and its memo."""
+        if not self._joined_has_caller(name, depth, nest):
+            return False
+        items = self._list_of(name) or []
+        return self._built_sets_host(_pieces(_Run(items, 0, sep)), depth, nest + 1)
 
     def _joined_has_caller(self, name: str, depth: int, nest: int) -> bool:
         """Whether any piece `"sep".join(name)` reads, within `_PIECE_CAP`, is
@@ -1168,12 +1213,11 @@ class _CallerInput:
         key = (name, depth)
         hit = self._joined_callers.get(key)
         if hit is None:
-            self._joined_callers[key] = False
             items = self._list_of(name) or []
-            hit = self._joined_callers[key] = any(
+            hit = self._remember(self._joined_callers, key, nest, False, lambda: any(
                 self.sets_host(piece, depth, nest + 1)
                 for piece in _pieces(_Run(items, 0, _SEPARATOR)) if not isinstance(piece, str)
-            )
+            ))
         return hit
 
     def _joined_text(self, sep: str, name: str, depth: int, nest: int) -> str:
@@ -1183,8 +1227,10 @@ class _CallerInput:
         owner = self._owner(name)
         if owner is not self:
             return owner._joined_text(sep, name, depth, nest)
-        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+        if depth > _PY_MAX_DEPTH:
             return _UNKNOWN
+        if nest > _PY_MAX_NEST:
+            return str(self._cut(_UNKNOWN))
         return sep.join(self._joined_segments(name, depth, nest))
 
     def _joined_segments(self, name: str, depth: int, nest: int) -> list[str]:
@@ -1195,20 +1241,25 @@ class _CallerInput:
         key = (name, depth)
         segments = self._segments.get(key)
         if segments is None:
-            self._segments[key] = [_UNKNOWN]
-            items = self._list_of(name) or []
-            segments = [""]
-            length = 0
-            for piece in _pieces(_Run(items, 0, _SEPARATOR)):
-                if piece is _SEPARATOR:
-                    segments.append("")
-                    continue
-                text = piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
-                segments[-1] += text
-                length += len(text)
-                if length >= _PREFIX_CAP:
-                    break
-            self._segments[key] = segments
+            segments = self._remember(
+                self._segments, key, nest, [_UNKNOWN], lambda: self._read_segments(name, depth, nest)
+            )
+        return segments
+
+    def _read_segments(self, name: str, depth: int, nest: int) -> list[str]:
+        """`_joined_segments`' work, past its memo."""
+        items = self._list_of(name) or []
+        segments = [""]
+        length = 0
+        for piece in _pieces(_Run(items, 0, _SEPARATOR)):
+            if piece is _SEPARATOR:
+                segments.append("")
+                continue
+            text = piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
+            segments[-1] += text
+            length += len(text)
+            if length >= _PREFIX_CAP:
+                break
         return segments
 
     def _mapping(self, node: ast.expr) -> tuple[dict[str, ast.expr], ast.expr | None]:
@@ -1307,9 +1358,10 @@ class _CallerInput:
         key = (name, depth)
         hit = self._keys_sets.get(key)
         if hit is None:
-            self._keys_sets[key] = False
             binding = self.values[name][0]
-            hit = self._keys_sets[key] = any(self.sets_host(part, depth, nest + 1) for part in _iterated(binding))
+            hit = self._remember(self._keys_sets, key, nest, False, lambda: any(
+                self.sets_host(part, depth, nest + 1) for part in _iterated(binding)
+            ))
         return hit
 
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
@@ -1380,13 +1432,15 @@ class _CallerInput:
         `_UNKNOWN` for the rest: a string constant, a name bound to one value
         here or in the module (`BASE = "https://api.example.com"`), and the
         built forms `sets_host` reads."""
-        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+        if depth > _PY_MAX_DEPTH:
             return _UNKNOWN
+        if nest > _PY_MAX_NEST:
+            return str(self._cut(_UNKNOWN))
         key = (id(node), depth)
         text = self._text.get(key)
         if text is None:
-            self._text[key] = _UNKNOWN  # spelling it again while spelling it ends the cycle
-            text = self._text[key] = self._spell(node, depth, nest)[:_PREFIX_CAP]
+            # spelling it again while spelling it ends the cycle
+            text = self._remember(self._text, key, nest, _UNKNOWN, lambda: self._spell(node, depth, nest)[:_PREFIX_CAP])
         return text
 
     def _spell(self, node: ast.AST, depth: int, nest: int) -> str:

@@ -1406,6 +1406,35 @@ def test_lists_joined_inside_one_another_are_read_forty_deep() -> None:
     assert [s.tainted for s in analyze_python(_join_chain(40))] == [False]
 
 
+def _wrapped(levels: int, inner: str) -> str:
+    """`inner` inside `levels` of `"a" + (...).strip()`."""
+    for _ in range(levels):
+        inner = f"'a' + ({inner}).strip()"
+    return inner
+
+
+def test_a_verdict_the_nesting_bound_cut_is_not_reused_where_it_is_not_cut() -> None:
+    """The host test remembers a verdict by expression or name and depth, not
+    by how deeply it is nested, and stops reading 40 levels down. A verdict
+    worked out near that bound, with a part cut off, was kept and handed to
+    a shallow read of the same name, in one tool and, through the file's
+    scope, in another: `u = p` read 40 levels deep cleared `requests.get(u)`,
+    and a base spelled 37 levels deep in one tool cleared `BASE + host` in
+    the next. A verdict worked out under a cut is now kept only for that
+    depth of nesting."""
+    for levels in range(20, 60):
+        tool = (
+            "@mcp.tool()\ndef t(p: str) -> str:\n    u = p\n"
+            f"    requests.get({_wrapped(levels, 'u')})\n    return requests.get(u).text\n"
+        )
+        assert max(analyze_python(_CYCLE_HEAD + tool), key=lambda site: site.line).tainted, levels
+    head = _CYCLE_HEAD + "SCHEME = 'https:'\nSEP = '//'\nBASE = SCHEME + SEP\n"
+    second = "@mcp.tool()\ndef b(host: str) -> str:\n    return requests.get(BASE + host).text\n"
+    for levels in range(20, 60):
+        first = f"@mcp.tool()\ndef a(q: str) -> str:\n    return requests.get({_wrapped(levels, chr(39) + 'a' + chr(39) + ' + BASE')}).text\n"
+        assert max(analyze_python(head + first + second), key=lambda site: site.line).tainted, levels
+
+
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
     js = "let a = b + c;\nlet b = a;\nlet c = req.body.target;\nfetch(a);\n"
     assert [tuple(s) for s in analyze_js(js)] == [("fetch", 4, True, None)]
