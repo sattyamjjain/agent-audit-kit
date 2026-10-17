@@ -504,6 +504,35 @@ def test_deepseek_v4_reads_its_gate_and_sources_in_linear_time(tmp_path: Path, s
     assert elapsed < 5.0, elapsed
 
 
+# Verification of a323344c (2026-10-17, High): the gate's own `base_url=` arm,
+# `base_url\s*=\s*['"][^'"]*deepseek[^'"]*['"]`, read a value never closed to the
+# end of the file once for every `deepseek` in it: `base_url='` and 63,000 of
+# them took 333.8 s at 504 KB, and main does the same at any size. Each value is
+# read to its closing quote once now.
+@pytest.mark.parametrize(("head", "gated"), [
+    ("client = OpenAI(base_url='https://api.deepseek.com')\n", True),
+    ('client = OpenAI(base_url = "https://api.deepseek.com/v1")\n', True),
+    ('client = OpenAI(api_key=key, base_url="https://api.deepseek.com")\n', True),
+    ("import deepseek\n", True),
+    ("from deepseek import Client\n", True),
+    ("client = OpenAI(base_url='https://api.openai.com')  # deepseek\n", False),
+    ("client = OpenAI(base_url='https://example.com/' + 'deepseek')\n", False),
+    ("BASE_URL = 'https://api.deepseek.com'\nclient = OpenAI(base_url=BASE_URL)\n", False),
+])
+def test_deepseek_v4_gate_reads_a_base_url_value_to_its_quote(tmp_path: Path, head: str, gated: bool) -> None:
+    src = head + "def f(request):\n    doc = request.json\n    return client.create(tools=[{'description': doc}])\n"
+    assert bool(_read(tmp_path, src)) is gated
+
+
+def test_deepseek_v4_reads_an_unclosed_base_url_in_linear_time(tmp_path: Path) -> None:
+    text = "base_url='" + "deepseek" * 63_000 + "\n"
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / "app.py").write_text(text, encoding="utf-8")
+    elapsed, count = _deepseek_in_child(tmp_path)
+    assert count == 0
+    assert elapsed < 5.0, elapsed
+
+
 # -------------------- AAK-TIKTOK-AGENT-HIJACK-001 --------------------
 
 def test_tiktok_agent_hijack_unsafe_fires(tmp_path: Path) -> None:

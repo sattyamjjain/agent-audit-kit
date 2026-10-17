@@ -30,21 +30,14 @@ from ._helpers import in_skip_dir, make_finding
 # can take rather than keeping a quadratic path in check.
 _MAX_BYTES = 512_000
 
-# `OpenAI(... base_url="...deepseek...")` was an arm of its own, with `[^)]*`
-# between the call and `base_url`, which read to the next `)` from every
-# `OpenAI(`: a file of `OpenAI(` with no `)` took 5.6 s at 280 KB, before any
-# other check. The `base_url=` arm matches inside every such call, so the gate
-# passes the same files without it.
-_DEEPSEEK_HINT_RE = re.compile(
-    r"""
-    (?:
-        base_url\s*=\s*['"][^'"]*deepseek[^'"]*['"]
-      | from\s+deepseek
-      | import\s+deepseek
-    )
-    """,
-    re.VERBOSE,
-)
+# The client gate (`_targets_deepseek`). `OpenAI(... base_url="...deepseek...")`
+# was an arm of its own, with `[^)]*` between the call and `base_url`, which read
+# to the next `)` from every `OpenAI(`: a file of `OpenAI(` with no `)` took
+# 5.6 s at 280 KB, before any other check. The `base_url=` arm matches inside
+# every such call, so the gate passes the same files without it.
+_BASE_URL_RE = re.compile(r"""base_url\s*=\s*['"]""")
+_QUOTE_RE = re.compile(r"""['"]""")
+_DEEPSEEK_IMPORT_RE = re.compile(r"from\s+deepseek|import\s+deepseek")
 # The untrusted sources, one pattern each so that every match of each is found:
 # a function's source holds one when a match lies wholly inside it.
 # `open(...).read()` is read apart, by `_file_read_spans`.
@@ -78,6 +71,28 @@ def _dotted(node: ast.expr) -> str:
         return ""
     parts.append(node.id)
     return ".".join(reversed(parts))
+
+
+def _targets_deepseek(text: str) -> bool:
+    """Whether the file names a DeepSeek client: a `base_url=` string holding
+    `deepseek`, or an import from a `deepseek` package.
+
+    The `base_url=` arm was `base_url\\s*=\\s*['"][^'"]*deepseek[^'"]*['"]`,
+    which tried every `deepseek` in a value never closed and read to the end of
+    the file from each: `base_url='` and 63,000 of them took 333.8 s at 504 KB.
+    Each value is read to its closing quote once now. A `base_url=` match ends at
+    the quote that opens its value, so a value ends at or before the next
+    match's quote, and no character is read twice.
+    """
+    if _DEEPSEEK_IMPORT_RE.search(text):
+        return True
+    for opened in _BASE_URL_RE.finditer(text):
+        closed = _QUOTE_RE.search(text, opened.end())
+        if closed is None:
+            return False
+        if text.find("deepseek", opened.end(), closed.start()) != -1:
+            return True
+    return False
 
 
 def _pattern_text(node: ast.expr, lookup: Callable[[str], str | None]) -> str | None:
@@ -378,7 +393,7 @@ def _file_read_spans(text: str) -> list[tuple[int, int]]:
 
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
-    if not _DEEPSEEK_HINT_RE.search(text):
+    if not _targets_deepseek(text):
         return []
     try:
         tree = ast.parse(text, str(path))
