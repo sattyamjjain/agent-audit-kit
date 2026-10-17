@@ -456,6 +456,11 @@ _GO_SHARED_HEAD_RE = re.compile(
     r")\s*\("
 )
 _GO_GROUP_ASSIGN_RE = re.compile(r"(?<!\w)([A-Za-z_]\w*)\s*:?=\s*$")
+# How far before a `.Group(` call its assignment (`g := r.Group(...)`) is looked
+# for; gofmt writes it a few characters before. Searching the whole line before
+# every call made a line of `g := r.Group();` calls quadratic: 128 KB took 13
+# seconds.
+_GROUP_ASSIGN_WINDOW = 200
 _CALL_HEAD_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(")
 _JS_ASYNC_RE = re.compile(r"async\b\s*")
 _JS_FUNCTION_RE = re.compile(r"function\b\s*\*?\s*(?:[A-Za-z_$][\w$]*\s*)?(?=\()")
@@ -743,7 +748,8 @@ def _go_registrations(index: CodeIndex, echo: bool) -> tuple[list[_Reg], list[_S
             auth = next((text[s:e] for s, e in rest if e - s <= _NAME_WINDOW and _classify(text[s:e]) == "auth"), None)
             target = call.receiver
             if call.method == "Group":
-                line_start = text.rfind("\n", 0, call.start) + 1
+                window = max(0, call.start - _GROUP_ASSIGN_WINDOW)
+                line_start = max(window, text.rfind("\n", window, call.start) + 1)
                 assigned = _GO_GROUP_ASSIGN_RE.search(text, line_start, call.start)
                 if assigned is None:
                     continue
@@ -1121,15 +1127,24 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
         if reg.handler is not None:
             by_name.setdefault(reg.handler, []).append(reg)
         by_at.setdefault(reg.handler_at, []).append(reg)
+    # Whether every route naming a handler is open, decided once per name: Go
+    # methods on different receivers share names (every `ServeHTTP`), and
+    # checking a name's routes for each method of that name made 8,500 methods
+    # named `h` take 6.5 seconds.
+    open_names: dict[str, bool] = {}
     mentions = [m.start() for m in _MCP_MENTION_RE.finditer(text)]
     findings: list[Finding] = []
     for handler in go_handlers(index):
         if handler.name is None:
-            routes = by_at.get(handler.start, [])
+            if not _all_open(by_at.get(handler.start, []), covered):
+                continue
         else:
-            routes = by_name.get(handler.name, []) + by_name.get("delegate:" + handler.name, [])
-        if not routes or any(r.auth is not None or covered.cover(r) for r in routes):
-            continue
+            if handler.name not in open_names:
+                open_names[handler.name] = _all_open(
+                    by_name.get(handler.name, []) + by_name.get("delegate:" + handler.name, []), covered,
+                )
+            if not open_names[handler.name]:
+                continue
         near = bisect_right(mentions, handler.body_end) - bisect_right(mentions, handler.body_start)
         if not near and not (handler.name and _MCP_MENTION_RE.search(handler.name)):
             continue
@@ -1137,7 +1152,7 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
         if found is None:
             continue
         offset, lookup, key, miss_line, gate_line = found
-        label = handler.name or f"the handler for {routes[0].method} {routes[0].path!r}"
+        label = handler.name or f"the handler for {by_at[handler.start][0].method} {by_at[handler.start][0].path!r}"
         findings.append(make_finding(
             _MCP019,
             rel,
@@ -1147,6 +1162,11 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
             line_number=index.line_of(offset),
         ))
     return findings
+
+
+def _all_open(routes: list[_Reg], covered: _Scopes) -> bool:
+    """At least one route, and none with auth on it or on its router."""
+    return bool(routes) and not any(r.auth is not None or covered.cover(r) for r in routes)
 
 
 def _reads_lookup_order(rel: str, text: str) -> bool:

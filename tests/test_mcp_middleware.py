@@ -7,12 +7,16 @@ AAK-MCPWN-001, the other rule in `mcp_middleware`, has its tests in
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Callable
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.scanners import mcp_middleware
 from agent_audit_kit.scanners._http_routes import CodeIndex
 
@@ -441,3 +445,65 @@ def test_a_crafted_handler_file_scans_in_linear_time(tmp_path: Path, name: str) 
     started = time.perf_counter()
     mcp_middleware.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# Linear time: Group assignments, same-named handlers
+# ---------------------------------------------------------------------------
+
+# A child process scans each crafted file, so a quadratic path fails the test
+# on its timeout instead of stalling the suite.
+_CHILD = (
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners import mcp_middleware\n"
+    "started = time.perf_counter()\n"
+    "findings, _ = mcp_middleware.scan(Path(sys.argv[1]))\n"
+    "print(time.perf_counter() - started, len(findings))\n"
+)
+
+
+def _scan_in_child(tmp_path: Path, label: str, text: str) -> tuple[float, int]:
+    root = tmp_path / label
+    root.mkdir()
+    (root / "router.go").write_text(text, encoding="utf-8")
+    assert len(text) < 512_000, "under the scanner's 512 KB cap"
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(root)], capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    seconds, count = done.stdout.split()
+    return float(seconds), int(count)
+
+
+_GO_HEAD = 'package main\n\nimport (\n\t"io"\n\t"net/http"\n\t"github.com/gin-gonic/gin"\n)\n\n'
+
+
+def test_a_line_of_group_calls_scans_in_linear_time(tmp_path: Path) -> None:
+    """Each `.Group(` searched the whole line before it for its assignment: 128
+    KB of `g := r.Group();` on one line took 13 seconds, 200 KB about 33."""
+    text = _GO_HEAD + "// mcp\nfunc main() {\n\tr := gin.New(); " + "g := r.Group();" * 13_300 + '\n\tr.POST("/mcp", h)\n}\n'
+    seconds, _count = _scan_in_child(tmp_path, "groups", text)
+    assert seconds < 5.0
+
+
+def _methods_and_routes(k: int, same: bool) -> str:
+    names = ["h" if same else f"h{i}" for i in range(k)]
+    return (
+        _GO_HEAD + "// mcp\n" + "".join(f"func (s S) {n}(c *gin.Context) {{}}\n" for n in names)
+        + 'func main() {\n\tc.Param("x")\n\t_ = http.StatusNotFound + http.StatusUnauthorized\n'
+        + "".join(f'\tr.GET("/mcp", {n})\n' for n in names) + "}\n"
+    )
+
+
+def test_same_named_handlers_scan_in_linear_time(tmp_path: Path) -> None:
+    """AAK-MCP-019 listed and checked every route naming a handler for each
+    handler of that name, and Go methods on different receivers share names:
+    8,500 methods named `h` with a route each took 6.5 seconds, against 0.4
+    for distinct names."""
+    t_same, _ = _scan_in_child(tmp_path, "same", _methods_and_routes(8_500, same=True))
+    t_distinct, _ = _scan_in_child(tmp_path, "distinct", _methods_and_routes(8_500, same=False))
+    assert t_same < 5.0
+    assert t_same < 4 * t_distinct + 0.25, (t_distinct, t_same)
