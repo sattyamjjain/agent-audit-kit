@@ -291,6 +291,7 @@ def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     """
     from agent_audit_kit.scanners import langchain_vuln, neo4j_cve
     from agent_audit_kit.scanners._dependency_pins import raise_to_fix
+    from agent_audit_kit.scanners._manifest_deps import MAX_MANIFEST_BYTES
 
     pin, label = {
         "AAK-LANGCHAIN-001": (langchain_vuln._PATH_TRAVERSAL, "langchain-core"),
@@ -302,6 +303,8 @@ def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     if not (name.endswith(".txt") or name == "pyproject.toml"):
         return FixAction(rule_id, str(path), f"{path.name} is not a manifest the {label} pin reads", False)
     try:
+        if path.stat().st_size > MAX_MANIFEST_BYTES:
+            return FixAction(rule_id, str(path), f"{path.name} is over 2 MB, which the rule does not read", False)
         with open(path, encoding="utf-8", newline="") as handle:
             text = handle.read()
     except (OSError, UnicodeDecodeError):

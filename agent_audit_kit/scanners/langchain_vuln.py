@@ -35,7 +35,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._dependency_pins import DependencyPin, manifest_declarations, pinned_dependency
+from agent_audit_kit.scanners._dependency_pins import DependencyPin, Manifest, pinned_dependency, read_manifest
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
@@ -83,14 +83,13 @@ def _iter_python_sources(project_root: Path) -> list[Path]:
     return out
 
 
-def _check_manifest(path: Path, text: str, rel: str) -> list[Finding]:
+def _check_manifest(manifest: Manifest, rel: str) -> list[Finding]:
     findings: list[Finding] = []
-    found = manifest_declarations(path, text)
     for rule_id, pin, tail in (
         ("AAK-LANGCHAIN-001", _PATH_TRAVERSAL, "CVE-2026-34070 patched in 1.2.22"),
         ("AAK-LANGCHAIN-003", _DESERIALIZE, "CVE-2025-68664 deserialization fix in 0.3.14+"),
     ):
-        hit = pinned_dependency(path, text, pin, found)
+        hit = pinned_dependency(manifest, pin)
         if hit is not None:
             findings.append(make_finding(
                 rule_id, rel, f"langchain-core referenced as {hit.quoted} — {tail}", line_number=hit.line,
@@ -116,14 +115,12 @@ def _check_python_source(text: str, rel: str) -> list[Finding]:
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
-    for manifest in _iter_manifest_files(project_root):
-        rel = str(manifest.relative_to(project_root))
+    for path in _iter_manifest_files(project_root):
+        rel = str(path.relative_to(project_root))
         scanned.add(rel)
-        try:
-            text = manifest.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        findings.extend(_check_manifest(manifest, text, rel))
+        manifest = read_manifest(path)
+        if manifest is not None:
+            findings.extend(_check_manifest(manifest, rel))
     for py in _iter_python_sources(project_root):
         rel = str(py.relative_to(project_root))
         scanned.add(rel)

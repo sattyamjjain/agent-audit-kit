@@ -170,3 +170,13 @@ def test_a_crafted_requirements_file_raises_in_linear_time(tmp_path: Path) -> No
     assert time.perf_counter() - started < 5.0
     assert action is not None and action.applied
     assert text == "langchain-core>=1.2.22\n" * 8_000
+
+
+def test_a_manifest_over_the_limit_is_left_alone(tmp_path: Path) -> None:
+    """The rules do not read a manifest over 2 MB, so the fix does not rewrite one."""
+    before = "x\n" * 1_100_000 + "langchain-core==1.2.21\n"
+    (tmp_path / "requirements.txt").write_text(before, encoding="utf-8")
+    action, text = _fixed(tmp_path, "requirements.txt", "AAK-LANGCHAIN-001")
+    assert action is not None and not action.applied
+    assert "over 2 MB" in action.description
+    assert text == before

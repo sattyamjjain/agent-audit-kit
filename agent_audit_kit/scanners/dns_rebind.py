@@ -58,7 +58,7 @@ from xml.etree import ElementTree
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, manifest_declarations, pinned_dependency
+from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
 from ._helpers import in_skip_dir, find_line_number, make_finding, sub_comments
 
 _PY_PATCHED = (1, 23, 0)
@@ -156,15 +156,14 @@ def _check_python_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
     manifests = sorted(project_root.glob("requirements*.txt"))
     if (project_root / "pyproject.toml").is_file():
         manifests.append(project_root / "pyproject.toml")
-    for manifest in manifests:
-        try:
-            text = manifest.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+    for path in manifests:
+        manifest = read_manifest(path)
+        if manifest is None:
             continue
-        rel = str(manifest.relative_to(project_root))
-        if manifest.suffix == ".txt":
+        rel = str(path.relative_to(project_root))
+        if path.suffix == ".txt":
             scanned.add(rel)
-        hit = pinned_dependency(manifest, text, _PY_PIN)
+        hit = pinned_dependency(manifest, _PY_PIN)
         if hit is None:
             continue
         scanned.add(rel)
@@ -185,13 +184,11 @@ def _check_package_json_pin(project_root: Path, scanned: set[str]) -> list[Findi
         return findings
     rel = str(pkg.relative_to(project_root))
     scanned.add(rel)
-    try:
-        text = pkg.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    manifest = read_manifest(pkg)
+    if manifest is None:
         return findings
-    found = manifest_declarations(pkg, text)
     for pin, name, tail in _NPM_PINS:
-        hit = pinned_dependency(pkg, text, pin, found)
+        hit = pinned_dependency(manifest, pin)
         if hit is not None:
             # No line, as before: giving package.json findings one re-keys
             # their code-scanning alerts.

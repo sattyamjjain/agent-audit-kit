@@ -4335,7 +4335,7 @@ _r(
         "npm's `@langchain/*` packages have version lines of their own. The umbrella "
         "`langchain` and `langchain-community` distributions are not read either, "
         "because their version numbers are not langchain-core's, so a project that "
-        "pins only those is not reported."
+        "pins only those is not reported. A manifest over 2 MB is not read."
     ),
 )
 
@@ -5814,8 +5814,8 @@ _r(
         "requirements-prod.txt, dev-requirements.txt and pyproject.toml at the "
         "project root, taking the lowest version a range allows. An unpinned line is "
         "not reported, and uv.lock, `requirements/base.txt` and a `uvx "
-        "mcp-neo4j-cypher==0.5.0 --read-only` launcher in .mcp.json are not read. "
-        "The source arm needs `read_only = "
+        "mcp-neo4j-cypher==0.5.0 --read-only` launcher in .mcp.json are not read, "
+        "nor is a manifest over 2 MB. The source arm needs `read_only = "
         "True` and a `CALL apoc.` or `runWrite` reference in the same Python file, "
         "so a query kept in another module is not matched."
     ),
@@ -6146,6 +6146,7 @@ _r(
         "first `)` comes more than 1,024 characters after the comma, as behind a long "
         "comment in the handler, is not read as a body read; on 88,502 TS/JS files it "
         "came at most 36 after."
+        " The version pin does not read a `package.json` over 2 MB."
     ),
 )
 
@@ -6352,7 +6353,8 @@ _r(
         "(`mcp>=1.2.0`) is reported; a declaration that states no version "
         "(`\"latest\"`) is not. `io.modelcontextprotocol.sdk:mcp-core` below 0.11.0 "
         "is read as written in the root pom.xml and Gradle files. A lockfile "
-        "(uv.lock, package-lock.json) and a manifest in a sub-directory are not read."
+        "(uv.lock, package-lock.json), a manifest in a sub-directory and one over 2 MB "
+        "are not read."
     ),
 )
 
@@ -6523,7 +6525,7 @@ _r(
         "of the scanned directory, taking the lowest version a range allows and "
         "reporting a reference that states no version. The same dependency declared "
         "in a workspace package's own `package.json` (`apps/web/package.json`) is "
-        "not read."
+        "not read, and neither is a `package.json` over 2 MB."
     ),
 )
 
@@ -6574,7 +6576,7 @@ _r(
         "not disable redirects. A guard under another name (`assert_public_url`), or a "
         "guard and a fetch in two separate, non-nested Python functions, is not "
         "matched."
-        " A lockfile over 32 MiB is not read."
+        " A manifest over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -6629,7 +6631,7 @@ _r(
         "on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's "
         "own source: that release resolves inside the guard, but the fetch "
         "resolves the name again."
-        " A lockfile over 32 MiB is not read."
+        " A manifest over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 

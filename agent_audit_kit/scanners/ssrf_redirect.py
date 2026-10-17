@@ -43,7 +43,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, locked_affected_versions, pinned_dependency
+from ._dependency_pins import DependencyPin, locked_affected_versions, pinned_dependency, read_manifest
 from ._helpers import in_skip_dir, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
@@ -264,14 +264,11 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
     manifests = sorted(project_root.glob("requirements*.txt"))
     if (project_root / "pyproject.toml").is_file():
         manifests.append(project_root / "pyproject.toml")
-    for manifest in manifests:
-        try:
-            text = manifest.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        hit = pinned_dependency(manifest, text, _PIN)
+    for path in manifests:
+        manifest = read_manifest(path)
+        hit = pinned_dependency(manifest, _PIN) if manifest is not None else None
         if hit is not None:
-            rel = str(manifest.relative_to(project_root))
+            rel = str(path.relative_to(project_root))
             scanned.add(rel)
             _fire(rel, f"referenced as {hit.quoted}", hit.line)
 

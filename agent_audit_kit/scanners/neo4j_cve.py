@@ -26,7 +26,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._dependency_pins import DependencyPin, pinned_dependency
+from agent_audit_kit.scanners._dependency_pins import DependencyPin, Manifest, pinned_dependency, read_manifest
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
@@ -44,8 +44,8 @@ _RUNWRITE_RE = re.compile(r"\bdb\.cypher\.runWrite\b|\brun_write\b")
 _READ_ONLY_RE = re.compile(r"read_only\s*=\s*True")
 
 
-def _check_manifest(path: Path, text: str, rel: str) -> list[Finding]:
-    hit = pinned_dependency(path, text, _PIN)
+def _check_manifest(manifest: Manifest, rel: str) -> list[Finding]:
+    hit = pinned_dependency(manifest, _PIN)
     if hit is None:
         return []
     return [make_finding(
@@ -81,11 +81,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if p.is_file():
             rel = str(p.relative_to(project_root))
             scanned.add(rel)
-            try:
-                text = p.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            findings.extend(_check_manifest(p, text, rel))
+            manifest = read_manifest(p)
+            if manifest is not None:
+                findings.extend(_check_manifest(manifest, rel))
 
     # Python source: read_only=True + apoc. patterns
     for py in project_root.rglob("*.py"):

@@ -244,12 +244,12 @@ def test_unversioned_reference_says_so(tmp_path: Path, pin: _Pin) -> None:
 
 @pytest.mark.parametrize("pin", _PY_PINS, ids=str)
 def test_a_crafted_pyproject_reads_in_linear_time(tmp_path: Path, pin: _Pin) -> None:
-    """A comment repeating the declaration 100,000 times above the real one, which
-    the line lookup reads match by match with a bounded look-back. The bound is
-    loose for slow CI runners."""
+    """A comment repeating the declaration 50,000 times above the real one, under
+    the 2 MB limit: the line comes from the parsed document's positions, so the
+    repetitions cost one pass. The bound is loose for slow CI runners."""
     declaration = pin.fill("{p}=={a}")
     (tmp_path / "pyproject.toml").write_text(
-        _HEAD + "# " + f'"{declaration}" ' * 100_000 + f'\ndependencies = ["{declaration}"]\n',
+        _HEAD + "# " + f'"{declaration}" ' * 50_000 + f'\ndependencies = ["{declaration}"]\n',
         encoding="utf-8")
     started = time.perf_counter()
     findings, _ = pin.module.scan(tmp_path)
@@ -316,3 +316,45 @@ def test_a_finding_is_on_the_line_of_the_declaration_that_decides_it(
     (tmp_path / "pyproject.toml").write_text(text, encoding="utf-8")
     findings, _ = module.scan(tmp_path)
     assert [f.line_number for f in findings if f.rule_id == rule_id] == [line]
+
+
+_PYPROJECT_MODULES = (langchain_vuln, neo4j_cve, ssrf_redirect, ssrf_toctou, dns_rebind)
+
+
+def _big_pyproject(entries: int) -> str:
+    return (_HEAD + "dependencies = [\n" + "".join(f'  "pkg{i}>=1.0",\n' for i in range(entries))
+            + '  "langchain-core==0.3.13",\n  "mcp==1.22.0",\n]\n')
+
+
+def test_one_pyproject_is_parsed_once_for_every_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Five modules read the root pyproject.toml, and each used to parse it alone: a
+    1.9 MB file cost 3.6 s of CPU across them. They share one parse now. The bound
+    is loose for slow CI runners."""
+    from agent_audit_kit.scanners import _dependency_pins
+
+    (tmp_path / "pyproject.toml").write_text(_big_pyproject(100_000), encoding="utf-8")
+    assert (tmp_path / "pyproject.toml").stat().st_size < 2_000_000
+    parses: list[str] = []
+    real = _dependency_pins.manifest_declarations
+
+    def counting(path: Path, text: str) -> list:
+        parses.append(path.name)
+        return real(path, text)
+
+    monkeypatch.setattr(_dependency_pins, "manifest_declarations", counting)
+    started = time.process_time()
+    fired = {f.rule_id for module in _PYPROJECT_MODULES for f in module.scan(tmp_path)[0]}
+    assert time.process_time() - started < 5.0
+    assert parses == ["pyproject.toml"]
+    assert {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-DNS-REBIND-002"} <= fired
+
+
+def test_a_manifest_over_the_limit_is_not_read(tmp_path: Path) -> None:
+    """A manifest over 2 MB, the CVE pin table's limit, is skipped unread, so a
+    crafted 8 MB pyproject.toml costs nothing (19 s across these modules before)."""
+    (tmp_path / "pyproject.toml").write_text(_big_pyproject(400_000), encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("x\n" * 1_100_000 + "mcp==1.22.0\n", encoding="utf-8")
+    started = time.process_time()
+    fired = {f.rule_id for module in _PYPROJECT_MODULES for f in module.scan(tmp_path)[0]}
+    assert time.process_time() - started < 2.0
+    assert not fired & {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-DNS-REBIND-002"}

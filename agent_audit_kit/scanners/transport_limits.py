@@ -22,7 +22,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, manifest_declarations, pinned_dependency
+from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
 from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
 
 _MCPFRAME_PATCHED = (0, 2, 22)
@@ -105,18 +105,16 @@ def _check_package_json(project_root: Path, scanned: set[str]) -> list[Finding]:
         return findings
     rel = str(pkg.relative_to(project_root))
     scanned.add(rel)
-    try:
-        text = pkg.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    manifest = read_manifest(pkg)
+    if manifest is None:
         return findings
-    found = manifest_declarations(pkg, text)
     for rule_id, pin, name, tail in (
         ("AAK-MCPFRAME-001", _MCPFRAME_PIN, "mcp-framework",
          "CVE-2026-39313 HTTP-body DoS is patched in 0.2.22."),
         ("AAK-NEXT-AI-DRAW-001", _NEXT_AI_DRAW_PIN, "next-ai-draw-io",
          "CVE-2026-40608 body-accumulation DoS is patched in 0.4.15."),
     ):
-        hit = pinned_dependency(pkg, text, pin, found)
+        hit = pinned_dependency(manifest, pin)
         if hit is not None:
             # No line, as before: giving package.json findings one re-keys
             # their code-scanning alerts.

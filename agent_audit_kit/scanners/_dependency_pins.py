@@ -51,11 +51,17 @@ One finding per rule per file, on the line of the declaration that decided it.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import threading
+from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 from agent_audit_kit.scanners._manifest_deps import (
+    MAX_MANIFEST_BYTES,
     Declaration,
     declaration_lines,
     declarations,
@@ -152,28 +158,88 @@ def manifest_declarations(path: Path, text: str) -> list[Declaration]:
     return [d for d in declarations(path, text) if d.kind != "launch"]
 
 
-def pinned_dependency(
-    path: Path, text: str, pin: DependencyPin, found: list[Declaration] | None = None
-) -> PinnedDependency | None:
-    """The declaration in `path` that admits an affected release, or None.
+@dataclass(frozen=True)
+class Manifest:
+    """One manifest as the version pins read it: its text and its declarations."""
+
+    path: Path
+    text: str
+    declarations: tuple[Declaration, ...]
+
+    @cached_property
+    def line_of(self) -> Callable[[Declaration], int | None]:
+        """The line each declaration is written on, its positions read once."""
+        return declaration_lines(self.path, self.text)
+
+
+# Parsed manifests are kept, keyed by path and content, so the modules that
+# read one root pyproject.toml (and a package.json, and a requirements file)
+# share one parse in a scan. Each used to parse it alone: a 1.9 MB
+# pyproject.toml cost 3.6 s of CPU across them, where one parse costs about
+# 0.6 s. The content digest, not the modification time, says a file is
+# unchanged: a coarse filesystem clock leaves two writes of one size with the
+# same time, which `aak fix` rewriting a pin can produce. The least recently
+# used entries go once more than 32 are kept or their text passes 8 MB, so a
+# repository of many large manifests cannot hold them all in memory.
+_MANIFESTS: OrderedDict[tuple[str, bytes], Manifest] = OrderedDict()
+_MANIFESTS_KEPT = 32
+_MANIFESTS_TEXT_BUDGET = 8_000_000
+_MANIFESTS_LOCK = threading.Lock()
+
+
+def read_manifest(path: Path) -> Manifest | None:
+    """`path` read and parsed, or None when it is missing, unreadable or too large.
+
+    A manifest over MAX_MANIFEST_BYTES (2 MB), the CVE pin table's limit, is not
+    read, so a crafted file costs no rule more than one bounded parse. The text
+    is decoded as the modules always read it (UTF-8 with replacement, universal
+    newlines), so evidence and lines are unchanged.
 
     Args:
         path: The manifest; its name selects the format.
-        text: The manifest's contents.
+
+    Returns:
+        The manifest, shared with every other caller that reads the same file
+        content during the process, or None.
+    """
+    try:
+        if path.stat().st_size > MAX_MANIFEST_BYTES:
+            return None
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    key = (str(path.absolute()), hashlib.blake2b(raw, digest_size=16).digest())
+    with _MANIFESTS_LOCK:
+        cached = _MANIFESTS.get(key)
+        if cached is not None:
+            _MANIFESTS.move_to_end(key)
+            return cached
+    text = raw.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    manifest = Manifest(path, text, tuple(manifest_declarations(path, text)))
+    with _MANIFESTS_LOCK:
+        _MANIFESTS[key] = manifest
+        held = sum(len(m.text) for m in _MANIFESTS.values())
+        while len(_MANIFESTS) > 1 and (len(_MANIFESTS) > _MANIFESTS_KEPT or held > _MANIFESTS_TEXT_BUDGET):
+            _, dropped = _MANIFESTS.popitem(last=False)
+            held -= len(dropped.text)
+    return manifest
+
+
+def pinned_dependency(manifest: Manifest, pin: DependencyPin) -> PinnedDependency | None:
+    """The declaration in `manifest` that admits an affected release, or None.
+
+    Args:
+        manifest: The file, from `read_manifest`.
         pin: The package and its fix.
-        found: The file's declarations, when the caller has parsed them already
-            for another pin.
 
     Returns:
         The deciding declaration and its line, or None when the file declares
         no affected release of the package.
     """
-    if found is None:
-        found = manifest_declarations(path, text)
-    declaration = _deciding_declaration(pin.as_table_pin(), found)
+    declaration = _deciding_declaration(pin.as_table_pin(), list(manifest.declarations))
     if declaration is None:
         return None
-    return PinnedDependency(declaration, declaration_lines(path, text)(declaration), pin.fixed)
+    return PinnedDependency(declaration, manifest.line_of(declaration), pin.fixed)
 
 
 def locked_affected_versions(path: Path, text: str, pin: DependencyPin) -> list[Ver]:
@@ -255,7 +321,7 @@ def raise_to_fix(path: Path, text: str, pin: DependencyPin) -> Raised:
     if refused:
         return Raised(text, 0, tuple(refused))
     raised = "\n".join(lines)
-    if pinned_dependency(path, raised, pin) is not None:
+    if pinned_dependency(Manifest(path, raised, tuple(manifest_declarations(path, raised))), pin) is not None:
         return Raised(text, 0, ((None, "the rewritten file would still admit a release below the fix"),))
     return Raised(raised, len(targets))
 
