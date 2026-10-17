@@ -483,8 +483,9 @@ def _pieces(node: ast.AST) -> list[str | ast.AST]:
 
 #: The annotations of parameters a framework fills in, not the caller: FastMCP's
 #: `Context` (`ctx: Context`, whose `request_context.lifespan_context` holds the
-#: server's own API client) and LangChain's `RunnableConfig`.
-_INJECTED_ANNOTATIONS = frozenset({"Context", "RunnableConfig"})
+#: server's own API client), LangChain's `RunnableConfig`, and the OpenAI Agents
+#: SDK's `RunContextWrapper` and `ToolContext`.
+_INJECTED_ANNOTATIONS = frozenset({"Context", "RunnableConfig", "RunContextWrapper", "ToolContext"})
 
 
 def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
@@ -686,13 +687,51 @@ class _CallerInput:
         return _UNKNOWN
 
 
+def _registered_tools(tree: ast.AST) -> set[str]:
+    """Names of functions the file registers as tools by a call rather than a
+    decorator: passed to `add_tool(...)` (FastMCP, the MCP SDK), handed over as
+    `func=` (`StructuredTool.from_function(func=fetch)`, LangChain's
+    `Tool(name, func=fetch, ...)`) or as `from_function`'s first argument."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        callee = _py_callee_name(node.func).rpartition(".")[2]
+        given = [kw.value for kw in node.keywords if kw.arg == "func"]
+        if callee in ("add_tool", "from_function") and node.args:
+            given.append(node.args[0])
+        if callee == "add_tool":
+            given.extend(kw.value for kw in node.keywords if kw.arg in ("fn", "function", "tool"))
+        names.update(item.id for item in given if isinstance(item, ast.Name))
+    return names
+
+
+def _is_function_tool(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Decorated `@function_tool`, the OpenAI Agents SDK's tool decorator,
+    bare or called (`@function_tool(name_override=...)`)."""
+    for decorator in func.decorator_list:
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if _py_callee_name(target).rpartition(".")[2] == "function_tool":
+            return True
+    return False
+
+
 def _caller_inputs(tree: ast.AST, assigns: dict[str, list[ast.AST]]) -> dict[int, list[_CallerInput]]:
-    """id(call) -> the caller input of each tool function the call sits in."""
+    """id(call) -> the caller input of each tool function the call sits in.
+
+    A tool is what taint_analysis reads as one, a function decorated
+    `@function_tool`, or one the file registers by a call (`_registered_tools`).
+    Without the last two, `mcp.add_tool(fetch)` and the OpenAI Agents SDK's
+    tools had no caller input, where the old name list fired on them when the
+    parameter was called `query` or `params`.
+    """
+    registered = _registered_tools(tree)
     around: dict[int, list[_CallerInput]] = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if not (_is_tool_function(node) or _is_call_tool_handler(node)):
+        if not (_is_tool_function(node) or _is_call_tool_handler(node)
+                or _is_function_tool(node) or node.name in registered):
             continue
         scope = _CallerInput(node, assigns)
         for sub in ast.walk(node):

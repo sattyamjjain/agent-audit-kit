@@ -288,6 +288,29 @@ def test_the_host_test_still_leaves_a_fixed_host_alone(tmp_path: Path, body: str
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body) & _SSRF_RULES == set()
 
 
+@pytest.mark.parametrize("registration", [
+    "def fetch(url: str) -> str:\n    return requests.get(url).text\n\nmcp.add_tool(fetch)\n",
+    "@function_tool\ndef fetch(url: str) -> str:\n    return requests.get(url).text\n",
+    '@function_tool(name_override="fetch")\ndef fetch(url: str) -> str:\n    return requests.get(url).text\n',
+    "def fetch(url: str) -> str:\n    return requests.get(url).text\n\nTOOL = StructuredTool.from_function(func=fetch)\n",
+    'def fetch(url: str) -> str:\n    return requests.get(url).text\n\nTOOL = Tool(name="fetch", func=fetch, description="x")\n',
+])
+def test_a_function_registered_as_a_tool_is_one(tmp_path: Path, registration: str) -> None:
+    """`mcp.add_tool(fetch)`, the OpenAI Agents SDK's `@function_tool` and a
+    function handed to `func=` (`StructuredTool.from_function`, LangChain's
+    `Tool`) register a tool without a decorator taint_analysis knows."""
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + registration)
+
+
+def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
+    body = (
+        "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"
+        "RESULT = list(map(fetch, URLS))\n"
+        "thread = threading.Thread(target=fetch, args=(BASE,))\n"
+    )
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
+
+
 @pytest.mark.parametrize(("literal", "address"), [
     ("hosts: localhost, 10.0.0.5,", "localhost"),
     ("(127.0.0.1)", "127.0.0.1"),
