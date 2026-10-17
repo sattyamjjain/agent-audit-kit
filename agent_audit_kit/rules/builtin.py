@@ -3508,7 +3508,7 @@ _r(
     "names. Where the credential to check depends on that resource (a per-adapter "
     "auth setting), answer an unknown name and a refused credential the same way, "
     "with one status and body, so the response does not reveal which names exist.",
-    sarif_name="McpAuthAfterSideEffect",
+    sarif_name="McpAuthAfterResourceLookup",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-05"],
