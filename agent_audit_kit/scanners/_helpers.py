@@ -80,45 +80,112 @@ def sub_comments(pattern: re.Pattern[str], line_pattern: re.Pattern[str], text: 
 
 
 class MatchSpans:
-    """Where the matches of patterns lie in one text, found once, to ask about a range of it.
+    """Spans in one text, each found once, to ask whether a range of it holds one.
 
     A scanner that judges each function by searching the function's own source
     searches the lines of a nested function again for every function around it,
-    so a function nested 99 deep made its lines be read 99 times. Each match is
-    found once per file instead, and a range is asked about by binary search. A
-    match counts for a range when it lies wholly inside it; for a range of whole
-    lines that is what a search of the range alone finds, provided every
-    pattern matches one way from where it starts and no match begins before the
-    first line of a range it could end in. Each caller says why its patterns do.
+    so a function nested 99 deep made its lines be read 99 times. Each span is
+    found once per file instead, and a range is asked about by binary search: a
+    span counts when it lies wholly inside the range. That is what a search of
+    the range alone gives for spans found the same way in any range, such as a
+    fixed string's occurrences or spans a caller builds to be; a regular
+    expression's matches over the whole text are not, and go in `PatternSpans`.
     """
 
     def __init__(self, spans: Iterable[tuple[int, int]]) -> None:
         ordered = sorted(spans)
         self._starts = [start for start, _ in ordered]
-        self._ends = [end for _, end in ordered]
         # The earliest end among the spans from each one on.
-        self._earliest_end = self._ends[:]
+        self._earliest_end = [end for _, end in ordered]
         for index in range(len(ordered) - 2, -1, -1):
             self._earliest_end[index] = min(self._earliest_end[index], self._earliest_end[index + 1])
 
     def within(self, start: int, end: int) -> bool:
-        """Whether a match lies wholly inside `[start, end)`."""
+        """Whether a span lies wholly inside `[start, end)`."""
         index = bisect.bisect_left(self._starts, start)
         return index < len(self._starts) and self._earliest_end[index] <= end
 
-    def first(self, start: int, end: int) -> int | None:
-        """Where the first match lying wholly inside `[start, end)` begins, or None.
 
-        A match that begins inside the range and ends past it is stepped over, so
-        this is quick when few matches can cover one position: the matches one
-        pattern's `finditer` gives never overlap.
+class PatternSpans:
+    """Where several patterns match in one text, found once, to ask about a range
+    of it as a search of that range alone would.
+
+    `finditer` over the whole text gives each pattern's matches, and one lying
+    wholly inside a range is one a search of the range finds too. But a match
+    can run across the range's start or end where a search of the range alone
+    finds a shorter match at the same place, or one starting inside it: with
+    `anthropic.create` on a function's last line and the next line starting
+    `create`, a sink pattern with an optional name took `create` as the name and
+    went on to that line, and the function had no sink. So a pattern with a
+    match across the range's start, or one beginning inside the range and
+    ending past it, is searched again within the range
+    (`pattern.search(text, start, end)`), and each such search is kept. A range
+    is taken to end at a line break, as a function's lines do: a pattern that
+    looks past its match's end sees the line break where the range's own search
+    sees the end of the text, which `\\b` and the negative lookaheads the
+    scanners use read alike.
+    """
+
+    def __init__(self, patterns: Iterable[re.Pattern[str]], text: str) -> None:
+        self._patterns = tuple(patterns)
+        self._text = text
+        found = sorted(
+            (m.start(), m.end(), which) for which, pattern in enumerate(self._patterns) for m in pattern.finditer(text)
+        )
+        self._starts = [start for start, _, _ in found]
+        self._ends = [end for _, end, _ in found]
+        self._which = [which for _, _, which in found]
+        # The latest end among the matches up to each one, to tell whether any
+        # runs across a position.
+        self._latest_end: list[int] = []
+        latest = -1
+        for end in self._ends:
+            latest = max(latest, end)
+            self._latest_end.append(latest)
+        # Each pattern's own matches, which never overlap, in order.
+        self._own: list[tuple[list[int], list[int]]] = [([], []) for _ in self._patterns]
+        for start, end, which in found:
+            self._own[which][0].append(start)
+            self._own[which][1].append(end)
+        self._again: dict[tuple[int, int, int], int | None] = {}
+
+    def _search(self, which: int, start: int, end: int) -> int | None:
+        key = (which, start, end)
+        if key not in self._again:
+            match = self._patterns[which].search(self._text, start, end)
+            self._again[key] = match.start() if match else None
+        return self._again[key]
+
+    def first(self, start: int, end: int) -> int | None:
+        """Where the first match of any of the patterns in `[start, end)` begins, or None.
+
+        Every match stepped over begins inside the range and ends past it, so
+        covers the range's end; one pattern's matches never overlap, so that is
+        at most one per pattern.
         """
+        best: int | None = None
         index = bisect.bisect_left(self._starts, start)
+        if index and self._latest_end[index - 1] > start:
+            for which, (starts, ends) in enumerate(self._own):
+                before = bisect.bisect_left(starts, start) - 1
+                if before >= 0 and ends[before] > start:
+                    at = self._search(which, start, end)
+                    if at is not None and (best is None or at < best):
+                        best = at
         while index < len(self._starts) and self._starts[index] < end:
+            if best is not None and self._starts[index] >= best:
+                break
             if self._ends[index] <= end:
                 return self._starts[index]
+            at = self._search(self._which[index], self._starts[index], end)
+            if at is not None and (best is None or at < best):
+                best = at
             index += 1
-        return None
+        return best
+
+    def within(self, start: int, end: int) -> bool:
+        """Whether any of the patterns matches in `[start, end)`."""
+        return self.first(start, end) is not None
 
 
 SKIP_DIRS = frozenset({

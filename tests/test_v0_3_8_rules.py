@@ -351,6 +351,39 @@ def inner_source(client):
 """
 
 
+# Verification of e1cc1f9e (2026-10-17, Low, a regression on main and
+# a323344c): a sink match found over the whole file ran past a function's last
+# line where a search of the function's lines alone found a shorter one. At
+# `anthropic.create` the `anthropic` arm took `create` as its optional name and
+# went on to a `create` starting the next line, so the function had no sink. A
+# match running across a function's edge is matched again within the function,
+# and the arm tries the bare call first.
+_PAST_THE_END = {
+    "a return, then create_app()": (
+        "import anthropic\n\ndef review(event):\n    title = event['pull_request']['title']\n"
+        "    prompt = 'Review: ' + title\n    return anthropic.create\n\ncreate_app()\n", [4]),
+    "a trailing comment, then create = None": (
+        "def review(event, send):\n    title = event.pull_request.title\n"
+        "    return send(title)  # goes to anthropic.create\ncreate = None\n", [2]),
+    # The arm tried bare first still runs a name ending in `create` on to the
+    # next line; only matching again within the function finds this one.
+    "a name ending in create, then create = None": (
+        "def review(event, send):\n    title = event.pull_request.title\n"
+        "    return send(title)  # goes to anthropic.recreate\ncreate = None\n", [2]),
+    "control: the function ends the file": (
+        "import anthropic\n\ndef review(event):\n    title = event['pull_request']['title']\n"
+        "    prompt = 'Review: ' + title\n    return anthropic.create\n", [4]),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_PAST_THE_END))
+def test_prtitle_ipi_a_sink_matched_past_the_function_end_is_matched_again(tmp_path: Path, case: str) -> None:
+    src, lines = _PAST_THE_END[case]
+    compile(src, "review.py", "exec")
+    (tmp_path / "review.py").write_text(src, encoding="utf-8")
+    assert [f.line_number for f in prtitle_scan(tmp_path)[0]] == lines
+
+
 def test_prtitle_ipi_judges_a_function_with_the_ones_nested_in_it(tmp_path: Path) -> None:
     """A function's source includes the functions nested in it: `outer` holds a
     sanitiser in `clean`, `other` reads the title in its own line and sends it in

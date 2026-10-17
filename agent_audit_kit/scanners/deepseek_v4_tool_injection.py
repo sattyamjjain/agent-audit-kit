@@ -21,7 +21,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import MatchSpans, in_skip_dir, make_finding
+from ._helpers import MatchSpans, PatternSpans, in_skip_dir, make_finding
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -497,11 +497,10 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         line_starts.append(line_starts[-1] + len(line) + 1)
     # A function's source used to be joined from its lines and searched again
     # for each function, so every level of a nested function searched the
-    # levels inside it once more. Each match is found once per file; a range
-    # holds one when a match lies wholly inside it.
-    sources = MatchSpans(
-        [m.span() for pattern in _SOURCE_RES for m in pattern.finditer(joined)] + _file_read_spans(joined)
-    )
+    # levels inside it once more. Each match is found once per file, and a
+    # function's lines hold one as a search of them alone would find it.
+    sources = PatternSpans(_SOURCE_RES, joined)
+    file_reads = MatchSpans(_file_read_spans(joined))
     tools = MatchSpans(_occurrences(joined, "tools=") + _occurrences(joined, "tools ="))
     described = MatchSpans(_occurrences(joined, "description"))
     findings: list[Finding] = []
@@ -511,7 +510,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         if last <= first:
             continue
         start, end = line_starts[first], line_starts[last] - 1
-        if is_cleared or not sources.within(start, end):
+        if is_cleared or not (sources.within(start, end) or file_reads.within(start, end)):
             continue
         # Look for tools=[{ ... description: <tainted> ... }] passing
         # in an LLM call. Heuristic: presence of `tools=` AND a dict

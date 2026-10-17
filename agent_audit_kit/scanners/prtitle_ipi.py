@@ -27,7 +27,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import MatchSpans, in_skip_dir, make_finding
+from ._helpers import MatchSpans, PatternSpans, in_skip_dir, make_finding
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -111,9 +111,13 @@ def _title_start(text: str, start: int, end: int) -> int | None:
 # was `anthropic\s*\.\s*\w*\s*\.?\s*(...)`: with the name and the dot absent,
 # three `\s*` stood side by side, cubic in a run of blanks after
 # `anthropic.` (0.83 s for 800 blanks, 13 s for 2,000). Each `\s*` follows a
-# token that must be there now, and the arm matches the same text.
+# token that must be there now, and the arm matches the same text. It tries the
+# bare call first, so that a match over the whole file stops at the first
+# complete call instead of taking `create` as a name and running on to a
+# `create` on the next line (`PatternSpans` searches again any that still does).
+_ANTHROPIC_CALL = r"(?:messages\.create|completions\.create|create)"
 _LLM_SINK_ARMS = (
-    r"anthropic\s*\.\s*(?:\w+\s*)?(?:\.\s*)?(?:messages\.create|completions\.create|create)",
+    rf"anthropic\s*\.\s*(?:{_ANTHROPIC_CALL}|\w+\s*(?:\.\s*)?{_ANTHROPIC_CALL}|\.\s*{_ANTHROPIC_CALL})",
     r"client\s*\.\s*messages\s*\.\s*create",
     r"openai\s*\.\s*chat\s*\.\s*completions\s*\.\s*create",
     r"openai\s*\.\s*ChatCompletion\.create",
@@ -215,38 +219,41 @@ class _Reader:
     nested function searched the levels inside it again: 99 levels over one
     line of 20,000 calls took 31.6 s at 428 KB (main 24.4 s, the same body in
     one function 2.1 s). Each arm's matches are found once per file now, and a
-    function asks about them by binary search (`MatchSpans`). A match counts
-    for a function when it lies wholly inside the function's lines, as a
-    search of those lines alone found it: no match can begin before a `def`
-    line and run into it, and each arm matches one way from where it starts.
+    function asks about them by binary search (`PatternSpans`), which searches
+    a pattern again within the function's lines where one of its matches runs
+    across their first or last line: a comment ending `anthropic.create` on a
+    function's last line, the next line starting `create = None`, ran the sink
+    arm on to that line, and the function had no sink. The escaped
+    substitutions are spans that hold for any range (`MatchSpans`).
     """
 
     def __init__(self, text: str) -> None:
-        self._titles = MatchSpans(m.span() for p in _TITLE_SOURCE_RES for m in p.finditer(text))
-        views = [m.span() for m in _GH_PR_VIEW_RE.finditer(text)]
-        self._view_starts = [start for start, _ in views]
-        self._view_ends = [end for _, end in views]
+        self._text = text
+        self._titles = PatternSpans(_TITLE_SOURCE_RES, text)
+        self._views = PatternSpans((_GH_PR_VIEW_RE,), text)
         self._title_words = _word_starts(text, "title")
-        self._sinks = MatchSpans(m.span() for p in _LLM_SINK_RES for m in p.finditer(text))
-        self._sanitisers = MatchSpans(
-            [m.span() for p in _SANITIZE_RES for m in p.finditer(text)] + _escaped_substitutions(text)
-        )
+        self._sinks = PatternSpans(_LLM_SINK_RES, text)
+        self._sanitisers = PatternSpans(_SANITIZE_RES, text)
+        self._escaped = MatchSpans(_escaped_substitutions(text))
 
     def title_start(self, start: int, end: int) -> int | None:
         """Where the first title source in `[start, end)` begins, as `_title_start` reads it."""
         first = self._titles.first(start, end)
-        view = bisect.bisect_left(self._view_starts, start)
-        if view < len(self._view_starts) and self._view_ends[view] <= end:
-            word = bisect.bisect_left(self._title_words, self._view_ends[view])
+        view = self._views.first(start, end)
+        found = _GH_PR_VIEW_RE.match(self._text, view, end) if view is not None else None
+        if found is not None:
+            word = bisect.bisect_left(self._title_words, found.end())
             if word < len(self._title_words) and self._title_words[word] + len("title") <= end:
-                if first is None or self._view_starts[view] < first:
-                    first = self._view_starts[view]
+                if first is None or found.start() < first:
+                    first = found.start()
         return first
 
     def reported(self, start: int, end: int) -> int | None:
         """Where the title source begins, when `[start, end)` holds one, a sink and no sanitiser."""
         source = self.title_start(start, end)
-        if source is None or not self._sinks.within(start, end) or self._sanitisers.within(start, end):
+        if source is None or not self._sinks.within(start, end):
+            return None
+        if self._sanitisers.within(start, end) or self._escaped.within(start, end):
             return None
         return source
 

@@ -31,7 +31,7 @@ from collections import deque
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import MatchSpans, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import PatternSpans, make_finding, in_skip_dir
 
 
 # Every level method of a stdlib logger. `logger` lacked `exception`, `warn`
@@ -228,9 +228,9 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         calls_sanitiser[node] = any(
             _SANITIZER_NAME_RE.search(_callee_name(call.func)) for call in own_calls[node]
         ) or any(calls_sanitiser[inner] for inner in nested[node])
-    # Sanitising code is found once per file; a tool function's source holds it
-    # when a match lies wholly inside the function's lines.
-    sanitising_code = MatchSpans(m.span() for pattern in _SANITIZERS for m in pattern.finditer(joined))
+    # Sanitising code is found once per file, and a tool function's source holds
+    # it as a search of the function's lines alone would find it.
+    sanitising_code = PatternSpans(_SANITIZERS, joined)
     for node in tools:
         params = {a.arg for a in node.args.args} | {a.arg for a in node.args.kwonlyargs}
         if not params:
