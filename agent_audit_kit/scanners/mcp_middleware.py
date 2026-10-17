@@ -933,7 +933,9 @@ def _reads_shared_handlers(rel: str, text: str, go: bool) -> bool:
 # each `if` is read for a bounded window, so nested handlers cost linear time.
 
 _MCP019 = "AAK-MCP-019"
-_MCP_MENTION_RE = re.compile(r"mcp|jsonrpc|tools/(?:call|list)", re.IGNORECASE)
+# A mention of MCP: the name, or a method only MCP has. `jsonrpc` is not one: a
+# JSON-RPC wallet API is not an MCP server.
+_MCP_MENTION_RE = re.compile(r"mcp|tools/(?:call|list)", re.IGNORECASE)
 _NOT_FOUND_RE = re.compile(r"StatusNotFound|\b404\b|\bNotFound\(")
 _DENIED_RE = re.compile(r"StatusUnauthorized|StatusForbidden|\b40[13]\b")
 # A request value read by name: gin and echo `c.Param("id")`, `c.Query(...)`,

@@ -541,3 +541,17 @@ def test_a_method_value_on_an_authenticated_route_is_quiet(tmp_path: Path) -> No
     text = METHOD_VALUE.replace('adapters.GET("/:name/tools", s.listMCPTools)',
                                 'adapters.GET("/:name/tools", requireAuth(), s.listMCPTools)')
     assert _lookups(tmp_path, "gateway.go", text) == []
+
+
+def test_a_json_rpc_handler_that_never_mentions_mcp_is_not_read(tmp_path: Path) -> None:
+    """A JSON-RPC wallet API with the same order: `jsonrpc` counted as a mention
+    of MCP."""
+    text = (
+        GATEWAY.replace("listMCPTools", "getWallet").replace("forwardMCP", "forward")
+        .replace('"tools/list"', '"wallet"').replace('gin.H{"error": "adapter not found"}',
+                                                      'gin.H{"jsonrpc": "2.0", "error": "wallet not found"}')
+        .replace("// getWallet answers 404 for an unknown adapter before it checks the\n"
+                 "// caller's token, so a caller with no token learns which adapters exist.\n", "")
+    )
+    assert "mcp" not in text.lower() and "jsonrpc" in text
+    assert _lookups(tmp_path, "gateway.go", text) == []

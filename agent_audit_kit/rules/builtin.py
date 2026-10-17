@@ -3513,7 +3513,8 @@ _r(
         "a function. The handler must be registered in the same file, on a route with "
         "no auth middleware or wrapper and no group or router-wide auth, so one "
         "registered in another file is not read, and the handler's name or body must "
-        "mention MCP."
+        "mention MCP: `mcp` in any case, or `tools/call` or `tools/list` (a JSON-RPC "
+        "handler that does neither is not read)."
     ),
 )
 
