@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -313,6 +314,62 @@ def test_a_crafted_file_scans_in_linear_time(tmp_path: Path, name: str) -> None:
     started = time.perf_counter()
     transport_limits.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+def _grows_linearly(tmp_path: Path, name: str, build: Callable[[int], str], count: int) -> None:
+    """``build(count)`` and ``build(10 * count)``: the second must not take a
+    hundred times as long."""
+    roots = []
+    for label, n in (("small", count), ("large", 10 * count)):
+        root = tmp_path / label
+        root.mkdir()
+        text = build(n)
+        assert len(text) < 1_000_000, "under the scanner's 1 MB cap"
+        (root / name).write_text(text, encoding="utf-8")
+        roots.append(root)
+    assert len(_hits(roots[1])) == 10 * len(_hits(roots[0])) > 0, "the shape reports every handler"
+    t_small, t_large = _seconds(lambda: transport_limits.scan(roots[0])), _seconds(lambda: transport_limits.scan(roots[1]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+def _handlers_on_their_own_routes(n: int) -> str:
+    one = "func h{i}(w http.ResponseWriter, r *http.Request) {{\n\tb, _ := io.ReadAll(r.Body)\n\t_ = b\n}}\n"
+    routes = "".join(f'\thttp.HandleFunc("/t{i}/mcp", h{i})\n' for i in range(n))
+    return 'package main\nimport ("io"; "net/http")\n' + "".join(one.format(i=i) for i in range(n)) + (
+        "func main() {\n" + routes + "}\n"
+    )
+
+
+def _nested_handlers(n: int) -> str:
+    level = 'f := func(w http.ResponseWriter, r *http.Request) {\nb, _ := io.ReadAll(r.Body)\n_ = b\n'
+    return (
+        'package main\nimport ("io"; "net/http")\nfunc main() {\n' + level * n
+        + 'switch m { case "tools/call": }\n' + "}\n" * n + "}\n"
+    )
+
+
+def test_many_handlers_each_on_its_own_route_scan_in_linear_time(tmp_path: Path) -> None:
+    """Every handler's name was searched for in every route's arguments: 4,000
+    handlers on their own `/mcp` routes (509 KB) took 3.4 seconds, and 7,000
+    (893 KB) about ten."""
+    _grows_linearly(tmp_path, "main.go", _handlers_on_their_own_routes, 700)
+
+
+def test_nested_handlers_scan_in_linear_time(tmp_path: Path) -> None:
+    """Each handler's body was searched whole for its reads, an MCP method and a
+    limit, and a handler's body holds the ones nested in it: 4,000 nested
+    handlers (348 KB) took 29 seconds."""
+    _grows_linearly(tmp_path, "main.go", _nested_handlers, 400)
 
 
 def test_the_rule_states_what_it_reads() -> None:

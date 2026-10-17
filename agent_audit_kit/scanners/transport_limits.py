@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import ast
 import re
+from bisect import bisect_left, bisect_right
 from pathlib import Path
+from typing import Iterable
 
 from agent_audit_kit.models import Finding
 
@@ -214,6 +216,7 @@ _GO_MCP_DISPATCH_RE = re.compile(
     rf'\bcase[ \t]+[^:\n]{{0,160}}"{_MCP_METHOD_NAMES}"|[!=]=\s*"{_MCP_METHOD_NAMES}"|"{_MCP_METHOD_NAMES}"\s*(?:[!=]=|:)'
 )
 _WORD_RE = re.compile(r"[A-Za-z_]\w*")
+_WORD_RUN_RE = re.compile(r"\w+")
 # `match` cases (3.10+); the 3.9 AST has none, and an empty tuple matches nothing.
 _MATCH_VALUE: tuple[type, ...] = tuple(t for t in (getattr(ast, "MatchValue", None),) if t is not None)
 _GO_PROJECT_CAP_RE = re.compile(
@@ -401,65 +404,153 @@ def _check_unbounded_go(project_root: Path, scanned: set[str]) -> list[Finding]:
         handlers = go_handlers(index)
         if not handlers:
             continue
-        mcp_routes = [r for r in go_routes(index) if is_mcp_endpoint_path(r.path)]
-        reads: dict[int, tuple[GoHandler, re.Match[str]]] = {}
-        for handler in handlers:
-            read_re = re.compile(_GO_READS[handler.kind].format(n=re.escape(handler.request)))
-            for m in read_re.finditer(text, handler.body_start, handler.body_end):
-                held = reads.get(m.start())
-                if held is None or held[0].body_start < handler.body_start:
-                    reads[m.start()] = (handler, m)
-        reported: set[int] = set()
-        for pos in sorted(reads):
-            handler, m = reads[pos]
-            if not index.in_code(pos) or id(handler) in reported:
-                continue
-            route = _go_mcp_route(handler, mcp_routes, text)
-            if route is None and not _GO_MCP_DISPATCH_RE.search(text, handler.body_start, handler.body_end):
-                continue
-            cap_re = re.compile(_GO_HANDLER_CAP.format(n=re.escape(handler.request)))
-            if cap_re.search(text, handler.body_start, handler.body_end) or _calls_limit_helper(
-                text, handler.body_start, pos
-            ):
-                continue
-            reported.add(id(handler))
-            where = f"route {route!r}" if route else "a handler that serves MCP methods"
-            findings.append(make_finding(
-                _MCP016,
-                rel,
-                f"{handler.name or 'func literal'} ({where}) reads the request body with "
-                f"`{m.group(0)}` and nothing limits its size: no http.MaxBytesReader, "
-                "io.LimitReader or Content-Length check here, and no body-size middleware "
-                "in the project",
-                line_number=index.line_of(pos),
-            ))
+        findings.extend(_unbounded_go_reads(index, handlers, rel))
     return findings
 
 
-def _calls_limit_helper(text: str, start: int, end: int) -> bool:
-    """A call such as `limitRequestBody(w, r, max)` between ``start`` and ``end``.
+def _unbounded_go_reads(index: CodeIndex, handlers: list[GoHandler], rel: str) -> list[Finding]:
+    """AAK-MCP-016 in one Go file, in time linear in it.
+
+    A handler's body holds every handler nested in it, and a file can register
+    thousands of handlers, so nothing here reads a body, or the route table,
+    once per handler: the reads, the MCP methods, the limits and the
+    limit-helper calls are each found once in the file and looked up by
+    offset, and the routes are indexed by the handler they name. Searching
+    each body whole took 29 seconds on 4,000 nested handlers, and searching
+    every route for each handler's name 3.4 seconds on 4,000 handlers with a
+    route each.
+    """
+    text = index.text
+    routes = _McpRoutes([r for r in go_routes(index) if is_mcp_endpoint_path(r.path)], text)
+    dispatch = _Offsets(m.start() for m in _GO_MCP_DISPATCH_RE.finditer(text))
+    caps: dict[str, _Offsets] = {}
+    helpers: _Offsets | None = None
+    findings: list[Finding] = []
+    reported: set[int] = set()
+    reads = _innermost_reads(text, handlers)
+    for pos in sorted(reads):
+        handler, m = reads[pos]
+        if not index.in_code(pos) or id(handler) in reported:
+            continue
+        route = routes.path_for(handler)
+        if route is None and not dispatch.any_in(handler.body_start, handler.body_end):
+            continue
+        cap = caps.get(handler.request)
+        if cap is None:
+            cap_re = re.compile(_GO_HANDLER_CAP.format(n=re.escape(handler.request)))
+            cap = caps[handler.request] = _Offsets(c.start() for c in cap_re.finditer(text))
+        if helpers is None:
+            helpers = _Offsets(_limit_helper_calls(text))
+        if cap.any_in(handler.body_start, handler.body_end) or helpers.any_in(handler.body_start, pos):
+            continue
+        reported.add(id(handler))
+        where = f"route {route!r}" if route else "a handler that serves MCP methods"
+        findings.append(make_finding(
+            _MCP016,
+            rel,
+            f"{handler.name or 'func literal'} ({where}) reads the request body with "
+            f"`{m.group(0)}` and nothing limits its size: no http.MaxBytesReader, "
+            "io.LimitReader or Content-Length check here, and no body-size middleware "
+            "in the project",
+            line_number=index.line_of(pos),
+        ))
+    return findings
+
+
+class _Offsets:
+    """Sorted offsets, for "is there one in [start, end)" in logarithmic time."""
+
+    def __init__(self, offsets: Iterable[int]) -> None:
+        self._offsets = sorted(offsets)
+
+    def any_in(self, start: int, end: int) -> bool:
+        i = bisect_left(self._offsets, start)
+        return i < len(self._offsets) and self._offsets[i] < end
+
+
+def _innermost_reads(text: str, handlers: list[GoHandler]) -> dict[int, tuple[GoHandler, re.Match[str]]]:
+    """Each body read, with the innermost handler whose own pattern reads it.
+
+    A read is matched with the handler's request name (`io.ReadAll(r.Body)` in
+    a handler whose request is `r`), so handlers that share a kind and a
+    request name share a pattern. Each such group is swept once over the file,
+    with a stack of the group's bodies open at each read, and the innermost
+    handler of any group wins, as when every body was searched on its own.
+    """
+    groups: dict[tuple[str, str], list[GoHandler]] = {}
+    for handler in handlers:
+        groups.setdefault((handler.kind, handler.request), []).append(handler)
+    reads: dict[int, tuple[GoHandler, re.Match[str]]] = {}
+    for (kind, request), group in groups.items():
+        group.sort(key=lambda h: h.body_start)
+        read_re = re.compile(_GO_READS[kind].format(n=re.escape(request)))
+        stack: list[GoHandler] = []
+        nxt = 0
+        for m in read_re.finditer(text, group[0].body_start):
+            while nxt < len(group) and group[nxt].body_start < m.start():
+                while stack and stack[-1].body_end <= group[nxt].body_start:
+                    stack.pop()
+                stack.append(group[nxt])
+                nxt += 1
+            while stack and stack[-1].body_end < m.end():
+                stack.pop()
+            if not stack:
+                continue
+            held = reads.get(m.start())
+            if held is None or held[0].body_start < stack[-1].body_start:
+                reads[m.start()] = (stack[-1], m)
+    return reads
+
+
+def _limit_helper_calls(text: str) -> list[int]:
+    """Offsets of calls such as `limitRequestBody(w, r, max)`.
 
     Read word by word rather than with one pattern: `\\w*limit\\w*body` over a
     long word with many `limit`s and no `body` backtracks with its square.
     """
-    for m in _WORD_RE.finditer(text, start, end):
+    calls: list[int] = []
+    for m in _WORD_RE.finditer(text):
         low = m.group().lower()
         limited = "limit" in low or "max" in low
         if limited and ("body" in low or "size" in low) and text.startswith("(", m.end()):
-            return True
-    return False
+            calls.append(m.start())
+    return calls
 
 
-def _go_mcp_route(handler: GoHandler, routes: list[GoRoute], text: str) -> str | None:
-    """The MCP route path ``handler`` is registered on in this file, if any."""
-    name_re = re.compile(rf"(?<![\w]){re.escape(handler.name)}\b") if handler.name else None
-    for route in routes:
-        for (s, e), arg in zip(route.arg_spans, route.args):
-            if s <= handler.start < e:
-                return route.path
-            if name_re is not None and name_re.search(arg):
-                return route.path
-    return None
+class _McpRoutes:
+    """The MCP route a Go handler is registered on, in this file.
+
+    A func literal is registered by the route whose arguments hold it, and a
+    named handler by the first route whose arguments name it as a word. A route
+    nested in another route's arguments comes after it in the file, so the
+    first route that holds a literal or names a handler is always an outermost
+    one: only the outermost argument spans are kept, and their words read once.
+    """
+
+    def __init__(self, routes: list[GoRoute], text: str) -> None:
+        spans = sorted(
+            ((s, e, i) for i, route in enumerate(routes) for s, e in route.arg_spans if s < e),
+            key=lambda span: (span[0], -span[1]),
+        )
+        outer: list[tuple[int, int, int]] = []
+        for span in spans:
+            if not outer or span[0] >= outer[-1][1]:
+                outer.append(span)
+        self._outer = outer
+        self._starts = [s for s, _e, _i in outer]
+        self._paths = [route.path for route in routes]
+        self._named: dict[str, str] = {}
+        for s, e, i in sorted(outer, key=lambda span: (span[2], span[0])):
+            for word in _WORD_RUN_RE.finditer(text, s, e):
+                self._named.setdefault(word.group(), self._paths[i])
+
+    def path_for(self, handler: GoHandler) -> str | None:
+        if handler.name is not None:
+            return self._named.get(handler.name)
+        i = bisect_right(self._starts, handler.start) - 1
+        if i >= 0 and handler.start < self._outer[i][1]:
+            return self._paths[self._outer[i][2]]
+        return None
 
 
 def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Finding]:
