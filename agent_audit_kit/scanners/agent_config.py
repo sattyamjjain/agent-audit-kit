@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import finditer_up_to_last, host_ip, make_finding, url_hosts
+from agent_audit_kit.scanners._helpers import finditer_up_to_last, host_ip, line_at, make_finding, url_hosts
 
 # ---- Target files to scan (relative to project root) ----
 _AGENT_CONFIG_FILES: list[str] = [
@@ -1036,8 +1036,13 @@ def _line_at(content: str, offset: int) -> int:
     ``find_line_number`` and to the zero-width walk wherever the evidence is not
     repeated. ``"a\\n".splitlines()`` is one line although offset 2 opens line 2,
     so a sentinel character keeps that line counted.
+
+    Counting it as ``len((content[:offset] + "\\0").splitlines())`` rebuilt the
+    prefix for every match, so a file of N matches cost N times its size: 36,000
+    lines that each name a URL took 17 seconds. ``line_at`` returns the same count
+    from where the file's lines end, worked out once.
     """
-    return len((content[:offset] + "\0").splitlines())
+    return line_at(content, offset)
 
 
 def _check_content(
