@@ -202,6 +202,15 @@ def _long_args(k: int) -> dict[str, str]:
     return {".mcp.json": _js({"mcpServers": {"s": {"command": "node", "args": ["a" * (4000 * k), *_crafted_keys(k)]}}})}
 
 
+def _quoted_server_name(k: int) -> dict[str, str]:
+    """One server named `x","x",...,"x` (`k + 1` `x`s), then a `pad` array of `2k` `"x"`
+    strings, in which the name's quoted form occurs at nearly every element and never
+    with a colon after it."""
+    name = 'x","' * k + "x"
+    return {".mcp.json": json.dumps({"mcpServers": {name: {"command": "node"}}, "pad": ["x"] * (2 * k)},
+                                    separators=(",", ":"))}
+
+
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
@@ -257,6 +266,10 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # A lookup of every argument, which no finding needed, made 120 of them take 23 s
     # on Python 3.9.
     "server-long-args": (mcp_config.scan, _long_args, 12, False),
+    # A server name holding a quote was searched for again from each occurrence with no
+    # colon after it, with a needle as long as the name: 457 KB took 62.5 s on 3.12, and
+    # before 3.10, where each search compiled the name again, 44 KB took 55 s.
+    "quoted-server-name": (composition.scan, _quoted_server_name, 3_000, False),
 }
 
 

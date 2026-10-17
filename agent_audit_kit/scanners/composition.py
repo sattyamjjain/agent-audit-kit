@@ -68,9 +68,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     find_line_numbers,
-    first_offsets,
     in_skip_dir,
-    linear_find,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
@@ -338,7 +336,6 @@ def _server_key_lines(raw: str, maps: list[tuple[str, dict[str, object]]]) -> di
 # next quote and past the blanks after it, so each character is read for the one
 # quote before it.
 _QUOTED_KEY_RE = re.compile(r'(?=("[^"]*")\s*:)')
-_COLON_AHEAD_RE = re.compile(r"\s*:")
 
 
 def _key_offsets(text: str, start: int, names: list[str]) -> dict[str, int | None]:
@@ -348,20 +345,22 @@ def _key_offsets(text: str, start: int, names: list[str]) -> dict[str, int | Non
     cost N times the file, and a compiled pattern each. A name with no quote in
     it is a whole quoted string, so one pass over the file finds every key of
     that kind. A name holding a quote, which a JSON key can only spell with an
-    escape, is searched for with the others like it in one pass, and each
-    occurrence is checked for its colon.
+    escape, keeps its own search, one per name. Searching again from each of its
+    occurrences with no colon after it read the name once per occurrence, and a
+    name occurring at nearly every element of an array of `"x"` strings made 457
+    KB take 62.5 s; the compiled search reads the file once (its literal prefix
+    is found with a table of the prefix's own overlaps).
     """
     keyed: dict[str, int] = {}
     for match in _QUOTED_KEY_RE.finditer(text, start):
         keyed.setdefault(match.group(1)[1:-1], match.start())
-    offsets: dict[str, int | None] = {name: keyed.get(name) for name in names if '"' not in name}
-    odd = [name for name in names if '"' in name]
-    if odd:
-        tail = text[start:]
-        for name, offset in zip(odd, first_offsets(tail, [f'"{name}"' for name in odd])):
-            while offset >= 0 and not _COLON_AHEAD_RE.match(tail, offset + len(name) + 2):
-                offset = linear_find(tail, f'"{name}"', offset + 1)
-            offsets[name] = start + offset if offset >= 0 else None
+    offsets: dict[str, int | None] = {}
+    for name in names:
+        if '"' not in name:
+            offsets[name] = keyed.get(name)
+        else:
+            key = re.compile(r'"' + re.escape(name) + r'"\s*:').search(text, start)
+            offsets[name] = key.start() if key else None
     return offsets
 
 
