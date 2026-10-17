@@ -498,6 +498,31 @@ def test_the_evidence_names_the_middleware_without_its_arguments(tmp_path: Path,
         assert PASSWORD not in rendered
 
 
+SIGNING_KEY = "PLACEHOLDER-signing-key-2290"
+
+
+@pytest.mark.parametrize(("argument", "shown"), [
+    (f'sign(c.Param("name"), "{SIGNING_KEY}")', '`c.Param("name")`'),
+    (f'c.Param("name") + "{SIGNING_KEY}"', '`c.Param("name")`'),
+    (f'lookupKey(c.Query(param), "{SIGNING_KEY}")', "`c.Query(...)`"),
+], ids=["wrapped", "concatenated", "named-param"])
+def test_the_lookup_evidence_names_the_request_read_without_the_rest(tmp_path: Path, argument: str, shown: str) -> None:
+    """The evidence quoted the lookup's whole argument, so a signing key passed
+    beside the caller's input reached every output."""
+    text = GATEWAY.replace("store.Get(c.Request.Context(), name)", f"store.Get(c.Request.Context(), {argument})")
+    (tmp_path / "gateway.go").write_text(text, encoding="utf-8")
+    findings, _ = mcp_middleware.scan(tmp_path)
+    found = [f for f in findings if f.rule_id == LOOKUP]
+    assert len(found) == 1 and f"by the caller's {shown}" in found[0].evidence, [f.evidence for f in found]
+    result = ScanResult(findings=findings)
+    for rendered in (
+        json_report.format_results(result),
+        sarif.format_results(result, project_root=tmp_path),
+        console.format_results(result),
+    ):
+        assert SIGNING_KEY not in rendered
+
+
 def test_a_handler_written_as_a_call_is_named_without_its_arguments(tmp_path: Path) -> None:
     text = (
         'const app = require("express")();\n'

@@ -1046,8 +1046,25 @@ def _input_key(index: CodeIndex, paren: int, inputs: set[str], request: str) -> 
             return root.group()
         expr = _INPUT_EXPR_RE.search(text, s, e)
         if expr is not None and request in (expr.group(1), expr.group(2)):
-            return text[s:e]
+            return _input_read(index, expr)
     return None
+
+
+def _input_read(index: CodeIndex, expr: re.Match[str]) -> str:
+    """The request read an argument holds, as the evidence shows it:
+    `c.Param("name")`, keeping one short string argument and showing any other
+    as `(...)`. The rest of the argument stays out of the evidence: quoting it
+    whole put a signing key passed beside the caller's input
+    (`sign(c.Param("name"), "<key>")`) into every output."""
+    text = index.text
+    paren = expr.end() - 1 if expr.group(1) is not None else text.index("(", expr.start())
+    callee = text[expr.start():paren]
+    args = index.args(paren) or []
+    if len(args) == 1:
+        literal = index.string_literal(*args[0])
+        if literal is not None and len(literal) <= 40:
+            return f"{callee}({text[args[0][0]:args[0][1]]})"
+    return f"{callee}(...)"
 
 
 def _miss_answer(
