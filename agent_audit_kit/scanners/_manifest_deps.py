@@ -495,21 +495,26 @@ def _is_argument(value: object) -> bool:
 
 
 def _argv(
-    entry: dict, path: tuple[str | int, ...] = ()
+    entry: dict, path: tuple[str | int, ...] | None = ()
 ) -> tuple[list[str], list[tuple[str | int, ...]]]:
-    """The command line an entry runs, and where each word of it sits."""
+    """The command line an entry runs, and where each word of it sits: () for
+    every word of an entry whose own path is None (see `_command_entries`)."""
+
+    def at(*keys: str | int) -> tuple[str | int, ...]:
+        return path + keys if path is not None else ()
+
     command = entry.get("command")
     tokens: list[str] = []
     paths: list[tuple[str | int, ...]] = []
     if isinstance(command, str):
         words = command.split()
         tokens.extend(words)
-        paths.extend([path + ("command",)] * len(words))
+        paths.extend([at("command")] * len(words))
     elif isinstance(command, list):
         for index, word in enumerate(command):
             if _is_argument(word):
                 tokens.append(str(word))
-                paths.append(path + ("command", index))
+                paths.append(at("command", index))
     else:
         return [], []
     args = entry.get("args")
@@ -517,35 +522,80 @@ def _argv(
         for index, arg in enumerate(args):
             if _is_argument(arg):
                 tokens.append(str(arg))
-                paths.append(path + ("args", index))
+                paths.append(at("args", index))
     return tokens, paths
 
 
-def _command_entries(data: object) -> list[tuple[dict, tuple[str | int, ...]]]:
+# The longest path `_command_entries` builds for a server, counting the two
+# keys a word of its command line adds (`"args", 3`). A server nested deeper
+# is still read, and its declarations are reported without a line; a client
+# reads one two to six levels down.
+_MAX_PATH_DEPTH = 64
+
+
+def _command_entries(data: object) -> list[tuple[dict, tuple[str | int, ...] | None]]:
     """Every object holding a `command`, at any depth, in document order, with
-    its path. A container met twice, which only a YAML alias can make, is read
-    once, by identity, and keeps the path it was first reached by. The walk
-    followed every path to a shared node: seven levels of anchors, ten aliases
-    each, is a 449-byte file that reaches the same ten servers by 10^7 paths,
-    and the pin table took 26 s of CPU time on it. A server an alias repeats is
-    the same server, read once, and a document that contains itself (`&a [*a]`)
-    ends."""
-    entries: list[tuple[dict, tuple[str | int, ...]]] = []
-    queue: deque[tuple[object, tuple[str | int, ...]]] = deque([(data, ())])
+    its path, or None for one deeper than `_MAX_PATH_DEPTH` allows (its words
+    have no position then). A container met twice, which only a YAML alias can
+    make, is read once, by identity, and keeps the path it was first reached by.
+    The walk followed every path to a shared node: seven levels of anchors, ten
+    aliases each, is a 449-byte file that reaches the same ten servers by 10^7
+    paths, and the pin table took 26 s of CPU time on it. A server an alias
+    repeats is the same server, read once, and a document that contains itself
+    (`&a [*a]`) ends.
+
+    Each queued container carries the record of its parent rather than its own
+    path: copying the path at every level cost the square of the depth, so a
+    1.9 MB root .mcp.json of 105 chains of 9,000 lists took 10.8 s in the pin
+    table on Python 3.12, and 9 chains of 100,000 took 110 s on 3.14, where
+    JSON's parser reads that deep. A path is built from the records only for
+    an entry, and not past the bound: one server inside another, 9,000 levels
+    down, made 9,000 entries whose paths together held the square of that, and
+    1.4 MB of such chains held 1.75 GB.
+    """
+    if not isinstance(data, (dict, list)):
+        return []
+    entries: list[tuple[dict, int]] = []
+    # Per record (one per container, in the order the walk reads them): the
+    # parent's record (-1 for the top level), the key or index the container
+    # sits under, and its depth.
+    parents: list[int] = []
+    keys: list[str | int] = []
+    depths: list[int] = []
+    queue: deque[tuple[object, int, str | int]] = deque([(data, -1, "")])
     seen: set[int] = set()
     while queue:
-        node, where = queue.popleft()
-        if isinstance(node, (dict, list)):
-            if id(node) in seen:
-                continue
-            seen.add(id(node))
+        node, parent, key = queue.popleft()
+        if id(node) in seen:
+            continue
+        seen.add(id(node))
+        record = len(parents)
+        parents.append(parent)
+        keys.append(key)
+        depths.append(depths[parent] + 1 if parent >= 0 else 0)
         if isinstance(node, dict):
             if isinstance(node.get("command"), (str, list)):
-                entries.append((node, where))
-            queue.extend((value, where + (key,)) for key, value in node.items())
+                entries.append((node, record))
+            queue.extend((value, record, k) for k, value in node.items()
+                         if isinstance(value, (dict, list)))
         elif isinstance(node, list):
-            queue.extend((value, where + (index,)) for index, value in enumerate(node))
-    return entries
+            queue.extend((value, record, index) for index, value in enumerate(node)
+                         if isinstance(value, (dict, list)))
+    return [(node, _record_path(record, parents, keys, depths)) for node, record in entries]
+
+
+def _record_path(
+    record: int, parents: list[int], keys: list[str | int], depths: list[int]
+) -> tuple[str | int, ...] | None:
+    """The path of a `_command_entries` record, or None past `_MAX_PATH_DEPTH`,
+    less the two keys a word of its command line adds (`"args", 3`)."""
+    if depths[record] > _MAX_PATH_DEPTH - 2:
+        return None
+    path: list[str | int] = []
+    while parents[record] >= 0:
+        path.append(keys[record])
+        record = parents[record]
+    return tuple(reversed(path))
 
 
 def mcp_config_declarations(data: object) -> list[Declaration]:
