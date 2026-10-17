@@ -533,6 +533,121 @@ def test_deepseek_v4_reads_an_unclosed_base_url_in_linear_time(tmp_path: Path) -
     assert elapsed < 5.0, elapsed
 
 
+# Verification of a323344c (2026-10-17, High): a name bound to a pattern held its
+# text, and every substitution through the name searched all of it for the
+# routing words again, so a 256,000-character pattern used by 8,000 calls took
+# 82 s at 424 KB (main, which reads no pattern, 0.11 s). A name holds the verdict
+# now, decided once where it is bound.
+def test_deepseek_v4_decides_a_bound_pattern_once(tmp_path: Path) -> None:
+    text = (
+        "import re\n" + _DEEPSEEK_HEAD + "P = '" + "e" * 256_000 + "'\n"
+        "def f(request):\n    doc = request.json\n"
+        + "    re.sub(P, '', doc)\n" * 8_000
+        + "    return client.create(tools=[{'description': doc}])\n"
+    )
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / "app.py").write_text(text, encoding="utf-8")
+    elapsed, count = _deepseek_in_child(tmp_path)
+    assert count == 1
+    assert elapsed < 5.0, elapsed
+
+
+# Verification of a323344c (2026-10-17, Low): cleanings main let through (it took
+# any `re.sub(` in the function) that the AST reader missed: a nested helper
+# assigning the outer name through `nonlocal`, a pattern bound in a block above
+# the line that aliases it (bindings were read breadth first), and a pattern
+# compiled in place (`.sub` was read only on a name).
+_CLEANED_ELSEWHERE_HEAD = "import re\nfrom openai import OpenAI\nclient = OpenAI(base_url='https://api.deepseek.com')\n"
+
+
+@pytest.mark.parametrize("body", [
+    '''
+def outer(request):
+    clean = request.json["doc"]
+    def helper():
+        nonlocal clean
+        clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", clean)
+    helper()
+    return client.chat.completions.create(tools=[{"description": clean}])
+''',
+    '''
+def outer(request):
+    clean = request.json["doc"]
+    def helper():
+        def inner():
+            nonlocal clean
+            clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", clean)
+        inner()
+    helper()
+    return client.chat.completions.create(tools=[{"description": clean}])
+''',
+    '''
+def f(request):
+    if request:
+        R = r"\\[ROUTE:[^\\]]*\\]"
+    P = R
+    doc = re.sub(P, "", request.json["doc"])
+    return client.chat.completions.create(tools=[{"description": doc}])
+''',
+    '''
+if True:
+    ROUTE = r"\\[ROUTE:[^\\]]*\\]"
+else:
+    ROUTE = None
+PATTERN = ROUTE
+
+
+def f(request):
+    doc = re.sub(PATTERN, "", request.json["doc"])
+    return client.chat.completions.create(tools=[{"description": doc}])
+''',
+    '''
+def f(request):
+    doc = request.json["doc"]
+    return client.chat.completions.create(tools=[{"description": re.compile(r"\\[ROUTE:[^\\]]*\\]").sub("", doc)}])
+''',
+    '''
+def f(request):
+    doc = request.json["doc"]
+    clean, n = re.compile(r"__route__\\s*=", re.I).subn("", doc)
+    return client.chat.completions.create(tools=[{"description": clean}])
+''',
+])
+def test_deepseek_v4_reads_a_cleaning_main_let_through(tmp_path: Path, body: str) -> None:
+    (tmp_path / "app.py").write_text(_CLEANED_ELSEWHERE_HEAD + body.lstrip("\n"), encoding="utf-8")
+    assert deepseek_scan(tmp_path)[0] == []
+
+
+@pytest.mark.parametrize("body", [
+    # A helper's own `clean` is not the outer one: no `nonlocal`.
+    '''
+def outer(request):
+    clean = request.json["doc"]
+    def helper(doc):
+        clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", doc)
+        return clean
+    return client.chat.completions.create(tools=[{"description": clean}])
+''',
+    # `nonlocal` names the nearest function around that binds the name: here the
+    # helper's, which is not the one the description uses.
+    '''
+def outer(request):
+    clean = request.json["doc"]
+    def helper(doc):
+        clean = doc
+        def inner():
+            nonlocal clean
+            clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", clean)
+        inner()
+        return clean
+    return client.chat.completions.create(tools=[{"description": clean}])
+''',
+])
+def test_deepseek_v4_a_nested_name_cleans_only_its_own_binding(tmp_path: Path, body: str) -> None:
+    (tmp_path / "app.py").write_text(_CLEANED_ELSEWHERE_HEAD + body.lstrip("\n"), encoding="utf-8")
+    assert [f.line_number for f in deepseek_scan(tmp_path)[0]] == [4]
+
+
 # -------------------- AAK-TIKTOK-AGENT-HIJACK-001 --------------------
 
 def test_tiktok_agent_hijack_unsafe_fires(tmp_path: Path) -> None:
