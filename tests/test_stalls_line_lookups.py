@@ -22,6 +22,7 @@ import random
 import re
 import sys
 import time
+import tracemalloc
 from pathlib import Path
 from typing import Callable
 
@@ -415,6 +416,29 @@ def test_an_item_no_finding_reports_is_never_looked_up(tmp_path: Path, shape: st
     searched = {key for entry in _helpers._TEXT_LOOKUPS.values() for key in entry.found}
     assert reported in searched, shape
     assert not searched & set(quiet), sorted(searched & set(quiet))[:3]
+
+
+# ---------------------------------------------------------------------------
+# Composition above its cap: no graph, so nothing to hold.
+# ---------------------------------------------------------------------------
+
+
+def test_the_chain_search_holds_nothing_for_a_graph_over_the_cap() -> None:
+    """Above `_MAX_GRAPH_NODES` the pass builds no edges and reports no chain, so the
+    search returns before giving each component a bit of its own: one bit per
+    component in sorted order is N * N / 16 bytes of integers, and 111,000 servers
+    across a few configs took 900 MB that way."""
+    caps = composition._Caps(reads_untrusted_input=True, performs_network_egress=True)
+    nodes = [composition._Node(kind="mcp-server", name=f"s{i}", rel="mcp.json", line=i + 1, caps=caps,
+                               container="mcp.json") for i in range(30_000)]
+    tracemalloc.start()
+    try:
+        hits = composition._chain_hits(nodes)
+        _current, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert hits == {}
+    assert peak < 1_000_000, peak
 
 
 # ---------------------------------------------------------------------------

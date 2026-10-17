@@ -583,6 +583,11 @@ def _chain_hits(
     nodes: list[_Node],
 ) -> dict[tuple[str, str], tuple[list[_Node], dict[tuple[str, str], _Node]]]:
     """Each untrusted source's representative shortest chain and the egress nodes it reaches."""
+    if len(nodes) > _MAX_GRAPH_NODES:
+        # `_edges` gives such a graph no edges, so no chain is found; returning now
+        # also skips a bit for every component (N * N / 16 bytes of integers, 900 MB
+        # for 111,000 servers) and an empty set each.
+        return {}
     by_key = {n.key: n for n in nodes}
     adj = _edges(nodes)
     # source key -> (representative shortest path, every reachable egress node)
@@ -608,12 +613,13 @@ def _chain_hits(
     # which are found together as a set of nodes (one bit each, in sorted key
     # order), and an egress node the source already reaches adds nothing but a
     # repeat, since a chain of the longest kind never replaces a shorter one.
-    keys = sorted(by_key)
+    # Only a node with an edge can be on a chain, so only such a node gets a bit.
+    keys = sorted({key for key, targets in adj.items() if targets}.union(*adj.values()))
     bit = {key: 1 << index for index, key in enumerate(keys)}
     neighbours = {key: sum(bit[b] for b in adj.get(key, ())) for key in keys}
     egress = sum(
-        bit[key] for key, n in by_key.items()
-        if n.caps.performs_network_egress and not n.caps.holds_whole_chain
+        bit[key] for key in keys
+        if by_key[key].caps.performs_network_egress and not by_key[key].caps.holds_whole_chain
     )
 
     def extend(path: list[_Node], on_path: int, sensitive: bool, reached: list[int]) -> None:
@@ -631,7 +637,9 @@ def _chain_hits(
             if len(path) + 2 < MAX_PATH_NODES:
                 extend([*path, mid], on_path | bit[mid_key], carried, reached)
             elif carried:
-                new = neighbours[mid_key] & egress & ~reached[0] & ~on_path
+                # `mid` is masked out with the rest of the path: `_edges` never links
+                # a node to itself, but a chain meets each node once whatever it does.
+                new = neighbours[mid_key] & egress & ~reached[0] & ~(on_path | bit[mid_key])
                 reached[0] |= new
                 while new:
                     low = new & -new
@@ -639,7 +647,7 @@ def _chain_hits(
                     new ^= low
 
     for node in nodes:
-        if node.caps.reads_untrusted_input and not node.caps.holds_whole_chain:
+        if node.caps.reads_untrusted_input and not node.caps.holds_whole_chain and node.key in bit:
             found = hits.get(node.key)
             reached = [sum(bit[key] for key in found[1]) if found else 0]
             extend([node], bit[node.key], node.caps.touches_sensitive, reached)
