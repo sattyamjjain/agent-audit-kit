@@ -245,6 +245,45 @@ def test_nested_substitutions_whose_template_never_closes_read_in_linear_time(tm
     assert _seconds_in_child(tmp_path, text) < 5.0
 
 
+# go_handlers on one long line of func literals, and on the same literals one per
+# line, in a child process: it prints the seconds go_handlers took and how many
+# handlers it found.
+_GO_HANDLERS_CHILD = (
+    "import sys, time\n"
+    "from agent_audit_kit.scanners._http_routes import CodeIndex, go_handlers\n"
+    "index = CodeIndex(open(sys.argv[1], encoding='utf-8').read(), go=True)\n"
+    "started = time.perf_counter()\n"
+    "found = len(go_handlers(index))\n"
+    "print(time.perf_counter() - started, found)\n"
+)
+
+
+def _go_handlers_in_child(tmp_path: Path, text: str) -> tuple[float, int]:
+    source = tmp_path / "input.go"
+    source.write_text(text, encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _GO_HANDLERS_CHILD, str(source)], capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    seconds, found = done.stdout.split()
+    return float(seconds), int(found)
+
+
+def test_func_literals_on_one_line_find_their_bodies_in_linear_time(tmp_path: Path) -> None:
+    """Each func literal looked for the end of its line from where it stood, so a
+    line of them read the rest of the line once each: 84,000 on one line (4 MB)
+    took 8.6 seconds, against 0.6 one per line."""
+    unit = "func(w http.ResponseWriter, r *http.Request){},"
+    one_line = "package main\nvar hs = []interface{}{" + unit * 84_000 + "}\n"
+    t_line, found = _go_handlers_in_child(tmp_path, one_line)
+    t_lines, found_lines = _go_handlers_in_child(tmp_path, one_line.replace("{},", "{},\n"))
+    assert found == found_lines == 84_000
+    assert t_line < 5.0
+    assert t_line < 4 * t_lines + 0.25, (t_lines, t_line)
+
+
 @pytest.mark.parametrize("opener", ['"', "'", "`"])
 def test_the_code_after_an_unclosed_literal_is_still_read(opener: str) -> None:
     """A literal that never closes is no literal: its quote is skipped, and so are

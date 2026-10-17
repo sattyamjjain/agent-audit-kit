@@ -656,8 +656,11 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
 
 def _go_body_open(index: CodeIndex, pos: int) -> int | None:
     text = index.text
-    end = text.find("\n", pos)
-    end = len(text) if end < 0 else end
+    # The first newline at or after ``pos``, by bisection over the file's
+    # newlines: searching for it from every func literal on one long line read
+    # the rest of the line once per literal (84,000 on one 4 MB line took 8.6 s).
+    i = bisect_left(index._newlines, pos)
+    end = index._newlines[i] if i < len(index._newlines) else len(text)
     while pos < end:
         ch = text[pos]
         if ch == "{":
