@@ -596,6 +596,32 @@ def test_a_global_or_nonlocal_write_is_read_where_it_is_written(source: str, tai
     assert sites[-1].tainted is tainted
 
 
+def _write_through_write(decorator: str) -> str:
+    """A handler with no caller input of its own whose `u` a helper sets from
+    `v`, which a function beside the helper sets from its `arguments`."""
+    return (
+        _CYCLE_HEAD + "def run_call_tool(name):\n    u = 'https://api.example.com/'\n    def a():\n        v = 'x'\n"
+        f"{decorator}        def w2(arguments: dict) -> str:\n            nonlocal v\n"
+        "            v = arguments['host']\n            return ''\n"
+        "        def w():\n            nonlocal u\n            u = 'https://' + v\n        return w2, w\n"
+        "    a()\n    return requests.get(u + name).text\n"
+    )
+
+
+@pytest.mark.parametrize(("decorator", "tainted"), [("        @mcp.tool()\n", True), ("", False)])
+def test_a_write_reaches_caller_input_through_another_write(decorator: str, tainted: bool) -> None:
+    """Whether a scope can reach caller input at all is settled before any URL
+    is read, and a scope no caller input reaches is not read. It reaches it
+    through a write a scope that reaches it lands in it, and that writer may
+    reach it only through another write: here the nested tool's `v` reaches
+    `w`, whose `u` reaches the handler. Two passes counted one write, so the
+    handler read as unreachable; the reach now spreads along every write and
+    every scope around another until nothing new is reached. With no tool
+    setting `v`, nothing reaches the handler."""
+    sites = analyze_python(_write_through_write(decorator))
+    assert [site.tainted for site in sites] == [tainted]
+
+
 def _sibling_tools(tools: int, fetch: bool) -> str:
     """One tool that binds four names for each of `tools` handlers defined
     beside one another in it, each a `*_call_tool` function of its own."""

@@ -1735,6 +1735,8 @@ def _scopes(tree: ast.Module) -> dict[int, _Scope]:
     # comprehension, then the writes declared `global` or `nonlocal`, which
     # land where those declarations say, once every scope's own names are in.
     landings: list[tuple[_Scope, str, str, list[ast.AST]]] = []
+    # id(writer) -> the scopes its writes land in, read in the writer
+    writes: dict[int, list[_Scope]] = {}
     for scope in scopes:
         values: dict[str, list[ast.AST]] = {}
         elements: dict[str, list[ast.AST]] = {}
@@ -1755,24 +1757,33 @@ def _scopes(tree: ast.Module) -> dict[int, _Scope]:
             landings.append((home, name, "values", value))
         else:
             home.values.setdefault(name, []).extend(value)
-    lifted: list[tuple[_Scope, _Scope]] = []
+            writes.setdefault(id(comprehension), []).append(home)
     for writer, name, table, nodes in landings:
         owner = module if writer.declared[name] == "global" else _nonlocal_owner(writer, name)
         wrapped = [node if isinstance(node, _Foreign) else _Foreign(node, writer) for node in nodes]
         getattr(owner, table).setdefault(name, []).extend(wrapped)
-        lifted.append((writer, owner))
+        writes.setdefault(id(writer), []).append(owner)
 
-    # A scope reaches caller input through its own parameters, the scopes
-    # around it, or a write a scope that reaches it lands in it. Parents come
-    # before their children in `scopes`, and a write lands in a scope around
-    # the writer, so one pass settles the first two and a second the third.
+    # A scope reaches caller input through its own parameters, through the
+    # scope around it, or through a write that lands in it from a scope that
+    # reaches it, which may itself reach it only through another write. The
+    # reach spreads from the scopes holding caller input along both kinds of
+    # edge, each scope taken once, so it settles in time linear in the scopes
+    # and the writes. Two passes counted one write, so a handler whose `u` a
+    # helper set from a name a nested tool set read as reaching nothing.
+    children: dict[int, list[_Scope]] = {}
     for scope in scopes:
-        scope.reaches = bool(scope.caller) or (scope.parent is not None and scope.parent.reaches)
-    landed = {id(owner) for writer, owner in lifted if writer.reaches}
-    for scope in scopes:
-        scope.reaches = (
-            bool(scope.caller) or id(scope) in landed or (scope.parent is not None and scope.parent.reaches)
-        )
+        if scope.parent is not None:
+            children.setdefault(id(scope.parent), []).append(scope)
+    reached = [scope for scope in scopes if scope.caller]
+    for scope in reached:
+        scope.reaches = True
+    while reached:
+        scope = reached.pop()
+        for later in (*children.get(id(scope), ()), *writes.get(id(scope), ())):
+            if not later.reaches:
+                later.reaches = True
+                reached.append(later)
     return calls
 
 
