@@ -39,7 +39,7 @@ _MAX_FILE_BYTES = 512_000
 # finding read) and kept only if the findings it added were at least 80% real.
 # With the negation guard below, -001's contraction (`I'm your therapist`),
 # `acts as` / `acting as`, `provides` / `providing therapy` and `delivers` /
-# `delivering psychotherapy` added 469 findings, 24 of them an AI's claim: they
+# `delivering psychotherapy` added 459 findings, 24 of them an AI's claim: they
 # were mostly people describing themselves or their work. -002's -s and -ing
 # verbs and plural objects added 15, none an AI deciding medical necessity.
 # Those stay unmatched. `replacing`, -003's plural objects and -004's plurals
@@ -126,17 +126,29 @@ _CRISIS_RESPONSE_RE = re.compile(
 # sentence end, `;`, `:` or a line break (each YAML or JSON key is its own
 # statement; on 632 healthcare docs a line break never separated a claim from
 # the negation of it), and `no human`, `no clinician`, `no physician`, `no
-# doctor` and `not only` never count.
+# doctor` and `not only` never count. A mental-health app writes "supports you
+# without replacing your therapist", "rather than replacing your therapist":
+# `without`, `instead of` and `rather than` negate a claim too, but only right
+# before it, since "Without a waitlist, I am your therapist" still claims it.
+# A negation is spelled `cannot`, or with the apostrophe curly, U+02BC or left
+# out of a common contraction (`isnt`); a word that merely ends in nt, such as
+# `patient`, is not one.
 _CLAUSE_END_RE = re.compile(r"[.!?;:](?=\s)|\n")
 _NOT_A_NEGATION_RE = re.compile(r"\bno\s+(?:human|clinician|physician|doctor)s?\b|\bnot\s+only\b", re.IGNORECASE)
-_WORD_RE = re.compile(r"[A-Za-z]+(?:['\u2019][A-Za-z]+)*")
-_NEGATION_WORD_RE = re.compile(r"not|never|no|[A-Za-z]+n['\u2019]t", re.IGNORECASE)
+_WORD_RE = re.compile(r"[A-Za-z]+(?:['\u2019\u02bc][A-Za-z]+)*")
+_NEGATION_WORD_RE = re.compile(
+    r"not|never|no|cannot|[A-Za-z]+n['\u2019\u02bc]t"
+    r"|(?:is|are|was|were|ai|do|does|did|has|have|had|ca|could|wo|would|sha|should|might|must|need|ought|dare)nt",
+    re.IGNORECASE,
+)
+_GOVERNED_RE = re.compile(r"\b(?:without|instead\s+of|rather\s+than)\s*\Z", re.IGNORECASE)
 _NEGATION_WORDS = 4
 _LOOK_BACK = 200
 
 
 def _negated(text: str, start: int) -> bool:
-    """Whether not, never, no or n't stands among the four words before `start`, in its clause.
+    """Whether a negation stands among the four words before `start`, in its
+    clause, or `without`, `instead of` or `rather than` right before it.
 
     It reads at most `_LOOK_BACK` characters back, so a crafted run of claims
     stays linear. A word the window cuts in two is dropped: the tail of
@@ -150,8 +162,11 @@ def _negated(text: str, start: int) -> bool:
     last = None
     for last in _CLAUSE_END_RE.finditer(window):
         pass
-    clause = _NOT_A_NEGATION_RE.sub(" ", window[last.end():] if last else window)
-    return any(_NEGATION_WORD_RE.fullmatch(w) for w in _WORD_RE.findall(clause)[-_NEGATION_WORDS:])
+    clause = window[last.end():] if last else window
+    if _GOVERNED_RE.search(clause):
+        return True
+    words = _WORD_RE.findall(_NOT_A_NEGATION_RE.sub(" ", clause))
+    return any(_NEGATION_WORD_RE.fullmatch(w) for w in words[-_NEGATION_WORDS:])
 
 
 def _first_claim(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:

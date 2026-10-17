@@ -117,7 +117,7 @@ _INFLECTED = [
     ("AAK-HEALTHCARE-AI-004", "You are an assistant who explains treatments and therapies."),
 ]
 
-# Measured and left out: on that sample 24 of the 469 findings -001's forms
+# Measured and left out: on that sample 24 of the 459 findings -001's forms
 # added, and none of the 15 -002's added, were an AI's claim.
 _MEASURED_BELOW_THE_BAR = [
     ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm your therapist and I'm here to help."),
@@ -290,6 +290,56 @@ def test_a_word_the_look_back_cuts_in_two_is_not_read(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert [f.rule_id for f in healthcare_ai.scan(tmp_path)[0]] == ["AAK-HEALTHCARE-AI-002"]
+
+
+# The careful wording of a mental-health app: the newly read `replacing`
+# reported each of these CRITICAL, and main read none of them. `rather than
+# replace` was reported by main too.
+@pytest.mark.parametrize(("rule_id", "text"), [
+    ("AAK-HEALTHCARE-AI-001", "This app supports you between sessions without replacing your therapist."),
+    ("AAK-HEALTHCARE-AI-001", "Use it alongside your care, instead of replacing your therapist."),
+    ("AAK-HEALTHCARE-AI-001", "It helps you prepare for sessions rather than replacing your therapist."),
+    ("AAK-HEALTHCARE-AI-001", "It is there to support you, rather than replace your therapist."),
+    ("AAK-HEALTHCARE-AI-002", "The agent drafts a summary rather than automatically approve prior authorization."),
+])
+def test_without_instead_of_or_rather_than_right_before_a_claim_negates_it(
+    tmp_path: Path, rule_id: str, text: str
+) -> None:
+    (tmp_path / "README.md").write_text(text + "\n", encoding="utf-8")
+    assert rule_id not in {f.rule_id for f in healthcare_ai.scan(tmp_path)[0]}
+
+
+def test_without_elsewhere_in_the_clause_does_not_negate_the_claim(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("Without a waitlist, I am your therapist.\n", encoding="utf-8")
+    assert [f.rule_id for f in healthcare_ai.scan(tmp_path)[0]] == ["AAK-HEALTHCARE-AI-001"]
+
+
+# How negations are spelled: `cannot` as one word, a contraction typed without
+# its apostrophe, and the modifier-letter apostrophe U+02BC that some keyboards
+# and editors produce. Main and the branch reported each.
+@pytest.mark.parametrize(("rule_id", "text"), [
+    ("AAK-HEALTHCARE-AI-001", "AI cannot replace a licensed mental health professional."),
+    ("AAK-HEALTHCARE-AI-001", "This assistant isnt going to replace your therapist."),
+    ("AAK-HEALTHCARE-AI-002", "We dont automatically deny coverage."),
+    ("AAK-HEALTHCARE-AI-001", "This tool doesn" + chr(0x2BC) + "t provide therapy."),
+])
+def test_cannot_and_contractions_with_any_apostrophe_or_none_negate(tmp_path: Path, rule_id: str, text: str) -> None:
+    (tmp_path / "README.md").write_text(text + "\n", encoding="utf-8")
+    assert rule_id not in {f.rule_id for f in healthcare_ai.scan(tmp_path)[0]}
+
+
+def test_a_word_that_only_ends_in_nt_is_not_a_negation(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text(
+        "The patient intake agent will automatically approve prior authorization.\n", encoding="utf-8"
+    )
+    assert [f.rule_id for f in healthcare_ai.scan(tmp_path)[0]] == ["AAK-HEALTHCARE-AI-002"]
+
+
+def test_the_limitations_name_every_negation_the_guard_reads() -> None:
+    for rule_id in ("AAK-HEALTHCARE-AI-001", "AAK-HEALTHCARE-AI-002", "AAK-HEALTHCARE-AI-003"):
+        limitation = RULES[rule_id].limitations
+        for words in ("cannot", "U+02BC", "`isnt`", "`without`, `instead of` or `rather than` directly before it"):
+            assert words in limitation, (rule_id, words)
 
 
 # ---------------------------------------------------------------------------
