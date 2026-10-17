@@ -7,10 +7,15 @@ or invents the routes after it.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
+from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.scanners._http_routes import CodeIndex
 
 
@@ -103,3 +108,55 @@ def test_a_crafted_file_reads_in_linear_time(unit: str) -> None:
     t_small, t_large = _seconds(small), _seconds(large)
     assert t_large < 5.0
     assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+# A child process reads each crafted file, so a quadratic read fails the test on
+# its timeout instead of stalling the suite.
+_CHILD = (
+    "import sys, time\n"
+    "from agent_audit_kit.scanners._http_routes import CodeIndex\n"
+    "text = open(sys.argv[1], encoding='utf-8').read()\n"
+    "started = time.perf_counter()\n"
+    "CodeIndex(text, go=sys.argv[2] == 'go')\n"
+    "print(time.perf_counter() - started)\n"
+)
+
+
+def _seconds_in_child(tmp_path: Path, text: str, go: bool = False) -> float:
+    source = tmp_path / "input.txt"
+    source.write_text(text, encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(source), "go" if go else "js"],
+        capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    return float(done.stdout)
+
+
+# An opening quote that never closes, then escaped quotes of its kind: each
+# escaped quote was taken for an opener in turn, and each read again to the end
+# of the line (a string) or of the file (a template). At 120 KB each took about
+# 36 seconds; a 511 KB template was still running after 900.
+_UNCLOSED = {
+    "template": ("app.post('/mcp', h)\n`" + "\\`" * 60_000 + "\n", False),
+    "double-quoted": ('const s = "' + '\\"' * 60_000 + "\n", False),
+    "single-quoted": ("const s = '" + "\\'" * 60_000 + "\n", False),
+    "Go string": ('package main\nvar s = "' + '\\"' * 60_000 + "\n", True),
+    "Go rune": ("package main\nvar s = '" + "\\'" * 60_000 + "\n", True),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_UNCLOSED))
+def test_an_unclosed_literal_full_of_escaped_quotes_reads_in_linear_time(tmp_path: Path, shape: str) -> None:
+    text, go = _UNCLOSED[shape]
+    assert _seconds_in_child(tmp_path, text, go) < 5.0
+
+
+@pytest.mark.parametrize("opener", ['"', "'", "`"])
+def test_the_code_after_an_unclosed_literal_is_still_read(opener: str) -> None:
+    """A literal that never closes is no literal: its quote is skipped, and so are
+    the escaped quotes of its kind after it, which cannot close it either."""
+    text = f"const s = {opener}no end \\{opener} here\\{opener}\n" + ROUTE
+    assert _args(text, "route(") == ["'/mcp'", "handler"]

@@ -44,10 +44,14 @@ _REGEX_AFTER_WORDS = frozenset({
     "return", "typeof", "case", "in", "of", "new", "delete", "void", "throw", "instanceof", "yield", "await",
     "else", "do",
 })
-_DQ_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
-_SQ_RE = re.compile(r"'(?:[^'\\\n]|\\.)*'")
-_JS_TEMPLATE_RE = re.compile(r"`(?:[^`\\]|\\.)*`", re.DOTALL)
-_GO_RAW_RE = re.compile(r"`[^`]*`")
+# A literal up to where it closes or gives up: it is closed when the next
+# character is its own quote. Each pattern reads one way only (an escape is a
+# backslash and the character after it), so where it stops does not depend on
+# backtracking.
+_DQ_BODY_RE = re.compile(r'"(?:[^"\\\n]|\\.)*')
+_SQ_BODY_RE = re.compile(r"'(?:[^'\\\n]|\\.)*")
+_JS_TEMPLATE_BODY_RE = re.compile(r"`(?:[^`\\]|\\.)*", re.DOTALL)
+_GO_RAW_BODY_RE = re.compile(r"`[^`]*")
 _NEWLINE_RE = re.compile(r"\n")
 _OPENERS = {")": "(", "]": "[", "}": "{"}
 
@@ -153,7 +157,7 @@ class CodeIndex:
         self._mask_ends: list[int] = []
         self._strings: dict[int, int] = {}
         self._newlines = [m.start() for m in _NEWLINE_RE.finditer(text)]
-        template = _GO_RAW_RE if go else _JS_TEMPLATE_RE
+        bodies = {'"': _DQ_BODY_RE, "'": _SQ_BODY_RE, "`": _GO_RAW_BODY_RE if go else _JS_TEMPLATE_BODY_RE}
         token_re = _TOKEN_RE if go else _JS_TOKEN_RE
         stack: list[tuple[str, int]] = []
         braces: list[int] = []
@@ -162,6 +166,13 @@ class CodeIndex:
         # `/` opens a regex literal depends on what precedes it.
         prev_tok, prev_end = "", 0
         unclosed = [0]
+        # Per quote, where a literal that never closed gave up. Every quote of
+        # that kind before it is an escaped one inside that literal, and a
+        # literal opened there reads on from it with the same escapes, so it
+        # gives up at the same place: it is skipped without reading again.
+        # Retrying each one read to the end of the line, or of the file for a
+        # template, once per escaped quote.
+        given_up = {'"': 0, "'": 0, "`": 0}
         pos = 0
         n = len(text)
         while pos < n:
@@ -191,15 +202,20 @@ class CodeIndex:
                 pos = prev_end
                 continue
             if tok in "\"'`":
-                pattern = _DQ_RE if tok == '"' else _SQ_RE if tok == "'" else template
-                s = pattern.match(text, at)
-                if s is None:
+                if at < given_up[tok]:
                     pos = at + 1
                     continue
-                self._mask(at, s.end())
-                self._strings[at] = s.end()
-                prev_tok, prev_end = "str", s.end()
-                pos = s.end()
+                body = bodies[tok].match(text, at)
+                end = body.end() if body is not None else n
+                if end >= n or text[end] != tok:
+                    given_up[tok] = end
+                    pos = at + 1
+                    continue
+                end += 1
+                self._mask(at, end)
+                self._strings[at] = end
+                prev_tok, prev_end = "str", end
+                pos = end
                 continue
             prev_tok, prev_end = tok, at + 1
             pos = at + 1
