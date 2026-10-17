@@ -19,10 +19,10 @@ from bisect import bisect_right
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import Context, ContextVar, copy_context
 from itertools import accumulate, chain
 from pathlib import Path
-from typing import AbstractSet, Any, Callable, Iterable, Iterator, NamedTuple
+from typing import AbstractSet, Any, Callable, Iterable, Iterator, NamedTuple, TypeVar
 from urllib.parse import unquote
 
 try:
@@ -36,6 +36,8 @@ from yaml.scanner import ScannerError
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
+
+_T = TypeVar("_T")
 
 # Interpolation of a caller-controlled variable into a command / shell string.
 # Shared by hook_rce and ide_task_rce so there is exactly ONE definition of the
@@ -2112,7 +2114,10 @@ _PY_MAX_NESTING = 20_000
 # 500 KB cost 0.2 to 0.35 s and 250 to 380 MB a parse on 3.9.6, once for each
 # scanner that parsed it, which the screen spares.
 _PARSE_STACK_BYTES = 256 * 1024 * 1024
-_parse_worker: tuple[int, ThreadPoolExecutor] | None = None
+# The worker, as (process id, executor, worker thread id): a forked child has no
+# threads and starts its own.
+_parse_worker: tuple[int, ThreadPoolExecutor, int] | None = None
+_PARSE_ON_WORKER = sys.version_info < (3, 11)
 
 # One token of Python source, for the screen. A string is only opened here; its
 # end is found by `_py_string_end`. Numbers are spelled out so that `1..real`
@@ -2341,22 +2346,38 @@ def _parse_quietly(source: str | bytes, filename: str) -> ast.Module:
         return ast.parse(source, filename)
 
 
-def _ast_parse(source: str | bytes, filename: str) -> ast.Module:
-    if sys.version_info >= (3, 11):
-        return _parse_quietly(source, filename)
+def _large_stack_worker() -> ThreadPoolExecutor | None:
+    """The worker thread with `_PARSE_STACK_BYTES` of stack, started on first
+    use; None where a thread's stack size cannot be set."""
     global _parse_worker
-    if _parse_worker is None or _parse_worker[0] != os.getpid():  # a fork has no worker thread
+    if _parse_worker is None or _parse_worker[0] != os.getpid():
         try:
             previous = threading.stack_size(_PARSE_STACK_BYTES)
         except (ValueError, RuntimeError):
-            return _parse_quietly(source, filename)
+            return None
         try:
             worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aak-parse")
-            worker.submit(int).result()  # start the thread now, with the large stack
+            thread_id = worker.submit(threading.get_ident).result()  # start the thread now, with the large stack
         finally:
             threading.stack_size(previous)
-        _parse_worker = (os.getpid(), worker)
-    return _parse_worker[1].submit(_parse_quietly, source, filename).result()
+        _parse_worker = (os.getpid(), worker, thread_id)
+    return _parse_worker[1]
+
+
+def _on_large_stack() -> bool:
+    """True on the worker thread itself, where a parse or a walk runs in place:
+    handed to the worker, it would wait behind the task that handed it over."""
+    worker = _parse_worker
+    return worker is not None and worker[0] == os.getpid() and worker[2] == threading.get_ident()
+
+
+def _ast_parse(source: str | bytes, filename: str) -> ast.Module:
+    if not _PARSE_ON_WORKER or _on_large_stack():
+        return _parse_quietly(source, filename)
+    worker = _large_stack_worker()
+    if worker is None:
+        return _parse_quietly(source, filename)
+    return worker.submit(_parse_quietly, source, filename).result()
 
 
 def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
@@ -2394,6 +2415,116 @@ def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
         reason = f"Python source nested too deep to parse ({type(exc).__name__})"
         refuse(path, reason)
         raise RefusedSource(reason) from None
+
+
+# ---- Walking a parsed tree ----------------------------------------------------
+#
+# A recursive walk takes a Python frame or more for each level of the tree it
+# walks, an `ast.NodeVisitor` two (`visit` and `generic_visit`) and
+# `ast.unparse` three, and the interpreter stops at 1,000 frames, which real code
+# reaches. sympy's generated table of Galois resolvents (sympy/polys/
+# numberfields/resolvent_lookup.py) holds a 562-term polynomial whose tree is 569
+# levels deep: five scanners that walk every Python file could not walk it, nine
+# once a header opened their gates, and DeepSeek's walker, which had no
+# containment, took its scanner down. Of 100,303 real files (eight interpreters'
+# standard libraries and the 2,000 packages installed beside them) it is the
+# deepest: the next has 230 levels, and the 99.9th percentile 30.
+
+#: The recursion limit a walk of a parsed tree runs under (see `walk_tree`): about
+#: 3,300 levels of `ast.unparse`, the walk with the most frames a level.
+WALK_RECURSION_LIMIT = 10_000
+_WALK_ON_WORKER = sys.version_info < (3, 11)
+_headroom_lock = threading.Lock()
+_headroom_walks = 0
+_headroom_restore = 0
+
+
+@contextmanager
+def _recursion_headroom() -> Iterator[None]:
+    """The recursion limit at `WALK_RECURSION_LIMIT` for the block, or at the
+    limit already set where that is higher. Walks in progress at once share one
+    raise, and the limit goes back to what it was when the first began once the
+    last ends, so one finishing never lowers it under another."""
+    global _headroom_walks, _headroom_restore
+    with _headroom_lock:
+        if _headroom_walks == 0:
+            _headroom_restore = sys.getrecursionlimit()
+            sys.setrecursionlimit(max(_headroom_restore, WALK_RECURSION_LIMIT))
+        _headroom_walks += 1
+    try:
+        yield
+    finally:
+        with _headroom_lock:
+            _headroom_walks -= 1
+            if _headroom_walks == 0:
+                sys.setrecursionlimit(_headroom_restore)
+
+
+def _walk_with_headroom(
+    context: Context, walk: Callable[..., _T], args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> _T:
+    with _recursion_headroom():
+        return context.run(walk, *args, **kwargs)
+
+
+def walk_tree(walk: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
+    """`walk(*args, **kwargs)`, a recursive walk of a parsed tree, with room to recurse.
+
+    For an `ast.NodeVisitor`'s `visit`, `ast.unparse` (see `unparse`) or a
+    scanner's own helper that follows an expression down: anything whose
+    recursion grows with the depth of the tree. The walk runs with the
+    recursion limit raised to `WALK_RECURSION_LIMIT` and put back afterwards.
+    From 3.11 a call from Python to Python takes no C stack, so the walk runs
+    where it is called. Before 3.11 every call does, and 10,000 frames can
+    overflow a thread's stack before the limit stops them, so the walk runs on
+    the worker that parses (`_ast_parse`), with 256 MB of stack, in a copy of
+    the caller's context, so that a refusal made inside it reaches the caller's
+    `collecting_refusals`. Whatever the walk raises, it raises in the caller. A
+    tree deeper than even the raised limit allows raises RecursionError, which
+    the caller contains with `refusing_overflow`, and that file alone is
+    refused.
+
+    The limit is the interpreter's, not the thread's. While a walk runs, every
+    other thread of the process may recurse as deep, so code recursing on
+    another thread at that moment can overflow its thread's stack where the
+    default limit would have stopped it: any recursion before 3.11, and from
+    3.11 a recursion through C (a recursive `__repr__`, or a parse: 3.11 lets
+    `ast.parse` build a tree three times as deep as the limit). `aak scan`
+    runs its scanners one at a time on one thread, so nothing else runs during
+    a walk; a host that scans, or recurses, on other threads at the same time
+    shares the raised limit while a walk is in progress. For the same reason a
+    walk does not parse.
+    """
+    if not _WALK_ON_WORKER or _on_large_stack():
+        with _recursion_headroom():
+            return walk(*args, **kwargs)
+    worker = _large_stack_worker()
+    if worker is None:  # no stack to raise the limit on; the default limit stops the walk
+        return walk(*args, **kwargs)
+    return worker.submit(_walk_with_headroom, copy_context(), walk, args, kwargs).result()
+
+
+def unparse(node: ast.AST) -> str:
+    """`ast.unparse(node)`, run as a walk (see `walk_tree`), or "" where the
+    unparser cannot rebuild the node.
+
+    The scanners that unparsed an expression either let RecursionError take the
+    whole scanner down, or caught every exception and read the expression as
+    empty, without a word. A tree too deep even for the raised limit now raises
+    RecursionError, for the caller's `refusing_overflow`. Any other error is
+    the unparser's own, and reads as "", as it did.
+    """
+    return walk_tree(_unparse_or_empty, node)
+
+
+def _unparse_or_empty(node: ast.AST) -> str:
+    try:
+        return ast.unparse(node)
+    except _OVERFLOW:
+        raise
+    except Exception:
+        return ""
+
 
 
 # How many dot-separated parts one TOML key may have. tomllib builds a dotted
