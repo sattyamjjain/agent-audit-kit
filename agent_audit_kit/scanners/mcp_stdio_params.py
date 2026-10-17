@@ -36,6 +36,7 @@ import re
 from bisect import bisect_left, bisect_right
 from collections import deque
 from pathlib import Path
+from typing import Iterator
 
 from agent_audit_kit.models import Finding
 
@@ -408,6 +409,28 @@ class _FunctionFacts:
         return self._allowlisted
 
 
+def _functions_in(tree: ast.AST) -> Iterator[tuple[ast.FunctionDef | ast.AsyncFunctionDef, str]]:
+    """Every function definition in `tree`, with the name of the class it sits in.
+
+    In the order the recursive `ast.NodeVisitor` this replaces reached them: a
+    function before anything inside it, children in field order, and the class
+    the innermost enclosing `class` statement names ("" outside one), even
+    across functions defined between the two. That visitor took two frames per
+    level of nesting, and every `elif` sits one level below the branch before
+    it, so a function dispatching on more than about 480 branches raised
+    RecursionError and the scanner lost its findings in every file. This walk
+    keeps its own stack.
+    """
+    stack: list[tuple[ast.AST, str]] = [(tree, "")]
+    while stack:
+        node, class_name = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield node, class_name
+        elif isinstance(node, ast.ClassDef):
+            class_name = node.name
+        stack.extend((child, class_name) for child in reversed(list(ast.iter_child_nodes(node))))
+
+
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     try:
         tree = ast.parse(text, str(path))
@@ -415,80 +438,64 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         return []
     findings: list[Finding] = []
 
-    class V(ast.NodeVisitor):
-        def __init__(self) -> None:
-            self._classes: list[str] = []
+    def _launcher_finding(call: ast.Call, facts: _FunctionFacts) -> Finding | None:
+        source = _split_source(call, facts)
+        if source is None:
+            return None
+        if not facts.manages_mcp_stdio():
+            return None
+        if facts.checks_an_allowlist():
+            return None
+        rel = str(path.relative_to(project_root))
+        scanned.add(rel)
+        return make_finding(
+            "AAK-MCP-STDIO-CMD-INJ-001",
+            rel,
+            f"{_attr_chain(call.func)}(...) at line {call.lineno} launches "
+            f"`shlex.split({_unparse(source)})`, a stored MCP STDIO server's "
+            "command, with no executable allowlist between the split and the "
+            "spawn. Whoever can register or edit that server record chooses "
+            "the program this host runs (the CVE-2026-93965 launcher shape).",
+            line_number=call.lineno,
+        )
 
-        def visit_ClassDef(self, node: ast.ClassDef) -> None:
-            self._classes.append(node.name)
-            self.generic_visit(node)
-            self._classes.pop()
-
-        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-            self._scan(node)
-            self.generic_visit(node)
-
-        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-            self._scan(node)
-            self.generic_visit(node)
-
-        def _launcher_finding(self, call: ast.Call, facts: _FunctionFacts) -> Finding | None:
-            source = _split_source(call, facts)
-            if source is None:
-                return None
-            if not facts.manages_mcp_stdio():
-                return None
-            if facts.checks_an_allowlist():
-                return None
+    def _scan(func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str) -> None:
+        calls = sorted(
+            (n for n in ast.walk(func) if isinstance(n, ast.Call)),
+            key=lambda c: (c.lineno, c.col_offset),
+        )
+        facts = _FunctionFacts(func, class_name)
+        for call in calls:
+            if not _is_stdio_server_params_call(call):
+                launcher = _launcher_finding(call, facts)
+                if launcher is not None:
+                    findings.append(launcher)
+                    return  # one finding per function
+                continue
+            # We have StdioServerParameters(command=X, args=Y). Fire only
+            # when a network-controlled value actually flows into the
+            # command/args sink — not merely because a taint marker or a
+            # generically-named arg (`config`, `data`) exists somewhere in
+            # the function. Constant command/args never fire.
+            if not _taint_flows_to_command(call, facts):
+                continue
             rel = str(path.relative_to(project_root))
             scanned.add(rel)
-            return make_finding(
+            findings.append(make_finding(
                 "AAK-MCP-STDIO-CMD-INJ-001",
                 rel,
-                f"{_attr_chain(call.func)}(...) at line {call.lineno} launches "
-                f"`shlex.split({_unparse(source)})`, a stored MCP STDIO server's "
-                "command, with no executable allowlist between the split and the "
-                "spawn. Whoever can register or edit that server record chooses "
-                "the program this host runs (the CVE-2026-93965 launcher shape).",
+                f"StdioServerParameters(...) at line {call.lineno} "
+                "is built inside a function that reads from a "
+                "network-controlled source (request body, fetched "
+                "JSON, env var, or untrusted YAML). The OX MCP "
+                "Apr-2026 class lets the resulting `command`/`args` "
+                "be executed verbatim by the SDK.",
                 line_number=call.lineno,
-            )
+            ))
+            return  # one finding per function
 
-        def _scan(self, func: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-            calls = sorted(
-                (n for n in ast.walk(func) if isinstance(n, ast.Call)),
-                key=lambda c: (c.lineno, c.col_offset),
-            )
-            facts = _FunctionFacts(func, self._classes[-1] if self._classes else "")
-            for call in calls:
-                if not _is_stdio_server_params_call(call):
-                    launcher = self._launcher_finding(call, facts)
-                    if launcher is not None:
-                        findings.append(launcher)
-                        return  # one finding per function
-                    continue
-                # We have StdioServerParameters(command=X, args=Y). Fire only
-                # when a network-controlled value actually flows into the
-                # command/args sink — not merely because a taint marker or a
-                # generically-named arg (`config`, `data`) exists somewhere in
-                # the function. Constant command/args never fire.
-                if not _taint_flows_to_command(call, facts):
-                    continue
-                rel = str(path.relative_to(project_root))
-                scanned.add(rel)
-                findings.append(make_finding(
-                    "AAK-MCP-STDIO-CMD-INJ-001",
-                    rel,
-                    f"StdioServerParameters(...) at line {call.lineno} "
-                    "is built inside a function that reads from a "
-                    "network-controlled source (request body, fetched "
-                    "JSON, env var, or untrusted YAML). The OX MCP "
-                    "Apr-2026 class lets the resulting `command`/`args` "
-                    "be executed verbatim by the SDK.",
-                    line_number=call.lineno,
-                ))
-                return  # one finding per function
-
-    V().visit(tree)
+    for func, class_name in _functions_in(tree):
+        _scan(func, class_name)
     return findings
 
 

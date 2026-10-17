@@ -4,11 +4,14 @@ The 0.6.23 stall sweep found scanners whose time grew faster than the files they
 read: line lookups that split the whole file again for every finding, a source
 lookup per function, a regex that read a long run of handle characters once for
 every word boundary in it, a walk of the whole function for every call in it, and
-a chain search that enumerated every path. Each timing test below scans the
-sweep's crafted input at two sizes ten times apart, best of three in CPU time,
-and allows the larger 40 times the smaller's time plus a fixed slack, under an
-absolute bound; the old code needed 100 times or more. The differential tests
-hold each rewritten search to the answers of the code it replaced.
+a chain search that enumerated every path; and a walk over a file's functions
+that recursed once per level of nesting, so a long `elif` dispatch raised
+RecursionError. Each timing test below scans the sweep's crafted input at two
+sizes ten times apart, best of three in CPU time, and allows the larger 40 times
+the smaller's time plus a fixed slack, under an absolute bound; the old code
+needed 100 times or more, or, for the dispatch, raised at the larger size. The
+differential tests hold each rewritten search to the answers of the code it
+replaced.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ import ast
 import json
 import random
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Callable
@@ -114,6 +118,15 @@ def _many_assigned_calls(k: int) -> dict[str, str]:
     return {"server.py": _PY_HEAD + body}
 
 
+def _elif_dispatch(k: int) -> dict[str, str]:
+    """One function dispatching on `k` branches, each `elif` a level below the one
+    before it, and a function in the last branch that AAK-MCP-STDIO-CMD-INJ-001 reports."""
+    branches = "".join(f"    elif kind == {i}:\n        subprocess.run(argv)\n" for i in range(1, k))
+    return {"server.py": _PY_HEAD + "from mcp import StdioServerParameters\n"
+            "def dispatch(kind, argv):\n    if kind == 0:\n        subprocess.run(argv)\n" + branches
+            + "    else:\n        def launch(body):\n            return StdioServerParameters(command=body)\n"}
+
+
 def _composition(k: int) -> dict[str, str]:
     servers: dict[str, object] = {}
     for i in range(k):
@@ -184,6 +197,9 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # Row 6's relative: every call walked its whole function: 1,000 calls took 14 s.
     "calls-in-one-function": (mcp_stdio_params.scan, _many_calls, 300, False),
     "assigned-calls-in-one-function": (mcp_stdio_params.scan, _many_assigned_calls, 300, False),
+    # The walk over a file's functions took two frames per level of nesting: 2,000
+    # branches raised RecursionError, on main after 19 to 30 s of per-call work.
+    "elif-dispatch": (mcp_stdio_params.scan, _elif_dispatch, 200, False),
     # Rows 7 and 8: 2,000 servers took 10 s and 7.6 s.
     "servers-mcp-config": (mcp_config.scan, _full_servers, 200, True),
     "servers-transport": (transport_security.scan, _full_servers, 200, True),
@@ -342,6 +358,194 @@ def test_the_assignment_index_settles_where_the_walk_settled() -> None:
             fast += index._runs is not None
             slow += index._runs is None
     assert fast > 20 * max(slow, 1), (fast, slow)
+
+
+# ---------------------------------------------------------------------------
+# mcp_stdio_params' walk over a file's functions: `_functions_in` meets the
+# functions the recursive visitor met, with the same class names, in its order.
+# ---------------------------------------------------------------------------
+
+
+class _RecursiveVisitor(ast.NodeVisitor):
+    """`_walk_python`'s walk as it was through 0.6.22, each function noted where it was scanned."""
+
+    def __init__(self) -> None:
+        self.classes: list[str] = []
+        self.found: list[tuple[ast.AST, str]] = []
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.classes.append(node.name)
+        self.generic_visit(node)
+        self.classes.pop()
+
+    def visit_FunctionDef(self, node: ast.AST) -> None:
+        self.found.append((node, self.classes[-1] if self.classes else ""))
+        self.generic_visit(node)
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+
+def _old_functions_in(tree: ast.AST) -> list[tuple[ast.AST, str]]:
+    visitor = _RecursiveVisitor()
+    visitor.visit(tree)
+    return visitor.found
+
+
+_STATEMENTS = [
+    "x = 1", "pass", "fs = [lambda: i for i in range(3)]",
+    "table = {k: (lambda v: v + k) for k in 'ab' if (lambda: k)()}",
+    "grid = [[lambda: (j, k) for j in range(2)] for k in range(2)]",
+    "pick = sorted(items, key=lambda kv: kv[1])", "g = (lambda: (lambda: 0))()",
+    "total = sum((lambda n: n)(j) for j in range(2))",
+]
+_ASYNC_STATEMENTS = ["await x", "async for i in source:\n    pass", "async with lock as held:\n    pass"]
+_DECORATORS = ["@deco", "@deco(lambda f: f)", "@register(key=lambda: 'k', on=[lambda: 1 for _ in ()])",
+               "@(lambda f: f)"]
+_FUNCTION_NAMES = ["handler", "launch", "start_mcp_stdio", "run", "outer", "inner", "__init__"]
+_PARAMETERS = ["()", "(self, request)", "(body, k=lambda: 0)", "(server, *args, **kwargs)",
+               "(self, cfg, f=lambda x: [x for _ in ()])"]
+_CLASS_NAMES = ["McpStdioPool", "Plain", "Outer", "Inner", "StdioOnly", "McpOnly"]
+_BASES = ["", "(Base)", "(Base, metaclass=Meta)", "(make(lambda: object))"]
+# Lines that make AAK-MCP-STDIO-CMD-INJ-001 report a function, or keep it quiet:
+# the SDK arm (a tainted command, a suspicious parameter, a constant) and the
+# launcher arm, whose MCP words can come from the enclosing class's name alone.
+_SINKS = [
+    "return StdioServerParameters(command=request.json['cmd'])",
+    "params = StdioServerParameters(command=body, args=[])",
+    "StdioServerParameters(command='npx', args=['-y', 'pkg'])",
+    "subprocess.Popen(shlex.split(server.command))",
+    "argv = shlex.split(cfg['command'])\nsubprocess.run(argv)",
+    "if argv[0] not in ALLOWED_EXECUTABLES:\n    raise ValueError(argv)",
+    "log('mcp stdio server')",
+]
+
+
+def _extend(lines: list[str], pad: str, statement: str) -> None:
+    lines.extend(pad + piece for piece in statement.split("\n"))
+
+
+def _block(rng: random.Random, lines: list[str], depth: int, budget: list[int], in_async: bool, sinks: bool) -> None:
+    """Statements at one indentation, from a budget the whole module shares."""
+    pad = "    " * depth
+    first = len(lines)
+    while budget[0] > 0 and (len(lines) == first or rng.random() > 0.15):
+        budget[0] -= 1
+        roll = rng.random() if depth < 7 else 1.0
+        if roll < 0.22:
+            for _ in range(rng.choice([0, 0, 1, 2])):
+                lines.append(pad + rng.choice(_DECORATORS))
+            is_async = rng.random() < 0.3
+            lines.append(f"{pad}{'async ' if is_async else ''}def {rng.choice(_FUNCTION_NAMES)}"
+                         f"{rng.choice(_PARAMETERS)}:")
+            for _ in range(rng.choice([0, 1, 1, 2]) if sinks else 0):
+                _extend(lines, pad + "    ", rng.choice(_SINKS))
+            _block(rng, lines, depth + 1, budget, is_async, sinks)
+        elif roll < 0.34:
+            for _ in range(rng.choice([0, 0, 1])):
+                lines.append(pad + rng.choice(_DECORATORS))
+            lines.append(f"{pad}class {rng.choice(_CLASS_NAMES)}{rng.choice(_BASES)}:")
+            _block(rng, lines, depth + 1, budget, False, sinks)
+        elif roll < 0.5:
+            _compound(rng, lines, depth, budget, in_async, sinks)
+        else:
+            _extend(lines, pad, rng.choice(_STATEMENTS + (_ASYNC_STATEMENTS if in_async else [])))
+    if len(lines) == first:
+        lines.append(pad + "pass")
+
+
+def _compound(rng: random.Random, lines: list[str], depth: int, budget: list[int], in_async: bool,
+              sinks: bool) -> None:
+    pad = "    " * depth
+
+    def clause(head: str, inner: int = 1) -> None:
+        lines.append(pad + "    " * (inner - 1) + head)
+        _block(rng, lines, depth + inner, budget, in_async, sinks)
+
+    kind = rng.choice(["if", "for", "while", "with", "try"] + (["match"] if sys.version_info >= (3, 10) else []))
+    if kind == "if":
+        clause("if a:")
+        for i in range(rng.choice([0, 0, 1, 3])):
+            clause(f"elif b{i}:")
+        if rng.random() < 0.5:
+            clause("else:")
+    elif kind in ("for", "while"):
+        clause("for i in items:" if kind == "for" else "while c:")
+        if rng.random() < 0.3:
+            clause("else:")
+    elif kind == "with":
+        clause("with w as v, u:")
+    elif kind == "try":
+        clause("try:")
+        clause("except E as e:")
+        if rng.random() < 0.3:
+            clause("else:")
+        if rng.random() < 0.4:
+            clause("finally:")
+    else:
+        lines.append(pad + "match v:")
+        for case in ("case 1:", "case [a, *rest] if (lambda: a)():", "case _:"):
+            clause(case, inner=2)
+
+
+def _module(rng: random.Random, sinks: bool = False) -> str:
+    """A module of functions, classes and compound statements nested at random;
+    with `sinks`, a larger one whose functions hold the lines in `_SINKS`."""
+    lines = ["import shlex, subprocess", "from mcp import StdioServerParameters"] if sinks else []
+    _block(rng, lines, 0, [rng.randint(30, 80) if sinks else rng.randint(4, 40)], False, sinks)
+    return "\n".join(lines) + "\n"
+
+
+def _python_fixtures() -> list[Path]:
+    return sorted(p for p in (Path(__file__).parent / "fixtures").rglob("*.py") if p.is_file())
+
+
+def test_the_function_walk_meets_the_functions_the_visitor_met() -> None:
+    rng = random.Random(15)
+    sources = []
+    for path in _python_fixtures():
+        text = path.read_text(encoding="utf-8", errors="replace")
+        try:  # a fixture that does not parse is one the scanner skips
+            sources.append((text, ast.parse(text)))
+        except SyntaxError:
+            continue
+    for _ in range(1500):
+        text = _module(rng)
+        sources.append((text, ast.parse(text)))
+    functions = in_classes = asynchronous = 0
+    for source, tree in sources:
+        expected = [(id(node), name) for node, name in _old_functions_in(tree)]
+        found = list(mcp_stdio_params._functions_in(tree))
+        assert [(id(node), name) for node, name in found] == expected, source
+        functions += len(found)
+        in_classes += sum(1 for _, name in found if name)
+        asynchronous += sum(1 for node, _ in found if isinstance(node, ast.AsyncFunctionDef))
+    assert len(sources) > 1800 and functions > 3500 and in_classes > 1500 and asynchronous > 900, (
+        len(sources), functions, in_classes, asynchronous)
+
+
+def test_the_scan_finds_what_the_recursive_walk_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    rng = random.Random(16)
+    for i in range(40):
+        (tmp_path / f"server_{i:02d}.py").write_text(_module(rng, sinks=True), encoding="utf-8")
+    roots = [tmp_path, Path(__file__).parent / "fixtures"]
+    new = [mcp_stdio_params.scan(root) for root in roots]
+    monkeypatch.setattr(mcp_stdio_params, "_functions_in", _old_functions_in)
+    assert new == [mcp_stdio_params.scan(root) for root in roots]
+    evidence = [f.evidence for f in new[0][0]]
+    sdk = sum(1 for text in evidence if text.startswith("StdioServerParameters("))
+    launcher = sum(1 for text in evidence if "launches `shlex.split(" in text)
+    assert sdk >= 25 and launcher >= 12, (sdk, launcher)
+
+
+def test_the_last_branch_of_a_long_dispatch_is_reported(tmp_path: Path) -> None:
+    """2,000 branches nest 2,000 levels deep, four times the depth the recursive walk reached."""
+    files = _elif_dispatch(2_000)
+    _write(tmp_path, files)
+    lines = files["server.py"].splitlines()
+    sink = next(n for n, line in enumerate(lines, 1) if "StdioServerParameters(command=body)" in line)
+    assert sink == len(lines)
+    findings, _files = mcp_stdio_params.scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCP-STDIO-CMD-INJ-001", sink)]
 
 
 # ---------------------------------------------------------------------------
