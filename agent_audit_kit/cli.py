@@ -16,6 +16,7 @@ from agent_audit_kit.commands._common import (
     _load_config,
     _to_list,
 )
+from agent_audit_kit.commands.install_precommit import install_precommit_cmd
 from agent_audit_kit.commands.scan import scan_cmd
 from agent_audit_kit.engine import run_scan
 
@@ -26,6 +27,7 @@ __all__ = [
     "cli",
     "main",
     "scan_cmd",
+    "install_precommit_cmd",
     "SEVERITY_MAP",
     "FAIL_ON_CHOICES",
     "EXIT_PASS",
@@ -65,10 +67,11 @@ def cli(ctx: click.Context, emit_coverage: bool, coverage_format: str) -> None:
         ctx.invoke(scan_cmd)
 
 
-# Registered rather than decorated: the command lives in
-# agent_audit_kit/commands/scan.py, and a `@cli.command` there would need to
-# import this module, which imports it. See issue #701.
+# Registered rather than decorated: these commands live in
+# agent_audit_kit/commands/, and a `@cli.command` there would need to import
+# this module, which imports them. See issue #701.
 cli.add_command(scan_cmd)
+cli.add_command(install_precommit_cmd)
 
 
 @cli.command("discover")
@@ -517,6 +520,8 @@ def suggest_cmd(
         plan = plan_auto_pr(Path(project_path))
         for fix in plan.fixes:
             click.echo(f"  + {fix.rule_id}  {fix.file_path}", err=True)
+        for fix in plan.unchanged:
+            click.echo(f"  = {fix.rule_id}  {fix.file_path}  (changes nothing: {fix.description})", err=True)
         for fix in plan.blocked:
             click.echo(f"  - {fix.rule_id}  {fix.file_path}  (not allow-listed)", err=True)
         if dry_run:
@@ -671,37 +676,6 @@ def notify_cmd(path: str, config_path: str | None, dry_run: bool) -> None:
             click.echo(f"  {kind}: STUB (NotImplementedError) — not yet shipped")
         else:
             click.echo(f"  {kind}: posted {count} finding(s)")
-
-
-@cli.command("install-precommit")
-@click.version_option(version=__version__)
-@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
-def install_precommit_cmd(path: str) -> None:
-    """Add an agent-audit-kit entry to the project's .pre-commit-config.yaml."""
-    project = Path(path)
-    cfg_path = project / ".pre-commit-config.yaml"
-    # Pin the release that is running this command. A literal here (it was
-    # v0.3.0) froze every new install on a months-old hook no matter which
-    # version wrote it.
-    snippet = (
-        "  - repo: https://github.com/sattyamjjain/agent-audit-kit\n"
-        f"    rev: v{__version__}\n"
-        "    hooks:\n"
-        "      - id: agent-audit-kit\n"
-    )
-    if cfg_path.is_file():
-        existing = cfg_path.read_text(encoding="utf-8")
-        if "agent-audit-kit" in existing:
-            click.echo("agent-audit-kit hook already configured in .pre-commit-config.yaml")
-            return
-        if "repos:" in existing:
-            cfg_path.write_text(existing.rstrip() + "\n" + snippet, encoding="utf-8")
-        else:
-            cfg_path.write_text("repos:\n" + snippet, encoding="utf-8")
-    else:
-        cfg_path.write_text("repos:\n" + snippet, encoding="utf-8")
-    click.echo(f"added agent-audit-kit pre-commit hook to {cfg_path.relative_to(project)}")
-    click.echo("next: run `pre-commit install`")
 
 
 @cli.command("export-rules")
@@ -884,7 +858,13 @@ def vex_cmd(path: str, vex_format: str, output_file: str | None) -> None:
 )
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None)
 def report_cmd(path: str, framework: str, report_format: str, output_file: str | None) -> None:
-    """Produce an auditor-ready compliance report (EU AI Act Article 15 etc.)."""
+    """Produce an auditor-ready compliance report (EU AI Act Article 15 etc.).
+
+    Without --output, the PDF (or, without reportlab, its text fallback) goes into
+    the current directory; exits 2, leaving that file as it was, when it cannot be
+    written inside the directory, for instance because it is a link that leads out
+    of it.
+    """
     # The standards crosswalk is a static rule→control mapping — no scan needed.
     if framework == "standards-crosswalk":
         from agent_audit_kit.output.crosswalk import render_markdown, render_text
@@ -897,17 +877,23 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             click.echo(text)
         return
 
-    from agent_audit_kit.output.pdf_report import emit_pdf, _text_report
+    from agent_audit_kit.output.pdf_report import ReportWriteError, emit_pdf, emit_pdf_in, _text_report
 
     project = Path(path)
     result = run_scan(project_root=project)
 
     if report_format == "pdf":
-        out = Path(output_file or f"aak-compliance-{framework}.pdf")
-        ok, msg = emit_pdf(result, framework, out)
+        if output_file:
+            ok, msg = emit_pdf(result, framework, Path(output_file))
+        else:
+            try:
+                ok, msg = emit_pdf_in(result, framework, Path.cwd())
+            except ReportWriteError as exc:
+                click.echo(f"Cannot write the report: {exc}. {exc.name} was not changed.", err=True)
+                sys.exit(EXIT_ERROR)
         click.echo(msg, err=True)
         if not ok:
-            # Fallback text already written by emit_pdf; nothing else to do.
+            # The text fallback is already written; nothing else to do.
             return
     else:
         text = _text_report(result, framework)
@@ -1035,7 +1021,13 @@ def pipelock_cmd() -> None:
 def pipelock_import_cmd(
     policy_path: str, output_file: str | None, dry_run: bool
 ) -> None:
-    """Translate a Pipelock v2.3 YAML policy → .agent-audit-kit.yml."""
+    """Translate a Pipelock v2.3 YAML policy → .agent-audit-kit.yml.
+
+    Without --output, the result goes to .agent-audit-kit.yml in the current
+    directory; exits 2, leaving that file as it was, when it cannot be written
+    inside the directory, for instance because it is a link that leads out of it.
+    """
+    from agent_audit_kit.fix import _as_written, _write_inside_project
     from agent_audit_kit.translators.pipelock import translate
 
     policy = Path(policy_path)
@@ -1043,8 +1035,22 @@ def pipelock_import_cmd(
     if dry_run:
         click.echo(out_text)
         return
-    target = Path(output_file or ".agent-audit-kit.yml")
-    target.write_text(out_text, encoding="utf-8")
+    if output_file:
+        # A path the user names is theirs, like `scan -o`, and is written as named.
+        target = Path(output_file)
+        target.write_text(out_text, encoding="utf-8")
+    else:
+        # The default target is whatever the current directory holds under this
+        # name, which a cloned repository decides: `Path.write_text` followed a link
+        # there out of the project, created the file behind a dangling one and
+        # blocked forever on a FIFO. It is written as `aak fix` writes, with the
+        # current directory as the project.
+        target = Path(".agent-audit-kit.yml")
+        cwd = Path.cwd()
+        refused = _write_inside_project(cwd / target, _as_written(out_text), cwd)
+        if refused is not None:
+            click.echo(f"Cannot import the policy: {refused}. {target} was not changed.", err=True)
+            sys.exit(EXIT_ERROR)
     click.echo(f"wrote {target}", err=True)
 
 

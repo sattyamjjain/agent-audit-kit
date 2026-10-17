@@ -12,10 +12,11 @@ framework mappings cover: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf.
 
 from __future__ import annotations
 
+import io
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import IO, Iterable
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import ScanResult, Severity
@@ -305,6 +306,66 @@ def _text_report(result: ScanResult, framework: str) -> str:
 
 def emit_pdf(result: ScanResult, framework: str, output_path: Path) -> tuple[bool, str]:
     """Write a PDF report. Returns (ok, message)."""
+    if not _build_pdf(result, framework, str(output_path)):
+        # Fallback: write the text report with a .txt extension and inform caller.
+        text_path = output_path.with_suffix(".txt")
+        text_path.write_text(_text_report(result, framework), encoding="utf-8")
+        return False, _fallback_message(text_path)
+    return True, f"wrote PDF report to {output_path}"
+
+
+def _fallback_message(text_path: Path) -> str:
+    return (
+        f"reportlab not installed; wrote plain-text fallback to {text_path}. "
+        "Install with `pip install reportlab` to get PDF output."
+    )
+
+
+class ReportWriteError(Exception):
+    """`emit_pdf_in` wrote no report: ``name`` is the file it refused, and the message
+    says why."""
+
+    def __init__(self, name: str, reason: str) -> None:
+        super().__init__(reason)
+        self.name = name
+
+
+def emit_pdf_in(result: ScanResult, framework: str, directory: Path) -> tuple[bool, str]:
+    """Write the report `emit_pdf` writes, as ``aak-compliance-<framework>.pdf`` in
+    ``directory``, or its text fallback as the same name ending in ``.txt``. Returns
+    what `emit_pdf` returns.
+
+    `aak report` writes there when no ``--output`` names a path, so whatever the
+    current directory holds under that name decides where the bytes go: reportlab,
+    which opens the path itself, and the fallback's `Path.write_text` followed a link
+    out of the directory, created the file behind a dangling one, and blocked forever
+    on a FIFO. The PDF is built in memory and the text as a string, and each is
+    written through `fix._write_inside_project` with ``directory`` as the project.
+    The document is the one `emit_pdf` writes at a path; only reportlab's
+    CreationDate, ModDate and ID differ from one build to the next.
+
+    Raises:
+        ReportWriteError: the file is a link, a FIFO or anything else
+            `fix._write_refusal` refuses, or could not be written; nothing was written.
+    """
+    from agent_audit_kit.fix import _as_written, _write_inside_project
+
+    pdf = Path(f"aak-compliance-{framework}.pdf")
+    buffer = io.BytesIO()
+    if _build_pdf(result, framework, buffer):
+        name, data, written = pdf, buffer.getvalue(), (True, f"wrote PDF report to {pdf}")
+    else:
+        name = pdf.with_suffix(".txt")
+        data, written = _as_written(_text_report(result, framework)), (False, _fallback_message(name))
+    refused = _write_inside_project(directory / name, data, directory)
+    if refused is not None:
+        raise ReportWriteError(str(name), refused)
+    return written
+
+
+def _build_pdf(result: ScanResult, framework: str, target: str | IO[bytes]) -> bool:
+    """Build the report into ``target``, a path or a binary file, or return False when
+    reportlab is not installed."""
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -318,15 +379,9 @@ def emit_pdf(result: ScanResult, framework: str, output_path: Path) -> tuple[boo
         )
         from reportlab.lib import colors
     except ImportError:
-        # Fallback: write the text report with a .txt extension and inform caller.
-        text_path = output_path.with_suffix(".txt")
-        text_path.write_text(_text_report(result, framework), encoding="utf-8")
-        return False, (
-            f"reportlab not installed; wrote plain-text fallback to {text_path}. "
-            "Install with `pip install reportlab` to get PDF output."
-        )
+        return False
 
-    doc = SimpleDocTemplate(str(output_path), pagesize=letter, title="AAK Compliance Report")
+    doc = SimpleDocTemplate(target, pagesize=letter, title="AAK Compliance Report")
     story = []
     styles = getSampleStyleSheet()
     body_style = ParagraphStyle(
@@ -369,7 +424,7 @@ def emit_pdf(result: ScanResult, framework: str, output_path: Path) -> tuple[boo
         story.append(Spacer(1, 0.15 * inch))
 
     doc.build(story)
-    return True, f"wrote PDF report to {output_path}"
+    return True
 
 
 def _report_text(results: dict) -> str:

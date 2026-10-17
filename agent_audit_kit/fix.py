@@ -24,12 +24,20 @@ class FixAction:
         file_path: Path to the file that was fixed.
         description: Human-readable description of the fix.
         applied: Whether the fix was actually applied (False in dry-run).
+        writes: Whether the fix changes its file: True once written, or in a dry run
+            when it would be; False when the recipe refused the file, could not read
+            it or had nothing to change, including the value already set that the
+            TRUST-004, TRUST-007 and SECRET-006 recipes report as ``applied``. A dry
+            run's ``applied`` is False for a fix it would make and a file it refused
+            alike, so `suggest --auto-pr`, which plans from one, counted a refused file
+            as a fix.
     """
 
     rule_id: str
     file_path: str
     description: str
     applied: bool = False
+    writes: bool = False
 
 
 def run_fixes(project_root: Path, dry_run: bool = False) -> list[FixAction]:
@@ -462,6 +470,7 @@ def _fix_raised_pin(path: Path, rule_id: str, project_root: Path, dry_run: bool)
         str(path),
         f"Raised {result.raised} {label} declaration(s) to >={floor}{relock}",
         not dry_run,
+        writes=True,
     )
 
 
@@ -502,6 +511,7 @@ def _fix_litellm_version(path: Path, project_root: Path, dry_run: bool) -> FixAc
             str(path),
             f"Bumped {count} litellm pin(s) to >={min_version}",
             not dry_run,
+            writes=True,
         )
 
     return FixAction(
@@ -569,6 +579,7 @@ def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run:
             str(path),
             f"Bumped {bumped} {label} dep(s) to >={min_version} (package.json)",
             not dry_run,
+            writes=True,
         )
 
     if path.name.endswith(".txt"):
@@ -588,6 +599,7 @@ def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run:
             str(path),
             f"Bumped {count} {label} pin(s) to >={min_version}",
             not dry_run,
+            writes=True,
         )
 
     return FixAction(
@@ -635,6 +647,7 @@ def _fix_langgraph_toolnode(path: Path, project_root: Path, dry_run: bool) -> Fi
         str(path),
         "Rewrote ToolNode(positional list) to ToolNode(tools=[...])",
         not dry_run,
+        writes=True,
     )
 
 
@@ -660,6 +673,7 @@ def _fix_enable_all_mcp(path: Path, project_root: Path, dry_run: bool) -> FixAct
             str(path),
             "Set enableAllProjectMcpServers to false",
             not dry_run,
+            writes=True,
         )
     except (json.JSONDecodeError, OSError):
         return FixAction("AAK-TRUST-001", str(path), "Failed to fix", False)
@@ -674,7 +688,8 @@ def _fix_missing_deny(path: Path, project_root: Path, dry_run: bool) -> FixActio
     try:
         data = json.loads(_read_text(path))
         perms = data.setdefault("permissions", {})
-        if not perms.get("deny"):
+        writes = not perms.get("deny")
+        if writes:
             perms["deny"] = [
                 "Bash(rm -rf *)",
                 "Bash(curl *)",
@@ -689,6 +704,7 @@ def _fix_missing_deny(path: Path, project_root: Path, dry_run: bool) -> FixActio
             str(path),
             "Added default deny rules",
             not dry_run,
+            writes=writes,
         )
     except (json.JSONDecodeError, OSError):
         return FixAction("AAK-TRUST-004", str(path), "Failed to fix", False)
@@ -702,7 +718,8 @@ def _fix_missing_allowlist(path: Path, project_root: Path, dry_run: bool) -> Fix
         return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)
     try:
         data = json.loads(_read_text(path))
-        if "enabledMcpjsonServers" not in data:
+        writes = "enabledMcpjsonServers" not in data
+        if writes:
             data["enabledMcpjsonServers"] = []
             if not dry_run:
                 refused = _write_json(path, data, project_root)
@@ -713,6 +730,7 @@ def _fix_missing_allowlist(path: Path, project_root: Path, dry_run: bool) -> Fix
             str(path),
             "Added empty enabledMcpjsonServers allowlist",
             not dry_run,
+            writes=writes,
         )
     except (json.JSONDecodeError, OSError):
         return FixAction("AAK-TRUST-007", str(path), "Failed to fix", False)
@@ -804,6 +822,7 @@ def _fix_secret_env_ref(path: Path, project_root: Path, dry_run: bool) -> FixAct
         f"Replaced literal secret with an environment reference for: {names} "
         "(export the variable before starting the server, and rotate the exposed value)",
         not dry_run,
+        writes=True,
     )
 
 
@@ -837,7 +856,8 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
     try:
         names = [path.name for path in _root_env_files(project_root)] or [".env"]
         rules = _gitignore_rules(_read_gitignore(project_root) or "")
-        if not all(_gitignore_ignores(rules, name) for name in names):
+        writes = not all(_gitignore_ignores(rules, name) for name in names)
+        if writes:
             refused = _write_refusal(gitignore, project_root)
             if refused is not None:
                 return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
@@ -861,6 +881,7 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
             ".gitignore",
             "Added .env patterns to .gitignore",
             not dry_run,
+            writes=writes,
         )
     except OSError:
         return FixAction("AAK-SECRET-006", ".gitignore", "Failed to fix", False)
