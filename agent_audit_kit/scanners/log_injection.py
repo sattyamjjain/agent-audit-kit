@@ -94,7 +94,7 @@ def _log_target(call: ast.Call) -> tuple[str, str] | None:
     above all), 373, 92.8%. A logger held as an attribute (`self.logger.info`)
     is left out: 69 findings, 63.8%, most of the rest an int, a list or a `!r`
     value in a class-based server's debug logging. `print` with `file=` set to
-    anything but a standard stream is not read.
+    anything but a standard stream or `None` is not read.
     """
     func = call.func
     if isinstance(func, ast.Name):
@@ -102,8 +102,11 @@ def _log_target(call: ast.Call) -> tuple[str, str] | None:
             return None
         # `print(..., file=fh)` writes wherever fh goes. Only the standard
         # streams are a log or, on a STDIO server, the protocol channel:
-        # `print(query, file=out)` writing a CSV is neither.
+        # `print(query, file=out)` writing a CSV is neither. `file=None` is
+        # print's default, stdout.
         stream = next((kw.value for kw in call.keywords if kw.arg == "file"), None)
+        if isinstance(stream, ast.Constant) and stream.value is None:
+            stream = None
         if stream is not None and _decorator_name(stream) not in _STD_STREAMS:
             return None
         return ("", "print")

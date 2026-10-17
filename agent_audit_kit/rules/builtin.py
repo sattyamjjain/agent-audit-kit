@@ -6104,7 +6104,7 @@ _r(
     adversa_references=["ADV-LOG-01"],
     limitations=(
         "Reads the arguments of `print` (to stdout, or with `file=` set to "
-        "`sys.stdout` or `sys.stderr`), of a level method (`info`, `exception` and "
+        "`sys.stdout`, `sys.stderr` or `None`), of a level method (`info`, `exception` and "
         "the rest) of `logger`, `log` or the `logging` module, of any `sys.stdout` or "
         "`sys.stderr` method and of `console.<log|info|warn|error>`, in functions "
         "whose decorator name ends in `tool`. A logger held as an attribute "

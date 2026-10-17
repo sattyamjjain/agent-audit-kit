@@ -231,6 +231,8 @@ def test_loginj_reads_print_and_every_logger_level(tmp_path: Path, stmt: str, vi
     ('print("adding", text)', True),
     ('print("adding", text, file=sys.stdout)', True),
     ('print("adding", text, file=sys.stderr, flush=True)', True),
+    # `file=None` is print's default, stdout.
+    ('print("adding", text, file=None)', True),
     # A file handle is a data file, not a log stream or the protocol channel.
     ('print(text, ",", count, file=out)', False),
     ("print(text, file=handle.stream)", False),
