@@ -514,7 +514,13 @@ PASSWORD = "PLACEHOLDER-pass-4417"
     ("handler.js", 'const app = require("express")();\n'
      f'app.post("/mcp", requireAuth, makeHandler("{PASSWORD}"));\napp.get("/mcp", makeHandler("{PASSWORD}"));\n',
      "`requireAuth`"),
-], ids=["gin-basic-auth", "express-basic-auth", "inline-middleware", "handler-call"])
+    ("async.js", 'const app = require("express")();\n'
+     f'app.post("/mcp", async (req, res, next) => {{ await verifyToken(req, "{PASSWORD}"); next(); }}, handleMcp);\n'
+     'app.get("/mcp", handleMcp);\n', "behind an inline middleware"),
+    ("function.js", 'const app = require("express")();\n'
+     f'app.post("/mcp", function (req, res, next) {{ checkToken(req, "{PASSWORD}") && next(); }}, handleMcp);\n'
+     'app.get("/mcp", handleMcp);\n', "behind an inline middleware"),
+], ids=["gin-basic-auth", "express-basic-auth", "inline-middleware", "handler-call", "async-arrow", "function"])
 def test_the_evidence_names_the_middleware_without_its_arguments(tmp_path: Path, name: str, text: str, shown: str) -> None:
     """The evidence quoted the authenticated route's middleware text, so
     gin.BasicAuth's and express-basic-auth's documented usage carried the

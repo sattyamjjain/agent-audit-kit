@@ -922,10 +922,11 @@ def _named(code: str, otherwise: str) -> str:
     `(...)` for a call, and never its arguments, which can hold a credential
     (`gin.BasicAuth(gin.Accounts{"admin": "<password>"})` and express-basic-auth
     carried the password into every output). ``otherwise`` describes code that
-    does not start with a name, such as an inline function."""
+    does not start with a name, such as an inline function: an `async` arrow
+    or a `function` expression is one too, not a call to `async(...)`."""
     code = code.strip()
     name = _DOTTED_RE.match(code)
-    if name is None:
+    if name is None or name.group() in ("async", "function"):
         return otherwise
     rest = code[name.end():].lstrip()
     if not rest:
