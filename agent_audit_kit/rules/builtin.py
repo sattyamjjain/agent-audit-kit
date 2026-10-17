@@ -6106,12 +6106,11 @@ _r(
         "Fires on a TypeScript or JavaScript file that reads a request body with "
         "`req.on('data', ...)`, `for await (... of req)` or a function called "
         "`readRequestBody` and appends chunks to a variable named body, data, buf or "
-        "chunks, with `+=` in a statement that ends with a semicolon or with "
+        "chunks, with `+=` of a name or of its `.toString(...)`, or with "
         "`.push(chunk)`, and has no size check. A comparison with `<`, `>`, `<=` or "
         "`>=` of total, length or size against a number literal anywhere in the file, "
-        "such as `parts.length > 0`, counts as a size check; an accumulator under "
-        "another name (`raw += chunk`) and a `+=` statement without its semicolon "
-        "(`body += chunk.toString() }`) are not matched."
+        "such as `parts.length > 0`, counts as a size check, and an accumulator under "
+        "another name (`raw += chunk`) is not matched."
     ),
 )
 

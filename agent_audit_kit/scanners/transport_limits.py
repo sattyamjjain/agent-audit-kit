@@ -42,10 +42,17 @@ _BODY_CONCAT_RE = re.compile(
     re.VERBOSE,
 )
 
+# The `+=` arm used to end in `\s*;`, so a reader written without semicolons
+# (StandardJS, or `{ body += chunk.toString() }`) was silent while
+# `chunks.push(chunk)` in the same style was reported. It now ends at whatever
+# ends the statement there: a `;`, a line break, or the `}` or `)` that closes
+# the handler. The `.toString(...)` arguments are one character class rather
+# than `[^)]*`, which read on to the next `)` from every `.toString(` and made a
+# file of them quadratic.
 _STR_ACCUMULATE_RE = re.compile(
     r"""
     (?:
-        (?:body|data|buf|chunks)\s*\+=\s*\w+(?:\.toString\([^)]*\))?\s*;  # body += chunk
+        (?:body|data|buf|chunks)\s*\+=\s*\w+(?:\.toString\([\w'".,\s-]*\))?[ \t]*(?:[;})\r\n]|$)  # body += chunk
       | (?:body|data|buf|chunks)\.push\s*\(\s*\w+\s*\)                    # chunks.push(chunk)
     )
     """,
