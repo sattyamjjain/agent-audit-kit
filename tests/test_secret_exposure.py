@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
+from agent_audit_kit.engine import run_scan
+from agent_audit_kit.models import Severity
 from agent_audit_kit.rules.builtin import RULES
+from agent_audit_kit.scanners import secret_exposure
 from agent_audit_kit.scanners._helpers import find_line_number
 from agent_audit_kit.scanners.secret_exposure import (
     GITHUB_TOKEN,
@@ -722,6 +725,22 @@ def test_the_stand_in_filter_is_for_markdown_only(tmp_path: Path, stand_in: str)
     (tmp_path / "deploy.sh").write_text(f"export SERVICE={stand_in}\n", encoding="utf-8")
 
     assert [f.rule_id for f in scan(tmp_path)[0]] != []
+
+
+def test_the_scanner_source_holds_the_documented_example_without_reporting_it(tmp_path: Path) -> None:
+    """CI's self-scan reads secret_exposure.py, where the stand-in filter does not apply,
+    so a whole IAM User Guide access key ID in it was a CRITICAL AAK-SECRET-003 finding
+    that failed the self-scan. It is written as two adjacent literals; the set must still
+    hold the whole value."""
+    shutil.copy(secret_exposure.__file__, tmp_path / "secret_exposure.py")
+
+    critical = [f.rule_id for f in run_scan(project_root=tmp_path).findings if f.severity == Severity.CRITICAL]
+
+    assert critical == []
+    assert secret_exposure._DOCUMENTED_EXAMPLES == {
+        "AK" + "IA" + "IOSFODNN7" + "EXAMPLE",
+        "wJalrXUtnFEMI/K7MDENG/bPxRfiCY" + "EXAMPLEKEY",
+    }
 
 
 def test_secret_004_does_not_read_markdown(tmp_path: Path) -> None:

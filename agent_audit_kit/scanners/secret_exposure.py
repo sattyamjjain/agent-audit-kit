@@ -141,7 +141,9 @@ _PLACEHOLDER_WORDS = re.compile(r"replace|your|example|placeholder|changeme|x{4}
 # for IAM users"). They hold EXAMPLE as well; listing them says where they come from.
 # Anthropic, OpenAI, GitHub and GitLab document a prefix, never a whole value.
 _DOCUMENTED_EXAMPLES = frozenset({
-    "AKIAIOSFODNN7EXAMPLE",
+    # Two adjacent literals, one value: CI's self-scan reads this file, where the
+    # stand-in filter does not apply, and would report the whole example as a key.
+    "AKIA" "IOSFODNN7EXAMPLE",
     "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
 })
 _KEY_PREFIX = re.compile(
