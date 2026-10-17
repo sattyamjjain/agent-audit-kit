@@ -1233,6 +1233,32 @@ def _join_chain(lists: int) -> str:
     return _TOOL_HEAD + chain + "    return requests.get(''.join(l0) + p).text\n"
 
 
+@pytest.mark.parametrize(("empty", "tainted"), [(254, True), (255, False)])
+def test_a_built_url_is_read_to_its_256th_piece(empty: int, tainted: bool) -> None:
+    """AAK-SSRF-001's limitation states the bound: with 254 empty pieces before
+    `"https://" + host` the host is the 256th piece and is read, and with 255
+    it is the 257th and is not."""
+    url = "'' + " * empty + "'https://' + host"
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    return requests.get({url}).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
+@pytest.mark.parametrize(("empty", "tainted"), [(15, True), (16, False)])
+@pytest.mark.parametrize("form", ["%", "format"])
+def test_a_template_is_read_to_its_16th_field(form: str, empty: int, tainted: bool) -> None:
+    """AAK-SSRF-001's limitation states the bound: with 15 fields filled with
+    `''` before `https://` and the host's field, the host fills the 16th field
+    and is read; with 16 it fills the 17th, and the template from there on is
+    text the code does not spell out."""
+    values = "'', " * empty + "host"
+    if form == "%":
+        url = "'" + "%s" * empty + "https://%s/' % (" + values + ")"
+    else:
+        url = "'" + "{}" * empty + "https://{}/'.format(" + values + ")"
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    return requests.get({url}).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
 def test_lists_joined_inside_one_another_are_read_forty_deep() -> None:
     """A list joined by name is judged and spelled once, the way a name is, a
     call per list, so lists that each join the next are read 39 lists below
