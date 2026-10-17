@@ -93,11 +93,12 @@ NETWORK_IN_SCRIPTS = re.compile(
 # with a binding.gyp and no install script, and node-gyp-build builds the
 # package's own sources or loads the prebuilds it ships, fetching nothing.
 # `node-pre-gyp` and `prebuild-install`, which download a prebuilt binary from
-# a host the package.json names, are not on the list. `ts-node` and `tsx` run a
-# TypeScript script as `node` runs a JavaScript one, and `node <script>` passes,
-# so they pass too; `node_modules/.bin/ts-node` passed as a prefix of `node`.
+# a host the package.json names, are not on the list. `ts-node`, `tsx` and
+# `vite-node` run a TypeScript script as `node` runs a JavaScript one, and
+# `node <script>` passes, so they pass too; `node_modules/.bin/ts-node` passed
+# as a prefix of `node`, and `vite-node` as a prefix of `vite`.
 _SAFE_SCRIPT_TOOLS = frozenset({
-    "tsc", "node", "node-gyp", "node-gyp-build", "ts-node", "tsx",
+    "tsc", "node", "node-gyp", "node-gyp-build", "ts-node", "tsx", "vite-node",
     "webpack", "rollup", "esbuild", "vite",
 })
 # A shell variable assignment before a command (`NODE_ENV=production webpack`).

@@ -208,6 +208,9 @@ def test_supply_003_trusts_the_native_builders_not_the_binary_downloaders(
     # Undeclared, a runner on the safe list passes under npx, as `npx tsc` does.
     ("npx ts-node scripts/postinstall.ts", {}),
     ("npx tsx scripts/postinstall.ts", {}),
+    ("vite-node scripts/postinstall.ts", {}),
+    ("npx vite-node scripts/postinstall.ts", {"devDependencies": {"vite-node": "^3.2.4"}}),
+    ("npx vite-node scripts/postinstall.ts", {}),
 ])
 def test_supply_003_trusts_a_typescript_runner_as_it_trusts_node(
     tmp_path: Path, script: str, deps: dict
