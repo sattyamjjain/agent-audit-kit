@@ -126,9 +126,12 @@ def _discover_mcp_tools(project_root: Path) -> set[str]:
 # alone never saw it: it wants `)` or a newline after the name, and the lines
 # come from `splitlines()`, which drops the newline. The `$` arm cannot follow
 # a `(`, so a call whose arguments sit on the next lines (`@tool(`) stays out.
+# A decorator starts its line: unanchored, the `$` arm read a comment that ends
+# in `@tool` ("the public ones are wrapped with @tool") as one, and made the
+# undecorated `def` below it a tool.
 _TOOL_DECORATOR_RE = re.compile(
     r"""
-    @(?:mcp\s*\.\s*tool|server\s*\.\s*tool|tool|langchain\s*\.\s*tools\s*\.\s*tool)
+    ^\s*@(?:mcp\s*\.\s*tool|server\s*\.\s*tool|tool|langchain\s*\.\s*tools\s*\.\s*tool)
     (?:\s*(?:\(\s*)?[\)\n]|\s*(?:\#[^\n]*)?$)
     """,
     re.VERBOSE,

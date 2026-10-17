@@ -147,11 +147,16 @@ def test_mcp_json_pair_is_still_reported_against_mcp_json(tmp_path: Path, enable
     ("@mcp.tool( )", True),
     ("@tool\n", True),
     ("@tool )", True),
+    ("    @mcp.tool()", True),
     # Arguments, on the line or on the lines below, are not read.
     ("@tool(name='x')", False),
     ("@tool(", False),
     ("@toolkit", False),
     ("@tools.register", False),
+    # A decorator starts its line: a comment or code that ends in `@tool` is not one.
+    ("# Internal helpers; the public ones are wrapped with @tool", False),
+    ("x = 1  # see @tool", False),
+    ("emails = ['ops@tool']", False),
 ])
 def test_tool_decorator_keeps_its_shape(line: str, decorator: bool) -> None:
     from agent_audit_kit.scanners.toxic_flow import _TOOL_DECORATOR_RE
@@ -256,6 +261,22 @@ def test_bare_langchain_tools_form_a_pair(tmp_path: Path, enable_flag: None) -> 
     findings, _ = scan(tmp_path)
     assert [(f.file_path, f.line_number) for f in findings] == [("agent.py", 5)]
     assert "(read_file)" in findings[0].evidence and "(fetch)" in findings[0].evidence
+
+
+def test_a_comment_ending_in_tool_declares_no_tool(tmp_path: Path, enable_flag: None) -> None:
+    """The bare-decorator arm read `@tool` at the end of any line, so a comment
+    such as this one made the undecorated `def` below it a tool."""
+    (tmp_path / "helpers.py").write_text(
+        "# Internal helpers; the public ones are wrapped with @tool\n"
+        "def read_file(path):\n"
+        "    return open(path).read()\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "net.py").write_text(
+        "from langchain.tools import tool\n\n\n@tool()\ndef fetch(url: str) -> str:\n    return url\n",
+        encoding="utf-8",
+    )
+    assert scan(tmp_path)[0] == []
 
 
 def test_a_decorator_with_arguments_declares_no_tool(tmp_path: Path, enable_flag: None) -> None:
