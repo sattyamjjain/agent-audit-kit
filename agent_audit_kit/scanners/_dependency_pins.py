@@ -87,11 +87,12 @@ from agent_audit_kit.scanners._versions import (
 )
 from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
     _admits_affected,
-    _canonical,
     _deciding_declaration,
+    _declaration_index,
     _names_match,
     _Pin,
     _pin_applies,
+    _pin_candidates,
 )
 from agent_audit_kit.scanners.supply_chain import _lockfile_index, _lockfile_lookup
 
@@ -329,27 +330,23 @@ class Manifest:
         return declaration_lines(self.path, self.text)
 
     @cached_property
-    def _positions_by_name(self) -> dict[str, list[int]]:
-        """Where each package is declared: every spelling `_names_match` could
-        accept for a declaration -> its positions, filed once per file."""
-        index: dict[str, list[int]] = {}
-        for position, declaration in enumerate(self.declarations):
-            ecosystems = ("py", "js") if declaration.ecosystem is None else (declaration.ecosystem,)
-            for key in {_canonical(declaration.name, ecosystem) for ecosystem in ecosystems}:
-                index.setdefault(key, []).append(position)
-        return index
+    def _found(self) -> list[Declaration]:
+        return list(self.declarations)
 
-    def naming(self, names: tuple[str, ...]) -> list[Declaration]:
-        """The declarations that may name one of `names`, in file order.
+    @cached_property
+    def _index(self) -> dict[str, list[int]]:
+        """Where each package is declared, filed once per file by the pin table's index."""
+        return _declaration_index(self._found)
+
+    def naming(self, pin: _Pin) -> list[Declaration]:
+        """The declarations that may name `pin`'s packages, in file order.
 
         Each pin used to filter every declaration of the file, so on a 1.9 MB
         pyproject.toml of 100,000 dependencies the six pins cost more than the
-        parse. This is a superset of what `_deciding_declaration` keeps, as in
-        the pin table's own index, so no verdict changes.
+        parse. This is the pin table's own candidate list, a superset of what
+        `_deciding_declaration` keeps, so no verdict changes.
         """
-        keys = {_canonical(name, ecosystem) for name in names for ecosystem in ("py", "js")}
-        index = self._positions_by_name
-        return [self.declarations[i] for i in sorted({i for key in keys for i in index.get(key, ())})]
+        return _pin_candidates(pin, self._found, self._index)
 
 
 # Parsed manifests are kept, keyed by path and content, so the modules that
@@ -416,7 +413,8 @@ def pinned_dependency(manifest: Manifest, pin: DependencyPin) -> PinnedDependenc
         The deciding declaration and its line, or None when the file declares
         no affected release of the package.
     """
-    declaration = _deciding_declaration(pin.as_table_pin(), manifest.naming(pin.names))
+    table_pin = pin.as_table_pin()
+    declaration = _deciding_declaration(table_pin, manifest.naming(table_pin))
     if declaration is None:
         return None
     return PinnedDependency(declaration, manifest.line_of(declaration), pin.fixed)
