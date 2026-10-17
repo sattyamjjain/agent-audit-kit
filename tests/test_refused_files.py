@@ -342,6 +342,37 @@ def test_the_parser_is_never_given_a_name_a_file_could_have(tmp_path: Path, monk
         open(_helpers._PARSE_FILENAME)
 
 
+# An invalid escape sequence: a SyntaxWarning on 3.12 and later, a
+# DeprecationWarning before.
+_INVALID_ESCAPE = 'PATTERN = "\\d+"\n'
+
+
+def _scan_in_child(root: Path, *python_flags: str) -> tuple[set[str], str]:
+    out = root.parent / f"{root.name}-{len(python_flags)}.json"
+    proc = subprocess.run(
+        [sys.executable, *python_flags, "-m", "agent_audit_kit.cli", "scan", str(root), "--format", "json",
+         "-o", str(out)],
+        capture_output=True, text=True, timeout=300, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "PATH": "", "HOME": tempfile.mkdtemp(prefix="aak-home-")},
+    )
+    assert proc.returncode == 0, proc.stderr[-1000:]
+    return {f["ruleId"] for f in json.loads(out.read_text())["findings"]}, proc.stderr
+
+
+def test_a_warning_the_parse_raises_stays_out_of_the_scan(tmp_path: Path) -> None:
+    """One invalid escape sequence printed a warning for each scanner that
+    parsed the file (21 lines on 3.12), naming the file, "<unknown>", or the
+    one name every parse is now given. A warning about the scanned code is not
+    AAK's output, and under `-W error` it turned a file that parses into one
+    that does not, dropping that file's findings without a word."""
+    root = tmp_path / "proj"
+    _write(root, {"server.py": _PY_HINTS + _INVALID_ESCAPE + "@mcp.tool()\ndef f(url):\n    return requests.get(url)\n"})
+    findings, stderr = _scan_in_child(root)
+    assert findings and "Warning" not in stderr, stderr[-500:]
+    strict, _ = _scan_in_child(root, "-W", "error:invalid escape sequence")
+    assert strict == findings
+
+
 def test_a_long_dotted_toml_key_is_refused_in_linear_time() -> None:
     """tomllib builds a dotted key a tuple concatenation at a time: 20,000 parts
     (129 KB) took 3.6 s, and the 2 MB a manifest may be held a key that takes

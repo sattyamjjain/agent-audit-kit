@@ -12,6 +12,7 @@ import stat
 import sys
 import threading
 import unicodedata
+import warnings
 from array import array
 from bisect import bisect_right
 from collections import OrderedDict
@@ -2098,22 +2099,36 @@ _PARSE_STACK_BYTES = 256 * 1024 * 1024
 _parse_worker: tuple[int, ThreadPoolExecutor] | None = None
 
 
+def _parse_quietly(source: str | bytes, filename: str) -> ast.Module:
+    """`ast.parse` with the compiler's warnings about the source ignored.
+
+    A warning about the scanned code (an invalid escape sequence is a
+    SyntaxWarning on 3.12 and a DeprecationWarning before) is not AAK's to
+    show: every scanner that parsed the file printed it again, 21 lines for
+    one escape on 3.12, and under `-W error` it turned a file that parses into
+    one that does not, so the file's findings were dropped without a word.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return ast.parse(source, filename)
+
+
 def _ast_parse(source: str | bytes, filename: str) -> ast.Module:
     if sys.version_info >= (3, 11):
-        return ast.parse(source, filename)
+        return _parse_quietly(source, filename)
     global _parse_worker
     if _parse_worker is None or _parse_worker[0] != os.getpid():  # a fork has no worker thread
         try:
             previous = threading.stack_size(_PARSE_STACK_BYTES)
         except (ValueError, RuntimeError):
-            return ast.parse(source, filename)
+            return _parse_quietly(source, filename)
         try:
             worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aak-parse")
             worker.submit(int).result()  # start the thread now, with the large stack
         finally:
             threading.stack_size(previous)
         _parse_worker = (os.getpid(), worker)
-    return _parse_worker[1].submit(ast.parse, source, filename).result()
+    return _parse_worker[1].submit(_parse_quietly, source, filename).result()
 
 
 def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
