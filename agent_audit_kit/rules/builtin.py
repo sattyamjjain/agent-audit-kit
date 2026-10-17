@@ -2665,8 +2665,14 @@ _r(
 _r(
     "AAK-TAINT-005",
     "Tool parameter flows to SQL query",
-    "A @tool function parameter is used in cursor.execute() or similar database query "
-    "functions via string formatting.",
+    "In Python, a @tool function parameter, or an item read from one, is passed as the "
+    "whole query to cursor.execute(), connection.execute() or session.execute(), so the "
+    "caller chooses the SQL that runs. The TypeScript arm reports a template literal "
+    "with an interpolation passed to .query(), .execute() or .raw(), a string literal "
+    "concatenated into .query() or .execute(), and Prisma's $queryRawUnsafe and "
+    "$executeRawUnsafe; the Rust arm, a sql!, query! or query_as! macro given a "
+    "format! string or a concatenation that starts with a bare name "
+    "(`sql!(base + id)`).",
     Severity.HIGH,
     Category.TAINT_ANALYSIS,
     "Use parameterized queries. Never use f-strings or .format() for SQL.",
@@ -2678,15 +2684,16 @@ _r(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
         "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
         "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
-        "another name (`@app.tool()`) is skipped. Reports `cursor.execute`, "
-        "`connection.execute` and `session.execute` only when a parameter, or an "
-        "item read from one, is the whole argument, that is, a caller-supplied "
-        "query, and not when a local holds it, even in a `call_tool` handler "
-        "(`sql = arguments[\"sql\"]`, then `cursor.execute(sql)`). A query built by "
-        "formatting "
-        "(`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), the "
-        "usual shape of SQL injection, is not reported, and neither is the same "
-        "call on a variable under another name (`conn.execute(query)`)."
+        "another name (`@app.tool()`) is skipped. The Python arm reports "
+        "`cursor.execute`, `connection.execute` and `session.execute` only when a "
+        "parameter, or an item read from one, is the whole argument, that is, a "
+        "caller-supplied query, and not when a local holds it, even in a `call_tool` "
+        "handler (`sql = arguments[\"sql\"]`, then `cursor.execute(sql)`). A query "
+        "built from the parameter, whether by an f-string "
+        "(`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), "
+        "`.format()`, `%` or `+`, the usual shape of SQL injection, is not reported, "
+        "and neither is the same call on a variable under another name "
+        "(`conn.execute(query)`)."
     ),
 )
 

@@ -277,6 +277,21 @@ def _fixed_target(node: ast.Call, callee: tuple[str | None, str]) -> bool:
     return bool(node.args) and _is_literal(node.args[0])
 
 
+# AAK-TAINT-005 and a query built from the caller's value. Only a parameter
+# passed as the whole query is reported, so `cursor.execute(f"... WHERE title =
+# '{title}'")` scans clean, as the rule's limitation says. An arm that also read
+# the values formatted into the query (an f-string, `.format()`, `%` or `+`
+# with a parameter or a followed local in it) was measured on the same 7,915
+# tool and handler files as the allow-list skip below: 22 of its 66 findings
+# were true, 33% (17 of 40 for a parameter, 5 of 26 for a handler local), under
+# the 80% bar it had to clear. Of the 44 others, 32 put the value where it
+# cannot extend the statement (a sqlite PRAGMA argument, or DESCRIBE, SHOW or
+# USE on a driver that runs one statement per call), 10 format a number that
+# FastMCP or the tool's inputSchema has already validated, and 2 check or
+# escape it first. So it was left off; the arm and its tests are kept on the
+# local, unpushed branch `wip/taint-locals-formatted`.
+
+
 # ---- A `call_tool` handler's locals ----
 #
 # Real handlers copy the caller's input into a local before using it,
