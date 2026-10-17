@@ -506,6 +506,31 @@ def test_lists_that_each_join_the_last_twice_do_not_double() -> None:
     assert seconds < 2.0
 
 
+# --- a mapping the host test puts together is its own ------------------------
+#
+# A dict literal with two or more `**` entries fills a keyed field from any of
+# them, so the host test reads those entries as one value it puts together.
+# That value was made afresh for every template and dropped once read, while
+# the host test remembers a verdict by an expression's id, and CPython hands a
+# freed object's id to the next object made: a later template's mapping was
+# read as an earlier one's. Fixed mappings first lost the caller's at the end,
+# and a caller's first made a fixed one the caller's.
+
+_TWO_MAPPINGS = "A = {'host': 'a.example.com'}\nB = {'host': 'b.example.com'}\n"
+
+
+@pytest.mark.parametrize("mappings", [
+    ["**A, **B", "**B, **A", "**A, **A", "**B, **arguments"],
+    ["**A, **arguments", "**A, **B"],
+    ["**A, **B", "**A, **arguments"] * 4,
+    ["**A, **arguments", "**A, **B"] * 4,
+])
+def test_each_template_reads_its_own_merged_mapping(mappings: list[str]) -> None:
+    sites = "".join(f"    requests.get('https://%(host)s/{i}' % {{{m}}})\n" for i, m in enumerate(mappings))
+    source = _CYCLE_HEAD + _TWO_MAPPINGS + "@mcp.tool()\ndef proxy(arguments: dict) -> str:\n" + sites
+    assert [s.tainted for s in analyze_python(source)] == ["arguments" in m for m in mappings]
+
+
 # --- a method-first call reads its URL second -------------------------------
 #
 # `requests.request(method, url)`, `httpx.request`, `httpx.stream`,
@@ -973,7 +998,7 @@ def test_a_crafted_template_is_read_in_linear_time(template: str) -> None:
         f"    requests.get({template!r} % (p,))\n    requests.get({template!r}.format(p))\n"
     )
     started = time.perf_counter()
-    _percent_pieces(template, ast.Name(id="p", ctx=ast.Load()))
+    _percent_pieces(template, ast.Name(id="p", ctx=ast.Load()), lambda node: ({}, node))
     _format_pieces(template, call)
     analyze_python(source)
     assert time.perf_counter() - started < 5.0

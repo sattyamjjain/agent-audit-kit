@@ -528,32 +528,28 @@ def _pieces(
 _PERCENT_FIELD_RE = re.compile(r"%(?:\(([^()%]*)\))?[-#0 +*.\d]*([A-Za-z%])")
 
 
-def _percent_pieces(template: str, values: ast.expr) -> list[str | ast.AST]:
+def _percent_pieces(
+    template: str,
+    values: ast.expr,
+    mapping: Callable[[ast.expr], tuple[dict[str, ast.expr], ast.expr | None]],
+) -> list[str | ast.AST]:
     """`template % values` as the text and the values it puts in each field, in
-    order. A tuple fills the fields by position and a dict literal by `(key)`.
-    Any other operand is the value of a positional field and the mapping a
-    keyed one reads, so `"https://%(host)s/" % arguments` puts
-    `arguments["host"]` in the host; a dict literal's `**` entries and entries
-    under a computed key may fill a key it does not write out. A field nothing
-    fills reads as text the code does not spell out."""
+    order. A tuple fills the fields by position, and a keyed field reads what
+    `mapping` finds in the operand: the entries it writes out by key, and what
+    any other key may come from (a dict literal's `**` entries and entries
+    under a computed key, or the operand itself). Any operand but a tuple or a
+    dict literal is the value of a positional field too, so `"https://%(host)s/"
+    % arguments` puts `arguments["host"]` in the host. A field nothing fills
+    reads as text the code does not spell out."""
     positional: list[ast.expr] = []
     keyed: dict[str, ast.expr] = {}
-    mapping: ast.expr | None = None
+    rest: ast.expr | None = None
     if isinstance(values, ast.Tuple):
         positional = list(values.elts)
-    elif isinstance(values, ast.Dict):
-        others: list[ast.expr] = []
-        for dict_key, dict_value in zip(values.keys, values.values):
-            name = _str_constant(dict_key) if dict_key is not None else None
-            if name is None:
-                others.append(dict_value)
-            else:
-                keyed[name] = dict_value
-        if others:
-            mapping = others[0] if len(others) == 1 else ast.Tuple(elts=others, ctx=ast.Load())
     else:
-        positional = [values]
-        mapping = values
+        keyed, rest = mapping(values)
+        if not isinstance(values, ast.Dict):
+            positional = [values]
     pieces: list[str | ast.AST] = []
     pos = index = 0
     for field in _PERCENT_FIELD_RE.finditer(template):
@@ -565,7 +561,7 @@ def _percent_pieces(template: str, values: ast.expr) -> list[str | ast.AST]:
             continue
         filled: ast.expr | None
         if field_key is not None:
-            filled = keyed.get(field_key, mapping)
+            filled = keyed.get(field_key, rest)
         else:
             filled = positional[index] if index < len(positional) else None
             index += 1
@@ -739,6 +735,7 @@ class _CallerInput:
         self._sets: dict[tuple[int, int], bool] = {}
         self._name_sets: dict[tuple[str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
+        self._mappings: dict[int, tuple[ast.Dict, dict[str, ast.expr], ast.expr | None]] = {}
 
     def _bound(self, name: str) -> list[ast.AST]:
         """What `name` is bound to here, or else in the file. A name the file
@@ -802,7 +799,7 @@ class _CallerInput:
                 # `"%s/v2/%s" % (BASE, repo)` the caller's `repo` is in the path.
                 stack.append(cur.left)
                 template = self._spelled(cur.left, depth, nest + 1)
-                if self._built_sets_host(_percent_pieces(template, cur.right), depth, nest + 1):
+                if self._built_sets_host(_percent_pieces(template, cur.right, self._mapping), depth, nest + 1):
                     return True
             elif isinstance(cur, (ast.List, ast.Tuple, ast.Set)):
                 # The pieces of a URL a `.join` or a URL function has not been
@@ -846,6 +843,39 @@ class _CallerInput:
             bound = self.values.get(name, []) + self.elements.get(name, [])
             hit = self._name_sets[key] = any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound)
         return hit
+
+    def _mapping(self, node: ast.expr) -> tuple[dict[str, ast.expr], ast.expr | None]:
+        """What a keyed `%` field can read in `node`: the entries a dict literal
+        writes out under a constant key, and the expression any other key may
+        come from, its `**` entries and entries under a computed key read
+        together, or None when it has neither. Any other operand is all of
+        that expression.
+
+        Two or more such entries are read as one tuple made here, and the tuple
+        is kept for as long as this scope's verdicts are. They are remembered
+        by an expression's id, and a tuple made afresh for each template and
+        dropped once read handed its id to the next one: in a tool with
+        `{**A, **B}` in one template and `{**B, **arguments}` in the next, the
+        second was read as the first and lost the caller's host."""
+        if not isinstance(node, ast.Dict):
+            return {}, node
+        hit = self._mappings.get(id(node))
+        if hit is None:
+            keyed: dict[str, ast.expr] = {}
+            others: list[ast.expr] = []
+            for key, value in zip(node.keys, node.values):
+                name = _str_constant(key) if key is not None else None
+                if name is None:
+                    others.append(value)
+                else:
+                    keyed[name] = value
+            rest: ast.expr | None = None
+            if len(others) == 1:
+                rest = others[0]
+            elif others:
+                rest = ast.Tuple(elts=others, ctx=ast.Load())
+            hit = self._mappings[id(node)] = (node, keyed, rest)
+        return hit[1], hit[2]
 
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
         """The parts of a call that can carry caller input into the URL it
@@ -935,7 +965,7 @@ class _CallerInput:
             return text
         pieces: list[str | ast.AST] | None = None
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
-            pieces = _percent_pieces(self._spelled(node.left, depth, nest + 1), node.right)
+            pieces = _percent_pieces(self._spelled(node.left, depth, nest + 1), node.right, self._mapping)
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
             pieces = _format_pieces(self._spelled(node.func.value, depth, nest + 1), node)
         if pieces is None:
