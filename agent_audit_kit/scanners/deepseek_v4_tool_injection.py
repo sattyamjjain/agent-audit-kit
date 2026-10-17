@@ -48,24 +48,122 @@ _TAINT_RE = re.compile(
     """,
     re.VERBOSE,
 )
-# A `re.sub` counts only when the pattern written in the call names the routing
-# envelope (`route` or `expert`, any case), the words in the tokens
-# `sanitize_tool_description` removes: `[ROUTE: ...]`, `<|route_id|>`,
-# `__route__=`, `{{expert: ...}}`. Any `re.sub(` used to count, so collapsing
-# whitespace (`re.sub(r"\s+", " ", doc)`) silenced the rule while every routing
-# token went through. Whether the pattern really removes them is not checked:
-# that would mean running a regex the scanned file wrote, which a crafted one
-# could make take forever.
-_SANITIZE_RE = re.compile(
-    r"""
-    (?:
-        sanitize_tool_description\s*\(
-      | aak\.sanitizers\.deepseek
-      | re\.sub\s*\(\s*[rRbBuU]{0,2}['"][^'"\n]*(?i:route|expert)
+# The words in the tokens `sanitize_tool_description` removes: `[ROUTE: ...]`,
+# `<|route_id|>`, `__route__=`, `{{expert: ...}}`.
+_ROUTING_WORD_RE = re.compile(r"route|expert", re.IGNORECASE)
+
+
+def _dotted(node: ast.expr) -> str:
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return ""
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _pattern_text(node: ast.expr, known: dict[str, str]) -> str | None:
+    """The regex a pattern expression spells when it is written out: a string
+    literal, a name bound to one, or `re.compile(...)` of either."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.Name):
+        return known.get(node.id)
+    if isinstance(node, ast.Call) and _dotted(node.func) == "re.compile" and node.args:
+        return _pattern_text(node.args[0], known)
+    return None
+
+
+def _pattern_bindings(stmts: list[ast.stmt], known: dict[str, str]) -> dict[str, str]:
+    """`known` plus every name a simple assignment in `stmts` binds to a written-out pattern."""
+    out = dict(known)
+    for stmt in stmts:
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+            name, value = stmt.targets[0].id, stmt.value
+        elif isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name) and stmt.value is not None:
+            name, value = stmt.target.id, stmt.value
+        else:
+            continue
+        text = _pattern_text(value, out)
+        if text is not None:
+            out[name] = text
+    return out
+
+
+def _sub_pattern(call: ast.Call, known: dict[str, str]) -> str | None:
+    """The pattern of `re.sub` / `re.subn`, or of `.sub` / `.subn` on a compiled pattern held by name."""
+    func = call.func
+    if not (isinstance(func, ast.Attribute) and func.attr in ("sub", "subn") and isinstance(func.value, ast.Name)):
+        return None
+    if func.value.id != "re":
+        return known.get(func.value.id)
+    arg = call.args[0] if call.args else next((k.value for k in call.keywords if k.arg == "pattern"), None)
+    return _pattern_text(arg, known) if arg is not None else None
+
+
+def _description_values(func: ast.AST) -> list[ast.expr]:
+    """What the function sends as a description: a `"description"` dict value, a
+    `description=` argument, or a `x["description"] = ...` assignment."""
+    values: list[ast.expr] = []
+    for node in ast.walk(func):
+        if isinstance(node, ast.Dict):
+            values += [v for k, v in zip(node.keys, node.values) if isinstance(k, ast.Constant) and k.value == "description"]
+        elif isinstance(node, ast.Call):
+            values += [kw.value for kw in node.keywords if kw.arg == "description"]
+        elif isinstance(node, ast.Assign):
+            values += [
+                node.value for t in node.targets
+                if isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value == "description"
+            ]
+    return values
+
+
+def _sanitises_description(func: ast.AST, module_patterns: dict[str, str]) -> bool:
+    """Whether the function neutralises the routing tokens in the description it sends.
+
+    `sanitize_tool_description(...)` counts as a call anywhere in the function,
+    as the rule text says. A substitution counts only when it is a call in the
+    code, its pattern can be read (a string literal, or a name a module- or
+    function-level assignment binds to one, directly or through `re.compile`)
+    and names the routing tokens (`route` or `expert`, any case), and its
+    result is the description: the description value itself, or assigned to a
+    name the description uses. The function body used to be read as text, so
+    any `re.sub(` counted, then a literal pattern naming the tokens did, which
+    still let a commented-out line or a substitution on another variable
+    (`path = re.sub(r"/route/", "/", path)`) pass and missed a pattern kept in a
+    module constant (`re.sub(ROUTE_TOKEN_RE, "", doc)`). Whether the pattern
+    really removes the tokens is not checked: that would mean running a regex
+    the scanned file wrote, which a crafted one could make take forever.
+    """
+    calls = [n for n in ast.walk(func) if isinstance(n, ast.Call)]
+    if any(_dotted(c.func).rsplit(".", 1)[-1] == "sanitize_tool_description" for c in calls):
+        return True
+    known = _pattern_bindings(
+        [n for n in ast.walk(func) if isinstance(n, (ast.Assign, ast.AnnAssign))], module_patterns
     )
-    """,
-    re.VERBOSE,
-)
+
+    def neutralises(expr: ast.expr) -> bool:
+        return any(
+            isinstance(n, ast.Call) and _ROUTING_WORD_RE.search(_sub_pattern(n, known) or "") is not None
+            for n in ast.walk(expr)
+        )
+
+    values = _description_values(func)
+    if any(neutralises(v) for v in values):
+        return True
+    names = {n.id for v in values for n in ast.walk(v) if isinstance(n, ast.Name)}
+    for node in ast.walk(func):
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets, value = [node.target], node.value
+        else:
+            continue
+        if any(isinstance(t, ast.Name) and t.id in names for t in targets) and neutralises(value):
+            return True
+    return False
 
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
@@ -75,6 +173,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         tree = ast.parse(text, str(path))
     except SyntaxError:
         return []
+    module_patterns = _pattern_bindings(tree.body, {})
     findings: list[Finding] = []
 
     class V(ast.NodeVisitor):
@@ -94,7 +193,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             body = "\n".join(lines[start:end])
             if not _TAINT_RE.search(body):
                 return
-            if _SANITIZE_RE.search(body):
+            if _sanitises_description(func, module_patterns):
                 return
             # Look for tools=[{ ... description: <tainted> ... }] passing
             # in an LLM call. Heuristic: presence of `tools=` AND a dict

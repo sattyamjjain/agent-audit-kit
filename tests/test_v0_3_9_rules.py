@@ -183,17 +183,76 @@ def test_deepseek_v4_reads_a_crafted_substitution_in_linear_time(tmp_path: Path)
     assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
 
 
-@pytest.mark.parametrize("text", [
-    're.sub("' + "a" * 1_000_000,
-    "re.sub(\n" * 100_000,
-    're.sub( r"' + " " * 1_000_000,
-])
-def test_deepseek_v4_sanitiser_pattern_reads_crafted_text_in_linear_time(text: str) -> None:
-    from agent_audit_kit.scanners.deepseek_v4_tool_injection import _SANITIZE_RE
-
+def test_deepseek_v4_reads_many_patterns_and_substitutions_in_linear_time(tmp_path: Path) -> None:
+    """10,000 module pattern constants, each bound through the one before, and
+    10,000 substitutions on other names in the function (linear: 0.21 s, 0.43 s
+    and 1.06 s at 5,000, 10,000 and 20,000 outside pytest)."""
+    consts = "P0 = r'\\s+'\n" + "".join(f"P{i} = re.compile(P{i - 1})\n" for i in range(1, 10_000))
+    subs = "".join(f"    other{i} = re.sub(P{i}, '', doc)\n" for i in range(10_000))
+    src = _DEEPSEEK.replace("import re\n", "import re\n" + consts, 1).replace("@@SUB@@", subs)
+    (tmp_path / "app.py").write_text(src, encoding="utf-8")
     started = time.perf_counter()
-    assert _SANITIZE_RE.search(text) is None
+    findings, _ = deepseek_scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+    assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
+
+
+# The review's cases (2026-10-17): a substitution counts when it is a call
+# written in code, its pattern can be read and names the routing tokens, and
+# its result is the description sent in the tools payload.
+
+_DESCRIBE = '''import re
+
+from flask import request
+from openai import OpenAI
+
+ROUTE_TOKEN_RE = r"\\[ROUTE:[^\\]]*\\]|<\\|route_id\\|>"
+_ROUTE = re.compile(ROUTE_TOKEN_RE)
+WHITESPACE = r"\\s+"
+client = OpenAI(base_url="https://api.deepseek.com")
+
+
+def describe():
+    doc = request.json["description"]
+    path = request.json["path"]
+@@LINE@@
+    return client.chat.completions.create(
+        model="deepseek-chat", messages=[],
+        tools=[{"type": "function", "function": {"name": "x", "description": doc}}],
+    )
+'''
+
+
+@pytest.mark.parametrize(("line", "reported"), [
+    ('    doc = re.sub(r"\\s+", " ", doc)', True),
+    ('    path = re.sub(r"/route/", "/", path)', True),
+    ('    # doc = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", doc)', True),
+    ('    doc = re.sub(WHITESPACE, " ", doc)', True),
+    ('    doc = re.sub(ROUTE_TOKEN_RE, "", doc)', False),
+    ('    doc = _ROUTE.sub("", doc)', False),
+    ('    doc = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", doc)', False),
+    ('    doc = re.subn(pattern=ROUTE_TOKEN_RE, repl="", string=doc)[0]', False),
+    ('    local = re.compile(r"__route__\\s*=")\n    doc = local.sub("", doc)', False),
+])
+def test_deepseek_v4_a_substitution_counts_only_on_the_description(
+    tmp_path: Path, line: str, reported: bool
+) -> None:
+    (tmp_path / "agent.py").write_text(_DESCRIBE.replace("@@LINE@@", line), encoding="utf-8")
+    fired = [f.rule_id for f in deepseek_scan(tmp_path)[0]] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
+    assert fired is reported
+
+
+@pytest.mark.parametrize("src", [
+    # Built into another name the description then uses.
+    _DESCRIBE.replace("@@LINE@@", '    clean = re.sub(ROUTE_TOKEN_RE, "", doc)').replace('"description": doc', '"description": clean'),
+    # Sanitised inside the payload itself.
+    _DESCRIBE.replace("@@LINE@@", "").replace('"description": doc', '"description": re.sub(ROUTE_TOKEN_RE, "", doc)'),
+    # A description set by subscript.
+    _DESCRIBE.replace("@@LINE@@", '    spec = {}\n    spec["description"] = _ROUTE.sub("", doc)'),
+])
+def test_deepseek_v4_the_description_can_be_built_several_ways(tmp_path: Path, src: str) -> None:
+    (tmp_path / "agent.py").write_text(src, encoding="utf-8")
+    assert deepseek_scan(tmp_path)[0] == []
 
 
 def test_deepseek_v4_no_deepseek_hint_passes(tmp_path: Path) -> None:
