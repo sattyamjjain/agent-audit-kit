@@ -526,10 +526,12 @@ def _argv(
     return tokens, paths
 
 
-# The longest path `_command_entries` builds for a server, counting the two
-# keys a word of its command line adds (`"args", 3`). A server nested deeper
-# is still read, and its declarations are reported without a line; a client
-# reads one two to six levels down.
+# The longest path in a parsed JSON, YAML or TOML document that is built or
+# recorded: `_command_entries` builds none longer for a server, counting the
+# two keys a word of its command line adds (`"args", 3`), and the position
+# passes ("where a declaration is written", below) record none longer. A
+# declaration nested deeper is still reported, without a line; a client reads
+# an MCP server two to six levels down, and a package.json override a few more.
 _MAX_PATH_DEPTH = 64
 
 
@@ -671,6 +673,14 @@ def declarations(path: Path, text: str) -> list[Declaration]:
 # earlier table at a fixed version, and it re-read the whole file for each
 # finding (96 findings in a 31 MiB lockfile took 76 s against 3 s). A path the
 # pass did not reach gives no line rather than a guessed one.
+#
+# A pass records no path longer than `_MAX_PATH_DEPTH`. Each recorded path is a
+# tuple, so recording every one cost the sum of all their lengths: four JSON
+# chains of 6,000 lists (48 KB) held 579 MB, and 400 TOML arrays nested 300
+# deep (243 KB) 155 MB. A pinned server beside four chains of 9,000, which
+# JSON's parser reads on Python 3.12 and later, held 1,300 MB in the pin table
+# for its line. The structure deeper down is still read, so the paths above it
+# keep their lines.
 
 # A JSON string, or one structural character. Scalars are skipped: no
 # declaration is a number or a literal, and the commas around them keep count.
@@ -709,19 +719,24 @@ def _json_positions(text: str) -> dict[tuple[str | int, ...], int]:
             if frame is None:
                 positions[()] = line
             elif frame[0] and frame[3] == "key":
-                frame[2], frame[3] = _json_key(token), "colon"
+                # A key below the bound names no recorded path, so it is not decoded.
+                frame[2], frame[3] = (_json_key(token) if frame[1] is not None else ""), "colon"
             elif frame[3] == "value":
-                positions[frame[1] + (frame[2],)] = line
+                if frame[1] is not None and len(frame[1]) < _MAX_PATH_DEPTH:
+                    positions[frame[1] + (frame[2],)] = line
                 frame[3] = "done"
         elif token in "{[":
+            child: tuple[str | int, ...] | None
             if frame is None:
-                child: tuple[str | int, ...] = ()
+                child = ()
             elif frame[3] == "value":
-                child = frame[1] + (frame[2],)
+                child = (frame[1] + (frame[2],)
+                         if frame[1] is not None and len(frame[1]) < _MAX_PATH_DEPTH else None)
                 frame[3] = "done"
             else:
                 break  # not a document `json.loads` accepted; keep what was read
-            positions[child] = line
+            if child is not None:
+                positions[child] = line
             if token == "{":
                 stack.append([True, child, "", "key"])
             else:
@@ -849,21 +864,33 @@ class _TomlPositions:
                 full = self._resolve(parts[:-1]) + (parts[-1],)
                 self.arrays[full] = self.arrays.get(full, -1) + 1
                 table = full + (self.arrays[full],)
-                self.positions[table] = self.line
+                if len(table) <= _MAX_PATH_DEPTH:
+                    self.positions[table] = self.line
             elif text[self.i] == "[":
                 self.i += 1
                 parts = self._key()
                 self._expect("]")
                 table = self._resolve(parts)
-                self.positions[table] = self.line
+                if len(table) <= _MAX_PATH_DEPTH:
+                    self.positions[table] = self.line
             else:
-                full = table + self._key()
-                self.positions[full] = self.line
+                key_path = self._below(table, self._key())
+                if key_path is not None:
+                    self.positions[key_path] = self.line
                 self._expect("=")
                 self._space()
-                self._value(full)
+                self._value(key_path)
 
-    def _value(self, path: tuple[str | int, ...]) -> None:
+    @staticmethod
+    def _below(
+        path: tuple[str | int, ...] | None, keys: tuple[str | int, ...]
+    ) -> tuple[str | int, ...] | None:
+        """`path` extended by `keys`, or None past `_MAX_PATH_DEPTH` (see above)."""
+        if path is None or len(path) + len(keys) > _MAX_PATH_DEPTH:
+            return None
+        return path + keys
+
+    def _value(self, path: tuple[str | int, ...] | None) -> None:
         text = self.text
         c = text[self.i]
         if c == "[":
@@ -874,8 +901,10 @@ class _TomlPositions:
                 if text[self.i] == "]":
                     self.i += 1
                     return
-                self.positions[path + (index,)] = self.line
-                self._value(path + (index,))
+                item = self._below(path, (index,))
+                if item is not None:
+                    self.positions[item] = self.line
+                self._value(item)
                 self._blank()
                 if text[self.i] == ",":
                     self.i += 1
@@ -890,8 +919,9 @@ class _TomlPositions:
                 if text[self.i] == "}":
                     self.i += 1
                     return
-                full = path + self._key()
-                self.positions[full] = self.line
+                full = self._below(path, self._key())
+                if full is not None:
+                    self.positions[full] = self.line
                 self._expect("=")
                 self._space()
                 self._value(full)
@@ -953,6 +983,8 @@ def _yaml_positions(text: str) -> dict[tuple[str | int, ...], int]:
             continue
         seen.add(id(node))
         positions[where] = node.start_mark.line + 1
+        if len(where) >= _MAX_PATH_DEPTH:
+            continue
         if isinstance(node, yaml.MappingNode):
             queue.extend((value, where + (key.value,)) for key, value in node.value
                          if isinstance(key, yaml.ScalarNode))
