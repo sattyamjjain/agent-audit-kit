@@ -54,8 +54,9 @@ _LOGGER_NAME_RE = re.compile(r"(?i:_*(?:[a-z0-9]+_+)*(?:log|logger|logging))|_*[
 # Calls that hand back a logger: `logging.getLogger(__name__).info(...)`,
 # `structlog.get_logger().debug(...)`, `LoggerFactory.getLogger(X.class).info(...)`.
 _LOGGER_FACTORIES = frozenset({"getLogger", "get_logger", "getChild"})
-# How far back a receiver is read, and how far a call's arguments: bounded, so a
-# crafted file of unclosed calls costs one pass, not one walk to its end per call.
+# How far back a receiver is read, and how many characters of arguments a call may
+# have to be read: bounded, so a crafted file of unclosed calls costs one pass, not
+# one walk to its end per call. A call of exactly 4,000 is read, as the rule says.
 _RECEIVER_WINDOW = 160
 _ARGS_WINDOW = 4_000
 
@@ -133,8 +134,9 @@ _KEYWORD_ARG_RE = re.compile(r"\s*[A-Za-z_]\w*\s*=(?!=)")
 _TEMPLATE_HOLE_RE = re.compile(r"\$\{([^{}]*)\}")
 _FSTRING_HOLE_RE = re.compile(r"(?<!\{)\{([^{}]*)\}")
 _STRING_PREFIX_RE = re.compile(r"(?<![\w$])[A-Za-z]{1,2}\Z")
-# A file's calls are read up to this many argument characters in all, so nested calls
-# cannot make one file cost more than a pass over it and this budget.
+# A call is read only if its arguments end within a file's first this-many characters
+# of call arguments, so nested calls cannot make one file cost more than a pass over it
+# and this budget.
 _FILE_ARGS_BUDGET = 2_000_000
 
 # `.replace(<a token word>, "***")` reads as a redaction. Both runs around the token
@@ -238,7 +240,7 @@ def _collect_log_call_args(text: str) -> list[tuple[str, int]]:
     out: list[tuple[str, int]] = []
     for start, open_idx in sorted(calls):
         close = partners.get(open_idx)
-        if close is None or close - open_idx > _ARGS_WINDOW:
+        if close is None or close - open_idx - 1 > _ARGS_WINDOW:
             continue
         out.append((text[open_idx + 1 : close], bisect_left(breaks, start) + 1))
     return out

@@ -327,28 +327,34 @@ def test_a_replace_that_masks_the_credential_still_reads_as_redacted(tmp_path: P
 
 
 # ---------------------------------------------------------------------------
-# The two bounds that keep a crafted file linear are stated limits
+# The two bounds that keep a crafted file linear are stated limits, edge for edge
 #
 # Main read a call of any length and every call in a file. A call whose arguments
-# run past 4,000 characters is now skipped, and a file is read only up to its first
-# 2,000,000 characters of call arguments, so the rule says both.
+# run past 4,000 characters is now skipped, and a call is read only if its arguments
+# end within the file's first 2,000,000 characters of call arguments.
 # ---------------------------------------------------------------------------
 
 
-def _call_with_filler(width: int) -> str:
-    return f'logger.info("auth %s", access_token, "{"x" * width}")\n'
+def _leak_call(arguments: int) -> str:
+    """A log call that writes `access_token`, with arguments exactly ``arguments`` long."""
+    head = '"auth %s", access_token, "'
+    return "logger.info(" + head + "x" * (arguments - len(head) - 1) + '")\n'
 
 
 def test_a_call_past_the_argument_window_is_not_read_and_the_rule_says_so(tmp_path: Path) -> None:
-    assert _leaks(tmp_path / "under", "auth.py", _call_with_filler(3_900)) == [1]
-    assert _leaks(tmp_path / "over", "auth.py", _call_with_filler(4_000)) == []
-    assert "4,000 characters" in RULES[_RULE].limitations
+    """The window read at most 3,999 characters, so a call of exactly 4,000 was skipped
+    while the sentence said only one past 4,000 is."""
+    assert _leaks(tmp_path / "at", "auth.py", _leak_call(4_000)) == [1]
+    assert _leaks(tmp_path / "past", "auth.py", _leak_call(4_001)) == []
+    assert "past 4,000 characters" in RULES[_RULE].limitations
 
 
-def test_a_file_is_read_up_to_its_argument_budget_and_the_rule_says_so(tmp_path: Path) -> None:
-    benign = 'logger.info("' + "x" * 3_900 + '")\n'
-    leak = 'logger.info("auth %s", access_token)\n'
-    past_the_budget = benign * (2_000_000 // 3_900 + 2)
-    assert _leaks(tmp_path / "early", "auth.py", leak + past_the_budget) == [1]
-    assert _leaks(tmp_path / "late", "auth.py", past_the_budget + leak) == []
-    assert "2,000,000 characters" in RULES[_RULE].limitations
+def test_a_call_is_read_only_if_its_arguments_end_within_the_budget(tmp_path: Path) -> None:
+    benign = 'logger.info("' + "y" * 3_986 + '")\n'  # 3,988 characters of arguments
+    count = 2_000_000 // 3_988
+    used = count * 3_988
+    ending_at_the_budget = benign * count + _leak_call(2_000_000 - used)
+    straddling_it = benign * count + _leak_call(2_000_000 - used + 1)
+    assert _leaks(tmp_path / "within", "auth.py", ending_at_the_budget) == [count + 1]
+    assert _leaks(tmp_path / "straddling", "auth.py", straddling_it) == []
+    assert "end within the file's first 2,000,000 characters" in RULES[_RULE].limitations

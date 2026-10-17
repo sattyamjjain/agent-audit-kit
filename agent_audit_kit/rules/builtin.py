@@ -6352,8 +6352,8 @@ _r(
         "`access_token` is. A value named only `token` counts when the message also names a "
         "credential (`\"auth %s\"`, `\"token=%s\"`), so `logger.debug(\"%s\", token)` is "
         "not reported. A call whose arguments run past 4,000 characters is not read, and a "
-        "file is read only up to its first 2,000,000 characters of call arguments, so a "
-        "crafted file cannot stall the scan."
+        "call is read only if its arguments end within the file's first 2,000,000 characters "
+        "of call arguments, so a crafted file cannot stall the scan."
     ),
 )
 
