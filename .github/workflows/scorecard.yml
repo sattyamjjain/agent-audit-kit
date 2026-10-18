@@ -30,7 +30,7 @@ jobs:
         # under tests/fixtures/cves/ it stopped finishing once #899 added six
         # more, and every push run hung until GitHub cancelled it. Leave v2.4.3
         # only for a release that ships the fix; dependabot.yml skips 2.4.4.
-        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
         # The limit sits on the step, not the job. A job that runs out of time
         # is cancelled, and a cancelled run doesn't read as a failure, which is
         # how the hang above went unnoticed for five days. A step that runs out
@@ -42,6 +42,6 @@ jobs:
           publish_results: true
 
       - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: results.sarif
