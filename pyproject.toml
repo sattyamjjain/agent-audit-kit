@@ -68,7 +68,7 @@ dev = [
     # problem was that the repo had no explicit rule selection, so CI enforced
     # whatever ruff happened to ship. `[tool.ruff.lint] select` now pins that set,
     # which makes the bound safe to widen — see the note there before touching it.
-    "ruff>=0.15,<0.17",
+    "ruff>=0.15,<0.18",
     "types-PyYAML>=6.0",
     # tests/test_docs_research_publishing.py imports the MkDocs build hook and
     # skips as a whole module without MkDocs. CI installs only this extra, so the
@@ -113,7 +113,7 @@ extend-exclude = ["tests/fixtures/cves"]
 # enforces: 0.16 expanded the defaults from these 59 rules to a set that flags
 # 314 findings here (148 I001 import-order, 40 SIM102, 16 UP045, ...) — none of
 # them regressions, just rules this project never opted into. That is what broke
-# the `ruff>=0.15,<0.17` bump.
+# the `ruff>=0.15,<0.18` bump.
 #
 # These four selectors reproduce ruff 0.15's default set exactly (verified rule
 # for rule: 59 enabled either way, no additions, no removals), so pinning them
