@@ -361,9 +361,13 @@ def linear_find(text: str, key: str, start: int = 0) -> int:
     for only in the lines at least as long as itself, the way every key was
     searched for line by line through 0.6.22: text of shorter lines costs nothing,
     and a line that can hold the key is read with `str.find`, which keeps its
-    pre-3.10 worst case there. A key holding a line break, which no line lookup
-    searches for, is read with `str.find` too, as is the empty key. `start` is
-    read as `str.find` reads it, a negative one counted from the end.
+    pre-3.10 worst case there. A long line made of the key's own filler costs up to
+    the key's length at every offset of the line, as it did through 0.6.22: 20 task
+    labels of 4,097 characters against one 500,000-character line took 10 s on
+    3.9, on 0.6.22 and here, and what bounds it is how much of a file the scanner
+    reads. A key holding a line break, which no line lookup searches for, is read
+    with `str.find` too, as is the empty key. `start` is read as `str.find` reads
+    it, a negative one counted from the end.
     """
     if _LINEAR_FIND or not key:
         return text.find(key, start)
