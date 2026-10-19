@@ -217,6 +217,16 @@ def _call_chains(k: int) -> dict[str, str]:
     return {"server.py": _PY_HEAD + "".join(f"def f{i}():\n    return f" + "()" * k + "\n" for i in range(40))}
 
 
+def _nested_calls(opener: str, k: int) -> dict[str, str]:
+    """One tool function returning `opener` nested as deep as the tokenizer's 200 levels
+    of brackets allow (190 brackets) around a tuple of `k` names. Each call read the
+    whole argument again: up to 190 times the tuple."""
+    depth = 190 // opener.count("(")
+    names = ", ".join(f"n{i % 10}" for i in range(k))
+    body = "    return " + opener * depth + "(" + names + ")" + ")" * (depth * opener.count("(")) + "\n"
+    return {"server.py": "import shlex\n" + _PY_HEAD + "@mcp.tool()\ndef run(server_url):\n" + body}
+
+
 def _quoted_server_name(k: int) -> dict[str, str]:
     """One server named `x","x",...,"x` (`k + 1` `x`s), then a `pad` array of `2k` `"x"`
     strings, in which the name's quoted form occurs at nearly every element and never
@@ -293,6 +303,11 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # on longer ones; with the walk's own stack, 1 MB of 4,000-call chains took 120 s.
     "join-chains-stdio-params": (mcp_stdio_params.scan, _join_chains, 100, False),
     "call-chains-stdio-params": (mcp_stdio_params.scan, _call_chains, 150, False),
+    # Each fetch or guard call read its whole argument again, nested calls included,
+    # up to the 200 levels Python allows: 190 nested `requests.get(` around a tuple
+    # of names took 16.6 s at 100 KB on main, and 190 nested `validate_url(` 3.0 s.
+    "nested-fetches": (mcp_destination_guard.scan, lambda k: _nested_calls("requests.get(", k), 3_000, False),
+    "nested-guards": (mcp_destination_guard.scan, lambda k: _nested_calls("validate_url(", k), 8_000, False),
 }
 
 
@@ -840,6 +855,105 @@ def test_the_remembered_receiver_walk_finds_the_root_the_full_walk_found() -> No
                 assert mcp_destination_guard._callee(node, roots) == _old_callee(node), ast.dump(node)[:200]
                 calls += 1
     assert calls > 20_000, calls
+
+
+def _old_guarded_names(tree: ast.AST, guards: set[str], roots: dict[int, ast.AST]) -> set[str]:
+    """`mcp_destination_guard._guarded_names` before nested arguments were skipped."""
+    out: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        attr, _ = mcp_destination_guard._callee(node, roots)
+        if not (mcp_destination_guard._is_validator_name(attr) or (attr in guards)):
+            continue
+        for arg in list(node.args) + [kw.value for kw in node.keywords]:
+            for sub in ast.walk(arg):
+                if isinstance(sub, ast.Name):
+                    out.add(sub.id)
+                elif isinstance(sub, ast.Attribute):
+                    out.add(sub.attr)
+                elif isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                    out.add(sub.value)
+    return out
+
+
+def _old_destination_findings(text: str) -> list[tuple[int, str]]:
+    """`mcp_destination_guard._analyze`'s loop over fetches before nested arguments were
+    skipped, as (line, evidence)."""
+    dg = mcp_destination_guard
+    tree = ast.parse(text)
+    guards = dg._guard_functions(tree, text)
+    roots: dict[int, ast.AST] = {}
+    guarded = _old_guarded_names(tree, guards, roots)
+    has_any_guard = bool(guarded) or bool(guards)
+    out: list[tuple[int, str]] = []
+    seen: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not dg._is_fetch(node, roots):
+            continue
+        for arg in list(node.args) + [kw.value for kw in node.keywords]:
+            for d in sorted(dg._dest_names_in(arg)):
+                if d in guarded or d in seen:
+                    continue
+                seen.add(d)
+                if has_any_guard:
+                    ev = (
+                        f"`{d}` reaches an outbound fetch with no destination check, "
+                        f"while this module does guard other URL inputs "
+                        f"({', '.join(sorted(guarded | guards)[:3])}). A guard applied "
+                        f"to some destinations and not all is the CVE-2026-85666 shape."
+                    )
+                else:
+                    ev = (
+                        f"`{d}` is taken from MCP configuration and reaches an outbound "
+                        f"fetch, and nothing in this module resolves or range-checks a "
+                        f"destination. This is the CVE-2026-86122 shape."
+                    )
+                out.append((node.lineno, ev))
+    return out
+
+
+_DG_CALLS = ["requests.get(", "httpx.post(", "client.request(", "urlopen(", "fetch(", "validate_url(",
+             "is_safe_url(", "check_host_allowed(", "safe(", "f("]
+_DG_LEAVES = ["server_url", "cfg.webhook_url", "body['callback_url']", "cfg.get('endpoint_url')", "mcp_url",
+              "target_url", "x", "url", "'lit'", "data['k']"]
+
+
+def _dg_expr(rng: random.Random, depth: int = 0) -> str:
+    if depth > 6 or rng.random() < 0.35:
+        return rng.choice(_DG_LEAVES)
+    args = [_dg_expr(rng, depth + 1) for _ in range(rng.randint(1, 3))]
+    if rng.random() < 0.3:
+        args[-1] = rng.choice(["url=", "timeout=", "target="]) + args[-1]
+    return rng.choice(_DG_CALLS) + ", ".join(args) + ")"
+
+
+def test_skipping_arguments_already_read_keeps_every_destination_finding() -> None:
+    """Fetches and guards nested in each other's arguments, with and without a
+    function that resolves and range-checks a host, against the loop that read every
+    argument whole."""
+    rng = random.Random(19)
+    guard_def = ("def safe(u):\n    ip = socket.gethostbyname(u)\n"
+                 "    if ipaddress.ip_address(ip).is_private:\n        raise ValueError(u)\n    return u\n")
+    texts = [p.read_text(encoding="utf-8", errors="replace") for p in _python_fixtures()]
+    for _ in range(1000):
+        body = "".join(f"    v{i} = {_dg_expr(rng)}\n" for i in range(rng.randint(1, 6)))
+        texts.append(_PY_HEAD + (guard_def if rng.random() < 0.5 else "") + "@mcp.tool()\ndef run(server_url):\n" + body)
+    compared = reported = 0
+    for text in texts:
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        guards = mcp_destination_guard._guard_functions(tree, text)
+        assert mcp_destination_guard._guarded_names(tree, guards, {}) == _old_guarded_names(tree, guards, {})
+        if not any(m in text.lower() for m in mcp_destination_guard._MCP_MARKERS):
+            continue
+        new = [(f.line_number, f.evidence) for f in mcp_destination_guard._analyze(text, "m.py")]
+        assert new == _old_destination_findings(text), text
+        compared += 1
+        reported += len(new)
+    assert compared > 1000 and reported > 200, (compared, reported)
 
 
 # ---------------------------------------------------------------------------

@@ -135,15 +135,18 @@ def _is_fetch(node: ast.Call, roots: dict[int, ast.AST]) -> bool:
     return bool(root and root.lower() in _FETCH_MODULES)
 
 
-def _dest_names_in(node: ast.AST) -> set[str]:
+def _dest_names_in(node: ast.AST, read: set[int] | None = None) -> set[str]:
     """Configuration-shaped destination identifiers reachable in an expression.
 
     Covers three forms the two CVEs actually use: a bare name (`server_url`), an
     attribute (`cfg.server_url`), and a string-keyed lookup
-    (`body["server_url"]`, `cfg.get("webhook_url")`).
+    (`body["server_url"]`, `cfg.get("webhook_url")`). Every node read is added to
+    `read`, when given.
     """
     out: set[str] = set()
     for sub in ast.walk(node):
+        if read is not None:
+            read.add(id(sub))
         if isinstance(sub, ast.Name) and _is_dest_name(sub.id):
             out.add(sub.id)
         elif isinstance(sub, ast.Attribute) and _is_dest_name(sub.attr):
@@ -154,8 +157,16 @@ def _dest_names_in(node: ast.AST) -> set[str]:
 
 
 def _guarded_names(tree: ast.AST, guards: set[str], roots: dict[int, ast.AST]) -> set[str]:
-    """Identifiers passed to a guard call anywhere in the module."""
+    """Identifiers passed to a guard call anywhere in the module.
+
+    An argument inside the argument of a guard call already read is not read
+    again: what it names is already in the set. `ast.walk` reaches a call before
+    any call inside it. Reading each nested guard's whole argument again cost up
+    to 200 times the argument, the nesting Python's parser allows: 190 nested
+    `validate_url(` around a tuple of names took 3.0 s at 100 KB.
+    """
     out: set[str] = set()
+    read: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -163,7 +174,10 @@ def _guarded_names(tree: ast.AST, guards: set[str], roots: dict[int, ast.AST]) -
         if not (_is_validator_name(attr) or (attr in guards)):
             continue
         for arg in list(node.args) + [kw.value for kw in node.keywords]:
+            if id(arg) in read:
+                continue
             for sub in ast.walk(arg):
+                read.add(id(sub))
                 if isinstance(sub, ast.Name):
                     out.add(sub.id)
                 elif isinstance(sub, ast.Attribute):
@@ -190,12 +204,21 @@ def _analyze(text: str, rel: str) -> list[Finding]:
 
     findings: list[Finding] = []
     seen: set[str] = set()
+    # Every node under a fetch argument already read. An argument inside one, as in
+    # `requests.get(requests.get(server_url))`, names nothing that is not already
+    # in `seen` or `guarded`, since `ast.walk` reaches the outer fetch first, so it
+    # is skipped. Reading each nested fetch's whole argument again cost up to 200
+    # times the argument: 190 nested `requests.get(` around a tuple of names took
+    # 55 s at 400 KB.
+    read: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not _is_fetch(node, roots):
             continue
         args = list(node.args) + [kw.value for kw in node.keywords]
         for arg in args:
-            dests = _dest_names_in(arg)
+            if id(arg) in read:
+                continue
+            dests = _dest_names_in(arg, read)
             for d in sorted(dests):
                 if d in guarded or d in seen:
                     continue
