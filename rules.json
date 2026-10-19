@@ -1072,7 +1072,7 @@
       ],
       "description": "On Windows, Claude Code prior to 2.1.75 loads `%ProgramData%\\ClaudeCode\\managed-settings.json` without validating directory ownership or ACLs. A low-privileged user can plant a malicious config that executes on every launch. CVE-2026-35603 (CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
       "incident_references": [],
-      "limitations": "Needs a `managed-settings.json` whose own path contains `ProgramData`, so a file staged elsewhere and copied into `%ProgramData%\\ClaudeCode` by an installer is not seen. A sibling `setup.ps1` that mentions `icacls` clears the finding whatever the command grants, `icacls ... /grant Everyone:(OI)(CI)F` included.",
+      "limitations": "Needs a `managed-settings.json` whose own path contains `ProgramData`, so a file staged elsewhere and copied into `%ProgramData%\\ClaudeCode` by an installer is not seen. A sibling `setup.ps1` that mentions `icacls` clears the finding whatever the command grants, `icacls ... /grant Everyone:(OI)(CI)F` included. A `setup.ps1` over 512 KB is not read, and counts as one that does not run `icacls`.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"

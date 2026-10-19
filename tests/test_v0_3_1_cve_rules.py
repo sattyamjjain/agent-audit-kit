@@ -129,6 +129,32 @@ def test_claude_win_programdata_with_hardened_setup_ps1_is_quiet(tmp_path: Path)
     assert not any(f.rule_id == "AAK-CLAUDE-WIN-001" for f in findings)
 
 
+def test_claude_win_setup_ps1_is_read_up_to_the_source_cap(tmp_path: Path) -> None:
+    """The sibling setup.ps1 was read whole: one symlinked to a 200 MB file took
+    the scanner past 400 MB. It is read up to the 512 KB source cap, and one over
+    the cap counts as not running icacls, as one that cannot be read did."""
+    import tracemalloc
+
+    from agent_audit_kit.rules.builtin import get_rule
+
+    big = tmp_path / "big.ps1"
+    with open(big, "wb") as fh:
+        fh.truncate(200_000_000)
+    target_dir = tmp_path / "proj" / "ProgramData" / "ClaudeCode"
+    target_dir.mkdir(parents=True)
+    (target_dir / "managed-settings.json").write_text("{}")
+    (target_dir / "setup.ps1").symlink_to(big)
+    tracemalloc.start()
+    try:
+        findings, _ = agent_config.scan(tmp_path / "proj")
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert peak < 20_000_000, peak
+    assert [f.rule_id for f in findings if f.rule_id == "AAK-CLAUDE-WIN-001"] == ["AAK-CLAUDE-WIN-001"]
+    assert "over 512 KB is not read" in get_rule("AAK-CLAUDE-WIN-001").limitations
+
+
 def test_claude_win_non_programdata_is_quiet(tmp_path: Path) -> None:
     target_dir = tmp_path / "home" / "user" / ".claude"
     target_dir.mkdir(parents=True)

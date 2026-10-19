@@ -6192,7 +6192,8 @@ _r(
         "a file staged elsewhere and copied into `%ProgramData%\\ClaudeCode` by an "
         "installer is not seen. A sibling `setup.ps1` that mentions `icacls` clears "
         "the finding whatever the command grants, `icacls ... /grant "
-        "Everyone:(OI)(CI)F` included."
+        "Everyone:(OI)(CI)F` included. A `setup.ps1` over 512 KB is not read, and "
+        "counts as one that does not run `icacls`."
     ),
 )
 

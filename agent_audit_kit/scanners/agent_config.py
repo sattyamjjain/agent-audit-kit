@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
     finditer_up_to_last,
     host_ip,
     line_at,
@@ -1249,8 +1250,11 @@ def _check_claude_win_programdata(
                 "managed-settings.json under ProgramData without sibling setup.ps1 ACL hardener",
             ))
             continue
+        # Read up to the source cap: whole, a setup.ps1 symlinked to a 200 MB
+        # file took the scanner past 400 MB. One over the cap, like one that
+        # cannot be read, counts as not running icacls.
         try:
-            ps1_text = sibling.read_text(encoding="utf-8", errors="replace")
+            ps1_text = read_text_capped(sibling, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             ps1_text = ""
         if not _re.search(r"\bicacls\b", ps1_text, _re.IGNORECASE):
