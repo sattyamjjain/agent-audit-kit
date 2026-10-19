@@ -1333,26 +1333,39 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
         scanned_files.add(rel_path)
         file_facts = _FileFacts(tree)
-        imported: dict[str, str] | None = None
 
-        # Walk top-level and nested function definitions. Item reads and a
-        # handler's branches are followed recursively, so each function is
-        # analysed through `walk_tree`, and a file too deep even for that is
+        # Item reads and a handler's branches are followed recursively, so a
+        # file's tool functions and handlers are analysed in one `walk_tree`
+        # (one hand-over to the worker before 3.11, not one per function, and
+        # none for a file with neither), and a file too deep even for that is
         # refused alone, its findings with it.
         with refusing_overflow(py_path):
-            file_findings: list[Finding] = []
+            targets: list[tuple[ast.FunctionDef | ast.AsyncFunctionDef, bool]] = []
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     if _is_tool_function(node):
-                        imported = _import_names(tree) if imported is None else imported
-                        file_findings.extend(walk_tree(
-                            _analyse_tool_function, node, rel_path, file_facts=file_facts, imported=imported,
-                        ))
+                        targets.append((node, False))
                     elif _is_call_tool_handler(node):
-                        imported = _import_names(tree) if imported is None else imported
-                        file_findings.extend(walk_tree(
-                            _analyse_tool_function, node, rel_path, call_tool_handler=True, imported=imported,
-                        ))
-            findings.extend(file_findings)
+                        targets.append((node, True))
+            if targets:
+                findings.extend(walk_tree(_analyse_functions, targets, rel_path, file_facts, _import_names(tree)))
 
     return findings, scanned_files
+
+
+def _analyse_functions(
+    targets: list[tuple[ast.FunctionDef | ast.AsyncFunctionDef, bool]],
+    rel_path: str,
+    file_facts: _FileFacts,
+    imported: dict[str, str],
+) -> list[Finding]:
+    """`_analyse_tool_function` on each (function, is a `call_tool` handler).
+    A tool function is given the file's facts for the allow-list skip, and a
+    handler is not, as each was analysed before."""
+    file_findings: list[Finding] = []
+    for node, call_tool_handler in targets:
+        if call_tool_handler:
+            file_findings.extend(_analyse_tool_function(node, rel_path, call_tool_handler=True, imported=imported))
+        else:
+            file_findings.extend(_analyse_tool_function(node, rel_path, file_facts=file_facts, imported=imported))
+    return file_findings

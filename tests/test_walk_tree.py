@@ -161,6 +161,28 @@ def test_unparse_reads_a_deep_expression_and_refuses_one_past_the_limit(walk_on_
         unparse(_nested_calls(WALK_RECURSION_LIMIT))
 
 
+def test_before_3_11_unparse_hands_only_an_expression_too_deep_in_place_to_the_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hand-over to the worker cost more than unparsing the small expressions
+    scanners mostly ask about, once for every callee they judged. The unparse
+    is tried in place first, and only one the default limit stops goes over;
+    on 3.9.6 the retry after that RecursionError must not abort."""
+    monkeypatch.setattr(_helpers, "_WALK_ON_WORKER", True)
+    handed: list[object] = []
+    real = _helpers.walk_tree
+
+    def counting(walk: Any, *args: Any, **kwargs: Any) -> Any:
+        handed.append(args[0])
+        return real(walk, *args, **kwargs)
+
+    monkeypatch.setattr(_helpers, "walk_tree", counting)
+    small = ast.parse("x = y.z").body[0].value
+    assert unparse(small) == "y.z" and handed == []
+    deep = ast.parse("x = " + " + ".join(["a"] * 700)).body[0].value
+    assert unparse(deep).count("+") == 699 and handed == [deep]
+
+
 def test_unparse_reads_what_the_unparser_cannot_rebuild_as_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(node: ast.AST) -> str:
         raise ValueError("Unable to avoid backslash in f-string expression part")

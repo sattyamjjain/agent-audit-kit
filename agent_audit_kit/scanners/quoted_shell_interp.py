@@ -427,18 +427,25 @@ def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
         tree = parse_python(text, rel)
     except SyntaxError:
         return [], []
+    tools = [
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_tool_function(node)
+    ]
+    if not tools:
+        return [], []
+    # The template is followed recursively, so the tools are analysed in one
+    # `walk_tree` (one hand-over to the worker before 3.11, not one per tool).
+    return walk_tree(_analyse_py_tools, tools, rel, _PySource(text), _import_names(tree))
+
+
+def _analyse_py_tools(
+    tools: list[ast.FunctionDef | ast.AsyncFunctionDef], rel: str, source: _PySource,
+    imported: dict[str, str],
+) -> tuple[list[Finding], list[str]]:
     findings: list[Finding] = []
     exec_tools: list[str] = []
-    source = _PySource(text)
-    imported: dict[str, str] | None = None
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if not _is_tool_function(node):
-            continue
-        if imported is None:
-            imported = _import_names(tree)
-        found, reached = walk_tree(_analyse_py_function, node, rel, source, imported)
+    for node in tools:
+        found, reached = _analyse_py_function(node, rel, source, imported)
         findings.extend(found)
         if found and reached:
             exec_tools.append(node.name)

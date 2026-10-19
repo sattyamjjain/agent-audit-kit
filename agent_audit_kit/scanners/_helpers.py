@@ -2619,6 +2619,12 @@ def walk_tree(walk: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
     a walk; a host that scans, or recurses, on other threads at the same time
     shares the raised limit while a walk is in progress. For the same reason a
     walk does not parse.
+
+    A walk lets RecursionError out, to the caller's `refusing_overflow`, rather
+    than catching it and going on to the next node: after a RecursionError,
+    3.9.6 aborts the process (exit 134, "Cannot recover from stack overflow")
+    if the thread recurses more than 50 frames past the limit before its depth
+    falls back under it, whatever the code catches. 3.9.25 and later do not.
     """
     if not _WALK_ON_WORKER or _on_large_stack():
         with _recursion_headroom():
@@ -2638,7 +2644,20 @@ def unparse(node: ast.AST) -> str:
     empty, without a word. A tree too deep even for the raised limit now raises
     RecursionError, for the caller's `refusing_overflow`. Any other error is
     the unparser's own, and reads as "", as it did.
+
+    Before 3.11 a walk is handed to the worker and waited on, which cost more
+    than unparsing the small expressions scanners mostly ask about, once for
+    every callee they judged. So outside a walk the unparse is tried first
+    where it is called, under the default limit, and only an expression too
+    deep for that is handed over. The RecursionError of that try is caught
+    back at the caller's depth, so the retry, on another thread, starts clean
+    (see `walk_tree` on what 3.9.6 does otherwise).
     """
+    if _WALK_ON_WORKER and not _on_large_stack():
+        try:
+            return _unparse_or_empty(node)
+        except RecursionError:
+            pass
     return walk_tree(_unparse_or_empty, node)
 
 
