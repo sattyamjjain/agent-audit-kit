@@ -2236,12 +2236,13 @@ _PARSE_FILENAME = "/dev/null/<aak>"
 # 126,000); the highest bound in 100,303 real files was 4,585 (see
 # tests/test_refused_files.py). A source under the bound is parsed and walked
 # like any other, and costs what its size does rather than its depth: in `aak
-# scan` on 3.9.6, with every Python scanner's gate open, 480 to 500 KB of
-# chains just under 10,000 levels took 8 to 39 s of CPU, the same bytes just
-# under 20,000, the bound before, as long, and about 500 KB of shallow chains,
-# 100 terms each, 21 to 36 s, as on main. The same file's CPU time moved by up
-# to 60% from run to run on the machine measured, with its load and the cores
-# a run landed on.
+# scan` on 3.9.6, with every Python scanner's gate open (main's new gates
+# included), 480 to 500 KB of chains just under 10,000 levels took 10 to 31 s
+# of CPU and 508 KB of shallow chains, 100 terms each, 40 s; on 3.9.25, whose
+# parser refuses the unary chains, 8 to 25 s and 33 s. Measured on the head
+# rebased onto b189db60, best of two runs at a load average under 4. The same
+# file's CPU time has moved by up to 60% from run to run on the machine
+# measured, with its load and the cores a run landed on.
 _SCREEN_SOURCES = sys.version_info < (3, 11)
 _PY_MAX_NESTING = 10_000
 # Defense in depth for a shape the screen does not foresee: before 3.11 the
