@@ -870,6 +870,31 @@ def test_each_reader_reads_or_refuses_a_number_python_cannot_convert() -> None:
     assert refused == ({"c.toml": "TOML value Python cannot convert (ValueError)"} if _DIGIT_LIMIT else {})
 
 
+@pytest.mark.parametrize("read", [loads_json, loads_jsonc])
+def test_json_is_read_with_the_integer_hook_only_after_an_integer_fails(
+    read: Callable[..., object], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The hook is a Python call for every integer, which made a text of a
+    million integers four times as slow to parse, so a text is parsed without
+    it first. Either way the values are those of a parse with the hook from
+    the start: an ordinary document never reaches it, and one with a
+    5,000-digit integer reaches it in the second parse."""
+    calls: list[str] = []
+    real = _helpers._json_int
+
+    def counting(digits: str) -> int | float:
+        calls.append(digits)
+        return real(digits)
+
+    monkeypatch.setattr(_helpers, "_json_int", counting)
+    ordinary = json.dumps({"a": [1, 2, 3], "b": {"c": 10**20, "d": -7, "e": 1.5}, "f": None})
+    assert read(ordinary, "o.json") == json.loads(ordinary, parse_int=real) == json.loads(ordinary)
+    assert calls == []
+    long = '{"n": ' + _BIG + ', "m": [1, -2], "s": "x", "big": [-' + _BIG + "]}"
+    assert read(long, "l.json") == json.loads(long, parse_int=real)
+    assert bool(calls) == _DIGIT_LIMIT
+
+
 @pytest.mark.parametrize(("text", "value"), [
     ("d: 2026-13-01", "2026-13-01"),
     ("x: !!int abc", "abc"),

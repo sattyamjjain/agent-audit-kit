@@ -1364,6 +1364,20 @@ def _json_int(digits: str) -> int | float:
     return int(digits)
 
 
+def _json_loads(text: str) -> Any:
+    """`json.loads(text)`, an integer past Python's digit limit read by
+    `_json_int`. The hook is a Python call for every integer, which made a text
+    of a million integers four times as slow to parse, so it is used only in a
+    second parse, after the first raised a ValueError that is no
+    JSONDecodeError: only such an integer raises one."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise
+    except ValueError:
+        return json.loads(text, parse_int=_json_int)
+
+
 def _json_past_limit(text: str) -> bool:
     """Whether `text` nests past `JSON_MAX_NESTING`. A text with no more opening
     brackets than the limit cannot, so most texts are not counted at all."""
@@ -1395,7 +1409,7 @@ def _parse_json(text: str, path: Path | str | None) -> Any:
     caller's own stack was deep) propagates as it did.
     """
     try:
-        data = json.loads(text, parse_int=_json_int)
+        data = _json_loads(text)
     except json.JSONDecodeError as exc:
         if _json_past_limit(text[: exc.pos]):
             raise _too_deep(text, path) from None
