@@ -837,3 +837,86 @@ def test_the_corpus_latest_references_stay_quiet(tmp_path: Path) -> None:
     """The two v1.1 corpus configs run these images on `:latest`."""
     assert _docker_config(tmp_path / "a", "ghcr.io/czlonkowski/n8n-mcp:latest") == []
     assert _docker_config(tmp_path / "b", "ghcr.io/sooperset/mcp-atlassian:latest") == []
+
+
+# --- 2026-10-19 (#1049): Apache Answer's image (CVE-2026-71563) ---
+
+ANSWER = "AAK-MCP-APACHEANSWER-CVE-2026-71563-001"
+
+
+def test_apache_answer_pin_carries_its_cve_and_severity() -> None:
+    """MEDIUM is the ASF's own rating, moderate; the record has no CVSS score."""
+    assert RULES[ANSWER].cve_references == ["CVE-2026-71563"]
+    assert RULES[ANSWER].severity.value == "medium"
+
+
+def test_apache_answer_fixtures_positive_and_negative() -> None:
+    """Answer's compose file on 2.0.2 fires on its image line; 2.0.3, the untagged
+    image the compose file runs, 1.7.1 and the pre-Apache image do not."""
+    root = FIXTURES / "cve-2026-71563-apache-answer"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(ANSWER, 7)]
+    assert ANSWER in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("apache/answer:1.7.1", False),       # mcp_controller.go is absent
+    ("apache/answer:2.0.0-RC1", True),    # the MCP tools arrive
+    ("apache/answer:2.0.0", True),
+    ("apache/answer:2.0.1", True),
+    ("apache/answer:2.0.2-RC3", True),    # read as 2.0.2, before the fix
+    ("apache/answer:2.0.2", True),
+    ("apache/answer:2.0.3-RC1", False),   # the 2.0.3 commit, 6744295f
+    ("apache/answer:2.0.3", False),       # 63a67542 checks the question
+    ("apache/answer:latest", False),      # a 2.0.3 build on 2026-10-19
+    ("apache/answer", False),             # untagged is latest
+    ("apache/answer:test", False),        # states no version
+    ("answerdev/answer:1.2.0", False),    # the pre-Apache image, before MCP
+    ("docker.io/apache/answer:2.0.2", False),  # the registry-prefixed spelling
+])
+def test_apache_answer_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  answer:\n    image: {ref}\n")
+    assert (ANSWER in ids) is fires
+
+
+@pytest.mark.parametrize(("tag", "fires"), [('"2.0.2"', True), ('"2.0.3"', False), ('"latest"', False)])
+def test_apache_answer_chart_values_are_read(tmp_path: Path, tag: str, fires: bool) -> None:
+    """The chart in Answer's repository sets `tag: "latest"`; a values file that
+    overrides it with a release is read through the Helm reader."""
+    values = f"image:\n  repository: apache/answer\n  pullPolicy: Always\n  tag: {tag}\n"
+    assert (ANSWER in _write(tmp_path, "values.yaml", values)) is fires
+
+
+# --- The prefilter keeps a Docker Hub name whole ---
+#
+# `scan` opens the YAML reader only for a file that contains a pinned image's
+# name. It dropped the first part of every name, meant as the registry, so for a
+# Docker Hub name it dropped the namespace and kept a bare word: `answer` would
+# have sent every YAML file containing it through `yaml.compose_all`.
+
+
+@pytest.mark.parametrize(("image", "needle"), [
+    ("ghcr.io/obot-platform/obot", "obot-platform/obot"),
+    ("registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone", "amoylab/unla-allinone"),
+    ("localhost:5000/team/app", "team/app"),
+    ("localhost/team/app", "team/app"),
+    ("apache/answer", "apache/answer"),
+    ("conductoross/conductor", "conductoross/conductor"),
+])
+def test_the_prefilter_drops_only_a_registry(image: str, needle: str) -> None:
+    from agent_audit_kit.scanners.container_image_pins import _needle
+
+    assert _needle(image) == needle
+
+
+def test_a_yaml_file_that_only_says_answer_is_not_composed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_audit_kit.scanners import container_image_pins
+
+    def _composed(text: str) -> list:
+        raise AssertionError("composed a YAML file that names no pinned image")
+
+    monkeypatch.setattr(container_image_pins, "_helm_refs", _composed)
+    assert _write(tmp_path, "faq.yaml", "- question: What is MCP?\n  answer: A protocol.\n") == []

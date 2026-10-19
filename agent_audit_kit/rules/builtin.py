@@ -358,6 +358,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-NEZHA-CVE-2026-111385-001": ["IVS-04", "STA-08"],
     "AAK-MCP-ZCODE-CVE-2026-88755-001": ["IAM-16", "STA-08"],
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-APACHEANSWER-CVE-2026-71563-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -15983,6 +15984,51 @@ _r(
         "`claude-agent-sdk`, builds the same two tokens at 0.0.25, its last release, "
         "but no advisory names it, and it is not read. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-19 (#1049). Apache Answer's MCP answer tool read the answers to any
+# question. Answer is a Go server whose README runs the Docker Hub image.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-APACHEANSWER-CVE-2026-71563-001",
+    "Apache Answer image 2.0.0 to 2.0.2: the MCP answer tool returns answers to hidden, deleted and pending questions",
+    "Apache Answer, a self-hosted Q&A platform, serves MCP tools over SSE from "
+    "2.0.0, behind an API key and a site switch that a fresh install turns on. Its "
+    "answer tool lists the answers to whatever question id it is given and checks "
+    "only each answer's own status, not whether the question is public, so whoever "
+    "holds a global API key reads answers to hidden, deleted and pending-review "
+    "questions (CVE-2026-71563, CWE-862). Checked in the source: "
+    "`internal/controller/mcp_controller.go` is absent at 1.7.1 and arrives in "
+    "2.0.0-RC1, and `MCPAnswersHandler` reads the same way through 2.0.2. 2.0.3 "
+    "(63a67542, \"fix: constrain MCP content access\") returns nothing unless the "
+    "question is shown and available or closed, and puts the same check on the "
+    "question-detail and comment tools. MEDIUM follows the ASF's own rating, "
+    "moderate; neither NVD nor the CVE record gives a CVSS score.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the `apache/answer` image to 2.0.3 or later and pin the tag. Until then, "
+    "turn MCP off in the admin settings, or give a global API key only to someone "
+    "who may read hidden, deleted and pending-review content.",
+    sarif_name="ApacheAnswerMcpNonPublicAnswerRead",
+    cve_references=["CVE-2026-71563"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `apache/answer` tags from 2.0.0 below 2.0.3 in compose files, "
+        "Kubernetes manifests, Helm values, Dockerfiles and MCP configs. A release "
+        "candidate reads as its release, so 2.0.3-RC1, built from the 2.0.3 commit, "
+        "is not reported. `latest` was a 2.0.3 build on 2026-10-19, fixed, and the "
+        "compose file and Helm chart in Answer's repository use it, so an untagged "
+        "or `latest` reference is not reported. It reads the version, not whether "
+        "MCP is switched on or an API key exists. An install from the release "
+        "binaries or the Go module is not read, nor is the `docker.io/apache/answer` "
+        "spelling, and an MCP client config names the endpoint by URL, which states "
+        "no version."
     ),
 )
 

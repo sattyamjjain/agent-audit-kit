@@ -26,7 +26,9 @@ and npm and PyPI have no `nullhub`. Conductor is a Java server whose README runs
 the image `conductoross/conductor`, tagged by release. Nezha's dashboard is a Go
 server whose install script runs `ghcr.io/nezhahq/nezha` or unpacks a release zip;
 PyPI's `nezha` is an unrelated utility library, and npm's a 2017 0.0.1 by another
-author.
+author. Apache Answer is a Go server too, whose README runs the Docker Hub image
+`apache/answer`, tagged by release; npm's `answer-ui` and PyPI's `answer` are
+other projects.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -328,6 +330,19 @@ _PINS: tuple[_ImagePin, ...] = (
         (2, 3, 15), "from v2.1.0 up to v2.3.15", "Fixed in v2.3.15.",
         ("CVE-2026-111385",), introduced=(2, 1, 0),
     ),
+    # CVE-2026-71563: the MCP answer tool lists the answers to any question id,
+    # hidden, deleted and pending-review questions included. `mcp_controller.go`
+    # is absent at 1.7.1 and present from 2.0.0-RC1; the fix, 63a67542 ("fix:
+    # constrain MCP content access"), is in 2.0.3 and not 2.0.2. Docker Hub tags
+    # every release and release candidate, with no two-part tags, and 2.0.3-RC1 is
+    # the 2.0.3 commit, 6744295f. On 2026-10-19 `latest` was a separate build of
+    # that commit, labelled 2.0.3, so fixed. The pre-Apache `answerdev/answer`
+    # image stops in 2023, before MCP.
+    _ImagePin(
+        "AAK-MCP-APACHEANSWER-CVE-2026-71563-001", "Apache Answer", "apache/answer",
+        (2, 0, 3), "from 2.0.0 up to 2.0.3", "Fixed in 2.0.3.", ("CVE-2026-71563",),
+        introduced=(2, 0, 0),
+    ),
     # Two servers with package pins elsewhere whose docs also run a GHCR image
     # with `docker run` from an MCP config. These rows read a version tag only:
     # `floating_affected` stays False even where `latest` were affected, because
@@ -392,6 +407,21 @@ def _ref_re(image: str) -> re.Pattern[str]:
 
 
 _REF_RES = {pin.image: _ref_re(pin.image) for pin in _PINS}
+
+
+def _needle(image: str) -> str:
+    """The text every reference to this image contains: its name without the
+    registry, which Helm values may split off (`registry: ghcr.io` beside
+    `repository: obot-platform/obot`). The first part is a registry when it has
+    a `.` or `:` or is `localhost`, Docker's own rule, so a Docker Hub name is
+    kept whole. Its last part alone (`answer`, `conductor`) is an ordinary word,
+    and every YAML file containing it would be composed for the Helm reader,
+    which takes seconds for a large file."""
+    first, _, rest = image.partition("/")
+    return rest if "." in first or ":" in first or first == "localhost" else image
+
+
+_NEEDLES = {pin.image: _needle(pin.image) for pin in _PINS}
 
 
 def _in_image_slot(prefix: str) -> bool:
@@ -539,9 +569,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             except json.JSONDecodeError:
                 continue
         lowered = text.lower()
-        # Filter on the path without the registry: Helm values may split
-        # `registry: ghcr.io` from `repository: obot-platform/obot`.
-        pins = [pin for pin in _PINS if pin.image.split("/", 1)[1] in lowered]
+        pins = [pin for pin in _PINS if _NEEDLES[pin.image] in lowered]
         if not pins:
             continue
         helm = list(_helm_refs(text)) if kind == "yaml" else []
