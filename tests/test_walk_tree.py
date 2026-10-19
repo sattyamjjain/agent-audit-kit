@@ -355,6 +355,10 @@ def test_a_child_forked_while_another_thread_holds_the_headroom_lock_can_walk() 
 
 @_FORK
 def test_a_child_forked_inside_its_own_walk_keeps_that_walk() -> None:
+    """Checked from inside the walk, which holds on every version. Before 3.11
+    the walk runs on the parse worker, so the child is a copy of that thread
+    and the walk never returns to its caller there (the review's
+    fork_cases_r3.py, case (d)); from 3.11 it returns and puts the limit back."""
     limit = sys.getrecursionlimit()
 
     def forks() -> str:

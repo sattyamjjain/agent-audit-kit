@@ -2648,7 +2648,13 @@ def _headroom_after_fork() -> None:
     had in progress never ends there, so the raised limit would stay for good,
     and a lock it held at the fork is never released, so the child's first
     walk would wait on it for ever. The child takes a fresh lock and keeps only
-    its own thread's walks, putting the limit back if none is left."""
+    its own thread's walks, putting the limit back if none is left.
+
+    A child forked from inside a walk keeps that walk and its limit. Before
+    3.11 a walk runs on the parse worker, so such a child is a copy of the
+    worker thread: the walk's caller is not in it, and the walk never returns
+    there. Fork outside a walk to go on with the caller's work.
+    """
     global _headroom_lock, _headroom_walks
     _headroom_lock = threading.Lock()
     me = threading.get_ident()
