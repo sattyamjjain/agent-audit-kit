@@ -113,6 +113,38 @@ def test_a_server_past_the_bound_is_read_and_reported_without_a_line() -> None:
         assert line == expected, depth
 
 
+@pytest.mark.parametrize("depth", [m._MAX_PATH_DEPTH - 2, m._MAX_PATH_DEPTH - 1])
+def test_a_pinned_server_at_the_bound_keeps_its_line_and_one_past_it_is_still_reported(
+    tmp_path: Path, depth: int
+) -> None:
+    """The pin table's finding for a vulnerable server at the deepest level
+    with a path carries the line of the word that names it; one level deeper
+    the server is still read and judged, and the finding has no line."""
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+
+    server: Any = {"command": "npx", "args": ["@adenot/mcp-google-search"]}
+    for _ in range(depth):
+        server = {"k": server}
+    text = json.dumps(server, indent=1)
+    (tmp_path / ".mcp.json").write_text(text)
+    findings = [f for f in pins.scan(tmp_path)[0] if f.rule_id == "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001"]
+    word = text.splitlines().index(" " * (depth + 2) + '"@adenot/mcp-google-search"') + 1
+    assert [f.line_number for f in findings] == [word if depth <= m._MAX_PATH_DEPTH - 2 else None]
+
+
+def test_every_pin_table_rule_states_how_deep_a_declaration_keeps_its_line() -> None:
+    from agent_audit_kit.rules.builtin import RULES
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+
+    stated = (
+        f"A declaration nested more than {m._MAX_PATH_DEPTH} levels deep in its file "
+        f"(an MCP server more than {m._MAX_PATH_DEPTH - 2}) is still judged, and reported without a line."
+    )
+    ids = sorted({pin.rule_id for pin in pins._PINS})
+    assert len(ids) > 100
+    assert [rule_id for rule_id in ids if stated not in (RULES[rule_id].limitations or "")] == []
+
+
 _TIMED = """
     import sys, time
     from agent_audit_kit.scanners._manifest_deps import mcp_config_declarations
