@@ -13090,16 +13090,18 @@ _r(
 
 _r(
     "AAK-INTERNAL-SCANNER-FAIL",
-    "Scanner module raised an exception",
-    "A scanner module could not finish, so the rules it owns were not "
-    "evaluated. The scan continued with the remaining scanners, but results "
-    "may be incomplete. Usually the scanner crashed, which is a bug in "
-    "agent-audit-kit itself; please file an issue with the evidence string. "
-    "The pin-drift scanner also reports here, against the file, when "
+    "A scanner did not finish every file",
+    "A scanner did not finish its work on every file, so the rules it owns "
+    "were not evaluated where it stopped, and the results are incomplete. "
+    "Either the scanner crashed, which is a bug in agent-audit-kit itself and "
+    "costs its findings on every file (please file an issue with the evidence "
+    "string), or it refused one file it could not read or parse safely, which "
+    "costs that file alone. Either way the scan went on with every other "
+    "scanner. The pin-drift scanner reports here, against the file, when "
     "`.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull "
     "check with no readable baseline has checked nothing, and the evidence "
-    "says why the file could not be used. So does any scanner, against one "
-    "file, when it refuses that file: a JSON or JSONC file nested past 500 "
+    "says why the file could not be used. Any scanner reports here, against "
+    "one file, when it refuses that file: a JSON or JSONC file nested past 500 "
     "levels (Python's own parser stops at a depth that differs by version, "
     "and every version refuses past this; real configs nest under 20), one "
     "nested deeper than Python's TOML or Python parser takes (before Python "
@@ -13111,8 +13113,7 @@ _r(
     "10,000 frames, about 3,300 levels for the walk that takes the most "
     "frames a level; the deepest of 100,303 real files has 569), or YAML "
     "nested past 100 levels, or past 32 levels of `[ ]` or `{ }`, or grown by "
-    "its aliases past their bound. The "
-    "refusal costs that file alone; the scanner went on with every other "
+    "its aliases past their bound. The scanner went on with every other "
     "file, and the evidence names the scanner, the file and the reason.",
     Severity.INFO,
     Category.AGENT_CONFIG,

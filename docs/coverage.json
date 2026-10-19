@@ -1891,7 +1891,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-INTERNAL-SCANNER-FAIL",
       "severity": "info",
-      "title": "Scanner module raised an exception"
+      "title": "A scanner did not finish every file"
     },
     {
       "category": "taint-analysis",
