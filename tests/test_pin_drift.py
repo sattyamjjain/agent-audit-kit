@@ -7,6 +7,7 @@ when a pin file exists — previously they only fired under `verify`.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from agent_audit_kit.engine import run_scan
@@ -148,7 +149,9 @@ def test_unparseable_pin_file_is_reported_not_passed(tmp_path: Path) -> None:
     assert [f.rule_id for f in findings] == ["AAK-INTERNAL-SCANNER-FAIL"]
     (finding,) = findings
     assert finding.file_path == _PINS
-    assert finding.line_number == 6  # the closing brace after the trailing comma
+    # The line json reports: from 3.13 the trailing comma's own, before that the
+    # closing brace after it.
+    assert finding.line_number == (5 if sys.version_info >= (3, 13) else 6)
     assert "not valid JSON" in finding.evidence
     assert "AAK-RUGPULL-001, AAK-RUGPULL-002 and AAK-RUGPULL-003 were not evaluated" in finding.evidence
     assert files == {_PINS}
