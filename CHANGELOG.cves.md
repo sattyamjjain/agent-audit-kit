@@ -16,6 +16,95 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-19 (v0.6.23): three disclosures, one new image pin, two out of scope
+
+The watcher opened two `cve-response` issues at 04:40Z on 2026-10-19 (#1047, #1048),
+both `sev/critical`, and a third at 13:16Z (#1049), `sev/unknown`. One gets a container
+image pin, measured with the scanner on a firing fixture and a negative one. Two are out
+of scope: Google's Agent Mesh, whose images that carried the affected releases are gone
+from the registry. NVD carries Google's CVSS 4.0 score of 9.3 on both Agent Mesh records,
+which matches the titles and `sev/` labels the watcher filed. The Apache Answer record has
+no CVSS score anywhere: NVD has none, the CVE record carries only the ASF's textual
+rating, moderate, and the ASF's announcement says the same. So its title and
+`sev/unknown` label stay as filed, as ZCode's did (#1018). NVD text below is quoted from
+the API record, read on 2026-10-19 at 14:41Z and again at 15:15Z, unchanged.
+
+**Google's Agent Mesh (CVE-2026-102503, CVE-2026-103091) is out of scope.** NVD for
+CVE-2026-102503, in 0.1.0-alpha.1 and alpha.2: "the parallel /libp2p-http ingress routes
+requests directly to backend service handlers without verifying a Biscuit token or mesh
+enrollment." For CVE-2026-103091, in 0.1.0-alpha.1 to alpha.8, `POST /register` enrolled
+any valid OIDC token holder, and "the default policy binds sam:system:authenticated to
+wildcard services and targets." The CVE records' titles name the same two flaws, and each
+cites an advisory in the project's repository, GHSA-r6hp-67wp-c7jx (2026-09-04) and
+GHSA-cgmg-9xf6-rrgw (2026-09-06); neither is in the GitHub Advisory Database. The first
+fix is 433bc99d ("Fix security gap in HTTP Datapath ingress and proxy token leak",
+2026-07-01), first in v0.1.0-alpha.3 (2026-08-06). The second is three commits marked as
+part of GHSA-cgmg-9xf6-rrgw, first in v0.1.0-alpha.9 (2026-09-07): 7426c588 makes the
+shipped default policy fail closed, 95685207 requires an explicit policy binding to
+enrol, and aa84f0ba keys bans on the OIDC identity, so a regenerated keypair no longer
+gets past one.
+
+The project was called SAM until October, when google/sam became google/agentmesh and
+its Go module `github.com/google/sam` became `github.com/google/agentmesh` (1e54eb5f,
+after v0.1.0-rc.9). It ships as release binaries and as container images, and AAK reads
+neither a `go.mod` nor a binary. The images are where a deployment would state its
+release. The deploy workflow pushed `ghcr.io/google/sam-hub` and `ghcr.io/google/sam-node`
+for alpha.1 and alpha.2, and `sam-control-plane`, `sam-router`, `sam-node`,
+`sam-console`, `sam-box` and `sam-nano-init` from alpha.3, each tagged `v0.1.0-alpha.N`;
+the alpha.8 run's log shows `ghcr.io/google/sam-node:v0.1.0-alpha.8` pushed. All of those
+images are gone from GHCR: GitHub's packages API answers 404 for each of the seven names,
+where it answers the `agentmesh-*` images with a scope error, and the registry refuses an
+anonymous pull, as it does for a name that never existed. The
+`ghcr.io/google/agentmesh-*` images that replaced them carry v0.1.0-rc.10, v0.1.0 and
+v0.1.1, all fixed, and a `latest` that follows `main`, fixed too; their oldest commit tag
+is from 2026-10-09. Every SAM release tag was a 0.1.0 prerelease besides, which the
+image reader reads as 0.1.0, so no floor could tell alpha.2 from alpha.9. Nothing else
+states a version. SAM's MCP client config is a URL (`http://localhost:8080/mcp`, or
+`mcp-remote` on its SSE endpoint), the Helm chart at alpha.8 deploys locally built images
+tagged `local`, and its Kubernetes guide used `:latest`. The SDKs, `@agentmesh-p2p/sdk` on
+npm and `agentmesh-p2p` on PyPI, were first published on 2026-10-15 at 0.1.0-rc.10, after
+both fixes, beside an npm `0.0.0-stage` placeholder. Their SAM-era names, `@sam-mesh/sdk`
+and `sam-mesh`, were never published, PyPI's `sam-mcp` is a SAM.gov server and npm's
+`sam-node` a 2014 SAM API wrapper. `tests/test_cve_triage_2026_10_19.py` holds the
+boundary. Upgrade to v0.1.1, the newest release.
+
+**Apache Answer (CVE-2026-71563) gets `AAK-MCP-APACHEANSWER-CVE-2026-71563-001`, MEDIUM,
+on the `apache/answer` image from 2.0.0 up to 2.0.3.** NVD, for Apache Answer through
+2.0.2: "An authorization flaw in the MCP answer retrieval tool allows holders of a global
+API key to access answer content associated with hidden, deleted, or pending-review
+questions." The ASF names 2.0.3 as the fix and announced the CVE on oss-security on
+2026-10-16. Answer is a Go server (`github.com/apache/answer`) with no npm or PyPI
+artifact: npm's `answer-ui` is a Vue component library and PyPI's `answer` an unrelated
+0.1. Its README runs `docker run ... apache/answer:<release>`, and Docker Hub tags every
+release and release candidate, with no two-part tags. Checked in the source:
+`internal/controller/mcp_controller.go` is absent at v1.7.1 and arrives in v2.0.0-RC1,
+and from there through 2.0.2 `MCPAnswersHandler` lists the answers to whatever question
+id it is given, checking only each answer's own status. The fix, 63a67542 ("fix:
+constrain MCP content access", 2026-08-17), is in 2.0.3 (2026-10-09) and not 2.0.2: the
+tool returns nothing unless the question is shown and available or closed, and the
+question-detail and comment tools get the same check. 2.0.3-RC1 is the 2.0.3 commit,
+6744295f, and reads as 2.0.3. On 2026-10-19 `latest` was a separate build of that commit,
+labelled 2.0.3, so it is fixed, and the compose file and Helm chart in Answer's repository
+use it. A fresh install turns MCP on, and the endpoint takes an API key an administrator
+issues. MEDIUM follows the ASF's rating, since the record carries no CVSS score. The
+pre-Apache `answerdev/answer` image was last pushed in 2023, before MCP. Adding the pin
+showed a cost in the image reader: its prefilter kept only the last part of a Docker Hub
+name, so `answer` alone would have sent every YAML file containing the word through the
+Helm reader, 11.5 s for a 1.9 MB file. It now keeps a Docker Hub name whole. Upgrade to
+2.0.3 or later, or turn MCP off in the admin settings until then.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-102503 | 9.3 (4.0) | Google Agent Mesh, formerly SAM (`github.com/google/sam`: Go module, binaries, deleted `ghcr.io/google/sam-*` images) | **Out of scope**, non-pinnable: no artifact AAK reads states the version, and the images that carried the affected tags are deleted. Affected 0.1.0-alpha.1 and alpha.2; fixed in 0.1.0-alpha.3. | #1047 |
+| CVE-2026-103091 | 9.3 (4.0) | Google Agent Mesh, formerly SAM (`github.com/google/sam`: Go module, binaries, deleted `ghcr.io/google/sam-*` images) | **Out of scope**, non-pinnable, on the same basis. Affected 0.1.0-alpha.1 to alpha.8; fixed in 0.1.0-alpha.9. | #1048 |
+| CVE-2026-71563 | n/a | `apache/answer` (image) | **New pin** `AAK-MCP-APACHEANSWER-CVE-2026-71563-001` (MEDIUM): from 2.0.0 up to 2.0.3. | #1049 |
+
+CVSS is the CVSS 4.0 score that NVD's records carry from Google as the CNA, marked (4.0);
+NVD has not scored them itself. The Apache Answer record has no score, and the ASF rates
+it moderate.
+
+Dispositioned at 2026-10-19T15:17:22Z.
+
 ## 2026-10-17 (v0.6.23): CVE-2026-33032 on the router it was found in
 
 No new disclosures. Since v0.3.2 (2026-04-20) the ledger has listed CVE-2026-33032
