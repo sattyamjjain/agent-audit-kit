@@ -2728,7 +2728,11 @@ def unparse(node: ast.AST) -> str:
     where it is called, under the default limit, and only an expression too
     deep for that is handed over. The RecursionError of that try is caught
     back at the caller's depth, so the retry, on another thread, starts clean
-    (see `walk_tree` on what 3.9.6 does otherwise).
+    (see `walk_tree` on what 3.9.6 does otherwise). On 3.9.6 that holds only
+    for a caller shallower than about 950 frames, 50 under the default limit:
+    caught deeper, the error leaves the thread's overflow state set, and the
+    process aborts if the caller then recurses 50 frames more. The scanners
+    call it from a few dozen frames down.
     """
     if _WALK_ON_WORKER and not _on_large_stack():
         try:
