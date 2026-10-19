@@ -363,6 +363,212 @@ def test_auto_pr_opens_a_pr_with_only_the_fixes_that_write(tmp_path: Path, monke
 
 
 # --------------------------------------------------------------------------
+# A file git ignores is in no commit, so no PR carries its fix
+# --------------------------------------------------------------------------
+
+
+def _isolate_git(tmp_path: Path, monkeypatch) -> None:
+    """The operator's global and system git config can ignore `.claude/settings.local.json`
+    on their own; here only the repository's .gitignore decides."""
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "gitconfig").write_text("", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg"))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(home / "gitconfig"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+
+def _committed(root: Path, files: dict[str, str]) -> Path:
+    """A repository holding ``files``, committed: those its .gitignore names stay untracked."""
+    for rel, body in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(body, encoding="utf-8")
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "t@example.com")
+    _git(root, "config", "user.name", "t")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "init")
+    return root.resolve()
+
+
+def _ignored_status(repo: Path) -> list[str]:
+    return subprocess.run(
+        ["git", "status", "--porcelain", "--ignored"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+
+
+_LOCAL_SETTINGS = '{"enableAllProjectMcpServers": true}\n'
+_IGNORED_SETTINGS = {
+    "settings-ignored": ".claude/settings.local.json\n",
+    "settings-and-log-ignored": ".claude/settings.local.json\n.agent-audit-kit/\n",
+}
+_HELD_BACK = (
+    "refusing: git ignores .claude/settings.local.json, so a PR cannot carry the change. "
+    "`aak fix` applies it in place."
+)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the gh stub is a POSIX shell script")
+@pytest.mark.parametrize("case", list(_IGNORED_SETTINGS), ids=list(_IGNORED_SETTINGS))
+def test_auto_pr_refuses_a_fix_whose_file_git_ignores(tmp_path: Path, monkeypatch, case: str) -> None:
+    """Most repositories ignore `.claude/settings.local.json`. Its TRUST-001 fix counted,
+    the live run rewrote it, and git, seeing no change, had the guard say the tree was as
+    it was: the file stayed rewritten, and the fix log that recorded it was deleted, or,
+    with `.agent-audit-kit/` ignored too, left behind. The plan refuses it now, so the
+    file is never written."""
+    _isolate_git(tmp_path, monkeypatch)
+    repo, _, remote, sarif = _delivery(
+        tmp_path, monkeypatch, {".gitignore": _IGNORED_SETTINGS[case], ".claude/settings.local.json": _LOCAL_SETTINGS}, {}
+    )
+    settings = repo / ".claude/settings.local.json"
+    base, status = _branches(repo), _ignored_status(repo)
+    held_back = f"  - AAK-TRUST-001  {settings}  (git ignores it)"
+
+    dry = _suggest(sarif, repo, "--dry-run")
+
+    assert dry.exit_code == 0, dry.output
+    assert held_back in dry.output.splitlines()
+    assert "suggest: would refuse a draft PR on branch '-' with 0 fix(es)." in dry.output.splitlines()
+
+    real = _suggest(sarif, repo)
+
+    assert real.exit_code == 2, real.output
+    assert held_back in real.output.splitlines()
+    assert real.output.splitlines()[-1] == f"suggest --auto-pr: {_HELD_BACK}"
+    assert settings.read_text(encoding="utf-8") == _LOCAL_SETTINGS
+    assert not (repo / ".agent-audit-kit").exists(), "no fix log was written, or left"
+    assert not (tmp_path / "gh-calls.txt").exists()
+    assert (_branches(repo), _branches(remote), _ignored_status(repo)) == (base, [], status)
+
+
+def test_a_tracked_file_a_pattern_matches_is_not_ignored(tmp_path: Path, monkeypatch) -> None:
+    """git ignores only untracked files: a tracked one that a pattern matches is in every
+    commit, and its fix goes in the PR like any other."""
+    _isolate_git(tmp_path, monkeypatch)
+    repo = _committed(tmp_path / "repo", {".gitignore": "requirements*.txt\n", "requirements.txt": "litellm==1.80.0\n"})
+    _git(repo, "add", "-f", "requirements.txt")
+    _git(repo, "commit", "-qm", "track it")
+
+    plan = plan_auto_pr(repo)
+
+    assert ([f.rule_id for f in plan.fixes], plan.blocked, plan.ignored) == ([_LITELLM], [], {})
+    assert plan.is_runnable
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="needs a directory symlink")
+def test_a_file_reached_through_a_link_is_asked_about_where_the_fix_writes(tmp_path: Path, monkeypatch) -> None:
+    """`aak fix` follows a link to a directory inside the project, and git reads no path
+    past a link, so git is asked about the file the fix would write."""
+    _isolate_git(tmp_path, monkeypatch)
+    root = tmp_path / "repo"
+    (root / "conf").mkdir(parents=True)
+    (root / ".claude").symlink_to("conf/claude", target_is_directory=True)
+    repo = _committed(root, {".gitignore": "conf/claude/\n", "conf/claude/settings.local.json": _LOCAL_SETTINGS})
+
+    plan = plan_auto_pr(repo)
+
+    assert [f.rule_id for f in plan.blocked] == ["AAK-TRUST-001"] and plan.fixes == []
+    assert plan.ignored == {str(repo / ".claude/settings.local.json"): "conf/claude/settings.local.json"}
+    assert plan.refusal == _HELD_BACK.replace(".claude/settings.local.json", "conf/claude/settings.local.json")
+
+
+def test_a_held_back_fix_refuses_a_mixed_plan_before_touching_git(tmp_path: Path, monkeypatch) -> None:
+    """The live run applies every auto-fixable fix, so one on a file git ignores refuses
+    the whole PR, as a rule off the allow-list does, rather than write it outside one."""
+    _isolate_git(tmp_path, monkeypatch)
+    repo = _committed(tmp_path / "repo", {".gitignore": "local.json\n", "local.json": "{}\n", "requirements.txt": "x\n"})
+    ignored = FixAction("AAK-TRUST-001", str(repo / "local.json"), "Set enableAllProjectMcpServers to false", writes=True)
+    bump = FixAction(_LITELLM, str(repo / "requirements.txt"), "Bumped 1 litellm pin(s) to >=1.83.7", writes=True)
+    monkeypatch.setattr("agent_audit_kit.autopr.run_fixes", lambda root, dry_run=False: [ignored, bump])
+    base = _branches(repo)
+
+    plan = plan_auto_pr(repo)
+
+    assert (plan.fixes, plan.blocked, plan.ignored) == ([bump], [ignored], {ignored.file_path: "local.json"})
+    assert (plan.blocked_reason(ignored), plan.is_runnable) == ("git ignores it", False)
+    with pytest.raises(AutoPrError) as raised:
+        open_auto_pr(repo, plan)
+    assert str(raised.value) == _HELD_BACK.replace(".claude/settings.local.json", "local.json")
+    assert _branches(repo) == base
+
+
+def test_a_plan_git_cannot_answer_for_is_refused(tmp_path: Path, monkeypatch) -> None:
+    """Inside a work tree, `git check-ignore` fails on a path in a submodule; a plan that
+    cannot tell whether a PR would carry its fixes is not one to push."""
+    _isolate_git(tmp_path, monkeypatch)
+    repo = _committed(tmp_path / "repo", {"requirements.txt": "litellm==1.80.0\n"})
+    real_run = subprocess.run
+
+    def check_ignore_fails(args, *rest, **kwargs):
+        if list(args[:2]) == ["git", "check-ignore"]:
+            return subprocess.CompletedProcess(args, 128, "", "fatal: Pathspec 'requirements.txt' is in submodule 'x'\n")
+        return real_run(args, *rest, **kwargs)
+
+    monkeypatch.setattr("agent_audit_kit.autopr.subprocess.run", check_ignore_fails)
+    sarif = tmp_path / "empty.sarif"
+    sarif.write_text(json.dumps({"version": "2.1.0", "runs": []}), encoding="utf-8")
+
+    dry = _suggest(sarif, repo, "--dry-run")
+
+    assert dry.exit_code == 2, dry.output
+    assert dry.output.splitlines()[-1] == (
+        "suggest --auto-pr: git could not say whether it ignores the files these fixes write: "
+        "`git check-ignore` failed (128): fatal: Pathspec 'requirements.txt' is in submodule 'x'"
+    )
+    assert (repo / "requirements.txt").read_text(encoding="utf-8") == "litellm==1.80.0\n"
+
+
+_LEFT_IGNORED = {
+    # .gitignore, files committed or left untracked before the run, what the run writes, the message's end.
+    "log-created-in-an-ignored-dir": (".agent-audit-kit/\n", {}, {}, "and the working tree is as it was."),
+    "ignored-log-rewritten": (
+        ".agent-audit-kit/\n", {".agent-audit-kit/fix-log.json": "old\n"}, {},
+        "but these files git ignores are not as they were: .agent-audit-kit/fix-log.json.",
+    ),
+    "tracked-log-rewritten": ("", {".agent-audit-kit/fix-log.json": "old\n"}, {}, "and the working tree is as it was."),
+    "ignored-file-created": (
+        "cache/\n", {}, {"cache/blob": "x\n"}, "but these files git ignores are not as they were: cache/.",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", list(_LEFT_IGNORED), ids=list(_LEFT_IGNORED))
+def test_the_guard_says_the_tree_is_as_it_was_only_when_it_is(tmp_path: Path, monkeypatch, case: str) -> None:
+    """The guard put back what git tracks and removed the fix log only where git did not
+    ignore it, then said the tree was as it was. A log the run created goes now, ignored
+    or not, with the directory it made for it; a file git ignores that the run left or
+    rewrote is named instead."""
+    gitignore, before, written, ending = _LEFT_IGNORED[case]
+    _isolate_git(tmp_path, monkeypatch)
+    repo = _committed(tmp_path / "repo", {"README.md": "x\n", ".gitignore": gitignore, **before})
+    claimed = FixAction(_LITELLM, str(repo / "requirements.txt"), "Bumped 1 litellm pin(s)", True, writes=True)
+
+    def live_run(root: Path, dry_run: bool = False) -> list[FixAction]:
+        (root / ".agent-audit-kit").mkdir(exist_ok=True)
+        (root / ".agent-audit-kit" / "fix-log.json").write_text("new\n")
+        for rel, body in written.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(body)
+        return [claimed]
+
+    monkeypatch.setattr("agent_audit_kit.autopr.run_fixes", live_run)
+    base, status = _branches(repo), _ignored_status(repo)
+
+    with pytest.raises(AutoPrError) as raised:
+        open_auto_pr(repo, AutoPrPlan(fixes=[claimed], branch="aak/autofix/x", title="t", body="b"))
+
+    said = "the fixes changed no file besides the fix log; nothing was committed or pushed, "
+    assert str(raised.value) == said + ending
+    assert _branches(repo) == base
+    if ending.startswith("and"):
+        assert _ignored_status(repo) == status
+        assert subprocess.run(["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True).stdout == ""
+        log = repo / ".agent-audit-kit" / "fix-log.json"
+        assert log.read_text() == "old\n" if before else not (repo / ".agent-audit-kit").exists()
+
+
+# --------------------------------------------------------------------------
 # PR body
 # --------------------------------------------------------------------------
 

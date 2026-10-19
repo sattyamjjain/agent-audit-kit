@@ -521,13 +521,17 @@ def suggest_cmd(
     if auto_pr:
         from agent_audit_kit.autopr import AutoPrError, open_auto_pr, plan_auto_pr
 
-        plan = plan_auto_pr(Path(project_path))
+        try:
+            plan = plan_auto_pr(Path(project_path))
+        except AutoPrError as exc:
+            click.echo(f"suggest --auto-pr: {exc}", err=True)
+            sys.exit(EXIT_ERROR)
         for fix in plan.fixes:
             click.echo(f"  + {fix.rule_id}  {fix.file_path}", err=True)
         for fix in plan.unchanged:
             click.echo(f"  = {fix.rule_id}  {fix.file_path}  (changes nothing: {fix.description})", err=True)
         for fix in plan.blocked:
-            click.echo(f"  - {fix.rule_id}  {fix.file_path}  (not allow-listed)", err=True)
+            click.echo(f"  - {fix.rule_id}  {fix.file_path}  ({plan.blocked_reason(fix)})", err=True)
         if dry_run:
             verdict = "would open" if plan.is_runnable else "would refuse"
             click.echo(
