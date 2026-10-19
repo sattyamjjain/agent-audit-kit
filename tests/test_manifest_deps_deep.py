@@ -132,13 +132,31 @@ def test_a_pinned_server_at_the_bound_keeps_its_line_and_one_past_it_is_still_re
     assert [f.line_number for f in findings] == [word if depth <= m._MAX_PATH_DEPTH - 2 else None]
 
 
+def test_a_lockfile_entry_keeps_its_line_past_the_bound(tmp_path: Path) -> None:
+    """A lockfile's lines are read off the text by their own patterns, not the
+    position passes, so a lockfileVersion 1 entry 70 `dependencies` deep is
+    reported on its own line, as the rule text says."""
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+
+    package = "@adenot/mcp-google-search"
+    deps: Any = {package: {"version": "1.0.0"}}
+    for i in range(70):
+        deps = {f"p{i}": {"version": "1.0.0", "dependencies": deps}}
+    text = json.dumps({"name": "x", "lockfileVersion": 1, "dependencies": deps}, indent=1)
+    (tmp_path / "package-lock.json").write_text(text)
+    findings = [f for f in pins.scan(tmp_path)[0] if f.rule_id == "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001"]
+    word = next(i for i, line in enumerate(text.splitlines(), 1) if package in line)
+    assert [f.line_number for f in findings] == [word]
+
+
 def test_every_pin_table_rule_states_how_deep_a_declaration_keeps_its_line() -> None:
     from agent_audit_kit.rules.builtin import RULES
     from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
 
     stated = (
-        f"A declaration nested more than {m._MAX_PATH_DEPTH} levels deep in its file "
-        f"(an MCP server more than {m._MAX_PATH_DEPTH - 2}) is still judged, and reported without a line."
+        f"A declaration nested more than {m._MAX_PATH_DEPTH} levels deep in package.json, a TOML manifest "
+        f"or an MCP config (an MCP server more than {m._MAX_PATH_DEPTH - 2}) is still judged, and reported "
+        "without a line; a lockfile entry keeps its line at any depth."
     )
     ids = sorted({pin.rule_id for pin in pins._PINS})
     assert len(ids) > 100

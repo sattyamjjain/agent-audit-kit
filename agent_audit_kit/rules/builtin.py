@@ -4288,8 +4288,9 @@ _r(
         "is a package.json in a sub-directory. A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read. Settings files and hook commands are not read: whether a "
         "hook runs before the trust dialog depends on the release, not on the hook."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -9827,8 +9828,9 @@ _r(
         "does not parse (`pdm.lock`). The `ghcr.io/berriai/litellm` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
         "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -9862,8 +9864,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -9895,8 +9898,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -9946,8 +9950,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
         "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -9980,8 +9985,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10017,8 +10023,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10054,8 +10061,9 @@ _r(
         "Yarn 2+ `yarn.lock`). The `flux159/mcp-server-kubernetes` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
         "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10089,8 +10097,9 @@ _r(
         "does not parse (`pdm.lock`). The `soulter/astrbot` image tag is not read, "
         "in a compose file or in an MCP config that starts it with `docker run`. A "
         "file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10130,8 +10139,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10186,8 +10196,9 @@ _r(
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10222,8 +10233,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10255,8 +10267,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10305,8 +10318,9 @@ _r(
         "a sub-directory manifest (`packages/app/package.json`) or in a lockfile "
         "format the reader does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10339,8 +10353,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10382,8 +10397,9 @@ _r(
         "declared in a sub-directory manifest (`packages/app/package.json`) or in a "
         "lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). A file "
         "over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10442,8 +10458,9 @@ _r(
         "dependency is not read when it is declared in a sub-directory manifest "
         "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
         "parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10482,8 +10499,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10521,8 +10539,9 @@ _r(
         "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
         "reported, whichever release it resolves to. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10566,8 +10585,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10615,8 +10635,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10649,8 +10670,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10683,8 +10705,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10789,8 +10812,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10841,8 +10865,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10887,8 +10912,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
         "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10929,8 +10955,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -10966,8 +10993,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11015,8 +11043,9 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11052,8 +11081,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11100,8 +11130,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11140,8 +11171,9 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11190,8 +11222,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11233,8 +11266,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11280,8 +11314,9 @@ _r(
         "(`pdm.lock`). The `grafana/mcp-grafana` image tag is not read, in a compose "
         "file or in an MCP config that starts it with `docker run`. A file over 2 "
         "MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11354,8 +11389,9 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
         "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11419,8 +11455,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11458,8 +11495,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11502,8 +11540,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11706,8 +11745,9 @@ _r(
         "\"rb\")`) is not reported. A file over 2 MB, or a lockfile over 32 MiB, is "
         "not read."
         " A Python file over 512 KB is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11748,8 +11788,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11793,8 +11834,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11838,8 +11880,9 @@ _r(
         "(`pdm.lock`). The `doobidoo/mcp-memory-service` image tag is not read, in a "
         "compose file or in an MCP config that starts it with `docker run`. A file "
         "over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11884,8 +11927,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -11939,8 +11983,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12000,8 +12045,9 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A compose file's `letta/letta` image tag is "
         "not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12052,8 +12098,9 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12136,8 +12183,9 @@ _r(
         "a lockfile format the reader does not parse (`pdm.lock`). A compose file's "
         "`langflowai/langflow` image tag is not read. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12172,8 +12220,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12379,8 +12428,9 @@ _r(
         "(`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12429,8 +12479,9 @@ _r(
         "does not parse (a Yarn 2+ `yarn.lock`). Cargo manifests are not read, so "
         "the crates.io crate `codewhale-tui`, which has the same defect, is not "
         "reported. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12470,8 +12521,9 @@ _r(
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12510,8 +12562,9 @@ _r(
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12554,8 +12607,9 @@ _r(
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
         "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12597,8 +12651,9 @@ _r(
         "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
         "parse (`pdm.lock`). A compose file's `rockchin/langbot` image tag is not "
         "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12646,8 +12701,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12683,8 +12739,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12722,8 +12779,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12759,8 +12817,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -12799,8 +12858,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13092,8 +13152,9 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13426,8 +13487,9 @@ _r(
         "issue #704 and fires on a deny-list of names checked against a value that "
         "is then executed in-process with a lookup primitive still reachable. A file "
         "over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13508,8 +13570,9 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13552,8 +13615,9 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A compose file's `crystaldba/postgres-mcp` image tag is not "
         "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13595,8 +13659,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13633,8 +13698,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13678,8 +13744,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
         "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13728,8 +13795,9 @@ _r(
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
         "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13782,8 +13850,9 @@ _r(
         "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
         "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13824,8 +13893,9 @@ _r(
         "parse (a Yarn 2+ `yarn.lock`). The `flowiseai/flowise` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
         "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13874,8 +13944,9 @@ _r(
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
         "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13923,8 +13994,9 @@ _r(
         "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
         "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -13962,8 +14034,9 @@ _r(
         "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
         "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14000,8 +14073,9 @@ _r(
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14057,8 +14131,9 @@ _r(
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the reader "
         "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is "
         "not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14108,8 +14183,9 @@ _r(
         "Yarn 2+ `yarn.lock`). The npm release 0.1.0 is affected too but is not "
         "reported, because the same number belongs to an unrelated PyPI package of "
         "that name. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14319,8 +14395,9 @@ _r(
         "command injection through the authorization endpoint URL, fixed in 0.1.16), "
         "which this rule does not report. A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14352,8 +14429,9 @@ _r(
         "project-side half of the attack, the `.mcp.json` a hostile repository "
         "ships, is what the MCP config rules read. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14396,8 +14474,9 @@ _r(
         "machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a "
         "different author's package and is not matched. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14446,8 +14525,9 @@ _r(
         "`AAK-SSRF-TOCTOU-001` names, which recognises this guard in code since #855 "
         "and keeps firing on 0.30.1's source, whose fetch still resolves the name a "
         "second time. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14639,8 +14719,9 @@ _r(
         "future fixed one included, until the pin gets a floor. No class rule fires "
         "on the 2.0.7 tools, so this pin is the only coverage. A file over 2 MB, or "
         "a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14684,8 +14765,9 @@ _r(
         "Penpot's: a self-hosted Penpot 2.18.0 server does not clear an older "
         "`@penpot/mcp`, since the bridge runs in the MCP server. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14724,8 +14806,9 @@ _r(
         "versions, not the env file: a value written by an older release stays in "
         "`voicemode.env` after the upgrade. A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14760,8 +14843,9 @@ _r(
         "until the pin gets a floor. GitHub's own `github-mcp-server` and "
         "`@modelcontextprotocol/server-github` are different projects and are not "
         "matched. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14830,8 +14914,9 @@ _r(
         "2026.7.1 belong to the older OpenClaw pin. The PyPI project `openclaw`, an "
         "unrelated installer for the cmdop CLI, is a different package and is not "
         "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14870,8 +14955,9 @@ _r(
         "example, is not a PyPI package and is not read. The Docker Hub image has no "
         "tag below 0.12, so there is no image to pin. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14905,8 +14991,9 @@ _r(
         "`config` or passes it inline from Python, so a plain-HTTP URL in a template "
         "is not reported on its own. A file over 2 MB, or a lockfile over 32 MiB, is "
         "not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14941,8 +15028,9 @@ _r(
         "toolbox binary started by path, or the container image, states no version "
         "AAK reads and is not reported. A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -14975,8 +15063,9 @@ _r(
         "`canary` and other tags state no version and are not reported, and neither "
         "is `next dev` in a script. 16.4.0 canaries compare as 16.4.0 and are not "
         "reported. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15012,8 +15101,9 @@ _r(
         "the newest release, and the CLI updates itself. A global install, the usual "
         "one, is in no file AAK reads. A file over 2 MB, or a lockfile over 32 MiB, "
         "is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15056,8 +15146,9 @@ _r(
         "being exposed. The JavaScript `@langchain/langgraph-sdk` is a different "
         "package and is not read. A file over 2 MB, or a lockfile over 32 MiB, is "
         "not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15181,8 +15272,9 @@ _r(
         "`@modelcontextprotocol/core` is not read: the advisory names it only as an "
         "upgrade for direct importers, and `@modelcontextprotocol/client` 2.2.0 pins "
         "it at 2.2.0. A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15220,8 +15312,9 @@ _r(
         "4.0.0 and are not reported either. A version below 3.61.0, such as the "
         "0.0.1-alpha.0 placeholder that predates the first release, is not reported. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15253,8 +15346,9 @@ _r(
         "is reported without being exposed. The Python `langchain-redis` is a "
         "different package and is not read. A file over 2 MB, or a lockfile over 32 "
         "MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15287,8 +15381,9 @@ _r(
         "server-side string ids is reported without being exposed. The Python "
         "`langchain-mongodb` is a different package and is not read. A file over 2 "
         "MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15369,8 +15464,9 @@ _r(
         "not matched. The project's images (`ghcr.io/argoproj-labs/mcp-for-argocd`, "
         "`quay.io/argoprojlabs/mcp-for-argocd`) are not read. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15406,8 +15502,9 @@ _r(
         "`1mcp` is another project and is not matched, and the release binaries "
         "state no version AAK reads. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15564,8 +15661,9 @@ _r(
         "reported too. `elvix`, `elvix-sdk` and `@021is/elvix-sdk` are not npm "
         "packages and are not matched. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15668,8 +15766,9 @@ _r(
         "stdio-only install is reported too. The Claude Desktop bundle (`.mcpb`) and "
         "the Obsidian plugin are not read. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15848,8 +15947,9 @@ _r(
         "builds of August 2025 to February 2026, and its empty 1.0.0 are not "
         "reported. A project's own `.junie/mcp/mcp.json` is not read. A file over "
         "2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15936,8 +16036,9 @@ _r(
         "versions, not code, so a stateless, stdio-only or SSE-only server, or one "
         "that already sets `session_idle_timeout`, is reported too. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -15979,8 +16080,9 @@ _r(
         "is fixed, so they are not reported, and the hook command in "
         "`.claude/settings.json` is not read at all, pinned or not. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -16052,8 +16154,9 @@ _r(
         "see the endpoints the server will "
         "advertise, so a server whose endpoints are https is reported too. A file over "
         "2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -16091,8 +16194,9 @@ _r(
         "launch through the `ocu` alias is not read. The flaw is in the macOS backend, "
         "and a project that runs the server only on Linux or Windows is reported too. "
         "A file over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -16128,8 +16232,9 @@ _r(
         "not the server's field policy, so a deployment that denies no fields is "
         "reported too. npm's `odoo-mcp` is another project and is not read. A file "
         "over 2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -16162,8 +16267,9 @@ _r(
         "whether the project starts the SSE server or where it binds it, so a project "
         "that uses the library or the stdio transport is reported too. A file over "
         "2 MB, or a lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
@@ -16303,8 +16409,9 @@ _r(
         "`claude-agent-sdk`, builds the same two tokens at 0.0.25, its last release, "
         "but no advisory names it, and it is not read. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
-        " A declaration nested more than 64 levels deep in its file (an MCP server "
-        "more than 62) is still judged, and reported without a line."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
