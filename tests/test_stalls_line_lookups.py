@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import random
 import re
+import subprocess
 import sys
 import time
 import tracemalloc
@@ -993,6 +995,8 @@ def _old_key_offset(text: str, start: int, name: str) -> int | None:
 
 
 def test_the_server_key_offsets_match_a_search_per_name() -> None:
+    """A name with no quote finds the key the search per name found; a name holding a
+    quote is not looked for."""
     rng = random.Random(14)
     names = ["s1", "s2", "s10", "a b", 'q"t', 'q"', "", "s1 ", "x\\y"]
     pieces = ['"s1"', '"s2"', '"s10"', '"a b"', '"q"t"', '"q"', '""', '"x\\y"', ":", " ", "\n", "\x85", ",", "{",
@@ -1001,5 +1005,81 @@ def test_the_server_key_offsets_match_a_search_per_name() -> None:
         text = "".join(rng.choice(pieces) for _ in range(rng.randint(0, 30)))
         start = rng.randint(0, len(text))
         assert composition._key_offsets(text, start, names) == {
-            name: _old_key_offset(text, start, name) for name in names
+            name: None if '"' in name else _old_key_offset(text, start, name) for name in names
         }, (text, start)
+
+
+def _old_server_key_lines(raw: str, maps: list[tuple[str, dict[str, object]]]) -> dict[str, int]:
+    """`composition._server_key_lines` as it was through 0.6.22."""
+    text = composition.strip_jsonc(raw)
+    lines: dict[str, int] = {}
+    for map_key, servers in maps:
+        anchor = re.search(r'"' + re.escape(map_key) + r'"\s*:', text)
+        start = anchor.end() if anchor else 0
+        for n in servers:
+            name = str(n)
+            key = re.compile(r'"' + re.escape(name) + r'"\s*:').search(text, start)
+            line = text.count("\n", 0, key.start()) + 1 if key else _helpers.find_line_number(raw, f'"{name}"')
+            lines.setdefault(name, line or 0)
+    return lines
+
+
+def _node_lines(root: Path) -> dict[str, int | None]:
+    return {n.name: n.line for n in composition._mcp_nodes(root)}
+
+
+def test_a_server_name_holding_a_quote_gets_no_line(tmp_path: Path) -> None:
+    """JSON writes the quote in such a name escaped, so the key search can never
+    match the server's own key; the server is given no line rather than a guess."""
+    raw = json.dumps({"mcpServers": {"plain": {"command": "node"}, 'a"b': {"command": "node"}}}, indent=2)
+    (tmp_path / ".mcp.json").write_text(raw, encoding="utf-8")
+    servers = json.loads(raw)["mcpServers"]
+    assert composition._server_key_lines(raw, [("mcpServers", servers)]) == {"plain": 3, 'a"b': 0}
+    assert _old_server_key_lines(raw, [("mcpServers", servers)]) == {"plain": 3, 'a"b': 0}
+    assert _node_lines(tmp_path) == {"plain": 3, 'a"b': None}
+
+
+def test_a_quoted_name_no_longer_takes_a_comment_line(tmp_path: Path) -> None:
+    """The old fallback found the quoted name in the raw text, comments included,
+    and gave the server the comment's line."""
+    body = json.dumps({"mcpServers": {'a"b': {"command": "node"}, "plain": {"command": "node"}}}, indent=2)
+    raw = '// note: "a"b" is the old name\n' + body
+    (tmp_path / ".mcp.json").write_text(raw, encoding="utf-8")
+    servers = json.loads(body)["mcpServers"]
+    assert _old_server_key_lines(raw, [("mcpServers", servers)])['a"b'] == 1
+    assert composition._server_key_lines(raw, [("mcpServers", servers)]) == {'a"b': 0, "plain": 7}
+    assert _node_lines(tmp_path) == {'a"b': None, "plain": 7}
+
+
+def test_a_quoted_name_no_longer_takes_another_servers_line(tmp_path: Path) -> None:
+    """`"a\\"b":` is how JSON writes the key of a server named `a"b`, so the old search
+    for a server named `a\\"b` (a backslash before the quote) landed on that key."""
+    servers = {'a"b': {"command": "node"}, 'a\\"b': {"command": "node"}}
+    raw = json.dumps({"mcpServers": servers}, indent=2)
+    (tmp_path / ".mcp.json").write_text(raw, encoding="utf-8")
+    assert _old_server_key_lines(raw, [("mcpServers", servers)]) == {'a"b': 0, 'a\\"b': 3}
+    assert composition._server_key_lines(raw, [("mcpServers", servers)]) == {'a"b': 0, 'a\\"b': 0}
+    assert _node_lines(tmp_path) == {'a"b': None, 'a\\"b': None}
+
+
+def test_many_quoted_server_names_are_read_in_linear_time() -> None:
+    """36,000 servers named `a"<i>` in one 493 KB config, under composition's 512,000-byte
+    cap. Each name's key search read the rest of the file and failed: 30,000 of them
+    took 7.4 s on 3.12 before quoted names stopped being searched for, and 19 s on
+    main. It runs in a child with a timeout, so a regression cannot hold the suite."""
+    code = (
+        "import json, time\n"
+        "from agent_audit_kit.scanners import composition\n"
+        "servers = {f'a\"{i}': {} for i in range(36_000)}\n"
+        "raw = json.dumps({'mcpServers': servers}, separators=(',', ':'))\n"
+        "assert len(raw.encode()) < 512_000\n"
+        "started = time.process_time()\n"
+        "lines = composition._server_key_lines(raw, [('mcpServers', servers)])\n"
+        "print(time.process_time() - started, sum(lines.values()))\n"
+    )
+    root = str(Path(composition.__file__).resolve().parents[2])
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(p for p in (root, os.environ.get("PYTHONPATH")) if p)}
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120, env=env)
+    seconds, total = result.stdout.split()
+    assert total == "0", result.stderr[-500:]
+    assert float(seconds) < 5.0

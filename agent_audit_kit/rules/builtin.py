@@ -12778,7 +12778,10 @@ _r(
         "reported at or above its own severity, so a genuine chain can be hidden by "
         "an unrelated finding of equal weight on one of its components. Above 200 "
         "components in a scanned project the graph is not built at all and this rule "
-        "reports nothing, which is silence rather than a clean result."
+        "reports nothing, which is silence rather than a clean result. An MCP server "
+        "whose name holds a double quote, which a JSON key can only write escaped, is "
+        "given no line, so a chain through it names no line for that server, and a "
+        "finding inside that server's block may not stand the chain down."
     ),
 )
 

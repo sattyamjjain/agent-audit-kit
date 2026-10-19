@@ -316,18 +316,31 @@ def _server_key_lines(raw: str, maps: list[tuple[str, dict[str, object]]]) -> di
     the server's `url` line no longer covered it and its chain was reported twice.
     The search runs in comment-stripped text, from the map's own key, and falls
     back to the first quoted occurrence when no key form is found, as before.
+
+    A name holding a double quote gets no line (0) and no search. A JSON key
+    writes the quote escaped, so `"name":` with the quote as it stands never
+    spells that server's own key: the search could find it only inside a JSONC
+    comment, which the fallback read, or as the key of another server, as `a\\"b`
+    finds the key of a server named `a"b`. Each search also read the rest of the
+    file and failed, so 30,000 such names in a 409 KB config took 19 s.
     """
     text = strip_jsonc(raw)
     lines: dict[str, int] = {}
     for map_key, servers in maps:
         anchor = re.search(r'"' + re.escape(map_key) + r'"\s*:', text)
         start = anchor.end() if anchor else 0
-        names = [str(n) for n in servers]
+        names = [str(n) for n in servers if '"' not in str(n)]
         offsets = _key_offsets(text, start, names)
         find_line_numbers(raw, (f'"{name}"' for name in names if offsets[name] is None))
-        for name in names:
-            offset = offsets[name]
-            line = newline_line(text, offset) if offset is not None else find_line_number(raw, f'"{name}"')
+        for n in servers:
+            name = str(n)
+            offset = offsets.get(name)
+            if offset is not None:
+                line = newline_line(text, offset)
+            elif '"' in name:
+                line = None
+            else:
+                line = find_line_number(raw, f'"{name}"')
             lines.setdefault(name, line or 0)
     return lines
 
@@ -344,24 +357,13 @@ def _key_offsets(text: str, start: int, names: list[str]) -> dict[str, int | Non
     A regex search per name, from `start` to that server's key, made N servers
     cost N times the file, and a compiled pattern each. A name with no quote in
     it is a whole quoted string, so one pass over the file finds every key of
-    that kind. A name holding a quote, which a JSON key can only spell with an
-    escape, keeps its own search, one per name. Searching again from each of its
-    occurrences with no colon after it read the name once per occurrence, and a
-    name occurring at nearly every element of an array of `"x"` strings made 457
-    KB take 62.5 s; the compiled search reads the file once (its literal prefix
-    is found with a table of the prefix's own overlaps).
+    that kind. A name holding a quote is not looked for (see `_server_key_lines`)
+    and gets None.
     """
     keyed: dict[str, int] = {}
     for match in _QUOTED_KEY_RE.finditer(text, start):
         keyed.setdefault(match.group(1)[1:-1], match.start())
-    offsets: dict[str, int | None] = {}
-    for name in names:
-        if '"' not in name:
-            offsets[name] = keyed.get(name)
-        else:
-            key = re.compile(r'"' + re.escape(name) + r'"\s*:').search(text, start)
-            offsets[name] = key.start() if key else None
-    return offsets
+    return {name: None if '"' in name else keyed.get(name) for name in names}
 
 
 def _mcp_nodes(project_root: Path) -> list[_Node]:
@@ -391,7 +393,7 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
         # Every entry of every map bounds a block, a non-object one included, as
         # when only `mcpServers` was read.
         name_lines = _server_key_lines(raw, maps)
-        find_line_numbers(raw, (name for name, line in name_lines.items() if not line))
+        find_line_numbers(raw, (name for name, line in name_lines.items() if not line and '"' not in name))
         ordered = sorted(name_lines.items(), key=lambda kv: kv[1])
         total_lines = raw.count("\n") + 1
         spans: dict[str, tuple[int, int]] = {}
@@ -454,7 +456,10 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
                 kind="mcp-server",
                 name=str(name),
                 rel=rel,
-                line=spans.get(str(name), (None, None))[0] or find_line_number(raw, str(name)),
+                # A name holding a quote is given no line: see `_server_key_lines`.
+                line=spans.get(str(name), (None, None))[0] or (
+                    None if '"' in str(name) else find_line_number(raw, str(name))
+                ),
                 caps=caps,
                 container=rel,
                 line_end=spans.get(str(name), (0, 0))[1] or None,
