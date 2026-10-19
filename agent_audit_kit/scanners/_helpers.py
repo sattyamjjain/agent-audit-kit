@@ -2869,15 +2869,18 @@ def loads_toml(text: str, path: Path | str | None) -> dict[str, Any]:
 # projects. A second set, 11,640 files from 22 such projects, nests 38 block
 # levels (the same CRD in Bitnami's chart) and 31 flow levels, in an Envoy
 # config dump istio keeps as test data, which no scanner reads; the next
-# deepest nests 15. PyYAML's scanner revisits every open flow level on each
-# token, so a flow structure costs more the deeper it nests: 990 KB of brackets
-# nested 99 deep took 12.5 s to read as a workflow, 32 deep takes 8.2 s, and a
-# file nested deeper is refused in about a second. Its composer recurses about
-# twice per level, which meets the recursion limit near 300 levels. Counting in
-# the scanner, rather than in the text, keeps a `]` inside a quoted scalar from
-# hiding a level.
+# deepest nests 15. Brackets get about twice the deepest real nesting. PyYAML's
+# scanner revisits every open flow level on each token, so a flow structure
+# costs more the deeper it nests, though less than its size costs: 990 KB of
+# brackets in a workflow took 13.0 s to read 99 deep (the shared limit of 100
+# before), and take 10.2 s 64 deep, 8.6 s 32 deep and 2.4 s 1 deep, while a
+# scan of one nested past the limit ends in half a second. Its composer
+# recurses about twice per level, which meets the recursion limit near 300
+# levels, and the two limits together allow 164. Counting in the scanner,
+# rather than in the text, keeps a `]` inside a quoted scalar from hiding a
+# level.
 YAML_MAX_NESTING = 100
-YAML_MAX_FLOW_NESTING = 32
+YAML_MAX_FLOW_NESTING = 64
 # How far aliases may grow a YAML stream: twice its length plus 1,000, and at
 # least this many nodes. A node counts 1, a scalar 1 more per character, and a
 # node an alias reaches counts again each time. Every reader of the result

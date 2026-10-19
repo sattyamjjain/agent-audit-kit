@@ -1304,7 +1304,7 @@ _r(
         "`.claude-plugin/` or sits under a marketplace's "
         "`.claude-plugin/marketplace.json`) and the frontmatter of a `SKILL.md`. A "
         "plugin or skill file over 512,000 bytes is not read. One nested too deeply to "
-        "parse (YAML past 100 levels, or past 32 levels of `[ ]` or `{ }`, or JSON "
+        "parse (YAML past 100 levels, or past 64 levels of `[ ]` or `{ }`, or JSON "
         "past 500 levels), or a "
         "frontmatter block that YAML aliases expand past twice its length plus 1,000 "
         "and past 200,000 nodes, is not read either, and the refusal is reported "
@@ -13235,7 +13235,7 @@ _r(
     "than the scanner's walk takes (a walk runs with a recursion limit of "
     "10,000 frames, about 3,300 levels for the walk that takes the most "
     "frames a level; the deepest of 100,303 real files has 569), or YAML "
-    "nested past 100 levels, or past 32 levels of `[ ]` or `{ }`, or grown by "
+    "nested past 100 levels, or past 64 levels of `[ ]` or `{ }`, or grown by "
     "its aliases past their bound. The scanner went on with every other "
     "file, and the evidence names the scanner, the file and the reason.",
     Severity.INFO,

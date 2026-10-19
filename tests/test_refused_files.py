@@ -608,32 +608,36 @@ def test_yaml_as_deep_as_real_files_is_read() -> None:
     """cert-manager's Issuer CRD nests 37 block levels, the deepest of the real
     files measured, and an Envoy config dump in istio's test data nests 31
     levels of brackets. Blocks are read to 100 levels and brackets, separately,
-    to 32, so a file holds both at once."""
+    to 64, so a file holds both at once."""
+    flow_limit = _helpers.YAML_MAX_FLOW_NESTING
+    assert flow_limit == 64
     assert load_yaml(_block(100), "crd.yaml") is not None
-    for flow in ("a: " + "[" * 32 + "1" + "]" * 32, "a: " + "{a: " * 32 + "1" + "}" * 32):
+    lists = "a: " + "[" * flow_limit + "1" + "]" * flow_limit
+    mappings = "a: " + "{a: " * flow_limit + "1" + "}" * flow_limit
+    for flow in (lists, mappings):
         assert load_yaml(flow, "deep.yaml") is not None
-    value = load_yaml(_block(100, "[" * 32 + "1" + "]" * 32), "both.yaml")
+    value = load_yaml(_block(100, "[" * flow_limit + "1" + "]" * flow_limit), "both.yaml")
     for i in range(99):
         value = value[f"k{i}"]
     value = value["v"]
-    for _ in range(32):
+    for _ in range(flow_limit):
         assert isinstance(value, list) and len(value) == 1
         value = value[0]
     assert value == 1
 
 
 def test_yaml_past_the_block_or_the_bracket_limit_is_refused_per_file() -> None:
-    """Past 100 block levels, or 32 levels of `[ ]` or `{ }` (each refused
+    """Past 100 block levels, or 64 levels of `[ ]` or `{ }` (each refused
     where the scanner meets it, so 990 KB of brackets costs no more than the
     first unit past the limit)."""
-    flow = "a: " + "[" * 33 + "]" * 33
+    past = _helpers.YAML_MAX_FLOW_NESTING + 1
     with collecting_refusals() as refused:
         with pytest.raises(RefusedYAML):
             load_yaml(_block(101), "deeper.yaml")
         with pytest.raises(RefusedYAML):
-            load_yaml(flow, "brackets.yaml")
+            load_yaml("a: " + "[" * past + "]" * past, "brackets.yaml")
         with pytest.raises(RefusedYAML):
-            load_yaml_all("a: " + "{a: " * 33 + "1" + "}" * 33, "mapping.yaml")
+            load_yaml_all("a: " + "{a: " * past + "1" + "}" * past, "mapping.yaml")
         unit = "[" * 99 + "]" * 99
         big = "x:\n" + "".join(f"  - {unit}\n" for _ in range(990_000 // (len(unit) + 5)))
         started = time.process_time()
@@ -642,9 +646,9 @@ def test_yaml_past_the_block_or_the_bracket_limit_is_refused_per_file() -> None:
         assert time.process_time() - started < 2.0
     assert refused == {
         "deeper.yaml": "YAML nested deeper than 100 levels",
-        "brackets.yaml": "YAML [ ] or { } nested deeper than 32 levels",
-        "mapping.yaml": "YAML [ ] or { } nested deeper than 32 levels",
-        "big.yaml": "YAML [ ] or { } nested deeper than 32 levels",
+        "brackets.yaml": "YAML [ ] or { } nested deeper than 64 levels",
+        "mapping.yaml": "YAML [ ] or { } nested deeper than 64 levels",
+        "big.yaml": "YAML [ ] or { } nested deeper than 64 levels",
     }
 
 
