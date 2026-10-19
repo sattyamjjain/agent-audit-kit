@@ -39,6 +39,7 @@ from agent_audit_kit.scanners import (
     hook_rce,
     ide_task_rce,
     india_pii,
+    langchain_prompt_loader,
     mcp_config,
     mcp_destination_guard,
     mcp_server_card,
@@ -55,6 +56,7 @@ from agent_audit_kit.scanners import (
 )
 
 _PY_HEAD = "import subprocess, requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('x')\n"
+_LANGCHAIN_HEAD = "from langchain.prompts import load_prompt\n"
 
 
 def _js(obj: object) -> str:
@@ -257,6 +259,13 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # Row 6: the source of every function cut by splitting the whole file.
     "tool-functions-ssrf-toctou": (ssrf_toctou.scan, _many_tools, 300, False),
     "tool-functions-destination-guard": (mcp_destination_guard.scan, _many_tools, 300, False),
+    # langchain_prompt_loader split the whole file for each function, 20,000 one-line
+    # functions taking 6.9 s on main, and searched a function's whole body again for
+    # each `load_prompt` call in it: one function of 10,000 took 34 s.
+    "tool-functions-langchain": (langchain_prompt_loader.scan, lambda k: {"server.py": _LANGCHAIN_HEAD + "".join(
+        f"def f{i}(): pass\n" for i in range(k))}, 2_500, False),
+    "prompt-loads-in-one-function": (langchain_prompt_loader.scan, lambda k: {"server.py": _LANGCHAIN_HEAD + "def f(x):\n"
+                                     + "    load_prompt(x)\n" * k}, 1_000, False),
     # Row 6's relative: every call walked its whole function: 1,000 calls took 14 s.
     "calls-in-one-function": (mcp_stdio_params.scan, _many_calls, 300, False),
     "assigned-calls-in-one-function": (mcp_stdio_params.scan, _many_assigned_calls, 300, False),
@@ -1275,6 +1284,96 @@ def test_a_taint_source_found_in_a_subexpression_is_found_in_its_parent() -> Non
                 assert mcp_stdio_params._PY_TAINT_MODULES_RE.search(outer), (text, outer)
                 checked += 1
     assert checked > 1000, checked
+
+
+# ---------------------------------------------------------------------------
+# langchain_prompt_loader: lines split once per file and each body searched once
+# per pattern report what the splits and searches per function and call did.
+# ---------------------------------------------------------------------------
+
+
+def _old_langchain_findings(text: str) -> list[tuple[int | None, str]]:
+    """`langchain_prompt_loader._walk_python` as it was through 0.6.22, as (line, evidence)."""
+    lc = langchain_prompt_loader
+    out: list[tuple[int | None, str]] = []
+    if not lc._LANGCHAIN_IMPORT_RE.search(text):
+        return out
+
+    def body_of(node: ast.AST) -> str:
+        lines = text.splitlines()
+        start = max(0, node.lineno - 1)  # type: ignore[attr-defined]
+        end = min(len(lines), node.end_lineno or node.lineno)  # type: ignore[attr-defined]
+        return "\n".join(lines[start:end])
+
+    def scan_call(call: ast.Call, body: str) -> None:
+        callee = call.func.attr if isinstance(call.func, ast.Attribute) else (
+            call.func.id if isinstance(call.func, ast.Name) else "")
+        if callee not in {"load_prompt", "from_file"}:
+            return
+        path_node: ast.AST | None = call.args[0] if call.args else None
+        for kw in call.keywords:
+            if kw.arg in {"path", "template_file", "file_path"}:
+                path_node = kw.value
+                break
+        if path_node is None or isinstance(path_node, ast.Constant):
+            return
+        if lc._GUARD_RE.search(body) or lc._EXEMPT_RE.search(body) or not lc._TAINT_RE.search(body):
+            return
+        out.append((call.lineno, callee))
+
+    class V(ast.NodeVisitor):
+        def visit_FunctionDef(self, node: ast.AST) -> None:
+            body = body_of(node)
+            for child in ast.walk(node):
+                if isinstance(child, ast.Call):
+                    scan_call(child, body)
+            self.generic_visit(node)
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+    V().visit(ast.parse(text))
+    return out
+
+
+_PROMPT_LINES = ["load_prompt(p)", "load_prompt('fixed.yaml')", "PromptTemplate.from_file(template_file=p)",
+                 "x.from_file(path=p)", "load_prompt(file_path=cfg.path)", "load_prompt()", "p = request.json['p']",
+                 "p = sys.argv[1]", "p = os.environ['P']", "q = path_under_root(p, root)", "q = os.path.realpath(p)",
+                 "r = requests.get(u).text", "s = 'langchain_community.storage.s3'", "pass", "y = f(p)"]
+
+
+def _langchain_module(rng: random.Random, depth: int = 0) -> list[str]:
+    lines: list[str] = []
+    pad = "    " * (depth + 1)
+    for _ in range(rng.randint(1, 6)):
+        if depth < 3 and rng.random() < 0.2:
+            lines.append(pad + f"{rng.choice(['def', 'async def'])} g{rng.randint(0, 9)}(p, cfg, u):")
+            lines.extend(_langchain_module(rng, depth + 1))
+        else:
+            lines.append(pad + rng.choice(_PROMPT_LINES))
+    return lines
+
+
+def test_one_split_and_one_search_per_body_report_what_each_function_and_call_did() -> None:
+    """Functions of prompt loads with and without taint sources, guards and exempt
+    stores, nested functions among them, against the scan that split the file for
+    every function and searched a body for every call."""
+    rng = random.Random(23)
+    texts = []
+    for _ in range(1500):
+        funcs = "".join(f"def f{i}(p, cfg, u):\n" + "\n".join(_langchain_module(rng)) + "\n"
+                        for i in range(rng.randint(1, 4)))
+        texts.append(_LANGCHAIN_HEAD + "import os, sys\n" + funcs)
+    texts += [p.read_text(encoding="utf-8", errors="replace") for p in _python_fixtures()]
+    reported = 0
+    for text in texts:
+        try:
+            old = _old_langchain_findings(text)
+        except (SyntaxError, ValueError, RecursionError):
+            continue
+        new = langchain_prompt_loader._walk_python(text, Path("/x/m.py"), Path("/x"), set())
+        assert [(f.line_number, f.evidence.split("(")[0]) for f in new] == old, text
+        reported += len(new)
+    assert reported > 500, reported
 
 
 # ---------------------------------------------------------------------------
