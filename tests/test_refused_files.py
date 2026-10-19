@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -994,6 +995,81 @@ def test_the_nesting_count_is_the_parsed_depth_on_every_shape() -> None:
         commented = "// [[[\n/* {{{ [[ ** / */ " + text + " /* ]]] */"
         assert _helpers._json_nesting(_helpers.strip_jsonc(commented)) == _depth(doc), commented
         assert loads_jsonc(commented, "c.json") == doc
+
+
+_OLD_SKIP_RE = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"?', re.DOTALL)
+
+
+def _old_json_nesting(text: str) -> int:
+    """The count as the regex that skipped strings took it."""
+    from itertools import accumulate
+
+    brackets = re.sub(r"[^\[\]{}]+", "", _OLD_SKIP_RE.sub("", text))
+    return max(accumulate(map({"[": 1, "{": 1, "]": -1, "}": -1}.__getitem__, brackets)), default=0)
+
+
+@pytest.mark.parametrize("chunk", [None, 1, 7])
+def test_the_nesting_count_is_the_old_count_on_documents_and_every_cut_of_them(
+    chunk: int | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Strings full of escapes (`\\\\`, `\\"`, runs of backslashes before a
+    quote, `\\u` escapes, non-ASCII text) and brackets, cut at every offset, as
+    the part of a text the parser read before an error is: the byte count
+    gives what the string-skipping regex gave. With chunks of 1 and 7 bytes a
+    chunk ends inside strings and escapes, which the carried quote parity
+    must bridge."""
+    import random
+
+    if chunk is not None:
+        monkeypatch.setattr(_helpers, "_JSON_COUNT_CHUNK", chunk)
+
+    rng = random.Random(1023)
+    pieces = ['\\', '"', '\\"', '[', ']', '{', '}', 'a', 'é', '\u00e9', '\n', ' ']
+
+    def value(depth: int) -> object:
+        roll = rng.random()
+        if depth <= 0 or roll < 0.35:
+            return "".join(rng.choice(pieces) for _ in range(rng.randrange(0, 8)))
+        if roll < 0.7:
+            return [value(depth - 1) for _ in range(rng.randrange(0, 4))]
+        return {value(0) if isinstance(value(0), str) else "k": value(depth - 1) for _ in range(rng.randrange(0, 3))}
+
+    for _ in range(1_500):
+        text = json.dumps(value(rng.randrange(0, 7)), ensure_ascii=rng.random() < 0.5)
+        for cut in range(len(text) + 1):
+            assert _helpers._json_nesting(text[:cut]) == _old_json_nesting(text[:cut]), text[:cut]
+
+
+_ESCAPES_PEAKS = """
+    import json, sys, tracemalloc
+    from agent_audit_kit.scanners._helpers import loads_json
+    text = ('{"name": "x", "lockfileVersion": 3, "packages": {"": {"name": "x"}}, "pad": ['
+            + "[]," * 501 + '"' + "\\\\n" * int(sys.argv[1]) + '"]}')
+    peaks = []
+    for read in (json.loads, lambda t: loads_json(t, "package-lock.json")):
+        tracemalloc.start()
+        read(text)
+        peaks.append(tracemalloc.get_traced_memory()[1])
+        tracemalloc.stop()
+    print(*peaks)
+"""
+
+
+def test_a_lockfile_of_escapes_is_read_in_the_memory_json_takes_to_parse_it() -> None:
+    """A valid package-lock.json whose one string holds 2 million `\\n`, with
+    501 `[]` so that the depth count runs, measured in a child. The regex that
+    skipped strings kept about 140 bytes for every escape, 302 MB here against
+    the 2.2 MB `json.loads` takes (a 32 MB file of the shape took a scan from
+    132 MB to 1.9 GB); the count now reads a chunk at a time, inside the
+    parse's own peak."""
+    out = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(_ESCAPES_PEAKS), "2000000"],
+        capture_output=True, text=True, timeout=120, cwd=ROOT,
+        env={"PYTHONPATH": str(ROOT), "PATH": "", "HOME": tempfile.mkdtemp(prefix="aak-home-")},
+    )
+    assert out.returncode == 0, out.stderr[-1000:]
+    parse, read = map(int, out.stdout.split())
+    assert read < 2 * parse, (read, parse)
 
 
 @pytest.mark.parametrize("read", [loads_json, loads_jsonc])

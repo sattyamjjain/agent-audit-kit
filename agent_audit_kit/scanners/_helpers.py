@@ -1328,22 +1328,47 @@ def strip_jsonc(text: str) -> str:
 # `_parse_json`); real configs nest under 20.
 JSON_MAX_NESTING = 500
 
-# What the depth count steps over: a string, its closing quote optional, so an
-# unterminated one runs to the end and no bracket after it counts. Its runs and
-# escapes are disjoint, so each character is read once: a 37 MB lockfile is
-# counted in about 0.25 s, against 0.09 s for `json.loads`.
-_JSON_SKIP_RE = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"?', re.DOTALL)
-_NOT_A_BRACKET_RE = re.compile(r"[^\[\]{}]+")
-_BRACKET_STEP = {"[": 1, "{": 1, "]": -1, "}": -1}
+# What the depth count keeps of a text, as ASCII bytes: quotes and brackets,
+# and how each bracket moves the depth. It reads the text this many characters
+# at a time.
+_JSON_NOT_MARKS = bytes(b for b in range(256) if b not in b'"[]{}')
+_JSON_BRACKET_STEP = tuple(1 if b in b"[{" else -1 if b in b"]}" else 0 for b in range(256))
+_JSON_COUNT_CHUNK = 1 << 16
 
 
 def _json_nesting(text: str) -> int:
-    """The deepest nesting of `[` and `{` in `text` outside strings: strings are
-    cut out, then everything but the brackets, and the running depth of what is
-    left is taken in C. On JSON, and on the part of a text `json.loads` read
-    before an error, it is the depth the parser descended to."""
-    brackets = _NOT_A_BRACKET_RE.sub("", _JSON_SKIP_RE.sub("", text))
-    return max(accumulate(map(_BRACKET_STEP.__getitem__, brackets)), default=0)
+    """The deepest nesting of `[` and `{` in `text` outside strings. On JSON, and
+    on the part of a text `json.loads` read before an error, it is the depth the
+    parser descended to.
+
+    The text is read a chunk at a time. In each, escaped backslashes and then
+    escaped quotes are dropped, pairing backslashes from the left as JSON
+    does, so every quote left opens or closes a string; then everything but
+    quotes and brackets, and the brackets outside strings, those after an
+    even number of quotes, are summed. An escape cut by the end of a chunk and
+    the parity of the quotes carry over to the next, so an unterminated
+    string runs to the end and no bracket after it counts. Each step is a C
+    pass over one chunk, so the count takes time linear in the text and
+    memory for a chunk: a regex that skipped strings kept a backtracking
+    record of about 140 bytes for every escape, so 30 MB of JSON whose one
+    string held 15 million `\\n` took 2.1 GB to count.
+    """
+    best = depth = 0
+    inside = escaped = False
+    for start in range(0, len(text), _JSON_COUNT_CHUNK):
+        chunk = text[start:start + _JSON_COUNT_CHUNK]
+        if escaped and chunk[0] in '\\"':
+            chunk = chunk[1:]  # the second half of an escape the last chunk began
+        chunk = chunk.replace("\\\\", "")
+        escaped = chunk.endswith("\\")
+        marks = chunk.replace('\\"', "").encode("ascii", "ignore").translate(None, _JSON_NOT_MARKS)
+        parts = marks.split(b'"')
+        brackets = b"".join(parts[1::2] if inside else parts[0::2])
+        if brackets:
+            best = max(best, max(accumulate(map(_JSON_BRACKET_STEP.__getitem__, brackets), initial=depth)))
+            depth += brackets.count(b"[") + brackets.count(b"{") - brackets.count(b"]") - brackets.count(b"}")
+        inside ^= len(parts) % 2 == 0
+    return best
 
 
 # Python's limit on the digits `int()` converts from text: 4,300 by default since
