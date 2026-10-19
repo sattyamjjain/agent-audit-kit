@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import ast
 import re
+import sys
 from bisect import bisect_left, bisect_right
 from collections import deque
 from pathlib import Path
@@ -154,18 +155,42 @@ _SUSPICIOUS_PARAMS = frozenset(
 )
 
 
-def _is_static(node: ast.AST) -> bool:
-    """True if the expression is a compile-time-constant literal."""
+class _FileMemo:
+    """What one file's checks have worked out about its nodes, by `id`, while its tree
+    is alive: `_under_calls`'s first non-call node, and the answers of `_is_static`
+    and `_reads_stored_command` for every node they read.
+
+    The launcher arm reads a spawn's split source, and many spawns can reach one
+    source through a name (`cmd = shlex.split(...)` and then `Popen(cmd)` a thousand
+    times) or nest in each other. Reading it again for each made 1,000 spawns of
+    one 75,000-name tuple take 122 s on main.
+    """
+
+    def __init__(self) -> None:
+        self.below: dict[int, ast.AST] = {}
+        self.static: dict[int, bool] = {}
+        self.stored: dict[int, bool] = {}
+
+
+def _is_static(node: ast.AST, memo: dict[int, bool] | None = None) -> bool:
+    """True if the expression is a compile-time-constant literal. With `memo`, every
+    node read keeps its answer there."""
+    if memo is not None and id(node) in memo:
+        return memo[id(node)]
     if isinstance(node, ast.Constant):
-        return True
-    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
-        return all(_is_static(e) for e in node.elts)
-    if isinstance(node, ast.Dict):
-        return all(
-            (k is None or _is_static(k)) and _is_static(v)
+        static = True
+    elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        static = all(_is_static(e, memo) for e in node.elts)
+    elif isinstance(node, ast.Dict):
+        static = all(
+            (k is None or _is_static(k, memo)) and _is_static(v, memo)
             for k, v in zip(node.keys, node.values)
         )
-    return False
+    else:
+        static = False
+    if memo is not None:
+        memo[id(node)] = static
+    return static
 
 
 def _names_in(node: ast.AST) -> set[str]:
@@ -198,32 +223,81 @@ def _command_arg_exprs(call: ast.Call) -> list[ast.expr]:
     return exprs
 
 
+# Before 3.12 `ast.unparse` writes an f-string's expressions with its own rules for
+# quotes and escapes, which depend on how deep the f-string sits, so text inside an
+# f-string is not written as it is written alone.
+_FSTRING_REWRITTEN = sys.version_info < (3, 12)
+
+
 def _taint_flows_to_command(call: ast.Call, facts: _FunctionFacts) -> bool:
     """True only when the `command`/`args` fed to StdioServerParameters is a
     dynamic value that traces back to a network-controlled source — a real
     source→sink path, not merely 'a taint marker appears somewhere in the
-    function'. Constant command/args (allow-lists, literals) never fire."""
+    function'. Constant command/args (allow-lists, literals) never fire.
+
+    A StdioServerParameters call can sit inside another's `command` or `args`, and
+    reading each nested call's whole argument again cost up to 200 times the
+    argument: 190 nested `StdioServerParameters(command=` around a tuple of names
+    took 7.1 s at 100 KB on main. So a call judged clean marks every node under
+    its `command` and `args`:
+    - in `facts.names_clean`, when no name there is a suspicious parameter or a
+      tainted local. A call inside names fewer names, so none of its can be.
+    - in `facts.judged`, when `ast.unparse` could also write them, except, before
+      Python 3.12, the nodes inside an f-string. `_walk_python` judges a call
+      there clean without reading it: `ast.unparse` writes a subexpression inside
+      its parent as it writes it alone, give or take brackets around it, so the
+      pattern finds no taint source in the call's text that it misses in its
+      parent's. Before 3.12 that is not so inside an f-string, whose strings
+      `ast.unparse` writes with or without escapes depending on the quotes left
+      to it: a tab before `request.json` written as a tab matches, written as
+      `\t` does not, as a built f-string three deep shows. Checked on Python 3.9
+      to 3.12 for every expression the pattern matches in 100,336 files, about
+      18,000 of them inside another expression, and on generated nests and
+      f-strings built as trees.
+    `ast.unparse` cannot write a nest deeper than its recursion allows, about 160
+    calls, and the calls it fails on are then read for their names only once.
+    """
     exprs = _command_arg_exprs(call)
-    if not exprs or all(_is_static(e) for e in exprs):
+    if not exprs or all(_is_static(e, facts.memo.static) for e in exprs):
+        return False
+    texts = [_unparse(expr) for expr in exprs]
+    if any(_PY_TAINT_MODULES_RE.search(text) for text in texts):
+        return True  # e.g. command=request.json()["cmd"] / os.environ[...]
+    names_clean = id(call) in facts.names_clean
+    written = all(texts)
+    if names_clean and not written:
         return False
 
     referenced: set[str] = set()
+    read: list[int] = []
+    outside: list[int] = []  # the nodes of `read` outside an f-string, before 3.12
     for expr in exprs:
-        if _PY_TAINT_MODULES_RE.search(_unparse(expr)):
-            return True  # e.g. command=request.json()["cmd"] / os.environ[...]
-        referenced |= _names_in(expr)
-
-    # A referenced name that is a suspicious *parameter* of this function.
-    func = facts.func
-    params = {a.arg for a in func.args.args}
-    params |= {a.arg for a in func.args.posonlyargs}
-    params |= {a.arg for a in func.args.kwonlyargs}
-    if referenced & (params & _SUSPICIOUS_PARAMS):
-        return True
-
-    # A referenced name that is locally assigned from a taint expression
-    # (`cmd = os.environ[...]` / `body = await request.json()`).
-    return bool(referenced & facts.tainted_targets())
+        stack: list[tuple[ast.AST, bool]] = [(expr, False)]
+        while stack:
+            sub, in_fstring = stack.pop()
+            read.append(id(sub))
+            if not in_fstring:
+                outside.append(id(sub))
+            if isinstance(sub, ast.Name):
+                referenced.add(sub.id)
+            in_fstring = in_fstring or (_FSTRING_REWRITTEN and isinstance(sub, ast.JoinedStr))
+            stack.extend((child, in_fstring) for child in ast.iter_child_nodes(sub))
+    if not names_clean:
+        # A referenced name that is a suspicious *parameter* of this function.
+        func = facts.func
+        params = {a.arg for a in func.args.args}
+        params |= {a.arg for a in func.args.posonlyargs}
+        params |= {a.arg for a in func.args.kwonlyargs}
+        if referenced & (params & _SUSPICIOUS_PARAMS):
+            return True
+        # A referenced name that is locally assigned from a taint expression
+        # (`cmd = os.environ[...]` / `body = await request.json()`).
+        if referenced & facts.tainted_targets():
+            return True
+        facts.names_clean.update(read)
+    if written:
+        facts.judged.update(outside)
+    return False
 
 
 # Hand-rolled launcher arm (CVE-2026-93965, SxDevOps). An application that
@@ -259,19 +333,39 @@ def _is_shlex_split(node: ast.AST, below: dict[int, ast.AST]) -> bool:
     return isinstance(node, ast.Call) and _outer_parts(node.func, 3, below) == ["split", "shlex"] and bool(node.args)
 
 
-def _reads_stored_command(node: ast.AST) -> bool:
-    """A server record's command field: `server.endpoint_or_command`, `cfg["command"]`."""
-    for sub in ast.walk(node):
-        if isinstance(sub, ast.Attribute) and "command" in sub.attr.lower():
-            return True
-        if (
-            isinstance(sub, ast.Subscript)
-            and isinstance(sub.slice, ast.Constant)
-            and isinstance(sub.slice.value, str)
-            and "command" in sub.slice.value.lower()
-        ):
-            return True
-    return False
+def _names_a_command(node: ast.AST) -> bool:
+    """`node` itself reads a field named for a command: `.command`, `["command"]`."""
+    if isinstance(node, ast.Attribute):
+        return "command" in node.attr.lower()
+    return (
+        isinstance(node, ast.Subscript)
+        and isinstance(node.slice, ast.Constant)
+        and isinstance(node.slice.value, str)
+        and "command" in node.slice.value.lower()
+    )
+
+
+def _reads_stored_command(node: ast.AST, memo: dict[int, bool] | None = None) -> bool:
+    """A server record's command field: `server.endpoint_or_command`, `cfg["command"]`,
+    anywhere in `node`.
+
+    Each node's answer is its own or one of its children's, worked out once, from
+    the leaves up, and kept in `memo` for the file when given.
+    """
+    memo = {} if memo is None else memo
+    stack: list[tuple[ast.AST, bool]] = [(node, False)]
+    while stack:
+        cur, children_done = stack.pop()
+        if id(cur) in memo:
+            continue
+        if _names_a_command(cur):
+            memo[id(cur)] = True
+        elif not children_done:
+            stack.append((cur, True))
+            stack.extend((child, False) for child in ast.iter_child_nodes(cur) if id(child) not in memo)
+        else:
+            memo[id(cur)] = any(memo[id(child)] for child in ast.iter_child_nodes(cur))
+    return memo[id(node)]
 
 
 def _split_source(call: ast.Call, facts: _FunctionFacts) -> ast.expr | None:
@@ -282,15 +376,16 @@ def _split_source(call: ast.Call, facts: _FunctionFacts) -> ast.expr | None:
     argv assigned from anything else, such as a validator, is not followed:
     that is exactly what the upstream fix looks like.
     """
-    argv = _spawn_argv(call, facts.below)
+    memo = facts.memo
+    argv = _spawn_argv(call, memo.below)
     if argv is None:
         return None
     if isinstance(argv, ast.Name):
         argv = facts.assigned_value(argv.id, call.lineno)
-    if not isinstance(argv, ast.Call) or not _is_shlex_split(argv, facts.below):
+    if not isinstance(argv, ast.Call) or not _is_shlex_split(argv, memo.below):
         return None
     source = argv.args[0]
-    if _is_static(source) or not _reads_stored_command(source):
+    if _is_static(source, memo.static) or not _reads_stored_command(source, memo.stored):
         return None
     return source
 
@@ -406,12 +501,16 @@ class _FunctionFacts:
     """
 
     def __init__(
-        self, func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str, below: dict[int, ast.AST] | None = None
+        self, func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str, memo: _FileMemo | None = None
     ) -> None:
         self.func = func
         self.class_name = class_name
-        # `_under_calls`'s memo, shared by every function of one file.
-        self.below: dict[int, ast.AST] = {} if below is None else below
+        # Shared by every function of one file.
+        self.memo = _FileMemo() if memo is None else memo
+        # Nodes under the `command` and `args` of StdioServerParameters calls this
+        # function's scan judged clean (see `_taint_flows_to_command`).
+        self.names_clean: set[int] = set()
+        self.judged: set[int] = set()
         self._assignments: dict[str, _Assignments] | None = None
         self._tainted: set[str] | None = None
         self._manages: bool | None = None
@@ -484,7 +583,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     except SyntaxError:
         return []
     findings: list[Finding] = []
-    below: dict[int, ast.AST] = {}
+    memo = _FileMemo()
 
     def _launcher_finding(call: ast.Call, facts: _FunctionFacts) -> Finding | None:
         source = _split_source(call, facts)
@@ -512,14 +611,16 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             (n for n in ast.walk(func) if isinstance(n, ast.Call)),
             key=lambda c: (c.lineno, c.col_offset),
         )
-        facts = _FunctionFacts(func, class_name, below)
+        facts = _FunctionFacts(func, class_name, memo)
         for call in calls:
-            if not _is_stdio_server_params_call(call, below):
+            if not _is_stdio_server_params_call(call, memo.below):
                 launcher = _launcher_finding(call, facts)
                 if launcher is not None:
                     findings.append(launcher)
                     return  # one finding per function
                 continue
+            if id(call) in facts.judged:
+                continue  # inside a call judged clean, so clean too
             # We have StdioServerParameters(command=X, args=Y). Fire only
             # when a network-controlled value actually flows into the
             # command/args sink — not merely because a taint marker or a

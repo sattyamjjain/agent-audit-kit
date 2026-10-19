@@ -227,6 +227,14 @@ def _nested_calls(opener: str, k: int) -> dict[str, str]:
     return {"server.py": "import shlex\n" + _PY_HEAD + "@mcp.tool()\ndef run(server_url):\n" + body}
 
 
+def _shared_split(item: Callable[[int], str], per_spawn: int, k: int) -> dict[str, str]:
+    """`k` spawns of one name assigned `shlex.split((...))` of `per_spawn * k` items: each
+    spawn read the whole tuple again."""
+    items = ", ".join(item(i) for i in range(per_spawn * k))
+    body = f"    cmd = shlex.split(({items}))\n" + "    subprocess.Popen(cmd)\n" * k
+    return {"server.py": "import shlex, subprocess\ndef launch_mcp_stdio_server(server):\n" + body}
+
+
 def _quoted_server_name(k: int) -> dict[str, str]:
     """One server named `x","x",...,"x` (`k + 1` `x`s), then a `pad` array of `2k` `"x"`
     strings, in which the name's quoted form occurs at nearly every element and never
@@ -308,6 +316,17 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # of names took 16.6 s at 100 KB on main, and 190 nested `validate_url(` 3.0 s.
     "nested-fetches": (mcp_destination_guard.scan, lambda k: _nested_calls("requests.get(", k), 3_000, False),
     "nested-guards": (mcp_destination_guard.scan, lambda k: _nested_calls("validate_url(", k), 8_000, False),
+    # The same in mcp_stdio_params: 190 nested `StdioServerParameters(command=` took
+    # 7.1 s at 100 KB on main, and 95 nested `subprocess.Popen(shlex.split(` 1.7 s.
+    "nested-stdio-params": (mcp_stdio_params.scan, lambda k: _nested_calls("StdioServerParameters(command=", k),
+                            5_000, False),
+    "nested-launchers": (mcp_stdio_params.scan, lambda k: _nested_calls("subprocess.Popen(shlex.split(", k), 12_000,
+                         False),
+    # Spawns sharing one split source through a name read it once each: 1,000 spawns
+    # of a 75,000-name tuple took 122 s on main, of 75,000 constants 38 s.
+    "shared-launcher-source": (mcp_stdio_params.scan, lambda k: _shared_split(lambda i: f"n{i % 10}", 15, k), 100,
+                               False),
+    "shared-static-source": (mcp_stdio_params.scan, lambda k: _shared_split(lambda i: "'a'", 80, k), 100, False),
 }
 
 
@@ -1016,6 +1035,246 @@ def test_the_outermost_parts_answer_as_the_whole_chain_did() -> None:
                 hits[2] += argv is not None
                 nodes_checked += 1
     assert nodes_checked > 20_000 and min(hits) > 100, (nodes_checked, hits)
+
+
+# ---------------------------------------------------------------------------
+# mcp_stdio_params: the launcher arm's memo answers as each read did, and a
+# StdioServerParameters call inside one judged clean is clean.
+# ---------------------------------------------------------------------------
+
+
+def _old_is_static(node: ast.AST) -> bool:
+    """`mcp_stdio_params._is_static` as it was through 0.6.22."""
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        return all(_old_is_static(e) for e in node.elts)
+    if isinstance(node, ast.Dict):
+        return all((k is None or _old_is_static(k)) and _old_is_static(v) for k, v in zip(node.keys, node.values))
+    return False
+
+
+def _old_reads_stored_command(node: ast.AST) -> bool:
+    """`mcp_stdio_params._reads_stored_command` as it was through 0.6.22."""
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Attribute) and "command" in sub.attr.lower():
+            return True
+        if (isinstance(sub, ast.Subscript) and isinstance(sub.slice, ast.Constant)
+                and isinstance(sub.slice.value, str) and "command" in sub.slice.value.lower()):
+            return True
+    return False
+
+
+_LITERAL_LEAVES = ["1", "'a'", "None", "b'x'", "x", "server.command", "cfg['command']", "cfg['Command_line']",
+                   "s.endpoint_or_command", "d[0]", "f()", "...", "-1"]
+
+
+def _literal_expr(rng: random.Random, depth: int = 0) -> str:
+    """Lists, tuples, sets and dicts, mostly of constants, with names, calls and
+    command reads among them."""
+    if depth > 4 or rng.random() < 0.3:
+        return rng.choice(_LITERAL_LEAVES)
+    items = [_literal_expr(rng, depth + 1) for _ in range(rng.randint(0, 4))]
+    kind = rng.random()
+    if kind < 0.3:
+        return "[" + ", ".join(items) + "]"
+    if kind < 0.6:
+        return "(" + ", ".join(items) + ("," if len(items) == 1 else "") + ")"
+    if kind < 0.75 and items:
+        return "{" + ", ".join(items) + "}"
+    return "{" + ", ".join(f"{rng.choice(_LITERAL_LEAVES)}: {item}" for item in items) + "}"
+
+
+def test_the_launcher_memo_answers_as_each_read_did() -> None:
+    """`_is_static` and `_reads_stored_command` with one memo per file, asked about
+    every node in walk order and in a random order."""
+    rng = random.Random(20)
+    trees = []
+    for path in _python_fixtures():
+        try:
+            trees.append(ast.parse(path.read_text(encoding="utf-8", errors="replace")))
+        except (SyntaxError, ValueError):
+            continue
+    for _ in range(1000):
+        body = "".join(f"    v{i} = shlex.split({_literal_expr(rng)})\n" for i in range(rng.randint(1, 5)))
+        trees.append(ast.parse("def launch(server, cfg, s, d):\n" + body))
+    asked = static = stored = 0
+    for tree in trees:
+        nodes = [n for n in ast.walk(tree) if isinstance(n, ast.expr)]
+        for order in (nodes, rng.sample(nodes, len(nodes))):
+            memo = mcp_stdio_params._FileMemo()
+            for node in order:
+                want_static = _old_is_static(node)
+                want_stored = _old_reads_stored_command(node)
+                assert mcp_stdio_params._is_static(node, memo.static) == want_static, ast.dump(node)[:200]
+                assert mcp_stdio_params._reads_stored_command(node, memo.stored) == want_stored, ast.dump(node)[:200]
+                asked += 1
+                static += want_static
+                stored += want_stored
+    assert asked > 200_000 and min(static, stored) > 5_000, (asked, static, stored)
+
+
+def _old_taint_flows(call: ast.Call, facts: mcp_stdio_params._FunctionFacts) -> bool:
+    """`mcp_stdio_params._taint_flows_to_command` as it was through 0.6.22."""
+    sp = mcp_stdio_params
+    exprs = sp._command_arg_exprs(call)
+    if not exprs or all(_old_is_static(e) for e in exprs):
+        return False
+    referenced: set[str] = set()
+    for expr in exprs:
+        if sp._PY_TAINT_MODULES_RE.search(sp._unparse(expr)):
+            return True
+        referenced |= sp._names_in(expr)
+    func = facts.func
+    params = {a.arg for a in func.args.args} | {a.arg for a in func.args.posonlyargs}
+    params |= {a.arg for a in func.args.kwonlyargs}
+    if referenced & (params & sp._SUSPICIOUS_PARAMS):
+        return True
+    return bool(referenced & facts.tainted_targets())
+
+
+def _old_stdio_lines(text: str) -> list[int]:
+    """The line of each function's first StdioServerParameters call the old judgement
+    called tainted, in the order the scan walks the functions."""
+    lines = []
+    for func, class_name in mcp_stdio_params._functions_in(ast.parse(text)):
+        facts = mcp_stdio_params._FunctionFacts(func, class_name)
+        calls = sorted((n for n in ast.walk(func) if isinstance(n, ast.Call)), key=lambda c: (c.lineno, c.col_offset))
+        for call in calls:
+            if _old_is_stdio_server_params_call(call) and _old_taint_flows(call, facts):
+                lines.append(call.lineno)
+                break
+    return lines
+
+
+_TAINT_TEXTS = ["request.json", "request.form['c']", "flask.request.args", "fastapi.Request.body",
+                "starlette.requests.Request.query", "requests.get(u).json()", "httpx.post(u, data=')').text()",
+                "urllib.request.urlopen(u)", "os.environ['X']", "json.loads(s)", "yaml.safe_load(s)", "yaml.load(s)",
+                "'os.environ'", "'\\nos.environ'", "'\\request.json'", "'json.loads\\t'", "b'yaml.load'"]
+_PLAIN_TEXTS = ["'node'", "x", "cfg.cmd", "['a', 'b']", "n", "body", "payload", "cmd", "server.command", "u", "s"]
+
+
+def _stdio_expr(rng: random.Random, depth: int = 0) -> str:
+    """An expression of nested StdioServerParameters calls, taint sources and names,
+    in the contexts an argument can take, f-strings included."""
+    roll = rng.random()
+    if depth > 5 or roll < 0.3:
+        return rng.choice(_TAINT_TEXTS) if rng.random() < 0.1 else rng.choice(_PLAIN_TEXTS)
+    inner = _stdio_expr(rng, depth + 1)
+    if roll < 0.55:
+        args = rng.choice(["", ", args=[x]", f", args=[{_stdio_expr(rng, depth + 1)}]", ", env={}"])
+        return (f"StdioServerParameters(command={inner}{args})" if rng.random() < 0.7
+                else f"StdioServerParameters({inner}, {_stdio_expr(rng, depth + 1)})")
+    if roll < 0.62 and "\\" not in inner and not ("'" in inner and '"' in inner):
+        quote = '"' if "'" in inner else "'"
+        return f"f{quote}pre {{({inner})}} post{quote}"
+    return rng.choice(["[{}]", "({},)", "{{{}}}", "{{'k': {}}}", "({} if c else y)", "(lambda: {})", "(not {})",
+                       "({} + y)", "[i for i in {}]", "{}[0]", "[*{}]", "(z := {})", "g({})", "({}).attr",
+                       "(await {})"]).format(inner)
+
+
+def test_a_stdio_call_inside_one_judged_clean_reports_what_the_old_judgement_did() -> None:
+    """Functions of nested StdioServerParameters calls, with and without suspicious
+    parameters and tainted locals: the scan reports, per function, the call the old
+    judgement of every call reported."""
+    rng = random.Random(21)
+    texts = []
+    for _ in range(2500):
+        params = rng.choice(["x", "x, body", "payload, x", "x, *, req"])
+        head = "    cmd = os.environ['X']\n" if rng.random() < 0.3 else ""
+        body = "".join(f"    v{i} = {_stdio_expr(rng)}\n" for i in range(rng.randint(1, 4)))
+        if rng.random() < 0.3:
+            # A function inside, with parameters of its own: what its enclosing
+            # function's scan judged clean is not clean for its own.
+            inner = "".join(f"        w{i} = {_stdio_expr(rng)}\n" for i in range(rng.randint(1, 3)))
+            body += f"    async def g({rng.choice(['body', 'x', 'payload'])}):\n" + inner
+        texts.append(f"async def f({params}):\n" + head + body)
+    reported = nested = 0
+    for text in texts:
+        new = [f.line_number for f in mcp_stdio_params._walk_python(text, Path("/x/m.py"), Path("/x"), set())]
+        assert new == _old_stdio_lines(text), text
+        reported += len(new)
+        nested += text.count("StdioServerParameters") > 1
+    assert reported > 500 and nested > 1000, (reported, nested)
+
+
+def test_a_nest_too_deep_to_unparse_is_judged_where_it_can_be_written() -> None:
+    """190 nested calls, one a line, around a taint source: `ast.unparse` cannot write
+    the outer ones within its recursion limit, so those are not judged clean, and
+    the first one it can write reports the source."""
+    nest = "StdioServerParameters(command=\n" * 190 + "os.environ['X']" + ")" * 190
+    findings = mcp_stdio_params._walk_python("def f(x):\n    return " + nest + "\n", Path("/x/m.py"), Path("/x"), set())
+    assert len(findings) == 1 and 2 <= (findings[0].line_number or 0) <= 191, findings
+
+
+@pytest.mark.parametrize("rewritten", [True, False])
+def test_a_call_inside_an_f_string_is_judged_only_where_the_text_is_written_alone(
+    rewritten: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Before 3.12 a clean call does not mark the nodes inside an f-string in its
+    arguments, so a call there is judged on its own text."""
+    monkeypatch.setattr(mcp_stdio_params, "_FSTRING_REWRITTEN", rewritten)
+    func = ast.parse("def f(x):\n    v = StdioServerParameters(command=f'{StdioServerParameters(command=x)}', args=[x])\n").body[0]
+    assert isinstance(func, ast.FunctionDef)
+    outer, inner = sorted((n for n in ast.walk(func) if isinstance(n, ast.Call)), key=lambda c: c.col_offset)
+    facts = mcp_stdio_params._FunctionFacts(func, "")
+    assert not mcp_stdio_params._taint_flows_to_command(outer, facts)
+    assert (id(inner) in facts.judged) is not rewritten
+    assert id(inner) in facts.names_clean
+
+
+def _special_strings(rng: random.Random) -> str:
+    parts = ["\n", "\t", "\r", "\\", "'", '"', "{", "}", "os.environ", "request.json", "json.loads", "x", " "]
+    return "".join(rng.choice(parts) for _ in range(rng.randint(1, 6)))
+
+
+def _nearest_expr_parents(tree: ast.AST) -> list[tuple[ast.expr, ast.expr]]:
+    """(expression, its nearest expression ancestor) for every expression in `tree`."""
+    pairs: list[tuple[ast.expr, ast.expr]] = []
+    stack: list[tuple[ast.AST, ast.expr | None]] = [(tree, None)]
+    while stack:
+        node, up = stack.pop()
+        if isinstance(node, ast.expr) and up is not None:
+            pairs.append((node, up))
+        below = node if isinstance(node, ast.expr) else (None if isinstance(node, ast.stmt) else up)
+        stack.extend((child, below) for child in ast.iter_child_nodes(node))
+    return pairs
+
+
+def test_a_taint_source_found_in_a_subexpression_is_found_in_its_parent() -> None:
+    """What the skip of a call inside one judged clean rests on, on every Python the
+    suite runs on: the generated nests above, and f-strings built as trees, whose
+    expressions hold strings of newlines, tabs, returns, backslashes, quotes and
+    braces that source before 3.12 cannot spell inside an f-string. Before 3.12 the
+    skip does not reach into an f-string, whose text `ast.unparse` rewrites, so a
+    parent that is part of one is not checked there."""
+    rng = random.Random(22)
+    trees: list[ast.AST] = []
+    for _ in range(1500):
+        trees.append(ast.parse(f"async def f():\n    v = {_stdio_expr(rng)}\n"))
+    for _ in range(1500):
+        value: ast.expr = ast.Constant(_special_strings(rng))
+        for _level in range(rng.randint(1, 3)):
+            if rng.random() < 0.5:
+                value = ast.JoinedStr(values=[ast.Constant(_special_strings(rng)),
+                                              ast.FormattedValue(value=value, conversion=-1, format_spec=None)])
+            else:
+                value = ast.Call(func=ast.Name("StdioServerParameters", ast.Load()), args=[],
+                                 keywords=[ast.keyword(arg="command", value=value)])
+        trees.append(ast.fix_missing_locations(ast.Expression(body=value)))
+    checked = 0
+    for tree in trees:
+        for node, up in _nearest_expr_parents(tree):
+            if mcp_stdio_params._FSTRING_REWRITTEN and isinstance(up, (ast.JoinedStr, ast.FormattedValue)):
+                continue
+            text = mcp_stdio_params._unparse(node)
+            if not mcp_stdio_params._PY_TAINT_MODULES_RE.search(text):
+                continue
+            outer = mcp_stdio_params._unparse(up)
+            if outer:
+                assert mcp_stdio_params._PY_TAINT_MODULES_RE.search(outer), (text, outer)
+                checked += 1
+    assert checked > 1000, checked
 
 
 # ---------------------------------------------------------------------------
