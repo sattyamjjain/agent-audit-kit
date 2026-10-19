@@ -2069,18 +2069,25 @@ def read_bytes_capped(path: Path | str, max_bytes: int) -> bytes:
     _check_readable(os.stat(path), path, max_bytes)
     fd = os.open(path, _READ_FLAGS)
     try:
-        _check_readable(os.fstat(fd), path, max_bytes)
+        st = os.fstat(fd)
+        _check_readable(st, path, max_bytes)
         chunks: list[bytes] = []
         left = max_bytes + 1
+        # The first read asks for the size `fstat` gives and one byte more, so
+        # a file that is what it says is read in one buffer, not joined from
+        # pieces: a 32 MB lockfile read in 1 MB pieces held them and their join
+        # at once, twice the file. Any later read stays inside the cap.
+        step = st.st_size + 1
         while left > 0:
-            chunk = os.read(fd, min(left, 1 << 20))
+            chunk = os.read(fd, min(left, step))
             if not chunk:
                 break
             chunks.append(chunk)
             left -= len(chunk)
+            step = 1 << 20
     finally:
         os.close(fd)
-    data = b"".join(chunks)
+    data = chunks[0] if len(chunks) == 1 else b"".join(chunks)
     if len(data) > max_bytes:
         raise FileNotRead(errno.EFBIG, f"larger than {max_bytes:,} bytes", str(path))
     return data

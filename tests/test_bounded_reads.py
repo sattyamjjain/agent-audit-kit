@@ -87,6 +87,35 @@ def test_a_size_the_system_misreports_still_stops_at_the_cap(
     assert sum(reads) <= 101
 
 
+def test_a_file_the_size_fstat_says_is_read_in_one_buffer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Read in 1 MB pieces, a 32 MB lockfile held the pieces and their join at
+    once, twice the file: the first read asks for the size `fstat` gives and
+    one byte more. A file larger than it says is still read whole, up to the
+    cap, in further reads."""
+    path = tmp_path / "package-lock.json"
+    body = b"x" * (3 << 20)
+    path.write_bytes(body)
+    reads: list[int] = []
+    real_read = os.read
+    monkeypatch.setattr(_helpers.os, "read", lambda fd, n: reads.append(n) or real_read(fd, n))
+    assert read_bytes_capped(path, 32 << 20) == body
+    assert reads[0] == len(body) + 1 and len(reads) == 2  # the file, then its end
+
+    real_fstat = os.fstat
+
+    def understated(fd: int) -> os.stat_result:
+        st = real_fstat(fd)
+        return os.stat_result((st.st_mode, st.st_ino, st.st_dev, st.st_nlink, st.st_uid,
+                               st.st_gid, 1_000, st.st_atime, st.st_mtime, st.st_ctime))
+
+    monkeypatch.setattr(_helpers.os, "fstat", understated)
+    reads.clear()
+    assert read_bytes_capped(path, 32 << 20) == body
+    assert reads[0] == 1_001 and len(reads) > 2
+
+
 def test_a_directory_is_not_read(tmp_path: Path) -> None:
     with pytest.raises(FileNotRead) as exc:
         read_bytes_capped(tmp_path, 1_000)
