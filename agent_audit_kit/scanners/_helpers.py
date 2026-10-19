@@ -2188,9 +2188,14 @@ _PARSE_FILENAME = "/dev/null/<aak>"
 # 3.9.25 and 3.10.19 with the default 8 MB stack, came at a bound of 120,000
 # (that `a**a**...` chain; the lambda defaults, three levels each, came next at
 # 126,000); the highest bound in 100,303 real files was 4,585 (see
-# tests/test_refused_files.py).
+# tests/test_refused_files.py). A source under the bound is parsed and walked
+# like any other, and costs what its size does rather than its depth: in `aak
+# scan` on 3.9.6, with every Python scanner's gate open, 480 to 500 KB of
+# chains just under 10,000 levels took 8 to 24 s of CPU, the same bytes just
+# under 20,000, the bound before, as long, and 508 KB of shallow chains, 100
+# terms each, 35 s, as on main.
 _SCREEN_SOURCES = sys.version_info < (3, 11)
-_PY_MAX_NESTING = 20_000
+_PY_MAX_NESTING = 10_000
 # Defense in depth for a shape the screen does not foresee: before 3.11 the
 # parse runs on a worker thread with 32 times the main thread's stack. The
 # deepest crafted 1 MB sources overflow 64 MB and parse in 256 MB; one of

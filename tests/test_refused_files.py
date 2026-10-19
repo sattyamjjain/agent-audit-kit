@@ -365,6 +365,27 @@ def test_before_3_11_a_source_past_the_screen_is_refused_without_a_parse(
         parse_python(_DEEP_SHAPES[shape](21_000), None)
 
 
+def test_the_screen_passes_a_source_at_its_bound_and_refuses_one_past_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The bound is `_PY_MAX_NESTING` (10,000; 20,000 before the core review):
+    a source the screen bounds at it reaches the parser, one level more is
+    refused without a parse."""
+    monkeypatch.setattr(_helpers, "_SCREEN_SOURCES", True)
+    parsed: list[object] = []
+
+    def counting(source: str | bytes, filename: str) -> ast.Module:
+        parsed.append(source)
+        return ast.Module(body=[], type_ignores=[])
+
+    monkeypatch.setattr(_helpers, "_ast_parse", counting)
+    chain = _DEEP_SHAPES["binop_chain"]
+    at = _helpers._PY_MAX_NESTING - (python_nesting_bound(chain(100)) - 100)
+    assert python_nesting_bound(chain(at)) == _helpers._PY_MAX_NESTING
+    parse_python(chain(at), "at.py")
+    with collecting_refusals() as refused, pytest.raises(RefusedSource):
+        parse_python(chain(at + 1), "past.py")
+    assert len(parsed) == 1 and set(refused) == {"past.py"}
+
+
 def test_real_code_is_far_inside_the_screen() -> None:
     """On 100,303 real files (eight interpreters' standard libraries and every
     package in a 2,000-distribution site-packages) the highest bound was 4,585,
