@@ -2611,7 +2611,8 @@ def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
 WALK_RECURSION_LIMIT = 10_000
 _WALK_ON_WORKER = sys.version_info < (3, 11)
 _headroom_lock = threading.Lock()
-_headroom_walks = 0
+# The walks in progress, by the thread that runs them.
+_headroom_walks: dict[int, int] = {}
 _headroom_restore = 0
 
 
@@ -2621,19 +2622,42 @@ def _recursion_headroom() -> Iterator[None]:
     limit already set where that is higher. Walks in progress at once share one
     raise, and the limit goes back to what it was when the first began once the
     last ends, so one finishing never lowers it under another."""
-    global _headroom_walks, _headroom_restore
+    global _headroom_restore
+    me = threading.get_ident()
     with _headroom_lock:
-        if _headroom_walks == 0:
+        if not _headroom_walks:
             _headroom_restore = sys.getrecursionlimit()
             sys.setrecursionlimit(max(_headroom_restore, WALK_RECURSION_LIMIT))
-        _headroom_walks += 1
+        _headroom_walks[me] = _headroom_walks.get(me, 0) + 1
     try:
         yield
     finally:
         with _headroom_lock:
-            _headroom_walks -= 1
-            if _headroom_walks == 0:
+            if _headroom_walks[me] == 1:
+                del _headroom_walks[me]
+            else:
+                _headroom_walks[me] -= 1
+            if not _headroom_walks:
                 sys.setrecursionlimit(_headroom_restore)
+
+
+def _headroom_after_fork() -> None:
+    """A forked child runs only the thread that forked. A walk another thread
+    had in progress never ends there, so the raised limit would stay for good,
+    and a lock it held at the fork is never released, so the child's first
+    walk would wait on it for ever. The child takes a fresh lock and keeps only
+    its own thread's walks, putting the limit back if none is left."""
+    global _headroom_lock, _headroom_walks
+    _headroom_lock = threading.Lock()
+    me = threading.get_ident()
+    mine = _headroom_walks.get(me, 0)
+    if _headroom_walks and not mine:
+        sys.setrecursionlimit(_headroom_restore)
+    _headroom_walks = {me: mine} if mine else {}
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_headroom_after_fork)
 
 
 def _walk_with_headroom(

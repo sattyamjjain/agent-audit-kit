@@ -15,15 +15,18 @@ from __future__ import annotations
 
 import ast
 import json
+import os
+import signal
 import subprocess
 import sys
 import tempfile
 import textwrap
 import threading
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 
@@ -272,6 +275,95 @@ def test_threads_parsing_for_the_first_time_at_once_start_one_worker(monkeypatch
     finally:
         for worker in {id(worker): worker for worker in got if worker is not None}.values():
             worker.shutdown(wait=False)
+
+
+def _in_forked_child(body: Callable[[], str]) -> str:
+    """`body()` in a forked child, or what went wrong there; a child that hangs
+    is ended after 10 s."""
+    read_end, write_end = os.pipe()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)  # 3.12 warns of fork with threads running
+        pid = os.fork()
+    if pid == 0:
+        try:
+            signal.alarm(10)
+            out = body()
+        except BaseException as exc:  # noqa: BLE001 - reported to the parent
+            out = f"raised {type(exc).__name__}: {exc}"
+        os.write(write_end, out.encode())
+        os._exit(0)
+    os.close(write_end)
+    _, status = os.waitpid(pid, 0)
+    with os.fdopen(read_end, "rb") as pipe:
+        out = pipe.read().decode()
+    return f"killed by signal {os.WTERMSIG(status)}" if os.WIFSIGNALED(status) else out
+
+
+_FORK = pytest.mark.skipif(not hasattr(os, "fork"), reason="no fork on this platform")
+
+
+@_FORK
+def test_a_child_forked_during_another_threads_walk_gets_the_limit_back() -> None:
+    """Only the forking thread runs in the child, so the other thread's walk
+    never ends there and nothing put the raised limit back: the child kept
+    10,000 frames for good."""
+    limit = sys.getrecursionlimit()
+    started, release = threading.Event(), threading.Event()
+
+    def waits() -> None:
+        started.set()
+        release.wait(30)
+
+    thread = threading.Thread(target=walk_tree, args=(waits,))
+    thread.start()
+    try:
+        assert started.wait(30)
+        assert sys.getrecursionlimit() == max(limit, WALK_RECURSION_LIMIT)
+
+        def child() -> str:
+            before = sys.getrecursionlimit()
+            walk_tree(lambda: None)
+            return f"{before} {sys.getrecursionlimit()} {_helpers._headroom_walks}"
+
+        assert _in_forked_child(child) == f"{limit} {limit} {{}}"
+    finally:
+        release.set()
+        thread.join(30)
+    assert sys.getrecursionlimit() == limit
+
+
+@_FORK
+def test_a_child_forked_while_another_thread_holds_the_headroom_lock_can_walk() -> None:
+    """A lock another thread held at the fork is never released in the child,
+    so its first walk waited on it for ever."""
+    holding, let_go = threading.Event(), threading.Event()
+
+    def hold() -> None:
+        with _helpers._headroom_lock:
+            holding.set()
+            let_go.wait(30)
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    try:
+        assert holding.wait(30)
+        assert _in_forked_child(lambda: repr(walk_tree(lambda: "ok"))) == "'ok'"
+    finally:
+        let_go.set()
+        thread.join(30)
+
+
+@_FORK
+def test_a_child_forked_inside_its_own_walk_keeps_that_walk() -> None:
+    limit = sys.getrecursionlimit()
+
+    def forks() -> str:
+        return _in_forked_child(
+            lambda: f"{sys.getrecursionlimit()} {_helpers._headroom_walks == {threading.get_ident(): 1}}"
+        )
+
+    assert walk_tree(forks) == f"{max(limit, WALK_RECURSION_LIMIT)} True"
+    assert sys.getrecursionlimit() == limit
 
 
 # ---------------------------------------------------------------------------
