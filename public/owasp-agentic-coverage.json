@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-19T15:12:10Z",
+  "last_updated": "2026-10-20T06:33:31Z",
   "aak_version": "0.6.22",
-  "rule_count": 409,
+  "rule_count": 410,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -534,7 +534,8 @@
             "CVE-2026-53710",
             "CVE-2026-53711",
             "CVE-2026-77822",
-            "CVE-2026-78573"
+            "CVE-2026-78573",
+            "CVE-2026-8355"
           ],
           "aicm_references": []
         },
@@ -1155,7 +1156,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 106,
+      "rule_density": 107,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1257,6 +1258,18 @@
           "aicm_references": [
             "IAM-01",
             "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-CHATCHAT-CVE-2026-75128-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-75128"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
           ]
         },
         {
@@ -1430,7 +1443,8 @@
             "CVE-2026-53710",
             "CVE-2026-53711",
             "CVE-2026-77822",
-            "CVE-2026-78573"
+            "CVE-2026-78573",
+            "CVE-2026-8355"
           ],
           "aicm_references": []
         },
@@ -2244,7 +2258,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 197,
+      "rule_density": 198,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2290,6 +2304,18 @@
             "AIS-07",
             "DSP-04",
             "IVS-09"
+          ]
+        },
+        {
+          "id": "AAK-CHATCHAT-CVE-2026-75128-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-75128"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
           ]
         },
         {
@@ -2881,7 +2907,8 @@
             "CVE-2026-53710",
             "CVE-2026-53711",
             "CVE-2026-77822",
-            "CVE-2026-78573"
+            "CVE-2026-78573",
+            "CVE-2026-8355"
           ],
           "aicm_references": []
         },
@@ -4394,7 +4421,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 92,
+      "rule_density": 93,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -4463,6 +4490,18 @@
           "severity": "critical",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-CHATCHAT-CVE-2026-75128-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-75128"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",

@@ -899,6 +899,36 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-75128"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-CHATCHAT-CVE-2026-75128-001",
+      "severity": "critical",
+      "title": "Langchain-Chatchat, every release and image (no fix): POST /tools/call runs the shell tool for an unauthenticated caller"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-7061"
       ],
       "eu_ai_act": [
@@ -3844,7 +3874,8 @@
         "CVE-2026-53710",
         "CVE-2026-53711",
         "CVE-2026-77822",
-        "CVE-2026-78573"
+        "CVE-2026-78573",
+        "CVE-2026-8355"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -3873,7 +3904,7 @@
       ],
       "rule_id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
       "severity": "critical",
-      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)"
+      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)"
     },
     {
       "category": "supply-chain",
@@ -10082,36 +10113,36 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 170,
+      "supply-chain": 171,
       "taint-analysis": 14,
       "tool-poisoning": 30,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 199,
+      "Art. 10 - Data Governance": 200,
       "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 303,
-      "Art. 9 - Risk Management": 206
+      "Art. 15 - Robustness & Security": 304,
+      "Art. 9 - Risk Management": 207
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 199,
-      "Constrain and sandbox tool execution (p.11)": 189,
-      "Design for boundaries (p.10)": 293,
-      "Filter and monitor output pipelines and chained execution (p.12)": 112,
+      "Choose supported MCP projects when possible (p.10)": 200,
+      "Constrain and sandbox tool execution (p.11)": 190,
+      "Design for boundaries (p.10)": 294,
+      "Filter and monitor output pipelines and chained execution (p.12)": 113,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 259,
-      "Sign and verify MCP messages (p.12)": 269,
-      "Track and patch MCP related vulnerabilities (p.13)": 204,
-      "Validate parameters (p.11)": 193
+      "Scan local network for open or vulnerable MCP servers (p.14)": 260,
+      "Sign and verify MCP messages (p.12)": 270,
+      "Track and patch MCP related vulnerabilities (p.13)": 205,
+      "Validate parameters (p.11)": 194
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 99,
-      "ASI03": 106,
-      "ASI04": 197,
-      "ASI05": 92,
+      "ASI03": 107,
+      "ASI04": 198,
+      "ASI05": 93,
       "ASI06": 5,
       "ASI07": 24,
       "ASI08": 9,
@@ -10131,14 +10162,14 @@
       "MCP10:2025": 15
     },
     "by_severity": {
-      "critical": 92,
+      "critical": 93,
       "high": 176,
       "info": 3,
       "low": 17,
       "medium": 121
     },
-    "total_cves_covered": 347,
-    "total_rules": 409
+    "total_cves_covered": 349,
+    "total_rules": 410
   },
   "tool": "agent-audit-kit"
 }
