@@ -519,30 +519,45 @@ def test_a_plan_git_cannot_answer_for_is_refused(tmp_path: Path, monkeypatch) ->
     assert (repo / "requirements.txt").read_text(encoding="utf-8") == "litellm==1.80.0\n"
 
 
-_LEFT_IGNORED = {
-    # .gitignore, files committed or left untracked before the run, what the run writes, the message's end.
-    "log-created-in-an-ignored-dir": (".agent-audit-kit/\n", {}, {}, "and the working tree is as it was."),
+_REWRITTEN = '{"rewritten": true}\n'
+_LEFT_BEHIND = {
+    # .gitignore, files committed or left untracked before the run, what the run writes,
+    # files the plan's unchanged actions name, the message's end.
+    "log-created-in-an-ignored-dir": (".agent-audit-kit/\n", {}, {}, [], "and git shows no change."),
     "ignored-log-rewritten": (
-        ".agent-audit-kit/\n", {".agent-audit-kit/fix-log.json": "old\n"}, {},
+        ".agent-audit-kit/\n", {".agent-audit-kit/fix-log.json": "old\n"}, {}, [],
         "but these files git ignores are not as they were: .agent-audit-kit/fix-log.json.",
     ),
-    "tracked-log-rewritten": ("", {".agent-audit-kit/fix-log.json": "old\n"}, {}, "and the working tree is as it was."),
+    "tracked-log-rewritten": ("", {".agent-audit-kit/fix-log.json": "old\n"}, {}, [], "and git shows no change."),
     "ignored-file-created": (
-        "cache/\n", {}, {"cache/blob": "x\n"}, "but these files git ignores are not as they were: cache/.",
+        "cache/\n", {}, {"cache/blob": "x\n"}, [], "but these files git ignores are not as they were: cache/.",
+    ),
+    "unnamed-ignored-file-rewritten": (
+        ".claude/settings.local.json\n", {".claude/settings.json": _LOCAL_SETTINGS, ".claude/settings.local.json": "{}\n"},
+        {".claude/settings.local.json": _REWRITTEN}, [], "and git shows no change.",
+    ),
+    "named-ignored-file-rewritten": (
+        ".claude/settings.local.json\n", {".claude/settings.json": _LOCAL_SETTINGS, ".claude/settings.local.json": "{}\n"},
+        {".claude/settings.local.json": _REWRITTEN}, [".claude/settings.local.json"],
+        "but these files git ignores are not as they were: .claude/settings.local.json.",
     ),
 }
 
 
-@pytest.mark.parametrize("case", list(_LEFT_IGNORED), ids=list(_LEFT_IGNORED))
-def test_the_guard_says_the_tree_is_as_it_was_only_when_it_is(tmp_path: Path, monkeypatch, case: str) -> None:
+@pytest.mark.parametrize("case", list(_LEFT_BEHIND), ids=list(_LEFT_BEHIND))
+def test_the_guard_names_what_it_could_not_put_back(tmp_path: Path, monkeypatch, case: str) -> None:
     """The guard put back what git tracks and removed the fix log only where git did not
     ignore it, then said the tree was as it was. A log the run created goes now, ignored
-    or not, with the directory it made for it; a file git ignores that the run left or
-    rewrote is named instead."""
-    gitignore, before, written, ending = _LEFT_IGNORED[case]
+    or not, with the directory it made for it. The fix log and every file the plan's
+    actions name are hashed before the run, and one whose bytes it changed is named, as
+    is anything new git lists as ignored. A recipe that rewrites an ignored file no action
+    names leaves git nothing to see, so the guard says git shows no change, never that
+    the tree is as it was."""
+    gitignore, before, written, named, ending = _LEFT_BEHIND[case]
     _isolate_git(tmp_path, monkeypatch)
     repo = _committed(tmp_path / "repo", {"README.md": "x\n", ".gitignore": gitignore, **before})
     claimed = FixAction(_LITELLM, str(repo / "requirements.txt"), "Bumped 1 litellm pin(s)", True, writes=True)
+    unchanged = [FixAction("AAK-TRUST-007", str(repo / rel), "Added empty enabledMcpjsonServers allowlist") for rel in named]
 
     def live_run(root: Path, dry_run: bool = False) -> list[FixAction]:
         (root / ".agent-audit-kit").mkdir(exist_ok=True)
@@ -550,22 +565,27 @@ def test_the_guard_says_the_tree_is_as_it_was_only_when_it_is(tmp_path: Path, mo
         for rel, body in written.items():
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             (root / rel).write_text(body)
-        return [claimed]
+        return [claimed, *unchanged]
 
     monkeypatch.setattr("agent_audit_kit.autopr.run_fixes", live_run)
     base, status = _branches(repo), _ignored_status(repo)
+    plan = AutoPrPlan(fixes=[claimed], unchanged=unchanged, branch="aak/autofix/x", title="t", body="b")
 
     with pytest.raises(AutoPrError) as raised:
-        open_auto_pr(repo, AutoPrPlan(fixes=[claimed], branch="aak/autofix/x", title="t", body="b"))
+        open_auto_pr(repo, plan)
 
     said = "the fixes changed no file besides the fix log; nothing was committed or pushed, "
     assert str(raised.value) == said + ending
     assert _branches(repo) == base
+    for rel, body in written.items():
+        assert (repo / rel).read_text() == body, "a file git ignores is named, not put back"
     if ending.startswith("and"):
         assert _ignored_status(repo) == status
         assert subprocess.run(["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True).stdout == ""
-        log = repo / ".agent-audit-kit" / "fix-log.json"
-        assert log.read_text() == "old\n" if before else not (repo / ".agent-audit-kit").exists()
+        if ".agent-audit-kit/fix-log.json" in before:
+            assert (repo / ".agent-audit-kit" / "fix-log.json").read_text() == "old\n"
+        else:
+            assert not (repo / ".agent-audit-kit").exists()
 
 
 # --------------------------------------------------------------------------

@@ -28,13 +28,14 @@ stated — see ``NON_MECHANICAL`` below. Issue #68 named three shapes as
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_audit_kit.fix import FixAction, run_fixes
+from agent_audit_kit.fix import FixAction, _read_bytes, run_fixes
 from agent_audit_kit.rules.builtin import RULES
 
 # Rules whose fix is a value substitution with no behavioural ambiguity: the
@@ -230,36 +231,67 @@ def _ignored_entries(project_root: Path) -> set[str]:
     return {entry[3:] for entry in listing.split("\0") if entry.startswith("!! ")}
 
 
-def _put_back(
-    project_root: Path, base_ref: str, branch: str, had_log: bool, had_log_dir: bool, ignored_before: set[str]
-) -> str:
+def _digests(project_root: Path, names: list[str]) -> dict[str, str | None]:
+    """Each named file's SHA-256, read as `aak fix` reads (a regular file only, through no
+    link, never waiting), or None where there is no such file."""
+    digests: dict[str, str | None] = {}
+    for name in names:
+        try:
+            digests[name] = hashlib.sha256(_read_bytes(project_root / name)).hexdigest()
+        except OSError:
+            digests[name] = None
+    return digests
+
+
+@dataclass(frozen=True)
+class _Before:
+    """The tree before a live run, as the guard compares it after one."""
+
+    had_log: bool
+    had_log_dir: bool
+    ignored: set[str]
+    digests: dict[str, str | None]
+
+
+def _before_run(project_root: Path, plan: AutoPrPlan) -> _Before:
+    """Whether the fix log and its directory exist, what git lists as ignored, and the
+    hash of the fix log and of every file the plan's actions name, resolved as
+    `_git_name` resolves them."""
+    log = project_root / _FIX_LOG
+    names = {_git_name(project_root, f.file_path) for f in (*plan.fixes, *plan.unchanged)}
+    names.add(_git_name(project_root, str(log)))
+    return _Before(
+        had_log=os.path.lexists(log),
+        had_log_dir=os.path.lexists(log.parent),
+        ignored=_ignored_entries(project_root),
+        digests=_digests(project_root, sorted(name for name in names if name)),
+    )
+
+
+def _put_back(project_root: Path, base_ref: str, branch: str, before: _Before) -> str:
     """Undo a live run that changed nothing besides the fix log, and say what is left.
 
     The checkout restores every tracked file, and a fix log the run created goes even
-    where git ignores it, with the directory if the run made that too. A fix log that
-    was there before and that git ignores stays rewritten, and anything else git ignores
-    that the run left stays too; the message names them instead of calling the tree as
-    it was.
+    where git ignores it, with the directory if the run made that too. What stays
+    changed is named: anything new `git status --porcelain --ignored` lists, and the fix
+    log or a file the plan's actions name whose bytes differ from before the run. A
+    recipe that rewrites an ignored file no action names leaves both blind, so with
+    nothing to name the message says git shows no change, not that the tree is as it was.
     """
     _run(["git", "checkout", "-f", base_ref], project_root)
-    if not had_log:
+    if not before.had_log:
         _run(["git", "clean", "-f", "-x", "--", _FIX_LOG], project_root)
-        if not had_log_dir:
+        if not before.had_log_dir:
             with contextlib.suppress(OSError):
                 (project_root / _FIX_LOG).parent.rmdir()
     _run(["git", "branch", "-D", branch], project_root)
-    left = sorted(_ignored_entries(project_root) - ignored_before)
-    if had_log:
-        try:
-            log_ignored = _FIX_LOG in _ignored_by_git(project_root, [_FIX_LOG])
-        except AutoPrError:
-            log_ignored = True
-        if log_ignored:
-            left.append(_FIX_LOG)
+    after = _digests(project_root, list(before.digests))
+    rewritten = {name for name, digest in after.items() if digest != before.digests[name]}
+    left = sorted((_ignored_entries(project_root) - before.ignored) | rewritten)
     said = "the fixes changed no file besides the fix log; nothing was committed or pushed"
     if left:
         return f"{said}, but these files git ignores are not as they were: {', '.join(left)}."
-    return f"{said}, and the working tree is as it was."
+    return f"{said}, and git shows no change."
 
 
 def _branch_name(fixes: list[FixAction]) -> str:
@@ -363,9 +395,7 @@ def open_auto_pr(project_root: Path, plan: AutoPrPlan, base: str | None = None) 
         )
 
     base_ref = base or _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], project_root)
-    log = project_root / _FIX_LOG
-    had_log, had_log_dir = os.path.lexists(log), os.path.lexists(log.parent)
-    ignored_before = _ignored_entries(project_root)
+    before = _before_run(project_root, plan)
     _run(["git", "checkout", "-b", plan.branch], project_root)
 
     applied = run_fixes(project_root, dry_run=False)
@@ -379,7 +409,7 @@ def open_auto_pr(project_root: Path, plan: AutoPrPlan, base: str | None = None) 
         for name in _run(args, project_root).splitlines()
     ]
     if not any(f.writes for f in applied) or all(name == _FIX_LOG for name in changed):
-        raise AutoPrError(_put_back(project_root, base_ref, plan.branch, had_log, had_log_dir, ignored_before))
+        raise AutoPrError(_put_back(project_root, base_ref, plan.branch, before))
 
     _run(["git", "add", "-A"], project_root)
     _run(["git", "commit", "-m", plan.title, "-m", plan.body], project_root)
