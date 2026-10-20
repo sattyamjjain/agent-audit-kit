@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Docker image no longer ships pip, setuptools or wheel: they are removed after the package is installed, which takes the last two Trivy rows (CVE-2026-24049 on wheel, CVE-2026-23949 on the jaraco.context setuptools vendors) off the Security tab. The image runs the CLI and installs nothing at runtime.
 - The nightly and release Trivy scans skip CVEs with no fix in the base image's distribution (`ignore-unfixed`), the action is pinned by commit, and the base image digest is refreshed; the Security tab stops collecting unfixable base-image rows.
+- The `--llm-scan` canary and the MCPTox eval were run on 0.6.23 against claude-haiku-5-5, claude-sonnet-5-5 and claude-opus-5-5; benchmarks/llm_scan_eval/RESULTS.md carries the figures and cost.
 
 ## [0.6.23] - 2026-10-20
 

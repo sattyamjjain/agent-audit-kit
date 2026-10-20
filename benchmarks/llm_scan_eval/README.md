@@ -38,6 +38,12 @@ as "not analyzed". Intervals are Wilson 95%.
   exactly as returned, message ids and token usage included. Every number in
   RESULTS.md is recomputed offline from those files by `score.py`. A fresh API
   run is a replication, not a reproduction.
+- **Committed receipts.** The raw files quote the dataset, so the repository
+  holds `redact`'s output under `receipts/<model>/`: the batch record without
+  its requests, every result row with the text removed (state, refusal
+  category, served model, message id, token usage, SHA-256 of the raw row),
+  gzipped, and the cost file. `score.py` reads either form and scores both
+  identically.
 
 ```bash
 pip install anthropic                      # the eval only; AAK itself has no SDK dependency

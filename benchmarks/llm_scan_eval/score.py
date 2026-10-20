@@ -22,6 +22,7 @@ tool to a human as "not analyzed". Intervals are Wilson 95%.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import math
 import sys
@@ -71,9 +72,14 @@ def load_run(run_dir: Path) -> dict[str, Any]:
         meta = submitted["meta"]
         batch_id = submitted["batch_id"]
         results = run_dir / f"results-{batch_id}.jsonl"
-        if not results.is_file():
+        packed = results.with_suffix(".jsonl.gz")
+        if results.is_file():
+            text = results.read_text()
+        elif packed.is_file():  # the committed, redacted receipts are gzipped (README.md)
+            text = gzip.decompress(packed.read_bytes()).decode("utf-8")
+        else:
             raise SystemExit(f"{results} missing: run `run_eval.py collect` first")
-        for line in results.read_text().splitlines():
+        for line in text.splitlines():
             row = json.loads(line)
             case_part, run_part = row["custom_id"].split("-r")
             state, category = _state(row)

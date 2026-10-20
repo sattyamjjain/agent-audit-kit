@@ -118,3 +118,15 @@ on Haiku 5.5 and Sonnet 5.5. It fails when any tool goes unanalyzed, a reply
 comes from a different model than requested, or detection falls below a loose
 bar. It needs a repository secret named `LLM_CANARY_ANTHROPIC_API_KEY`;
 without it the job skips.
+
+It was run by hand on 2026-10-20 against 0.6.23 with all three current models
+(30 requests, $0.09 at list price). Haiku 5.5 analyzed every tool, flagged the
+five poisoned ones and none of the benign. Sonnet 5.5 flagged four and declined
+to analyze one (`stop_reason: refusal`, category `cyber`). Opus 5.5 flagged
+two and declined three, all `cyber`. No benign tool was flagged, and every
+reply came from the model requested. A declined tool is reported as not
+analyzed, never as clean, so the run failed the canary's bar on Sonnet 5.5
+and Opus 5.5: on the current Opus the refusal classifier declines the most
+explicit poisoned descriptions instead of judging them. The per-model
+measurement on MCPTox is in
+[`benchmarks/llm_scan_eval/RESULTS.md`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/llm_scan_eval/RESULTS.md).
