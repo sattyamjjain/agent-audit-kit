@@ -226,6 +226,9 @@ available) before shipping:
     flag such as --mcp-config. The CVE names the Python SDK, and its fix commit says
     the TypeScript SDK shipped the same fix in 0.3.208. One rule, two pins, a stated
     version required)
+  - langchain-chatchat             presence-only  (CVE-2026-75128; `POST /tools/call`
+    runs the always-registered shell tool for an unauthenticated caller, in every
+    release from 0.3.0 to 0.3.1.3, the newest; the images are image-pin rows)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1455,6 +1458,19 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="0.3.208 (the TypeScript SDK's fix; the CVE record names only the "
                    "Python SDK)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-10-20 (#1055) ---
+    # Langchain-Chatchat's API runs any registered tool, the always-registered
+    # `shell` tool included, from an unauthenticated `POST /tools/call`
+    # (CVE-2026-75128, CVSS 3.1 9.8). PyPI carries 0.3.0 (2024-05-06) to 0.3.1.3
+    # (2024-07-23), and the wheels at both ends mount the route and register the
+    # tool. Nothing has been published since, and `master` serves the route
+    # unchanged, so the pin is presence-only: an unpinned reference installs an
+    # affected release as well. npm has no package by the name, and PyPI's
+    # `chatchat` is another project. The images are rows in `container_image_pins`.
+    _Pin("AAK-CHATCHAT-CVE-2026-75128-001", "langchain-chatchat",
+         ("langchain-chatchat",), None,
+         fix_label="no fixed release (0.3.1.3 is the newest); keep the API port, "
+                   "7861, off networks you do not trust"),
 )
 
 _CANDIDATE_NAMES = (

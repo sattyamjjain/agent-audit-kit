@@ -959,3 +959,38 @@ def test_a_chart_with_two_image_blocks_is_reported_on_the_first(tmp_path: Path) 
     )
     findings = scan(tmp_path)[0]
     assert [(f.rule_id, f.line_number) for f in findings] == [(CONTEXTFORGE, 3)]
+
+
+# --- 2026-10-20 (#1055): Langchain-Chatchat's images (CVE-2026-75128) ---
+#
+# The pin table's presence-only row reads the PyPI package. The images are built
+# from `master` and tagged `<version>-<commit>-<date>`, and no release fixes the
+# route, so every tag on Docker Hub and the Tencent mirror is reported.
+
+CHATCHAT = "AAK-CHATCHAT-CVE-2026-75128-001"
+
+
+def test_chatchat_image_fixtures_positive_and_negative() -> None:
+    """Chatchat's own compose file fires on the chatchat service; the model
+    server it runs beside it does not."""
+    root = FIXTURES / "cve-2026-75128-langchain-chatchat"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(CHATCHAT, 12)]
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("chatimage/chatchat:0.3.0-0622", True),                     # the oldest tag
+    ("chatimage/chatchat:0.3.1.1-2024-0714", True),              # a four-part version
+    ("chatimage/chatchat:0.3.1-b108c1a-20240728-1", True),
+    ("chatimage/chatchat:0.3.1.3-93e2c87-20240829", True),       # what the compose file runs
+    ("chatimage/chatchat:0.3.1.3-717e03e-20241109", True),       # the newest release build
+    ("chatimage/chatchat:0.3.2-dev-d15fcd4-20241014", True),     # the dev build
+    ("ccr.ccs.tencentyun.com/langchain-chatchat/chatchat:0.3.1.3-717e03e-20241109", True),
+    ("chatimage/chatchat", False),                               # neither registry has `latest`
+    ("ccr.ccs.tencentyun.com/chatchat/chatchat:0.3.1.2-2024-0720", False),  # an older namespace
+    ("xprobe/xinference:v0.12.3", False),
+])
+def test_chatchat_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  chatchat:\n    image: {ref}\n")
+    assert (CHATCHAT in ids) is fires

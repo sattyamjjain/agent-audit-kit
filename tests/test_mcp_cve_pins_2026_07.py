@@ -145,6 +145,8 @@ PINS = {
     "AAK-HOOK-RCE-003": "high",
     # 2026-10-16 (#1026)
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": "critical",
+    # 2026-10-20 (#1055)
+    "AAK-CHATCHAT-CVE-2026-75128-001": "critical",
 }
 
 
@@ -3942,3 +3944,44 @@ def test_a_large_manifest_is_judged_once_per_package(tmp_path: Path) -> None:
     assert len(findings) > 40
     assert all(f.line_number and f.line_number > 60_000 for f in findings)
     assert elapsed < 3.0, f"{len(findings)} findings took {elapsed:.1f}s"
+
+
+# --- 2026-10-20 (#1055): Langchain-Chatchat, presence-only (CVE-2026-75128) ---
+
+_CHATCHAT = "AAK-CHATCHAT-CVE-2026-75128-001"
+
+
+def test_chatchat_rule_is_critical_presence_only_and_names_no_mcp_risk() -> None:
+    """Every release is affected and none is fixed. The route is the app's own
+    REST API, and no published artifact has MCP code, so the id has no MCP area
+    and the rule carries Agentic ids, unauthenticated invocation among them, and
+    no MCP Top 10 id."""
+    rule = RULES[_CHATCHAT]
+    assert rule.severity.value == "critical"
+    assert rule.cve_references == ["CVE-2026-75128"]
+    assert not _CHATCHAT.startswith("AAK-MCP-")
+    assert rule.owasp_mcp_references == []
+    assert "ASI03" in rule.owasp_agentic_references
+    assert [(p.names, p.floor, p.introduced, p.requires_version) for p in _PINS
+            if p.rule_id == _CHATCHAT] == [(("langchain-chatchat",), None, None, False)]
+
+
+def test_chatchat_fixtures_positive_and_negative() -> None:
+    """The newest release fires; PyPI's `chatchat`, another project, does not."""
+    root = _CVE_FIXTURES / "cve-2026-75128-langchain-chatchat"
+    assert [(f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]
+            if f.rule_id == _CHATCHAT] == [("requirements.txt", 3)]
+    assert _CHATCHAT not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("langchain-chatchat==0.3.0", True),             # the first release
+    ("langchain-chatchat==0.3.0.20240612.4", True),  # a dated 0.3.0 build
+    ("langchain-chatchat==0.3.1.3", True),           # the newest release
+    ("langchain-chatchat[xinference]==0.3.1", True),
+    ("langchain_chatchat>=0.3.0", True),             # the same project under PEP 503
+    ("langchain-chatchat", True),                    # unpinned installs 0.3.1.3
+    ("chatchat==0.5.0", False),                      # jiauzhang/chatchat, another project
+])
+def test_chatchat_versions(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_CHATCHAT in _ids(tmp_path, "requirements.txt", line + "\n")) is fires

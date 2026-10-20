@@ -359,6 +359,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-ZCODE-CVE-2026-88755-001": ["IAM-16", "STA-08"],
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": ["AIS-07", "STA-08"],
     "AAK-MCP-APACHEANSWER-CVE-2026-71563-001": ["IAM-01", "STA-08"],
+    "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -16483,6 +16484,68 @@ _r(
     ),
 )
 
+
+# ---------------------------------------------------------------------------
+# 2026-10-20 (#1055). Langchain-Chatchat's API runs any registered tool, the
+# shell tool included, for an unauthenticated caller. No release fixes it, so the
+# pin is presence-only on PyPI and covers every image tag. No published Chatchat
+# artifact has MCP code, so the id has no MCP area and the rule no MCP id.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-CHATCHAT-CVE-2026-75128-001",
+    "Langchain-Chatchat, every release and image (no fix): POST /tools/call runs the shell tool for an unauthenticated caller",
+    "Langchain-Chatchat, a self-hosted RAG and agent app (`langchain-chatchat` on "
+    "PyPI, and the `chatimage/chatchat` image), serves its API on 0.0.0.0:7861 by "
+    "default, with no authentication. `POST /tools/call` runs any registered agent "
+    "tool by name, and the `shell` tool is always registered, so one request runs "
+    "an OS command as the server's user, root in the shipped image "
+    "(CVE-2026-75128, CVSS 3.1 9.8, CWE-306). There is no fixed version: every "
+    "published release, 0.3.0 to 0.3.1.3, and every image tag is affected, and "
+    "`master`, which carries the route unchanged, is unreleased. Checked in the "
+    "published "
+    "artifacts: the oldest wheel, 0.3.0, and the newest, 0.3.1.3 (2024-07-23), both "
+    "mount the route and register the tool, and so does the commit the newest "
+    "image was built from (717e03e, 2024-11-09); no setting takes the tool out of "
+    "the registry the route reads. This is the agent's tool-call layer, which "
+    "every user runs. Chatchat's upload-handler CVEs are a different kind of "
+    "claim: an upload handler with no agent surface, which this rule does not "
+    "make.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed version. Keep the API's port, 7861, off any network you "
+    "do not trust: bind `API_SERVER` to 127.0.0.1 in "
+    "basic_settings.yaml, and in the Docker image do not publish 7861. Put a proxy "
+    "that authenticates every request in front of the API. Remove the shell tool's "
+    "registration: delete `from .shell import shell` from "
+    "`chatchat/server/agent/tools_factory/__init__.py`, the only line that registers "
+    "it, since no setting does.",
+    sarif_name="ChatchatUnauthenticatedToolsCallShell",
+    cve_references=["CVE-2026-75128"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads `langchain-chatchat` in requirements*.txt at any depth and, at the "
+        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, with or "
+        "without a version, since every release is affected. It reads two image "
+        "spellings, `chatimage/chatchat` on Docker Hub and its Tencent mirror "
+        "`ccr.ccs.tencentyun.com/langchain-chatchat/chatchat`, in compose files, "
+        "Kubernetes manifests, Helm values, Dockerfiles and MCP configs, and every tag "
+        "of either is reported; neither registry has a `latest` tag, so an untagged "
+        "reference is not. `docker.io/chatimage/chatchat` and the older Tencent "
+        "namespace `ccr.ccs.tencentyun.com/chatchat/chatchat` are not read. Chatchat "
+        "publishes no release binaries (its GitHub releases carry no assets), and a "
+        "source checkout started with `cli.py start`, which is how the image itself "
+        "runs and how `master` is used, is not read. It reads the version, not "
+        "whether port 7861 is reachable or the shell tool is still registered. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration "
+        "nested more than 64 levels deep in package.json, a TOML manifest or an MCP "
+        "config (an MCP server more than 62) is still judged, and reported without a "
+        "line; a lockfile entry keeps its line at any depth."
+    ),
+)
 
 
 def all_rule_ids() -> list[str]:

@@ -36,7 +36,10 @@ n8n-mcp (npm), mcp-atlassian (PyPI) and IBM ContextForge (PyPI) have rows here a
 well, for `ghcr.io/czlonkowski/n8n-mcp` (and its `-railway` build),
 `ghcr.io/sooperset/mcp-atlassian` and `ghcr.io/ibm/mcp-context-forge`, which their
 docs run with `docker run`; those rows read a version tag only and never report
-`latest` or an untagged reference.
+`latest` or an untagged reference. Langchain-Chatchat's PyPI package is a
+presence-only row in the pin table, and its compose file runs `chatimage/chatchat`,
+mirrored at `ccr.ccs.tencentyun.com/langchain-chatchat/chatchat`, so the same rule
+reads every tag of both here.
 Docker Hub
 images are matched by the bare name their docs use, so `docker.io/grafana/mcp-k6`
 is not read. Nothing `mcp_cve_pins_2026_07` reads carries their version, and a pin
@@ -406,6 +409,31 @@ _PINS: tuple[_ImagePin, ...] = (
         ("CVE-2026-77822", "CVE-2026-18905", "CVE-2026-18486", "CVE-2026-18489",
          "CVE-2026-53710", "CVE-2026-78573", "CVE-2026-53709", "CVE-2026-53711",
          "CVE-2026-8355"),
+    ),
+    # CVE-2026-75128: Langchain-Chatchat's API runs any registered tool, the
+    # always-registered `shell` tool included, for an unauthenticated caller on
+    # 0.0.0.0:7861. The pin table's presence-only row reads the PyPI package. The
+    # docker build workflow clones `master`, tags `<version>-<commit>-<date>` and
+    # pushes to Docker Hub and the Tencent mirror, and the image runs as root.
+    # Docker Hub carries 0.3.0-0622 to 0.3.1.3-717e03e-20241109 and the Tencent
+    # mirror 0.3.1-4e03ec6-20240726 to the same, both with
+    # 0.3.2-dev-d15fcd4-20241014. tool_routes.py serves the route from the 0.3.0
+    # wheel to `master` today, so every image built in between has it, and no
+    # release fixes it. A tag reads as its first three numbers: the release
+    # builds as 0.3.0 or 0.3.1 (0.3.1.3-717e03e-20241109 is 0.3.1), and the dev
+    # build as 0.3.2. So the floor is 0.3.3, the first number past the dev tag,
+    # and every tag on either registry reads affected. Neither registry has a
+    # `latest` tag, so `floating_affected` stays False.
+    _ImagePin(
+        "AAK-CHATCHAT-CVE-2026-75128-001", "Langchain-Chatchat", "chatimage/chatchat",
+        (0, 3, 3), "on every tag through 0.3.2-dev", "No fixed release.",
+        ("CVE-2026-75128",),
+    ),
+    _ImagePin(
+        "AAK-CHATCHAT-CVE-2026-75128-001", "Langchain-Chatchat",
+        "ccr.ccs.tencentyun.com/langchain-chatchat/chatchat",
+        (0, 3, 3), "on every tag through 0.3.2-dev", "No fixed release.",
+        ("CVE-2026-75128",),
     ),
 )
 
