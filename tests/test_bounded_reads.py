@@ -164,26 +164,39 @@ _TARGETS = (
 )
 
 _SCAN = textwrap.dedent("""
-    import json, resource, sys, time
+    import json, sys, tempfile, time, tracemalloc
     from pathlib import Path
     from agent_audit_kit.engine import run_scan
+    traced = sys.argv[2] == "traced"
+    if traced:
+        run_scan(Path(tempfile.mkdtemp()))  # import every scanner before tracing
+        tracemalloc.start()
     started = time.perf_counter()
     result = run_scan(Path(sys.argv[1]), strict_loading=True)
-    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    print(json.dumps([time.perf_counter() - started, rss, [f.evidence for f in result.scanner_failures]]))
+    seconds = time.perf_counter() - started
+    peak = tracemalloc.get_traced_memory()[1] if traced else 0
+    print(json.dumps([seconds, peak, [f.evidence for f in result.scanner_failures]]))
 """)
 
 
-def _scan_in_subprocess(project: Path, timeout: float) -> tuple[float, int, list[str]]:
+def _scan_in_subprocess(project: Path, timeout: float, traced: bool = False) -> tuple[float, int, list[str]]:
     """Run a whole scan in a child, so a scanner that blocks fails the test on
-    the timeout instead of hanging the suite. Returns the scanner failures'
-    evidence."""
+    the timeout instead of hanging the suite. Returns the seconds, the peak of
+    what Python allocated during the scan (0 unless `traced`) and the scanner
+    failures' evidence.
+
+    The child's peak RSS cannot stand in for what the scan allocated: on Linux a
+    child inherits its parent's peak across exec, so on a CI runner one started
+    from a pytest worker reported 265 MB, the worker's peak rather than its own.
+    tracemalloc counts only the scan's own allocations, and a read of a 200 MB
+    file is one of them.
+    """
     env = {**os.environ, "PYTHONPATH": str(ROOT), "AAK_TOXIC_FLOW": "1"}
-    out = subprocess.run([sys.executable, "-c", _SCAN, str(project)], capture_output=True,
-                         text=True, timeout=timeout, env=env, cwd=project)
+    out = subprocess.run([sys.executable, "-c", _SCAN, str(project), "traced" if traced else "plain"],
+                         capture_output=True, text=True, timeout=timeout, env=env, cwd=project)
     assert out.returncode == 0, out.stderr[-2000:]
-    seconds, rss, failures = json.loads(out.stdout)
-    return float(seconds), int(rss), failures
+    seconds, peak, failures = json.loads(out.stdout)
+    return float(seconds), int(peak), failures
 
 
 def _link_everything(project: Path, target: Path) -> None:
@@ -199,7 +212,7 @@ def test_a_project_of_fifo_symlinks_scans_and_no_scanner_waits(tmp_path: Path) -
     os.mkfifo(fifo)
     project = tmp_path / "proj"
     _link_everything(project, fifo)
-    seconds, _rss, failures = _scan_in_subprocess(project, timeout=240)
+    seconds, _peak, failures = _scan_in_subprocess(project, timeout=240)
     assert failures == []
     assert seconds < 60
 
@@ -207,16 +220,18 @@ def test_a_project_of_fifo_symlinks_scans_and_no_scanner_waits(tmp_path: Path) -
 def test_a_project_of_symlinks_to_a_200_mb_file_reads_none_of_it(tmp_path: Path) -> None:
     """Each scanner that read the file whole spent 200 MB of memory on it (peaks
     of 400 to 590 MB), and two were still reading after 90 s. A sparse file
-    costs no disk."""
+    costs no disk. The scan's allocations are traced in the child (see
+    `_scan_in_subprocess`): about 7 MB at their peak now, while on main one
+    AGENTS.md linked to the file took them to 400 MB, the bytes read and the
+    text decoded from them."""
     big = tmp_path / "big.bin"
     with open(big, "wb") as fh:
         fh.truncate(200_000_000)
     project = tmp_path / "proj"
     _link_everything(project, big)
-    seconds, rss, failures = _scan_in_subprocess(project, timeout=240)
-    rss_mb = rss / (1 << 20) if sys.platform == "darwin" else rss / (1 << 10)
+    seconds, peak, failures = _scan_in_subprocess(project, timeout=240, traced=True)
     # A file over its reader's cap is skipped silently, but the pin file is one
     # the user made to be compared, so the pin-drift check reports it unread.
     assert len(failures) == 1 and "PinFileError" in failures[0] and "larger than 1,000,000 bytes" in failures[0]
-    assert rss_mb < 200, f"peak RSS {rss_mb:.0f} MB: a scanner read the file"
+    assert peak < 100_000_000, f"the scan allocated {peak / 1e6:.0f} MB at its peak: a scanner read the file"
     assert seconds < 60
