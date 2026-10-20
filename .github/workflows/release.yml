@@ -356,12 +356,14 @@ jobs:
           python3 -c 'import json; ids = {f["ruleId"] for f in json.load(open("smoke.json"))["findings"]}; assert "AAK-MCP-015" in ids, sorted(ids)'
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: agent-audit-kit:scan
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
 
       - name: Build and push
         id: push

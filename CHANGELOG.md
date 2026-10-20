@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The nightly and release Trivy scans skip CVEs with no fix in the base image's distribution (`ignore-unfixed`), the action is pinned by commit, and the base image digest is refreshed; the Security tab stops collecting unfixable base-image rows.
+
 ## [0.6.23] - 2026-10-20
 
 ### Added

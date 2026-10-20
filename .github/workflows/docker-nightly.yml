@@ -71,13 +71,19 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trivy scan (fail if new CRITICAL/HIGH in base image)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         continue-on-error: true
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/agent-audit-kit:nightly
           format: sarif
           output: trivy-nightly.sarif
           severity: CRITICAL,HIGH
+          # SARIF output lists every severity unless this is set, so `severity`
+          # alone never filtered what reached the Security tab.
+          limit-severities-for-sarif: true
+          # A CVE with no fixed package in Debian's repositories is not one a
+          # rebuild can clear; it is read again once Debian publishes the fix.
+          ignore-unfixed: true
 
       # The documented one-liner on the image just pushed; release.yml runs the
       # same check before its push. A failure here files the scheduled-failure
