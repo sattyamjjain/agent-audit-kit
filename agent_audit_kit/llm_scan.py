@@ -1023,8 +1023,8 @@ def run_llm_scan(project_root: Path, model: str = DEFAULT_MODEL) -> LlmScanRepor
     verdicts: dict[str, LlmVerdict] = {}
     consecutive_errors = 0
     for index, tool in enumerate(tools):
-        key = hashlib.sha256(render_tool_text(tool)[0].encode("utf-8")).hexdigest()
-        verdict = verdicts.get(key)
+        digest = hashlib.sha256(render_tool_text(tool)[0].encode("utf-8")).hexdigest()
+        verdict = verdicts.get(digest)
         if verdict is None:
             try:
                 verdict = provider.call(model, tool)
@@ -1037,7 +1037,7 @@ def run_llm_scan(project_root: Path, model: str = DEFAULT_MODEL) -> LlmScanRepor
                 report.findings.append(_tool_gap_finding(tool, str(exc)))
                 report.outcomes.append(ToolOutcome(tool, "not_analyzed", why=str(exc)))
                 continue
-            verdicts[key] = verdict
+            verdicts[digest] = verdict
             served = verdict.served_model or model
             report.served_models[served] = report.served_models.get(served, 0) + 1
         consecutive_errors = 0

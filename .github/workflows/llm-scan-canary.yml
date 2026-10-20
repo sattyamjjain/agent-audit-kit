@@ -12,7 +12,8 @@ name: LLM scan canary
 #
 # Needs a repository secret named LLM_CANARY_ANTHROPIC_API_KEY. Use a key from
 # a Console workspace with a small monthly spend limit: one run is 20 short
-# requests (well under one US cent on Haiku 5.5 and Sonnet 5.5). Without the
+# requests, a few US cents at list price, nearly all of it Sonnet 5.5 (about
+# 800 input tokens and a short thinking-plus-verdict reply each). Without the
 # secret the job reports that it skipped and passes, so forks stay green.
 #
 # Schedule and manual runs only. Pull requests never get the secret, and this
