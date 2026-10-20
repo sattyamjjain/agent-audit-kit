@@ -13497,9 +13497,10 @@ _r(
 
 _r(
     "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
-    "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)",
-    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below "
-    "1.0.8 carries four disclosed defects that one floor remediates. "
+    "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)",
+    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
+    "`ghcr.io/ibm/mcp-context-forge` image) at or below 1.0.8 carries disclosed "
+    "defects that one floor remediates. "
     "CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint "
     "`POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection "
     "time — unlike every other egress path in the gateway — so an authenticated "
@@ -13520,11 +13521,20 @@ _r(
     "no database account, so a remote attacker can mint admin tokens. "
     "CVE-2026-53711 (MEDIUM, CVSS 4.0 5.1): before 0.3.1 the Admin UI writes a "
     "saved Global Prompts template into the page as HTML, a stored XSS against "
-    "whoever views it. Both are fixed below this floor. "
+    "whoever views it. Both are fixed below this floor. CVE-2026-8355 (MEDIUM, "
+    "CVSS 3.1 6.4 from IBM): through 1.0.5, a user allowed to create gateways "
+    "registers one with OAuth client credentials and a `token_url` of their "
+    "choosing, and the gateway posts its client credentials there and returns up "
+    "to 256 characters of a reply that is not a token in its 502, so the user "
+    "reaches internal services and cloud metadata. 1.0.1 began checking "
+    "`token_url`, but token requests still followed redirects; 1.0.6 stops "
+    "following them and checks `redirect_uri` and `jwks_uri` too, below this "
+    "floor as well. "
     "Treat < 1.0.9 (and unpinned) as exposed.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Change any "
+    "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it, or run the "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.0.9 or later. Change any "
     "credential that shipped as a default before doing anything else, "
     "`JWT_SECRET_KEY` included: generate a new one (from 1.0.2, "
     "`python -m mcpgateway.scripts.init_secrets`), because a token signed with the "
@@ -13557,6 +13567,13 @@ _r(
         # the 0.1.0 to 0.3.0 wheels and sets `textContent` from 0.3.1. The record
         # says `>= 0.2.0, < 0.3.1`, the release its reporter tested.
         "CVE-2026-53711",
+        # 2026-10-20 (#1054). CVE-2026-8355: OAuth gateway registration posts to a
+        # caller's `oauth_config.token_url`. IBM's bulletin names <= 1.0.5 and the
+        # fix as 1.0.6, whose dc429d9 (#5601) stops following redirects on token
+        # requests and checks `redirect_uri` and `jwks_uri`; 1.0.1 had begun
+        # checking `token_url` itself. Below the floor, so the pin table's row
+        # stays as it is.
+        "CVE-2026-8355",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
@@ -13573,7 +13590,12 @@ _r(
         "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
-        "reported without a line; a lockfile entry keeps its line at any depth."
+        "reported without a line; a lockfile entry keeps its line at any depth. "
+        "It also reads `ghcr.io/ibm/mcp-context-forge` tags below 1.0.9 in compose "
+        "files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. "
+        "`latest` was the v1.0.11 digest on 2026-10-20, fixed, so an untagged or "
+        "`latest` reference, which the README and the chart default to, is not "
+        "reported."
     ),
 )
 
@@ -16460,6 +16482,7 @@ _r(
         "no version."
     ),
 )
+
 
 
 def all_rule_ids() -> list[str]:

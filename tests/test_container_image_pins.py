@@ -828,7 +828,7 @@ def test_the_image_rows_carry_the_package_pins_cves() -> None:
     from agent_audit_kit.scanners.container_image_pins import _PINS
 
     for pin in _PINS:
-        if pin.rule_id in (N8NMCP, ATL_27825, ATL_27826, ATL_73498):
+        if pin.rule_id in (N8NMCP, ATL_27825, ATL_27826, ATL_73498, CONTEXTFORGE):
             assert set(pin.cves) <= set(RULES[pin.rule_id].cve_references), pin
             assert pin.floating_affected is False, "a floating tag must not move v1.1"
 
@@ -920,3 +920,42 @@ def test_a_yaml_file_that_only_says_answer_is_not_composed(
 
     monkeypatch.setattr(container_image_pins, "_helm_refs", _composed)
     assert _write(tmp_path, "faq.yaml", "- question: What is MCP?\n  answer: A protocol.\n") == []
+
+
+# --- 2026-10-20 (#1054): IBM ContextForge's image, on the package pin's rule ---
+#
+# The pin table reads `mcp-contextforge-gateway` below 1.0.9. The README and the
+# Helm chart run `ghcr.io/ibm/mcp-context-forge`, tagged with the release tag, so
+# the same rule reads the image too, version tags only.
+
+CONTEXTFORGE = "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001"
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/ibm/mcp-context-forge:0.9.0", True),       # a 0.x tag without the `v`
+    ("ghcr.io/ibm/mcp-context-forge:v0.9.0", True),
+    ("ghcr.io/ibm/mcp-context-forge:1.0.0-RC-2", True),   # read as 1.0.0
+    ("ghcr.io/ibm/mcp-context-forge:v1.0.5", True),       # CVE-2026-8355's last affected release
+    ("ghcr.io/ibm/mcp-context-forge:v1.0.7-20260921", True),  # the 1.0.7 support line
+    ("ghcr.io/ibm/mcp-context-forge:v1.0.8", True),
+    ("ghcr.io/ibm/mcp-context-forge:v1.0.9", False),      # the floor
+    ("ghcr.io/ibm/mcp-context-forge:v1.0.11", False),
+    ("ghcr.io/ibm/mcp-context-forge:latest", False),      # the v1.0.11 digest on 2026-10-20
+    ("ghcr.io/ibm/mcp-context-forge", False),             # untagged is latest
+    ("ghcr.io/ibm/mcp-context-forge-wheels:amd64-latest", False),  # the build's wheel image
+])
+def test_contextforge_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  gateway:\n    image: {ref}\n")
+    assert (CONTEXTFORGE in ids) is fires
+
+
+def test_a_chart_with_two_image_blocks_is_reported_on_the_first(tmp_path: Path) -> None:
+    """ContextForge's chart runs the image twice, for the gateway and for its
+    migration job. The Helm walk pops from the end of the document, so it met the
+    migration block first; the finding belongs on the gateway's own block."""
+    block = "  image:\n    repository: ghcr.io/ibm/mcp-context-forge\n    tag: v1.0.5\n"
+    (tmp_path / "values.yaml").write_text(
+        "mcpContextForge:\n" + block + "migration:\n" + block, encoding="utf-8",
+    )
+    findings = scan(tmp_path)[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(CONTEXTFORGE, 3)]

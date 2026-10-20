@@ -97,6 +97,9 @@ def test_contextforge_rule_cites_all_five_cves() -> None:
         # below the floor. tests/test_cve_triage_2026_10_15.py holds their proof.
         "CVE-2026-53709",
         "CVE-2026-53711",
+        # 2026-10-20: CVE-2026-8355 (an OAuth token-URL SSRF, fixed 1.0.6), below
+        # the floor too. tests/test_cve_triage_2026_10_20.py holds its proof.
+        "CVE-2026-8355",
     }
 
 

@@ -105,8 +105,9 @@ available) before shipping:
     docstring)
   - mcp-contextforge-gateway        >= 1.0.9   (+ CVE-2026-78573 default
     credentials, 1.0.0–1.0.7; already under the existing floor. CVE-2026-53709,
-    a published default JWT key below 1.0.2, and CVE-2026-53711, an Admin UI
-    stored XSS below 0.3.1, joined it the same way)
+    a published default JWT key below 1.0.2, CVE-2026-53711, an Admin UI
+    stored XSS below 0.3.1, and CVE-2026-8355, an OAuth token-URL SSRF below
+    1.0.6, joined it the same way)
   - awslabs.security-agent-mcp-server >= 0.2.0   (CVE-2026-87913; unverified S3
     bucket ownership for scan output)
   - mysql-mcp-server               >= 0.4.2   (CVE-2026-59971; SSE transport with no
@@ -914,10 +915,12 @@ _PINS: tuple[_Pin, ...] = (
     # v1.0.8 patched-version. A floor inferred from either source alone would have
     # shipped one release short and called four vulnerable installs patched.
     #
-    # Four more have since joined below the floor, no row change: CVE-2026-53710
+    # Five more have since joined below the floor, no row change: CVE-2026-53710
     # (1.0.2), CVE-2026-78573 (1.0.8), CVE-2026-53709 (a published default JWT key
-    # and the platform-admin bootstrap, fixed 1.0.2) and CVE-2026-53711 (an Admin
-    # UI stored XSS, fixed 0.3.1). No `introduced`, so every one of them fires.
+    # and the platform-admin bootstrap, fixed 1.0.2), CVE-2026-53711 (an Admin UI
+    # stored XSS, fixed 0.3.1) and CVE-2026-8355 (OAuth gateway registration posts
+    # to a caller's token URL, fixed 1.0.6). No `introduced`, so every one of them
+    # fires. The image the README runs has a row in `container_image_pins`.
     _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001", "mcp-contextforge-gateway",
          ("mcp-contextforge-gateway",), (1, 0, 9),
          fix_label="1.0.9 (affected <= 1.0.8)"),
