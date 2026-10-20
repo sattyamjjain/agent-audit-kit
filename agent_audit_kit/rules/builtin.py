@@ -4654,7 +4654,9 @@ _r(
         "satisfies together (`langchain-core==1.2.22` beside `langchain-core==1.2.21` in "
         "one requirements file) admit nothing and are not reported; pip refuses to "
         "install them too. A pyproject.toml that does not parse and a manifest over "
-        "2 MB are not read."
+        "2 MB are not read. A pyproject.toml with a key of more than 64 dotted parts, "
+        "or holding an integer Python cannot convert (one past 4,300 digits), is "
+        "refused and reported as AAK-INTERNAL-SCANNER-FAIL."
     ),
 )
 
@@ -4678,7 +4680,10 @@ _r(
         "bare (dotted) name or an f-string with a `{}` placeholder. An argument "
         "that is a call (`os.path.join(PROMPTS, name)`), a concatenation "
         "(`\"prompts/\" + name`) or a keyword (`path=name`) is not matched."
-        " A requirements file or pyproject.toml over 2 MB is not read."
+        " A requirements file or pyproject.toml over 2 MB is not read. A pyproject.toml "
+        "with a key of more than 64 dotted parts, or holding an integer Python cannot "
+        "convert (one past 4,300 digits), is refused and reported as "
+        "AAK-INTERNAL-SCANNER-FAIL."
     ),
 )
 
@@ -4705,7 +4710,10 @@ _r(
         "to 0.3.80 and 1.0.0 to 1.2.4 are affected and not reported. Every version "
         "below 0.3.14 is also below AAK-LANGCHAIN-001's 1.2.22, which does report it. "
         "LangChain.js has a separate advisory, which no rule cites."
-        " A requirements file or pyproject.toml over 2 MB is not read."
+        " A requirements file or pyproject.toml over 2 MB is not read. A pyproject.toml "
+        "with a key of more than 64 dotted parts, or holding an integer Python cannot "
+        "convert (one past 4,300 digits), is refused and reported as "
+        "AAK-INTERNAL-SCANNER-FAIL."
     ),
 )
 
@@ -6155,7 +6163,10 @@ _r(
         "or a branch included (any name holding a `/` but `refs/tags/<tag>`), is "
         "not reported, and uv.lock, `requirements/base.txt` and a `uvx "
         "mcp-neo4j-cypher==0.5.0 --read-only` launcher in .mcp.json are not read, "
-        "nor is a pyproject.toml that does not parse or a manifest over 2 MB. "
+        "nor is a pyproject.toml that does not parse or a manifest over 2 MB. A "
+        "pyproject.toml with a key of more than 64 dotted parts, or holding an "
+        "integer Python cannot convert (one past 4,300 digits), is refused and "
+        "reported as AAK-INTERNAL-SCANNER-FAIL. "
         "Declarations of one install that no release satisfies together "
         "(`mcp-neo4j-cypher==0.6.0` beside `mcp-neo4j-cypher==0.5.0` in one "
         "requirements file) admit nothing and are not reported; pip refuses to install "
@@ -6480,7 +6491,10 @@ _r(
         "extras (`mcp[cli]>=1.2.0`), another capitalisation (`Langfuse`), "
         "`[project.optional-dependencies]` or Poetry tables, a lockfile and a "
         "sub-directory manifest are not reported."
-        " A package.json or pyproject.toml over 2 MB is not read."
+        " A package.json or pyproject.toml over 2 MB is not read. A pyproject.toml with "
+        "a key of more than 64 dotted parts, or holding an integer Python cannot "
+        "convert (one past 4,300 digits), is refused and reported as "
+        "AAK-INTERNAL-SCANNER-FAIL."
     ),
 )
 
@@ -6746,7 +6760,9 @@ _r(
         "in one requirements file) admit nothing and are not reported; pip refuses to "
         "install them too. A lockfile (uv.lock, package-lock.json), a pyproject.toml "
         "that does not parse, and a manifest in a sub-directory or over 2 MB are not read."
-        " A source file over 512 KB is not read."
+        " A source file over 512 KB is not read. A pyproject.toml with a key of more "
+        "than 64 dotted parts, or holding an integer Python cannot convert (one past "
+        "4,300 digits), is refused and reported as AAK-INTERNAL-SCANNER-FAIL."
     ),
 )
 
@@ -6981,7 +6997,10 @@ _r(
         "satisfies together (`langchain-text-splitters==1.1.2` beside "
         "`langchain-text-splitters==1.1.1` in one requirements file) admit nothing and "
         "are not reported; pip refuses to install them too. A source file over 1 MB, a "
-        "pyproject.toml that does not parse and a manifest over 2 MB are not read."
+        "pyproject.toml that does not parse and a manifest over 2 MB are not read. A "
+        "pyproject.toml with a key of more than 64 dotted parts, or holding an integer "
+        "Python cannot convert (one past 4,300 digits), is refused and reported as "
+        "AAK-INTERNAL-SCANNER-FAIL."
         " A lockfile over 32 MiB is not read."
     ),
 )
@@ -7044,7 +7063,9 @@ _r(
         "satisfies together (`langchain-openai==1.1.14` beside `langchain-openai==1.1.13` "
         "in one requirements file) admit nothing and are not reported; pip refuses to "
         "install them too. A Python file over 1 MB, a pyproject.toml that does not parse "
-        "and a manifest over 2 MB are not read."
+        "and a manifest over 2 MB are not read. A pyproject.toml with a key of more than "
+        "64 dotted parts, or holding an integer Python cannot convert (one past 4,300 "
+        "digits), is refused and reported as AAK-INTERNAL-SCANNER-FAIL."
         " A lockfile over 32 MiB is not read."
     ),
 )
@@ -13294,7 +13315,13 @@ _r(
     "depth check, a Python source a linear screen bounds past 10,000 levels "
     "is refused before it is parsed; one under that bound is parsed, and costs "
     "what a source of its size does: up to about 40 s of CPU for 500 KB on "
-    "3.9, deep or not), a Python syntax tree deeper "
+    "3.9, deep or not), a TOML key of more than 64 dotted parts (tomllib "
+    "builds a dotted key one part at a time, at a cost that grows with the "
+    "square of the parts, so the file is refused before it is parsed), a TOML "
+    "file holding an integer Python cannot convert (one past 4,300 digits, the "
+    "limit `int()` has had since 3.9.14, 3.10.7 and 3.11; a JSON file reads "
+    "such an integer as the nearest float and a YAML file as its text, so "
+    "neither is refused), a Python syntax tree deeper "
     "than the scanner's walk takes (a walk runs with a recursion limit of "
     "10,000 frames, about 3,300 levels for the walk that takes the most "
     "frames a level; the deepest of 100,303 real files has 569), or YAML "

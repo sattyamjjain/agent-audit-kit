@@ -82,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- AAK-INTERNAL-SCANNER-FAIL's description names the TOML bounds (a key of more than 64 dotted parts, a value Python cannot convert), as the limitations of the rules that list the pyproject.toml they read with its other bounds now do; they were stated only in the changelog and a docstring.
 - A loopback URL written another way is no longer reported as a remote server by AAK-MCP-001, AAK-MCP-009, AAK-TRANSPORT-001 or the AAK-AGENT-001 and -006 exemptions: `http://127.1/`, `http://0x7f.1/`, `http://2130706433/`, `http://[::ffff:127.0.0.1]/` and a percent-escaped `localhost` are each 127.0.0.1 to Node and to the resolver behind curl (#1019). `http://0177.0.0.1/` is still reported: Node reads the leading zero as octal, 127.0.0.1, and macOS's resolver reads 177.0.0.1. AAK-TRUST-002 no longer reports `https:api.anthropic.com/v1` or an Anthropic host written with a percent escape (`https://%61pi.anthropic.com/`), which Node reads as Anthropic's.
 - AAK-AGENT-COMPOSE-001 and -002 no longer crash on a malformed egress URL such as `http://[::1/` (#1019). urlparse raised, the scan ended with AAK-INTERNAL-SCANNER-FAIL, and `aak scan` exited 1 as incomplete. The destination now counts as non-allowlisted.
 - AAK-MCP-001, AAK-MCP-009 and AAK-TRANSPORT-001 no longer exempt a URL no client can open as loopback, such as `http://evil.example[::1]/` or `http://[::1%25eth0]/` (#1019). urlsplit read `::1` out of the brackets, and Node fails the URL.

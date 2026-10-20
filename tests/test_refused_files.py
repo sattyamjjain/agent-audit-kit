@@ -1342,3 +1342,83 @@ def test_a_reader_that_had_no_cap_skips_a_file_over_it_unread(
     seconds, count = _child(_CAPPED_SCAN, scanner_module, str(tmp_path), rel).split()
     assert float(seconds) < 2.0
     assert count == "0"
+
+
+# ---------------------------------------------------------------------------
+# The TOML bounds a user reads
+# ---------------------------------------------------------------------------
+
+# AAK-INTERNAL-SCANNER-FAIL's description names the two TOML refusals the way it
+# names the JSON and YAML ones, and the rules whose limitations list the
+# pyproject.toml they read with its other bounds say the same. Each is built from
+# the code's own figures, `_TOML_MAX_KEY_PARTS` and Python's digit limit, so a
+# bound that moves and leaves the prose behind fails here, and the words are the
+# refusal's own, so a user can match the evidence to the text.
+
+_TOML_BOUND_RULES = (
+    SCANNER_FAIL_RULE_ID,
+    "AAK-LANGCHAIN-001",
+    "AAK-LANGCHAIN-002",
+    "AAK-LANGCHAIN-003",
+    "AAK-NEO4J-001",
+    "AAK-OAUTH-3P-001",
+    "AAK-DNS-REBIND-002",
+    "AAK-LANGCHAIN-SSRF-REDIR-001",
+    "AAK-SSRF-TOCTOU-001",
+)
+
+
+def _toml_bound_text(rule_id: str) -> str:
+    from agent_audit_kit.rules.builtin import get_rule
+
+    rule = get_rule(rule_id)
+    return rule.description if rule_id == SCANNER_FAIL_RULE_ID else rule.limitations
+
+
+@pytest.mark.parametrize("rule_id", _TOML_BOUND_RULES)
+def test_the_prose_names_the_dotted_key_bound_the_toml_screen_applies(rule_id: str) -> None:
+    """A key one part over the bound is refused with a reason whose words the
+    prose carries; one at the bound is read."""
+    parts = _helpers._TOML_MAX_KEY_PARTS
+    assert f"more than {parts} dotted parts" in _toml_bound_text(rule_id)
+    with collecting_refusals() as refused:
+        with pytest.raises(RefusedTOML):
+            loads_toml(".".join(f"k{i}" for i in range(parts + 1)) + " = 1\n", "pyproject.toml")
+        assert loads_toml(".".join(f"k{i}" for i in range(parts)) + " = 1\n", "pyproject.toml")["k0"]
+    assert refused == {"pyproject.toml": f"TOML key of more than {parts} dotted parts"}
+    assert refused["pyproject.toml"].removeprefix("TOML key of ") in _toml_bound_text(rule_id)
+
+
+@pytest.mark.parametrize("rule_id", _TOML_BOUND_RULES)
+def test_the_prose_names_the_toml_value_python_cannot_convert(rule_id: str) -> None:
+    """An integer past Python's digit limit is refused with a reason whose words
+    the prose carries, with the limit's own figure; a date that does not exist
+    is invalid TOML, skipped as it always was, and the prose claims no more."""
+    text = _toml_bound_text(rule_id)
+    assert "Python cannot convert" in text
+    with collecting_refusals() as refused:
+        with pytest.raises(_helpers.tomllib.TOMLDecodeError):
+            loads_toml("d = 2026-13-01\n", "pyproject.toml")
+    assert refused == {}
+    if not _DIGIT_LIMIT:
+        return
+    digits = sys.get_int_max_str_digits()
+    assert f"{digits:,} digits" in text
+    with collecting_refusals() as refused:
+        with pytest.raises(RefusedTOML):
+            loads_toml("n = " + "9" * (digits + 1) + "\n", "pyproject.toml")
+    assert refused == {"pyproject.toml": "TOML value Python cannot convert (ValueError)"}
+
+
+def test_a_refused_pyproject_is_reported_with_the_words_the_prose_uses(tmp_path: Path) -> None:
+    """Through the engine: a 65-part key in the root pyproject.toml is reported
+    against that file by the scanners that read it, and the reason in the
+    evidence is the one the description names."""
+    key = ".".join(f"k{i}" for i in range(_helpers._TOML_MAX_KEY_PARTS + 1))
+    _write(tmp_path, {"pyproject.toml": "[project]\nname = 'x'\n" + key + " = 1\n", "server.py": "import mcp\n"})
+    result = run_scan(tmp_path)
+    refusals = [f for f in result.findings if f.rule_id == SCANNER_FAIL_RULE_ID and f.file_path == "pyproject.toml"]
+    assert refusals
+    reason = f"TOML key of more than {_helpers._TOML_MAX_KEY_PARTS} dotted parts"
+    assert all(reason in f.evidence for f in refusals)
+    assert reason.removeprefix("TOML key of ") in _toml_bound_text(SCANNER_FAIL_RULE_ID)
