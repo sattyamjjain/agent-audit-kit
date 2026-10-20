@@ -16,6 +16,96 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-20 (v0.6.23): two disclosures, one more CVE and an image on the ContextForge rule, one new presence-only pin
+
+The watcher opened two `cve-response` issues at 04:51Z on 2026-10-20 (#1054, #1055). One
+joins an existing rule, which now also reads the product's image, and one gets a new rule,
+each measured on firing fixtures and negative ones. #1054 was filed `sev/unknown`: NVD and
+the CVE record carry no score, but IBM's bulletin gives CVSS 3.1 6.4, MEDIUM, so the issue
+takes that title and `sev/medium` when it closes. The bulletin's vector,
+AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N, computes to 5.4; 6.4 is the same vector with a changed
+scope. Both are MEDIUM, and the ledger records the bulletin's 6.4. #1055's CVSS 3.1 9.8,
+VulnCheck's Primary metric, matches the title and label the watcher filed. NVD text below
+is quoted from the API record, read on 2026-10-20 at 05:11Z and again at 05:41Z, unchanged.
+
+**IBM ContextForge MCP Gateway (CVE-2026-8355) joins
+`AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001`, and the rule now reads the gateway's image.**
+NVD: "The vulnerability occurs during OAuth-enabled gateway registration when the system
+fails to validate the oauth_config.token_url parameter." A user allowed to create gateways
+names a token URL, the gateway posts its client credentials there, and up to 256 characters
+of a reply that is not a token come back in the 502. IBM's bulletin (node 7285723, first
+published 2026-08-31) scopes it to 0.1.0 through 1.0.5 and names v1.0.6 as the fix; the
+project's repository has no advisory for it. Checked in the source: 1.0.0 checks nothing;
+from 1.0.1 `token_url` is checked with `validate_core_url` at the schema and at runtime,
+but token requests still follow redirects, so a public token URL can redirect to an
+internal address, and `redirect_uri` and `jwks_uri` go unchecked. The fix, dc429d91
+("fix(security): validate all oauth_config URLs to prevent SSRF during gateway
+registration", #5601, 2026-07-13), is in v1.0.6 and not v1.0.5: it stops following
+redirects on token requests and checks both fields. 1.0.6 is below the rule's 1.0.9 floor,
+so every affected release already fires, as CVE-2026-53709 (#983) and CVE-2026-53711 did,
+and the pin table's row does not change. PyPI `mcp-contextforge-gateway` carries every
+release from 0.1.0 to 1.0.11, and a `1.0.7.post20260921` patch on the 1.0.7 support line.
+
+The README and the Helm chart (`charts/mcp-stack`) run `ghcr.io/ibm/mcp-context-forge`,
+which no reader covered: the chart's values pinned to v1.0.5 scanned clean, for this CVE
+and the rule's eight others. The release workflow tags each release (`v1.0.5`; the 0.x
+releases also without the `v`) and `latest`, and the image labels name the release commit
+(v1.0.5 is af178ee1, v1.0.6 d24df05e). So the rule gets an image row below 1.0.9 that reads
+version tags only: on 2026-10-20 `latest` was the v1.0.11 digest, fixed, and the chart's
+default `tag: latest` names no release. The 1.0.0 betas and release candidates read as
+1.0.0, and `v1.0.7-20260921` as 1.0.7, as its PyPI twin does. The chart runs the image
+twice, for the gateway and for its migration job, and the Helm reader reported the
+migration block, because its walk starts from the end of the document. A file is now
+reported on its first image block. Upgrade to 1.0.9 or later, which closes the rule's
+other CVEs as well. Until then IBM's advice for this one is to take `gateways.create` away
+from untrusted roles and block the gateway's egress to metadata and private ranges.
+
+**Langchain-Chatchat (CVE-2026-75128) gets `AAK-CHATCHAT-CVE-2026-75128-001`,
+CRITICAL, on every release and every image tag.** NVD: "Langchain-Chatchat through 0.3.1.3
+exposes a POST /tools/call API endpoint that invokes any registered tool by name without
+authentication, leaving the always-registered shell tool callable." VulnCheck's record
+names PyPI `langchain-chatchat` through 0.3.1.3 and cites `tool_routes.py` at v0.3.1.
+Checked in the wheels: the oldest, 0.3.0 (2024-05-06), and the newest, 0.3.1.3
+(2024-07-23), both mount `POST /tools/call` and register the `shell` tool with
+`@regist_tool`. `get_tool` returns from that registry unfiltered, so no setting takes the
+tool away from the route, and 0.3.1.3 binds the API to 0.0.0.0:7861 by default. No release
+has followed 0.3.1.3: `master` still declares `__version__ = "0.3.1.3"` and serves the route
+with only a logging change. So the PyPI row is presence-only, and an unpinned reference is
+reported too. PyPI's `chatchat` is another project, and Chatchat publishes no release
+binaries: its GitHub releases carry no assets. The compose file runs
+`chatimage/chatchat:<version>-<commit>-<date>`, built from `master` by the docker workflow,
+running as root, and mirrored at `ccr.ccs.tencentyun.com/langchain-chatchat/chatchat`.
+Docker Hub carries 49 tags, 0.3.0-0622 to 0.3.1.3-717e03e-20241109 and a
+0.3.2-dev-d15fcd4-20241014 build, and the Tencent mirror 31 of them. Neither has a
+`latest`, and 717e03e, the newest image's commit, has the route, so both get rows that
+report every tag: a tag reads as its first three numbers, the dev build as 0.3.2, so the
+floor is 0.3.3. Before this change Chatchat's own compose file and a requirements file on
+0.3.1.3 scanned clean.
+
+Chatchat's three path-traversal CVEs (#894-#896, 2026-10-03) were left out of scope: they
+were an upload handler with no agent surface, which is a different kind of claim. This one
+is the agent's tool-call layer: one unauthenticated request runs a command on a default
+network bind, in code every user runs, unlike Context7's flaw in a hosted service (#618).
+AAK already covers Chatchat's agent surface: `AAK-STDIO-001` cites its STDIO command
+injection (CVE-2026-30617). No published Chatchat artifact has MCP code, which reached
+`master` in 2025 and was never released, so the rule is `AAK-CHATCHAT-...`, not
+`AAK-MCP-...`, and carries no MCP Top 10 id: ASI03 for the unauthenticated tool invocation,
+with ASI04 and ASI05. No fix exists: every published release, 0.3.0 to 0.3.1.3, and every
+image tag is affected, and `master` is unreleased, so there is nothing to upgrade to. Keep
+port 7861 off networks you do not trust, put authentication in front of the API, and
+remove the shell tool's registration: `from .shell import shell` in
+`chatchat/server/agent/tools_factory/__init__.py` is the only line that registers it.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-8355 | 6.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001`: fixed in 1.0.6, below its 1.0.9 floor. The rule now reads the image too, below 1.0.9. | #1054 |
+| CVE-2026-75128 | 9.8 | `langchain-chatchat` (PyPI), `chatimage/chatchat` and its Tencent mirror (images) | **New pin** `AAK-CHATCHAT-CVE-2026-75128-001` (CRITICAL): every release and every image tag. No fixed release. | #1055 |
+
+CVSS is NVD's CVSS 3.1 score, or, for CVE-2026-8355, which NVD has not scored, the score in
+IBM's bulletin.
+
+Dispositioned at 2026-10-20T06:12:31Z.
+
 ## 2026-10-19 (v0.6.23): three disclosures, one new image pin, two out of scope
 
 The watcher opened two `cve-response` issues at 04:40Z on 2026-10-19 (#1047, #1048),
