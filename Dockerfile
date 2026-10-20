@@ -8,7 +8,14 @@ LABEL org.opencontainers.image.description="Security scanner for MCP-connected A
 
 COPY . /app
 WORKDIR /app
-RUN pip install --no-cache-dir .
+# The image runs the CLI and installs nothing afterwards, so the build tools the
+# base image ships (pip, setuptools, wheel, and the packages pip and setuptools
+# vendor) leave once the package is in: Trivy reported CVE-2026-24049 (wheel)
+# and CVE-2026-23949 (setuptools' jaraco.context) on them after the Debian CVEs
+# were cleared, and upgrading pip instead brought its vendored msgpack and
+# urllib3 into the report.
+RUN pip install --no-cache-dir . \
+    && pip uninstall -y pip setuptools wheel
 
 # The GitHub Action bridge. action.yml selects it with `runs.entrypoint`; it
 # reads its positional arguments as the Action's inputs ($1 path, $2 severity).
