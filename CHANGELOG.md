@@ -7,16 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.24] - 2026-10-21
+
 ### Added
 
-- `AAK-MCP-TSSDK-CVE-2026-111767-001` (HIGH): the MCP TypeScript SDK, `@modelcontextprotocol/sdk` from 1.24.0 below 1.32.0 (CVE-2026-111767, #1065). The experimental tasks feature's `InMemoryTaskStore` took each call's session id and ignored it, so every client sharing one store shared one pool of tasks and could list, read and cancel another session's. 1.32.0 ties each task to the session that created it. Only a server that passes `taskStore` is exposed, which the version cannot tell, and the 2.x packages are not affected. `latest` is fixed, so only a stated version is reported. Its own rule beside `AAK-MCP-TSSDK-CVE-2026-104850-001`, whose 1.31.0 floor stays: 1.31.0 is fixed for the OAuth bug and affected by this one.
-- `AAK-MCP-RIPGREP-CVE-2026-113378-001` (MEDIUM): `mcp-ripgrep`, every release (CVE-2026-113378, #1059). The server runs its ripgrep command line through a shell and appends the `advanced-search` and `list-files` tools' `fileType` argument to it unescaped, where every other argument is quoted, so a model-supplied file type holding a shell metacharacter runs a command as the server's user. Every published release, 0.1.0 to 0.4.0, has it, nothing has shipped since 2025-04-29, and the maintainer points at the README's warning rather than a fix, so the rule reports the package with or without a version, from a dependency, a lockfile or an MCP config. Keep it away from agents that read untrusted text, or keep those two tools out of the model's reach.
+- `AAK-MCP-TSSDK-CVE-2026-111767-001` (HIGH): the MCP TypeScript SDK, `@modelcontextprotocol/sdk` from 1.24.0 below 1.32.0 (CVE-2026-111767, #1065, #1069). The experimental tasks feature's `InMemoryTaskStore` took each call's session id and ignored it, so every client sharing one store shared one pool of tasks and could list, read and cancel another session's. 1.32.0 ties each task to the session that created it. Only a server that passes `taskStore` is exposed, which the version cannot tell, and the 2.x packages are not affected. `latest` is fixed, so only a stated version is reported. Its own rule beside `AAK-MCP-TSSDK-CVE-2026-104850-001`, whose 1.31.0 floor stays: 1.31.0 is fixed for the OAuth bug and affected by this one.
+- `AAK-MCP-RIPGREP-CVE-2026-113378-001` (MEDIUM): `mcp-ripgrep`, every release (CVE-2026-113378, #1059, #1069). The server runs its ripgrep command line through a shell and appends the `advanced-search` and `list-files` tools' `fileType` argument to it unescaped, where every other argument is quoted, so a model-supplied file type holding a shell metacharacter runs a command as the server's user. Every published release, 0.1.0 to 0.4.0, has it, nothing has shipped since 2025-04-29, and the maintainer points at the README's warning rather than a fix, so the rule reports the package with or without a version, from a dependency, a lockfile or an MCP config. Keep it away from agents that read untrusted text, or keep those two tools out of the model's reach.
 
 ### Changed
 
-- The Docker image no longer ships pip, setuptools or wheel: they are removed after the package is installed, which takes the last two Trivy rows (CVE-2026-24049 on wheel, CVE-2026-23949 on the jaraco.context setuptools vendors) off the Security tab. The image runs the CLI and installs nothing at runtime.
-- The nightly and release Trivy scans skip CVEs with no fix in the base image's distribution (`ignore-unfixed`), the action is pinned by commit, and the base image digest is refreshed; the Security tab stops collecting unfixable base-image rows.
-- The `--llm-scan` canary and the MCPTox eval were run on 0.6.23 against claude-haiku-5-5, claude-sonnet-5-5 and claude-opus-5-5; benchmarks/llm_scan_eval/RESULTS.md carries the figures and cost.
+- The Docker image no longer ships pip, setuptools or wheel: they are removed after the package is installed, which takes the last two Trivy rows (CVE-2026-24049 on wheel, CVE-2026-23949 on the jaraco.context setuptools vendors) off the Security tab. The image runs the CLI and installs nothing at runtime (#1062).
+- The nightly and release Trivy scans skip CVEs with no fix in the base image's distribution (`ignore-unfixed`), the action is pinned by commit, and the base image digest is refreshed; the Security tab stops collecting unfixable base-image rows (#1061).
+- The `--llm-scan` canary and the MCPTox eval were run on 0.6.23 against claude-haiku-5-5, claude-sonnet-5-5 and claude-opus-5-5; benchmarks/llm_scan_eval/RESULTS.md carries the figures and cost (#1063).
 
 ## [0.6.23] - 2026-10-20
 
