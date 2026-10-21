@@ -3,7 +3,7 @@
 <!-- AUTO-MANAGED: module-description -->
 ## Purpose
 
-VS Code extension that runs the `agent-audit-kit` CLI over a whole workspace folder and surfaces its findings as editor diagnostics, so they cover every file there, not only MCP configs. It activates on JSON, YAML and JSONC files, scans the first folder on activation and from the scan command, and rescans a folder when a JSON/YAML/JSONC file in it is saved (`autoScanOnSave`).
+VS Code extension that runs the `agent-audit-kit` CLI over a whole workspace folder and surfaces its findings as editor diagnostics, so they cover every file there, not only MCP configs. It activates on JSON, YAML and JSONC files, scans the first folder on activation and from the scan command, and rescans the workspace folder holding a JSON/YAML/JSONC file when it is saved (`autoScanOnSave`); every scan clears the whole collection first, so in a multi-root workspace only the last-scanned folder keeps diagnostics.
 
 Versioned independently of the Python package (its own `version` in `package.json`; the manifest's `license` mirrors the root Apache-2.0), and not yet published to the Marketplace.
 
@@ -15,7 +15,7 @@ Versioned independently of the Python package (its own `version` in `package.jso
 ```
 vscode-extension/
   src/
-    extension.ts       # Entry point — activate/deactivate, runs the CLI via child_process.execFile, publishes diagnostics
+    extension.ts       # Entry point — activate/deactivate, runs the CLI via child_process.execFile, publishes diagnostics; its QuickFix provider only re-shows a finding's remediation and opens the output channel (it edits nothing)
     sarifReader.ts     # SARIF → diagnostics: loadSarif, applySarifToDiagnostics, registerSarifCommands
   package.json         # Manifest — contributes.configuration + contributes.commands
   package-lock.json    # Gitignored (vscode-extension/.gitignore): local only, so the repo does not lock devDependency versions
@@ -29,9 +29,9 @@ vscode-extension/
 - **Settings**: `agent-audit-kit.enable`, `agent-audit-kit.severity` (critical…info, default `low`), `agent-audit-kit.autoScanOnSave`
 - **Commands** (declared in `contributes.commands` and registered in code): `agent-audit-kit.scan`, `agent-audit-kit.showOutput`, `agent-audit-kit.loadSarif`
 - **Output**: `./out/extension.js` (`main` in the manifest)
-- **Scan path**: `extension.ts` invokes the CLI via `child_process.execFile` — the extension carries no scanning logic of its own, so in-editor results always match `agent-audit-kit scan`.
+- **Scan path**: `extension.ts` invokes the CLI via `child_process.execFile` with a 60 s timeout and a 5 MiB stdout buffer — the extension carries no scanning logic of its own, so in-editor results match `agent-audit-kit scan` within those bounds. Past either, or on unparseable output, `runScan` logs `Scan failed` and returns before the collection is cleared, so the previous diagnostics stay.
 - **Two diagnostic collections**: scans write to `agent-audit-kit`, SARIF imports to `agent-audit-kit-sarif`, so an imported report never overwrites live scan results.
-- **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. `tests/test_vscode_json_contract.py` parses those interfaces and fails when `json_report.py` stops writing a key they read.
+- **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. `tests/test_vscode_json_contract.py` parses those interfaces and fails when `json_report.py` stops writing a key they read. They read none of `summary.complete`, `scannerFailures` or `llmGaps`, so an INCOMPLETE run (a scanner crash still writes JSON and exits 1) renders as a partial clean result, and the output-channel count is `summary.total`, every severity, not the `--severity`-filtered `findings` it publishes.
 
 **A command needs both halves.** `registerCommand` in code makes it callable; `contributes.commands` in the manifest makes it reachable from the Command Palette. `sarifReader.ts` was unreachable for a long stretch because `activate()` never called `registerSarifCommands`, and `scan` and `showOutput` were registered but undeclared, so none of the extension's commands appeared in the palette. When adding a command, do both, then confirm with `npm run compile` that `out/extension.js` requires the new module.
 
