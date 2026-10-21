@@ -229,6 +229,16 @@ available) before shipping:
   - langchain-chatchat             presence-only  (CVE-2026-75128; `POST /tools/call`
     runs the always-registered shell tool for an unauthenticated caller, in every
     release from 0.3.0 to 0.3.1.3, the newest; the images are image-pin rows)
+  - @modelcontextprotocol/sdk      1.24.0 <= v < 1.32.0  (CVE-2026-111767; the
+    experimental tasks feature kept every task of one InMemoryTaskStore in one pool,
+    so a client with a session of its own could list, read and cancel another
+    session's tasks. Its own HIGH rule beside the 1.31.0 OAuth pin above, since
+    1.31.0 is fixed for that bug and affected by this one. A stated version is
+    required, and only a server that configures the SDK's task store is exposed)
+  - mcp-ripgrep                    presence-only  (CVE-2026-113378; the advanced-search
+    and list-files tools append `-t ${fileType}` unescaped to a command line run
+    through a shell. Every release, 0.1.0 to 0.4.0, the newest, has it, and there
+    is no fixed release)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1471,6 +1481,38 @@ _PINS: tuple[_Pin, ...] = (
          ("langchain-chatchat",), None,
          fix_label="no fixed release (0.3.1.3 is the newest); keep the API port, "
                    "7861, off networks you do not trust"),
+    # --- 2026-10-21 (#1059, #1065) ---
+    # The MCP TypeScript SDK's experimental tasks feature kept every task of one
+    # InMemoryTaskStore in one pool: each of the store's methods took the caller's
+    # session id and ignored it, so a client with a session of its own could list,
+    # read and cancel another session's tasks (CVE-2026-111767, CVSS 3.1 8.6,
+    # CWE-639/CWE-862, GHSA-22jm-h49p-29qw). Checked in the tarballs: 1.23.1
+    # (published after 1.24.0) ships no task store; 1.24.0 and 1.31.0 give every
+    # store method a `_sessionId` they never read; 1.32.0 records the session on
+    # createTask and answers another session's lookup as a task not found
+    # (727075b5, typescript-sdk#2925). The OAuth pin above has a 1.31.0 floor and
+    # 1.31.0 is affected here, so this is its own rule rather than a raised floor.
+    # Only a server that configures the SDK's task store is exposed, which the
+    # version cannot tell; the 2.x packages are not affected. `latest` is 1.32.1, so a
+    # stated version is required.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111767-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 24, 0),
+         fix_label="1.32.0 (affected from 1.24.0)",
+         requires_version=True, ecosystem="js"),
+    # mcp-ripgrep builds its rg command line as a string and runs it through
+    # `spawn(program, args, {shell: true})`. The advanced-search and list-files
+    # tools append ` -t ${fileType}` as given, where every pattern, path and glob
+    # goes through escapeShellArg, so a fileType holding `;` or `$(...)` runs a
+    # command as the server's user (CVE-2026-113378, CVSS 3.1 5.3, CWE-77/CWE-78,
+    # GHSA-qq9r-r4m4-c72m). Checked in the npm tarballs: 0.1.0, the first release,
+    # and 0.4.0, the newest (2025-04-29), both have it in dist/index.js. Nothing
+    # has been pushed since, the maintainer points at the README's warning, and
+    # there is no fixed release, so floor=None (presence-only). PyPI has no
+    # `mcp-ripgrep`, and npm's `ripgrep-mcp` is another server.
+    _Pin("AAK-MCP-RIPGREP-CVE-2026-113378-001", "mcp-ripgrep", ("mcp-ripgrep",), None,
+         fix_label="no fixed release (0.4.0 is the newest and the maintainer cites the "
+                   "README's warning); keep it away from agents that read untrusted text",
+         ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
