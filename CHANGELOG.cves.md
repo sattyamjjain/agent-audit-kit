@@ -16,6 +16,73 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-21 (v0.6.24): two disclosures, two new pins
+
+The watcher opened two `cve-response` issues on 2026-10-20, #1059 at 11:36Z and #1065 at
+21:37Z. Both get a new pin, each measured with the scanner on a firing fixture and a
+negative one. #1065's CVSS 3.1 8.6 is GitHub's metric, the only score on the record, and
+matches the `sev/high` title the watcher filed. #1059's 5.3 is VulDB's CVSS 3.1 metric,
+the record's only 3.1 score; its 4.0 metric says 1.9, and `pick_cvss` takes 3.1 first, so
+the title and `sev/medium` label stand. NVD lists both records as Deferred, so no score of
+NVD's own is coming. NVD text below is quoted from the API record, read on 2026-10-21 at
+10:16Z.
+
+**MCP TypeScript SDK (CVE-2026-111767) gets `AAK-MCP-TSSDK-CVE-2026-111767-001`:
+`@modelcontextprotocol/sdk` from 1.24.0 up to 1.32.0.** NVD: "From version 1.24.0 to
+before version 1.32.0, the experimental tasks feature (taskStore) did not check which
+session created a task. Clients sharing one InMemoryTaskStore could list, read and cancel
+each other's tasks. This issue has been patched in version 1.32.0." GHSA-22jm-h49p-29qw
+(2026-10-02) names the npm package and the same range, says only a server that passes
+`taskStore` to `McpServer` or `Server` is exposed, and that the 2.x packages are not
+affected. The fix is 727075b5 (typescript-sdk#2925), in 1.32.0 (2026-10-02), eighteen days
+before NVD published. Checked in the tarballs: 1.23.1 (2025-12-04, published after 1.24.0)
+ships no task store; 1.24.0 and 1.31.0 give every `InMemoryTaskStore` method a
+`_sessionId` it never reads; 1.32.0 records the session on `createTask`, answers another
+session's `getTask`, `getTaskResult`, `updateTaskStatus` and `storeTaskResult` as a task
+not found, pages `listTasks` per session, and checks a request's related task against its
+session before queueing anything for it. The existing SDK pin,
+`AAK-MCP-TSSDK-CVE-2026-104850-001`, has a 1.31.0 floor, and 1.31.0 is fixed for that
+OAuth bug and affected by this one, so raising its floor would report 1.31.0 as the OAuth
+bug; this CVE gets its own rule, as CVE-2026-59951 did beside the Python SDK's HIGH pin.
+The pin is HIGH, from NVD's 8.6, starts at 1.24.0, where the task store first ships, and
+requires a stated version: `latest` was 1.32.1 on 2026-10-21, fixed. npm has no 1.30.x or
+1.31.x release after 1.32.0, so no backport line is missed. It reads the version, not
+whether a server passes `taskStore`, and the limitations say so; the advisory's own test,
+`grep -ri taskstore` outside node_modules, tells the two apart. On 1.30.1 both SDK rules
+fire; on 1.31.0 only this one.
+
+**mcp-ripgrep (CVE-2026-113378) gets `AAK-MCP-RIPGREP-CVE-2026-113378-001`, every
+version.** NVD: "A security flaw has been discovered in mcollina mcp-ripgrep up to 0.4.0.
+Affected is an unknown function of the file src/index.ts of the component Advanced Search
+Tool. The manipulation of the argument fileType results in os command injection. The
+attack requires a local approach." The record also carries VulDB's note that "the real
+existence of this vulnerability is still doubted at the moment" and the maintainer's
+answer, that the README warns the server runs shell commands. The published code decides
+it. Checked in the npm tarballs: `exec` splits the command string on spaces and runs it
+with `spawn(program, args, {shell: true})`; every pattern, path and glob goes through
+`escapeShellArg`; and the `advanced-search` and `list-files` tools append `-t ${fileType}`
+as given. 0.1.0 (2025-03-08), the first release, and 0.4.0 (2025-04-29), the newest, both
+have it in dist/index.js. Escaping every sibling argument and not this one is an oversight,
+not a design, and a README warning is not a fix. Nothing has been pushed since the 0.4.0
+commit, no issue or pull request names `fileType`, there is no fixed release, and PyPI
+has no `mcp-ripgrep`, so the pin is presence-only on npm, like
+`@0xshariq/github-mcp-server`: a dependency, a lockfile entry, an `npx` launch and a
+config that runs a global install by its bare name are all reported, a `uvx` launch and a
+checkout started as `node dist/index.js` are not. MEDIUM, from NVD's CVSS 3.1 5.3: VulDB
+scores the attacker as local with low privileges, which is where the model the server
+hands its tools to stands. npm's `ripgrep-mcp` (shk1447, 2026-04-20) is another server and
+the negative fixture, with the `@vscode/ripgrep` and `ripgrep` wrappers.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-111767 | 8.6 | `@modelcontextprotocol/sdk` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111767-001` (HIGH): 1.24.0 up to 1.32.0, a stated version required. | #1065 |
+| CVE-2026-113378 | 5.3 | `mcp-ripgrep` (npm) | **New pin** `AAK-MCP-RIPGREP-CVE-2026-113378-001` (MEDIUM): every version. No fixed release. | #1059 |
+
+CVSS is NVD's CVSS 3.1 score: GitHub's metric for CVE-2026-111767, VulDB's for
+CVE-2026-113378.
+
+Dispositioned at 2026-10-21T10:38:04Z.
+
 ## 2026-10-20 (v0.6.23): two disclosures, one more CVE and an image on the ContextForge rule, one new presence-only pin
 
 The watcher opened two `cve-response` issues at 04:51Z on 2026-10-20 (#1054, #1055). One

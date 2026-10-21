@@ -147,6 +147,9 @@ PINS = {
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": "critical",
     # 2026-10-20 (#1055)
     "AAK-CHATCHAT-CVE-2026-75128-001": "critical",
+    # 2026-10-21 (#1059, #1065)
+    "AAK-MCP-TSSDK-CVE-2026-111767-001": "high",
+    "AAK-MCP-RIPGREP-CVE-2026-113378-001": "medium",
 }
 
 
@@ -3985,3 +3988,129 @@ def test_chatchat_fixtures_positive_and_negative() -> None:
 ])
 def test_chatchat_versions(tmp_path: Path, line: str, fires: bool) -> None:
     assert (_CHATCHAT in _ids(tmp_path, "requirements.txt", line + "\n")) is fires
+
+
+# --- 2026-10-21 (#1065, #1059): the TS SDK's experimental tasks, and mcp-ripgrep ---
+
+_TSSDK_TASKS = "AAK-MCP-TSSDK-CVE-2026-111767-001"
+_RIPGREP = "AAK-MCP-RIPGREP-CVE-2026-113378-001"
+
+
+def test_ts_sdk_tasks_is_its_own_rule_beside_the_oauth_pin() -> None:
+    """CVE-2026-111767 (#1065) is fixed in 1.32.0, above the OAuth pin's 1.31.0 floor,
+    and 1.31.0 is affected by it, so raising that floor would report 1.31.0 as the
+    OAuth bug. Its own HIGH rule, one pin from 1.24.0, where the task store first
+    ships, up to 1.32.0, a stated version required (`latest` is 1.32.1, fixed). The
+    OAuth pin's rows do not move and do not take the CVE."""
+    rule = RULES[_TSSDK_TASKS]
+    assert rule.severity.value == "high"
+    assert rule.cve_references == ["CVE-2026-111767"]
+    assert [(p.names, p.floor, p.introduced, p.requires_version, p.ecosystem)
+            for p in _PINS if p.rule_id == _TSSDK_TASKS] == [
+        (("@modelcontextprotocol/sdk",), (1, 32, 0), (1, 24, 0), True, "js"),
+    ]
+    assert [(p.floor, p.introduced) for p in _PINS if p.rule_id == _TSSDK] == [
+        ((1, 31, 0), (1, 12, 0)), ((2, 2, 0), None),
+    ]
+    assert "CVE-2026-111767" not in RULES[_TSSDK].cve_references
+
+
+def test_ts_sdk_tasks_fixtures_positive_and_negative() -> None:
+    """1.31.0, the last affected release, fires on this rule alone: it is fixed for
+    the OAuth bug. 1.32.0 (727075b5, typescript-sdk#2925) fires on neither."""
+    root = _CVE_FIXTURES / "cve-2026-111767-mcp-ts-sdk-tasks"
+    vulnerable = scan(root / "vulnerable")[0]
+    assert [(f.file_path, f.line_number) for f in vulnerable
+            if f.rule_id == _TSSDK_TASKS] == [("package.json", 5)]
+    assert _TSSDK not in {f.rule_id for f in vulnerable}
+    negative = {f.rule_id for f in scan(root / "negative")[0]}
+    assert _TSSDK_TASKS not in negative and _TSSDK not in negative
+
+
+@pytest.mark.parametrize(("dep", "fires"), [
+    ('"@modelcontextprotocol/sdk": "1.23.1"', False),   # published after 1.24.0; no task store
+    ('"@modelcontextprotocol/sdk": "1.24.0"', True),    # the task store's first release
+    ('"@modelcontextprotocol/sdk": "1.30.1"', True),
+    ('"@modelcontextprotocol/sdk": "^1.31.0"', True),
+    ('"@modelcontextprotocol/sdk": "1.31.0"', True),    # the last affected release
+    ('"@modelcontextprotocol/sdk": "1.32.0"', False),   # ties each task to its session
+    ('"@modelcontextprotocol/sdk": "1.32.1"', False),
+    ('"@modelcontextprotocol/sdk": "latest"', False),   # resolves to a fixed release
+    ('"@modelcontextprotocol/server": "2.1.0"', False),  # the 2.x packages are not affected
+    ('"@modelcontextprotocol/client": "2.1.0"', False),
+    ('"@modelcontextprotocol/core": "2.1.0"', False),
+])
+def test_ts_sdk_tasks_versions(tmp_path: Path, dep: str, fires: bool) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert (_TSSDK_TASKS in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("version", "fires"), [("1.31.0", True), ("1.32.0", False)])
+def test_ts_sdk_tasks_lockfile_reads_the_resolved_version(
+    tmp_path: Path, version: str, fires: bool
+) -> None:
+    lock = (
+        '{"lockfileVersion": 3, "packages": {"": {"name": "server"}, '
+        '"node_modules/@modelcontextprotocol/sdk": {"version": "%s"}}}' % version
+    )
+    assert (_TSSDK_TASKS in _ids(tmp_path, "package-lock.json", lock)) is fires
+
+
+def test_ts_sdk_1_30_fires_both_sdk_rules_and_1_31_only_the_tasks_one(tmp_path: Path) -> None:
+    both = _ids(tmp_path, "package.json", '{"dependencies": {"@modelcontextprotocol/sdk": "1.30.1"}}')
+    assert {_TSSDK, _TSSDK_TASKS} <= both
+    only = _ids(tmp_path, "package.json", '{"dependencies": {"@modelcontextprotocol/sdk": "1.31.0"}}')
+    assert _TSSDK_TASKS in only
+    assert _TSSDK not in only
+
+
+def test_ripgrep_rule_is_medium_and_presence_only_on_npm() -> None:
+    """CVE-2026-113378 (#1059): every release, 0.1.0 to 0.4.0 (the newest), appends
+    `-t ${fileType}` unescaped to a command line run through a shell, nothing has
+    shipped since 2025-04-29, and PyPI has no `mcp-ripgrep`, so the pin is
+    presence-only on npm. MEDIUM, from NVD's CVSS 3.1 5.3."""
+    rule = RULES[_RIPGREP]
+    assert rule.severity.value == "medium"
+    assert rule.cve_references == ["CVE-2026-113378"]
+    assert [(p.names, p.floor, p.introduced, p.requires_version, p.ecosystem)
+            for p in _PINS if p.rule_id == _RIPGREP] == [
+        (("mcp-ripgrep",), None, None, False, "js"),
+    ]
+
+
+def test_ripgrep_fixtures_positive_and_negative() -> None:
+    """The `npx` launch and the dependency each fire on their own line; another
+    ripgrep server (`ripgrep-mcp`) and the two ripgrep wrappers do not."""
+    root = _CVE_FIXTURES / "cve-2026-113378-mcp-ripgrep"
+    assert sorted((f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]
+                  if f.rule_id == _RIPGREP) == [(".mcp.json", 5), ("package.json", 5)]
+    assert _RIPGREP not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize("version", ["0.1.0", "0.4.0", "0.5.0"])
+def test_ripgrep_every_version_fires_until_a_fix_ships(tmp_path: Path, version: str) -> None:
+    """Presence-only. 0.5.0 does not exist; it stands for whatever ships next."""
+    content = '{"dependencies": {"mcp-ripgrep": "%s"}}' % version
+    assert _RIPGREP in _ids(tmp_path, "package.json", content)
+
+
+@pytest.mark.parametrize("content", [
+    '{"mcpServers": {"rg": {"command": "npx", "args": ["-y", "mcp-ripgrep"]}}}',
+    '{"mcpServers": {"rg": {"command": "npx", "args": ["mcp-ripgrep@0.4.0"]}}}',
+    '{"mcpServers": {"rg": {"command": "mcp-ripgrep"}}}',  # a global install, run by name
+])
+def test_ripgrep_launches_fire(tmp_path: Path, content: str) -> None:
+    assert _RIPGREP in _ids(tmp_path, ".mcp.json", content)
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("package.json", '{"dependencies": {"ripgrep-mcp": "0.4.0"}}'),  # shk1447/ripgrep-mcp, another server
+    ("package.json", '{"dependencies": {"@vscode/ripgrep": "1.18.0", "ripgrep": "0.3.1"}}'),
+    (".mcp.json", '{"mcpServers": {"rg": {"command": "uvx", "args": ["mcp-ripgrep"]}}}'),  # PyPI has no such package
+    (".mcp.json", '{"mcpServers": {"rg": {"command": "node", "args": ["/srv/mcp-ripgrep/dist/index.js"]}}}'),
+    ("requirements.txt", "mcp-ripgrep\n"),
+])
+def test_ripgrep_lookalikes_and_other_registries_are_quiet(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _RIPGREP not in _ids(tmp_path, name, content)

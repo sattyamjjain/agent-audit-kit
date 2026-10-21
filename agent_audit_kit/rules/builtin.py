@@ -360,6 +360,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": ["AIS-07", "STA-08"],
     "AAK-MCP-APACHEANSWER-CVE-2026-71563-001": ["IAM-01", "STA-08"],
     "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -16629,6 +16631,107 @@ _r(
         "nested more than 64 levels deep in package.json, a TOML manifest or an MCP "
         "config (an MCP server more than 62) is still judged, and reported without a "
         "line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-21 batch (#1059, #1065). Two watcher-filed CVEs, two new pins below:
+# the MCP TypeScript SDK's experimental tasks, its own rule beside the OAuth pin
+# whose floor sits inside this range, and mcp-ripgrep, presence-only. The
+# dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-TSSDK-CVE-2026-111767-001",
+    "MCP TypeScript SDK 1.24.0 to 1.31.0: experimental tasks are not tied to the session that created them",
+    "The official MCP TypeScript SDK (`@modelcontextprotocol/sdk` on npm) ships an "
+    "experimental tasks feature: a server that passes a `taskStore` to `McpServer` "
+    "or `Server` lets clients run requests as tasks and poll, list and cancel them "
+    "later. From 1.24.0, where the feature and its `InMemoryTaskStore` first ship, "
+    "until 1.32.0, every method of that store took the caller's session id and "
+    "ignored it, so all clients sharing one store shared one pool of tasks: a "
+    "client with a session of its own could list the tasks another session "
+    "created, read their results and cancel them (CVE-2026-111767, CVSS 3.1 8.6, "
+    "CWE-639/CWE-862, GHSA-22jm-h49p-29qw). 1.32.0 records the session on "
+    "`createTask`, answers another session's lookup, result read, status update or "
+    "cancel as a task not found, pages `listTasks` per session, and checks a "
+    "request's related task against its session before queueing anything for it "
+    "(modelcontextprotocol/typescript-sdk#2925). Only an HTTP server that passes "
+    "`taskStore` is exposed; the 2.x packages (`@modelcontextprotocol/server`, "
+    "`client` and `core`) are not affected. Experimental tasks are deprecated: the "
+    "2026-07-28 specification replaced them with a redesigned extension.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@modelcontextprotocol/sdk` to 1.32.0 or later and pin it. If you "
+    "cannot upgrade yet, stop passing `taskStore`, or create one `InMemoryTaskStore` "
+    "per session. Experimental tasks are deprecated in favour of the 2026-07-28 "
+    "specification's redesigned extension, so plan to leave them.",
+    sarif_name="McpTypeScriptSdkTaskStoreSessionScope",
+    cve_references=["CVE-2026-111767"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` from 1.24.0 up to 1.32.0 where a "
+        "package.json, lockfile or MCP config states the version, reporting a range "
+        "that admits an affected version. `latest` was 1.32.1 on 2026-10-21 and "
+        "states no version, so it is not reported. It reads the version, not whether "
+        "a server passes `taskStore`, so a server or client on an affected version "
+        "that never uses experimental tasks is reported without being exposed; the "
+        "advisory's own test is that `grep -ri taskstore` outside node_modules finds "
+        "nothing. 1.23.1, published after 1.24.0, ships no task store and is not "
+        "reported, and the 2.x packages are not read. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
+    "AAK-MCP-RIPGREP-CVE-2026-113378-001",
+    "mcp-ripgrep hands a tool's fileType argument to a shell unescaped (no fixed release)",
+    "`mcp-ripgrep` (npm; mcollina/mcp-ripgrep), an MCP server that runs ripgrep for "
+    "an agent, builds each `rg` command line as a string and runs it through `spawn` "
+    "with `shell: true`. Its `advanced-search` and `list-files` tools append "
+    "` -t ${fileType}` to that string as given, where every pattern, path and glob "
+    "goes through `escapeShellArg`, so a `fileType` holding `;`, `|` or `$(...)` "
+    "runs a command as the server's user, and an agent that reads untrusted text "
+    "can be steered into that call (CVE-2026-113378, CVSS 3.1 5.3, CWE-77/CWE-78, "
+    "GHSA-qq9r-r4m4-c72m). NVD carries VulDB's note that the flaw's existence is "
+    "doubted and the maintainer's answer, that the README warns the server runs "
+    "shell commands. The published code decides it: escaping every sibling argument "
+    "and not this one is an oversight, and a warning is not a fix. Every published "
+    "version has it, 0.1.0 to 0.4.0 (2025-04-29), the newest; nothing has been "
+    "pushed since, and there is no fixed release, so this is a presence-only pin.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Remove the server from agents that read untrusted "
+    "content, or replace it with a ripgrep MCP server that passes its arguments to "
+    "`execFile` or `spawn` as an array with no shell. Until then keep the "
+    "`advanced-search` and `list-files` tools, whose argument `fileType` is, out of "
+    "the model's reach in the client's tool allowlist. Pin the first fixed release "
+    "once it ships.",
+    sarif_name="McpRipgrepFileTypeShellInjection",
+    cve_references=["CVE-2026-113378"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports a reference that names `mcp-ripgrep`: a package.json or lockfile "
+        "entry, the package an `npx` launch in an MCP config names, or a config that "
+        "runs a global install by that bare name. Presence-only: every version is "
+        "reported, a future fixed one included, until the pin gets a floor. It reads "
+        "the name, not which tools the client lets the model call. npm's "
+        "`ripgrep-mcp` (shk1447/ripgrep-mcp, another server), `@vscode/ripgrep` and "
+        "`ripgrep` are other packages and are not matched; PyPI has no `mcp-ripgrep`, "
+        "so a `uvx` launch is not read; and a source checkout started as `node "
+        "dist/index.js` names no package and is not read. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
