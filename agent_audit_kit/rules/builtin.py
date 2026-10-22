@@ -362,6 +362,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-D365FO-CVE-2026-114123-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -16729,6 +16730,73 @@ _r(
         "so a `uvx` launch is not read; and a source checkout started as `node "
         "dist/index.js` names no package and is not read. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-10-22 (#1071). One watcher-filed CVE, one new pin below. The flaw sits in
+# a deployment default as much as in the package: the scanner reads the version
+# a project declares, never the template or the App Service setting, and the
+# rule's limitations say so.
+
+_r(
+    "AAK-MCP-D365FO-CVE-2026-114123-001",
+    "D365 F&O MCP Server below 1.11.0: the documented Azure deployment serves /mcp unauthenticated by default",
+    "`d365fo-mcp` (npm; dynamics365ninja/d365fo-mcp-server), an MCP server that "
+    "answers questions about Dynamics 365 Finance & Operations X++ code and "
+    "metadata, ships an HTTP mode for Azure App Service. Before 1.11.0 its "
+    "documented one-click deployment, infrastructure/azuredeploy.json and "
+    "main.bicep, defaulted the `apiKey` parameter to an empty string and passed it "
+    "to the App Service's `API_KEY` setting; with `API_KEY` empty, "
+    "`src/middleware/apiKeyAuth.ts` passed every request through, and `src/index.ts` "
+    "bound the listener to `0.0.0.0` by default. A deployer who left the optional "
+    "key blank and added no network restriction or upstream authentication got a "
+    "public App Service that answered unauthenticated JSON-RPC `tools/call` "
+    "requests on `/mcp` (CVE-2026-114123, CVSS 3.1 7.5, CWE-306/CWE-1188, "
+    "GHSA-8764-fh3m-wf7g). `MCP_SERVER_MODE=read-only` did not help: `search`, "
+    "`get_object_info`, `batch_get_info`, `extension_info`, `security_info`, "
+    "`find_references` and `find_event_handlers` returned the indexed proprietary "
+    "X++ source snippets, business logic, extension and event-handler wiring, "
+    "security-role and privilege structure and labels from PackagesLocalDirectory. "
+    "1.11.0 (e70bd051, 384394a8) makes the template's `apiKey` required, defaults "
+    "a keyless server to loopback, and refuses to start an HTTP listener on a "
+    "non-loopback address without `API_KEY` unless `ALLOW_UNAUTHENTICATED=true` "
+    "states that something upstream authenticates.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `d365fo-mcp` to 1.11.0 or later and pin it, and redeploy from the "
+    "1.11.0 templates, which require the key. On any version set `API_KEY` on the "
+    "App Service to a strong random value (`openssl rand -hex 32`), or keep the "
+    "listener on `HOST=127.0.0.1`, or put App Service Easy Auth, a Private Endpoint "
+    "or an authenticating proxy in front of it; then check that the public `/mcp` "
+    "endpoint answers `tools/call` with 401 when no key is sent, and rotate "
+    "anything the indexed X++ source exposed.",
+    sarif_name="McpD365foServerKeylessDeploymentDefault",
+    cve_references=["CVE-2026-114123"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01", "ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `d365fo-mcp` below 1.11.0 where a package.json, lockfile or MCP "
+        "config states the version, reporting a range that admits an affected "
+        "version. It reads the package version a project declares, not the "
+        "deployment: the `apiKey` default in infrastructure/azuredeploy.json or "
+        "main.bicep, the App Service's `API_KEY` setting, and whether a network "
+        "restriction or upstream authentication sits in front of the listener are "
+        "not read, so a 1.10.1 behind Easy Auth is reported and a 1.11.0 started "
+        "with `ALLOW_UNAUTHENTICATED=true` is not. `latest` was 1.21.0 on "
+        "2026-10-22 and states no version, so an unversioned `npx d365fo-mcp` "
+        "launch, or a config that runs a global install by its bare name, is not "
+        "reported, and an MCP config that points at a deployed App Service by URL "
+        "carries no version and is not read. npm's `@zhound/d365fo-mcp-server` and "
+        "`@d365portal/d365fo-context-mcp` are other projects, "
+        "`@iflow-mcp/dynamics365ninja-d365fo-mcp-server` is a republication on its "
+        "own 1.0.x line, and `d365fo-mcp-server` is the repository's name, not a "
+        "package; none is matched. PyPI has no `d365fo-mcp`, so a `uvx` launch is "
+        "not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

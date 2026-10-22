@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-D365FO-CVE-2026-114123-001` (HIGH): `d365fo-mcp`, the D365 F&O MCP Server on npm, below 1.11.0 (CVE-2026-114123, #1071). Before 1.11.0 the documented Azure one-click deployment left the `apiKey` parameter empty, the middleware passed every request through when `API_KEY` was empty, and the HTTP listener bound `0.0.0.0`, so a public App Service answered unauthenticated `tools/call` on `/mcp` and served the indexed X++ source, security roles and labels, read-only mode included. 1.11.0 requires the key in the templates, keeps a keyless server on loopback and refuses to start on a public interface without one. The rule reads the package version a project declares, not the deployment template or the App Service setting, and `latest` is fixed, so only a stated version is reported.
+
 ## [0.6.24] - 2026-10-21
 
 ### Added
