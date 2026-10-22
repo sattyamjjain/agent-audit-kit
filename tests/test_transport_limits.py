@@ -800,3 +800,18 @@ def test_the_linear_path_reading_answers_as_before() -> None:
     paths += ["GET /mcp", "POST /api/mcp/v1/tools/call", "/mcp/a/b/c/d", "/a/mcp/tools/call/x"]
     for path in paths:
         assert is_mcp_endpoint_path(path) == _segments_reference(path), path
+
+
+def test_read_texts_enforces_the_cap_in_the_read(tmp_path: Path) -> None:
+    """`_project_files` drops a file whose stat says it is over the cap; `_read_texts`
+    refuses one whose bytes are, so a stat that understates the size (a file that grew
+    after it, or a filesystem that lies) no longer has the file read in full (#1060)."""
+    cap = transport_limits._MCP016_MAX_BYTES
+    at = tmp_path / "at.go"
+    over = tmp_path / "over.go"
+    at.write_bytes(b"package main\n" + b"/" * (cap - len(b"package main\n") - 1) + b"\n")
+    over.write_bytes(at.read_bytes() + b"\n")
+    assert (at.stat().st_size, over.stat().st_size) == (cap, cap + 1)
+    read = transport_limits._read_texts([at, over], tmp_path)
+    assert [(rel, len(text)) for _, rel, text in read] == [("at.go", cap)]
+    assert transport_limits._project_files(tmp_path, ".go") == [at]
