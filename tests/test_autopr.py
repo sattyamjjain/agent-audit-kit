@@ -282,13 +282,6 @@ def _branches(git_dir: Path) -> list[str]:
 _SETTINGS_LINK = ({"@outside/settings.json": '{"enableAllProjectMcpServers": true}\n'}, {".claude/settings.json": "settings.json"})
 _WRITES_NOTHING = {
     "refused": (*_SETTINGS_LINK, "AAK-TRUST-001", ".claude/settings.json", _REFUSED.description),
-    "already-set": (
-        {
-            ".claude/settings.json": '{"enabledMcpjsonServers": []}\n',
-            ".mcp.json": '{"mcpServers": {"s": {"command": "node", "args": ["server.js"]}}}\n',
-        },
-        {}, "AAK-TRUST-007", ".claude/settings.json", "Added empty enabledMcpjsonServers allowlist",
-    ),
     "not-rewritten": (
         {"pyproject.toml": '[project]\nname = "x"\nversion = "0.1.0"\ndependencies = ["litellm==1.80.0"]\n'},
         {}, _LITELLM, "pyproject.toml", _NOT_REWRITTEN.description,
@@ -304,9 +297,11 @@ _WRITES_NOTHING = {
 @pytest.mark.parametrize("case", list(_WRITES_NOTHING), ids=list(_WRITES_NOTHING))
 def test_auto_pr_refuses_when_no_allow_listed_fix_writes(tmp_path: Path, monkeypatch, case: str) -> None:
     """Each of these opened a draft PR whose commit held only `.agent-audit-kit/fix-log.json`:
-    a settings file linked out of the project, which the recipe refuses; an
-    `enabledMcpjsonServers: []`, which AAK-TRUST-007 reports and the recipe leaves as it
-    is; and litellm pinned in pyproject.toml, which the bump does not rewrite."""
+    a settings file linked out of the project, which the recipe refuses, and litellm
+    pinned in pyproject.toml, which the bump does not rewrite. An `enabledMcpjsonServers:
+    []` was the third shape, reported by AAK-TRUST-007 and left as it was by the recipe,
+    until the rule took the present key as the allowlist (#1060): it is no finding now,
+    so there is nothing for the plan to refuse."""
     files, links, rule_id, rel, said = _WRITES_NOTHING[case]
     repo, outside, remote, sarif = _delivery(tmp_path, monkeypatch, files, links)
     base = _branches(repo)

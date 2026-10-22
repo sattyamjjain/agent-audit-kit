@@ -167,15 +167,18 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                         _find_line_number(raw_text, "allow"),
                     ))
 
-        # AAK-TRUST-007: No MCP server allowlist configured
-        if not data.get("enabledMcpjsonServers") and data.get("enableAllProjectMcpServers") is not True:
+        # AAK-TRUST-007: No MCP server allowlist configured. A present key is the
+        # allowlist, an empty list included: `[]` approves no server, the strictest
+        # allowlist there is, and it is what `aak fix` writes. Reading `[]` as absent
+        # (through 0.6.24) made the fix report a change that cleared nothing (#1060).
+        if "enabledMcpjsonServers" not in data and data.get("enableAllProjectMcpServers") is not True:
             # Only flag if there's an .mcp.json in the project (servers exist to allowlist)
             mcp_json = project_root / ".mcp.json"
             if mcp_json.is_file():
                 findings.append(_make_finding(
                     "AAK-TRUST-007", rel_path,
                     "No enabledMcpjsonServers allowlist configured",
-                    _find_line_number(raw_text, "enabledMcpjsonServers") or 1,
+                    1,  # the key is absent whenever this fires
                 ))
 
         findings.extend(_proxy_ca_findings(settings_path, rel_path, raw_text, data.get("env")))
