@@ -3980,6 +3980,34 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-114123"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-D365FO-CVE-2026-114123-001",
+      "severity": "high",
+      "title": "D365 F&O MCP Server below 1.11.0: the documented Azure deployment serves /mcp unauthenticated by default"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-44968",
         "CVE-2026-44969",
         "CVE-2026-44970",
@@ -10212,35 +10240,35 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 173,
+      "supply-chain": 174,
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 203,
+      "Art. 10 - Data Governance": 204,
       "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 307,
+      "Art. 15 - Robustness & Security": 308,
       "Art. 9 - Risk Management": 209
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 203,
+      "Choose supported MCP projects when possible (p.10)": 204,
       "Constrain and sandbox tool execution (p.11)": 192,
-      "Design for boundaries (p.10)": 297,
+      "Design for boundaries (p.10)": 298,
       "Filter and monitor output pipelines and chained execution (p.12)": 114,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 263,
-      "Sign and verify MCP messages (p.12)": 273,
-      "Track and patch MCP related vulnerabilities (p.13)": 208,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 264,
+      "Sign and verify MCP messages (p.12)": 274,
+      "Track and patch MCP related vulnerabilities (p.13)": 209,
       "Validate parameters (p.11)": 196
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 100,
-      "ASI03": 108,
-      "ASI04": 201,
+      "ASI03": 109,
+      "ASI04": 202,
       "ASI05": 94,
       "ASI06": 5,
       "ASI07": 24,
@@ -10252,23 +10280,23 @@
       "MCP01:2025": 32,
       "MCP02:2025": 16,
       "MCP03:2025": 13,
-      "MCP04:2025": 151,
+      "MCP04:2025": 152,
       "MCP05:2025": 116,
       "MCP06:2025": 4,
-      "MCP07:2025": 82,
+      "MCP07:2025": 83,
       "MCP08:2025": 1,
       "MCP09:2025": 5,
       "MCP10:2025": 15
     },
     "by_severity": {
       "critical": 93,
-      "high": 178,
+      "high": 179,
       "info": 4,
       "low": 17,
       "medium": 122
     },
-    "total_cves_covered": 351,
-    "total_rules": 414
+    "total_cves_covered": 352,
+    "total_rules": 415
   },
   "tool": "agent-audit-kit"
 }

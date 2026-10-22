@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-21T11:29:42Z",
+  "last_updated": "2026-10-22T18:11:15Z",
   "aak_version": "0.6.24",
-  "rule_count": 414,
+  "rule_count": 415,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1164,7 +1164,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 108,
+      "rule_density": 109,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1455,6 +1455,17 @@
             "CVE-2026-8355"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-D365FO-CVE-2026-114123-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-114123"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
@@ -2277,7 +2288,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 201,
+      "rule_density": 202,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2946,6 +2957,17 @@
             "CVE-2026-49986"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-D365FO-CVE-2026-114123-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-114123"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-DBTMCP-CVE-2026-44968-001",
