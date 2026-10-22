@@ -277,3 +277,70 @@ def test_a_crafted_js_file_scans_in_linear_time(tmp_path: Path, shape: str) -> N
     started = time.perf_counter()
     _js(tmp_path, body)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# The TS/JS loop places its findings in one pass (#1060, row 1)
+# ---------------------------------------------------------------------------
+
+# 20,000 distinct matches, under the 512,000-byte cap. Distinct on purpose: identical
+# matches share one key, which is found at the top of the text every time.
+_MANY_MATCHES = "".join(f"exec({i},{{shell:true}})\n" for i in range(20_000))
+
+
+def _js_findings(tmp_path: Path, source: str) -> list:
+    path = tmp_path / "server.ts"
+    path.write_text(_JS_HINT + source, encoding="utf-8")
+    return stdio_injection._check_js_file(path, tmp_path)
+
+
+def test_js_findings_keep_the_lines_find_line_number_gives(tmp_path: Path) -> None:
+    """Both patterns, interleaved, each match on its own line or spread over several,
+    and a repeated match: every finding carries the line `find_line_number(text, first
+    line of its match)` gave before, in the same order."""
+    from agent_audit_kit.scanners._helpers import find_line_number
+
+    source = (
+        "const x = 1;\n"
+        "exec(cmd, { shell: true });\n"
+        "exec(`git log ${req.params.branch}`);\n"
+        "spawn(cmd, args, {\n  cwd: dir,\n  shell: true,\n});\n"
+        'exec("git log " + req.query.branch);\n'
+        "exec(cmd, { shell: true });\n"   # the same text as line 2: placed where it first occurs
+    )
+    text = _JS_HINT + source
+    findings = _js_findings(tmp_path, source)
+    assert [f.line_number for f in findings] == [3, 5, 3, 4, 9]
+    expected = []
+    for pattern in (stdio_injection._JS_SHELL_TRUE_RE, stdio_injection._JS_DYNAMIC_CMD_RE):
+        for match in pattern.finditer(text):
+            expected.append(find_line_number(text, match.group(0).splitlines()[0]))
+    assert [f.line_number for f in findings] == expected
+    assert len(findings) == 5
+
+
+def test_js_findings_are_placed_in_one_pass_not_one_lookup_per_match(tmp_path: Path, monkeypatch) -> None:
+    """`find_line_number` is no longer called per finding; `placed` looks the keys up together."""
+    def refuse(*args: object, **kwargs: object) -> int:
+        raise AssertionError("one lookup per match")
+
+    monkeypatch.setattr(stdio_injection, "find_line_number", refuse)
+    findings = _js_findings(tmp_path, "exec(cmd, { shell: true });\nexec(`rm ${req.body.p}`);\n")
+    assert [f.line_number for f in findings] == [2, 3]
+
+
+def test_twenty_thousand_js_matches_are_placed_in_linear_time(tmp_path: Path) -> None:
+    """20,000 distinct matches in 498 KB, under the file cap. One lookup per match
+    scanned the text up to each match's offset, so the cost grew with the square of
+    the file; one pass over the text places them all. The bound is loose for slow CI
+    runners."""
+    import time
+
+    assert len(_JS_HINT + _MANY_MATCHES) < 512_000
+    started = time.perf_counter()
+    findings = _js_findings(tmp_path, _MANY_MATCHES)
+    elapsed = time.perf_counter() - started
+    assert len(findings) == 20_000
+    assert [f.line_number for f in findings[:3]] == [2, 3, 4]
+    assert findings[-1].line_number == 20_001
+    assert elapsed < 5.0
