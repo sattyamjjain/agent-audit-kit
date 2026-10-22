@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -47,6 +49,35 @@ def test_crosswalk_markdown_and_text_render() -> None:
     assert "`AAK-MCP-APPS-001`" in md
     txt = crosswalk.render_text()
     assert "AAK-TASKS-004" in txt
+
+
+def test_committed_crosswalk_page_matches_its_generator() -> None:
+    """docs/crosswalk/nsa-csi-owasp-agentic.md is generated and nothing checked it
+    (#1060, row 7): a rule added, retired or remapped left it stale until somebody
+    noticed. `make crosswalk` regenerates it; this and the counts job's
+    `make crosswalk-check` fail until that is committed."""
+    page = Path(__file__).resolve().parent.parent / "docs" / "crosswalk" / "nsa-csi-owasp-agentic.md"
+    assert page.read_text(encoding="utf-8") == crosswalk.render_markdown(), (
+        "docs/crosswalk/nsa-csi-owasp-agentic.md is stale; run `make crosswalk` and commit it"
+    )
+
+
+def test_sync_crosswalk_check_fails_on_a_stale_page_and_passes_on_a_fresh_one(tmp_path: Path) -> None:
+    script = Path(__file__).resolve().parent.parent / "scripts" / "sync_crosswalk.py"
+    page = tmp_path / "crosswalk.md"
+    page.write_text(crosswalk.render_markdown().replace("| high |", "| low |", 1), encoding="utf-8")
+    stale = subprocess.run(
+        [sys.executable, str(script), "--check", "--path", str(page)], capture_output=True, text=True
+    )
+    assert stale.returncode == 1, stale.stdout + stale.stderr
+    assert "run `make crosswalk`" in stale.stdout
+    written = subprocess.run([sys.executable, str(script), "--path", str(page)], capture_output=True, text=True)
+    assert written.returncode == 0, written.stdout + written.stderr
+    assert page.read_text(encoding="utf-8") == crosswalk.render_markdown()
+    fresh = subprocess.run(
+        [sys.executable, str(script), "--check", "--path", str(page)], capture_output=True, text=True
+    )
+    assert fresh.returncode == 0, fresh.stdout + fresh.stderr
 
 
 def test_report_command_emits_crosswalk() -> None:
