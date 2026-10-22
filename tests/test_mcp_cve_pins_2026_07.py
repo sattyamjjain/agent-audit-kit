@@ -150,6 +150,8 @@ PINS = {
     # 2026-10-21 (#1059, #1065)
     "AAK-MCP-TSSDK-CVE-2026-111767-001": "high",
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": "medium",
+    # 2026-10-22 (#1071)
+    "AAK-MCP-D365FO-CVE-2026-114123-001": "high",
 }
 
 
@@ -4114,3 +4116,78 @@ def test_ripgrep_lookalikes_and_other_registries_are_quiet(
     tmp_path: Path, name: str, content: str
 ) -> None:
     assert _RIPGREP not in _ids(tmp_path, name, content)
+
+
+# --- 2026-10-22 (#1071): d365fo-mcp's keyless Azure deployment default ---
+
+_D365FO = "AAK-MCP-D365FO-CVE-2026-114123-001"
+
+
+def test_d365fo_rule_is_high_and_pins_the_npm_package_below_1_11_0() -> None:
+    """CVE-2026-114123 (#1071): before 1.11.0 the documented Azure deployment left
+    `apiKey` empty, the middleware passed every request through with API_KEY empty,
+    and the listener bound 0.0.0.0, so a public App Service answered tools/call
+    unauthenticated. 1.11.0 (e70bd051, 384394a8) requires the key and refuses a
+    keyless listener off loopback. `latest` is 1.21.0, fixed, so a stated version is
+    required; PyPI has no `d365fo-mcp`. HIGH, from GitHub's CVSS 3.1 7.5."""
+    rule = RULES[_D365FO]
+    assert rule.severity.value == "high"
+    assert rule.cve_references == ["CVE-2026-114123"]
+    assert [(p.names, p.floor, p.introduced, p.requires_version, p.ecosystem)
+            for p in _PINS if p.rule_id == _D365FO] == [
+        (("d365fo-mcp",), (1, 11, 0), None, True, "js"),
+    ]
+
+
+def test_d365fo_fixtures_positive_and_negative() -> None:
+    """1.10.1, the last affected release, fires from the dependency and from the
+    versioned npx launch, each on its own line; 1.11.0 and an unversioned launch,
+    which resolves to a fixed release, do not."""
+    root = _CVE_FIXTURES / "cve-2026-114123-d365fo-mcp"
+    assert sorted((f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]
+                  if f.rule_id == _D365FO) == [(".mcp.json", 5), ("package.json", 5)]
+    assert _D365FO not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("dep", "fires"), [
+    ('"d365fo-mcp": "1.0.0"', True),      # the first release has the HTTP mode and the pass-through
+    ('"d365fo-mcp": "1.10.0"', True),
+    ('"d365fo-mcp": "^1.10.0"', True),    # the range admits 1.10.x
+    ('"d365fo-mcp": "1.10.1"', True),     # the last affected release
+    ('"d365fo-mcp": "1.11.0"', False),    # requires the key, refuses a keyless public listener
+    ('"d365fo-mcp": "1.12.0"', False),
+    ('"d365fo-mcp": "1.21.0"', False),    # latest on 2026-10-22
+    ('"d365fo-mcp": "latest"', False),    # resolves to a fixed release
+    ('"@zhound/d365fo-mcp-server": "2.0.1"', False),   # zhound420/D365FO-claude-connector, another project
+    ('"@d365portal/d365fo-context-mcp": "1.0.4"', False),
+    ('"@iflow-mcp/dynamics365ninja-d365fo-mcp-server": "1.0.2"', False),   # a republication on its own line
+    ('"d365fo-mcp-server": "1.10.1"', False),   # the repository's name; npm has no such package
+])
+def test_d365fo_versions(tmp_path: Path, dep: str, fires: bool) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert (_D365FO in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("version", "fires"), [("1.10.1", True), ("1.11.0", False)])
+def test_d365fo_lockfile_reads_the_resolved_version(
+    tmp_path: Path, version: str, fires: bool
+) -> None:
+    lock = (
+        '{"lockfileVersion": 3, "packages": {"": {"name": "xpp-assistant"}, '
+        '"node_modules/d365fo-mcp": {"version": "%s"}}}' % version
+    )
+    assert (_D365FO in _ids(tmp_path, "package-lock.json", lock)) is fires
+
+
+@pytest.mark.parametrize(("content", "fires"), [
+    ('{"mcpServers": {"d365fo": {"command": "npx", "args": ["-y", "d365fo-mcp@1.10.1"]}}}', True),
+    ('{"mcpServers": {"d365fo": {"command": "npx", "args": ["-y", "d365fo-mcp@1.11.0"]}}}', False),
+    ('{"mcpServers": {"d365fo": {"command": "npx", "args": ["-y", "d365fo-mcp"]}}}', False),   # resolves to latest, fixed
+    ('{"mcpServers": {"d365fo": {"command": "d365fo-mcp"}}}', False),   # a global install by name states no version
+    ('{"mcpServers": {"d365fo": {"url": "https://d365fo-mcp.example.invalid/mcp"}}}', False),   # a deployed App Service carries no version
+    ('{"mcpServers": {"d365fo": {"command": "uvx", "args": ["d365fo-mcp@1.10.1"]}}}', False),   # PyPI has no such package
+])
+def test_d365fo_launches_report_only_a_stated_npm_version(
+    tmp_path: Path, content: str, fires: bool
+) -> None:
+    assert (_D365FO in _ids(tmp_path, ".mcp.json", content)) is fires

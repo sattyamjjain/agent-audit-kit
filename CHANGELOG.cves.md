@@ -16,6 +16,56 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-22 (v0.6.25): one disclosure, one new pin
+
+The watcher opened one `cve-response` issue, #1071, at 21:42Z on 2026-10-21. It gets a new
+pin, measured with the scanner on a firing fixture and a negative one. Its CVSS 3.1 7.5
+(AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N) is GitHub's metric, the only score on the record, and
+matches the `sev/high` title the watcher filed; NVD lists the record as Deferred, so no score
+of NVD's own is coming. NVD text below is quoted from the API record, read on 2026-10-22 at
+18:10Z.
+
+**D365 F&O MCP Server (CVE-2026-114123) gets `AAK-MCP-D365FO-CVE-2026-114123-001`:
+`d365fo-mcp` below 1.11.0.** NVD: "Prior to version 1.11.0, the officially documented Azure
+one-click deployment uses infrastructure/azuredeploy.json and infrastructure/main.bicep to
+default the apiKey parameter to an empty string and pass it to the App Service API_KEY
+setting. With API_KEY unset or empty, src/middleware/apiKeyAuth.ts passes requests through
+without authentication, while src/index.ts binds the HTTP listener to 0.0.0.0 by default."
+and "This issue is fixed in version 1.11.0." The flaw sits in a deployment default as much
+as in the package, and the scanner can see only one of the two: the version a project
+declares. It reads neither template nor the App Service's `API_KEY` setting, nor whether
+Easy Auth, a Private Endpoint or an authenticating proxy sits in front of the listener, so
+a 1.10.1 behind Easy Auth is reported and a 1.11.0 started with `ALLOW_UNAUTHENTICATED=true`
+is not; the rule's limitations say so. The repository advisory, GHSA-8764-fh3m-wf7g
+(2026-08-12), names the npm package, `d365fo-mcp`, not the repository's name, with the range
+`<= 1.10.1` and 1.11.0 patched; the global advisory database answers 404 for the id on
+2026-10-22, so the CVE surfaced on NVD sixty-nine days after the fix shipped. The fix is two
+commits, e70bd051 ("require API_KEY instead of defaulting to no auth") and 384394a8 ("gate
+the startup guard on the bind address, not NODE_ENV"), both in v1.11.0 (2026-08-13) and
+neither in v1.10.1 (2026-08-11). Checked in the npm tarballs: 1.0.0 (2026-07-21), the first
+release, already has the HTTP mode, mounts `apiKeyAuth` and binds `HOST || '0.0.0.0'`, and
+its `dist/middleware/apiKeyAuth.js` calls `next()` when no key is configured; 1.10.1 is the
+same; 1.11.0 adds `authIsConfigured`, `resolveBindHost` (loopback unless a key or
+`ALLOW_UNAUTHENTICATED=true` is set, or `HOST` is explicit) and `authStartupError`, and its
+`dist/index.js` exits 1 on that error before anything binds. The tarball does not ship the
+templates; in the repository e70bd051 turns azuredeploy.json's `"defaultValue": ""` for
+`apiKey` into `"minLength": 32` and main.bicep's `param apiKey string = ''` into a required
+`@minLength(32)` parameter. HIGH, from GitHub's 7.5. `latest` is 1.21.0 (2026-10-15), fixed,
+so a stated version is required: an unversioned `npx d365fo-mcp`, a global install run by
+its bare name and a config that points at a deployed App Service by URL are not reported.
+PyPI has no `d365fo-mcp` or `d365fo-mcp-server`, npm has no `d365fo-mcp-server`, and
+`@zhound/d365fo-mcp-server` (zhound420/D365FO-claude-connector),
+`@d365portal/d365fo-context-mcp` and `@iflow-mcp/dynamics365ninja-d365fo-mcp-server` (a
+2026-02-26 republication on its own 1.0.x line) are other names and are not matched.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-114123 | 7.5 | `d365fo-mcp` (npm) | **New pin** `AAK-MCP-D365FO-CVE-2026-114123-001` (HIGH): below 1.11.0, a stated version required. | #1071 |
+
+CVSS is GitHub's CVSS 3.1 score, the only metric on the record.
+
+Dispositioned at 2026-10-22T18:10:53Z.
+
 ## 2026-10-21 (v0.6.24): two disclosures, two new pins
 
 The watcher opened two `cve-response` issues on 2026-10-20, #1059 at 11:36Z and #1065 at

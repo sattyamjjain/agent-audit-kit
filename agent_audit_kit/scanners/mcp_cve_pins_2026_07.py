@@ -239,6 +239,12 @@ available) before shipping:
     and list-files tools append `-t ${fileType}` unescaped to a command line run
     through a shell. Every release, 0.1.0 to 0.4.0, the newest, has it, and there
     is no fixed release)
+  - d365fo-mcp                     < 1.11.0  (CVE-2026-114123; the documented Azure
+    one-click deployment left the apiKey parameter empty, the middleware passed
+    every request through with API_KEY empty, and the HTTP listener bound 0.0.0.0,
+    so a public App Service answered unauthenticated tools/call on /mcp. 1.11.0
+    requires the key and refuses a keyless listener off loopback. A stated version
+    is required; the deployment template and the App Service setting are not read)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1513,6 +1519,25 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="no fixed release (0.4.0 is the newest and the maintainer cites the "
                    "README's warning); keep it away from agents that read untrusted text",
          ecosystem="js"),
+    # --- 2026-10-22 (#1071) ---
+    # d365fo-mcp (dynamics365ninja/d365fo-mcp-server), the D365 F&O MCP Server,
+    # ships an HTTP mode for Azure App Service. Before 1.11.0 its documented
+    # one-click deployment (infrastructure/azuredeploy.json, main.bicep) defaulted
+    # the apiKey parameter to "" and passed it to the App Service's API_KEY
+    # setting; with API_KEY empty the middleware passed every request through,
+    # and index.js bound `HOST || '0.0.0.0'`, so a deployer who left the optional
+    # key blank got a public App Service answering unauthenticated tools/call on
+    # /mcp, read-only mode included (CVE-2026-114123, CVSS 3.1 7.5, CWE-306/
+    # CWE-1188, GHSA-8764-fh3m-wf7g). Checked in the npm tarballs: 1.0.0 and
+    # 1.10.1 have the pass-through and the 0.0.0.0 default; 1.11.0 (e70bd051,
+    # 384394a8) makes the template's apiKey required, defaults a keyless server
+    # to loopback and refuses to start a non-loopback listener without a key.
+    # The scanner reads the version a project declares, never the template
+    # default or the App Service setting. `latest` is 1.21.0, fixed, so a stated
+    # version is required; PyPI has no d365fo-mcp.
+    _Pin("AAK-MCP-D365FO-CVE-2026-114123-001", "d365fo-mcp", ("d365fo-mcp",), (1, 11, 0),
+         fix_label="1.11.0",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
