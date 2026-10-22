@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 
 import click
@@ -387,10 +388,17 @@ def corpus_update_cmd(
         selected_ids.add("fhi_universal_suffixes")
 
     try:
-        entries = load_manifest(manifest_url)
+        # An entry the loader skips (a target_filename that is not a bare file name)
+        # is a warning, said here in the command's own voice rather than through
+        # Python's warning printer.
+        with warnings.catch_warnings(record=True) as skipped:
+            warnings.simplefilter("always")
+            entries = load_manifest(manifest_url)
     except Exception as exc:  # noqa: BLE001
         click.echo(f"Error: failed to load manifest: {exc}", err=True)
         sys.exit(EXIT_ERROR)
+    for warning in skipped:
+        click.echo(f"Warning: {warning.message}", err=True)
 
     failures = 0
     for entry in entries:

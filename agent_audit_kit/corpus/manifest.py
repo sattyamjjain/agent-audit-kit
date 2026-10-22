@@ -26,6 +26,7 @@ import hashlib
 import json
 import os
 import urllib.request
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,6 +53,28 @@ class CorpusVerificationError(Exception):
     """Raised when a fetched corpus body's digest does not match."""
 
 
+class CorpusManifestWarning(UserWarning):
+    """A manifest entry `load_manifest` skipped, and why."""
+
+
+def is_bare_file_name(name: str) -> bool:
+    """Whether `name` names one file inside a directory and nothing else.
+
+    `write_corpus` writes `<data dir>/<target_filename>` with the name taken from
+    the manifest, so until #1060 a manifest could name `../something` or an
+    absolute path and the update would write wherever that led, outside the
+    package. A bare name has no path separator of either kind, is not `.` or
+    `..`, is not absolute, and is not empty; nothing else is written.
+    """
+    if not name or name in (".", ".."):
+        return False
+    if "/" in name or "\\" in name or "\0" in name:
+        return False
+    if os.path.isabs(name) or Path(name).name != name:
+        return False
+    return True
+
+
 def _http_get(url: str, timeout: int = 30) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "agent-audit-kit corpus-update"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -70,6 +93,14 @@ def load_manifest(url: str | None = None) -> list[CorpusEntry]:
         body_url = raw.get("body_url")
         sha256 = raw.get("sha256")
         if not (cid and target_filename and body_url and sha256):
+            continue
+        if not isinstance(target_filename, str) or not is_bare_file_name(target_filename):
+            warnings.warn(
+                f"corpus manifest: skipped {cid!r}: target_filename {target_filename!r} "
+                "is not a bare file name, so it would be written outside the data directory",
+                CorpusManifestWarning,
+                stacklevel=2,
+            )
             continue
         entries.append(CorpusEntry(
             id=cid,
