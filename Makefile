@@ -12,7 +12,7 @@ CORPUS   := benchmarks/data
 MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
-.PHONY: report corpus report-check report-pdf report-pdf-check report-figures-check count-check test lint typecheck repo-description \
+.PHONY: report corpus report-check report-pdf report-pdf-check report-figures-check count-check crosswalk crosswalk-check test lint typecheck repo-description \
         cve-latency cve-latency-check cve-latency-queue-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
@@ -147,6 +147,17 @@ count-check:
 	@PYTHONPATH=. python scripts/check_counts.py
 	@PYTHONPATH=. python scripts/sync_rule_count.py --check
 	@PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit
+
+## crosswalk: regenerate docs/crosswalk/nsa-csi-owasp-agentic.md from the rule registry
+## and the compliance mappings (offline, deterministic). crosswalk-check fails when the
+## committed page differs from what the generator writes; the counts job runs it, and
+## tests/test_crosswalk.py asserts the same equality, because the page rotted unseen
+## until #1060 (row 7).
+crosswalk:
+	@PYTHONPATH=. python scripts/sync_crosswalk.py
+
+crosswalk-check:
+	@PYTHONPATH=. python scripts/sync_crosswalk.py --check
 
 ## cve-latency: regenerate docs/cve-latency.md from the ledger. Not offline: the
 ## open-queue row reads the live cve-response tracker via gh (read=no without

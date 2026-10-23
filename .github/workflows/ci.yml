@@ -95,6 +95,13 @@ jobs:
       - name: Counts (prose + generated surfaces)
         run: make count-check
 
+      # The standards crosswalk page is generated from the registry and the
+      # compliance mappings and was checked by nothing (#1060, row 7): #1040
+      # regenerated it by hand. pytest asserts the same equality; this step
+      # names the surface when it is the thing that rotted.
+      - name: Crosswalk page matches its generator
+        run: make crosswalk-check
+
       # The marker test can only see numbers that already carry a marker, so an
       # unmarked second copy is invisible to it. That is not theoretical: four
       # published sites stated 421/18.3% while results.json said 424/18.4% and

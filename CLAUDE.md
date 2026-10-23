@@ -28,7 +28,7 @@ make test                # python -m pytest -q
 make lint                # ruff check . (CI lints only agent_audit_kit/ and tests/); rule set pinned to E4,E7,E9,F in pyproject, widen it deliberately, never via a ruff bump
 make typecheck           # mypy agent_audit_kit (CI adds --ignore-missing-imports, so this local run is the stricter one)
 
-# Drift guards (CI's `counts` job: count-check, report-figures-check, sync_scanner_count.py --check, build_coverage_page.py --check)
+# Drift guards (CI's `counts` job: count-check, crosswalk-check, report-figures-check, sync_scanner_count.py --check, build_coverage_page.py --check)
 make count-check         # check_counts.py (prose counts in ANY tracked *.md, incl. this file) + sync_rule_count.py --check (badge, anchors, action.yml, RULE_COUNT, docs/rules.md and the `report:` markers); then render_repo_metadata.py --check-live, which fails when the live GitHub description differs (a rule, category or framework count change stays red until the About is updated) and exits 0 with "not compared … Skipped, not a pass" when gh cannot read it, as in CI's tokenless counts job
 make report-check        # results.json byte-identical to a fresh run
 make report-pdf-check    # the report PDF's source stamp matches results.json (a stamp, not a byte-diff: reportlab embeds a CreationDate); pytest asserts it too
@@ -36,6 +36,7 @@ make report-figures-check # every governed report figure in prose sits inside a 
 make fp-check            # FP benchmark artifacts (slice, results, badge) not stale, and every "N HIGH/CRITICAL" count, % and [a%, b%] interval in RESULTS.md outside ## History matches results.json/adjudication.json, then fp-instruction-check, which says NOT CHECKED without the user cache (a skip, not a pass)
 make mcptox-check        # RESULTS.md states only results.json's MCPTox recall (offline); the re-run says NOT CHECKED without the cache and NOT COMPARED once agent_audit_kit/ changed, neither a pass
 make cve-latency-check   # docs/cve-latency.md matches the CVE ledger, offline (pytest asserts it every run; release.yml re-runs it on tag)
+make crosswalk-check     # docs/crosswalk/nsa-csi-owasp-agentic.md is what scripts/sync_crosswalk.py writes from the registry (counts job and pytest; `make crosswalk` regenerates it)
 make remediation-corpus-check # remediation-key-corpus.json matches benchmarks/data
 
 # Regenerate (offline, deterministic)
