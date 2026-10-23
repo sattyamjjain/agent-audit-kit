@@ -245,6 +245,12 @@ available) before shipping:
     so a public App Service answered unauthenticated tools/call on /mcp. 1.11.0
     requires the key and refuses a keyless listener off loopback. A stated version
     is required; the deployment template and the App Service setting are not read)
+  - litellm                        1.87.0 <= v < 1.100.4, and 1.101.0-1.101.2,
+    1.102.0-1.102.1 and 1.103.0  (CVE-2026-114612; session tokens were sealed with
+    the at-rest secrets helper, and the key API seals a key's callback_vars with it,
+    so an internal user could have an administrator session minted and replay it.
+    Its own CRITICAL rule above the 1.84.0 row; PyPI only, a stated version
+    required; 1.104.0rc1 reads as 1.104.0, which is fixed)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -343,8 +349,9 @@ _Ver = tuple[int, int, int]
 # an unpinned reference resolves to a release the advisory does not cover:
 # mcp-remote (`npx mcp-remote` installs 0.14.x, and it sits in a large share of
 # all MCP configs), the MCP TypeScript SDKs, Payload's plugin, the two
-# LangChain.js integrations, obsidian-tc, Junie CLI and both Claude Agent SDKs
-# (`latest` resolved to a fixed release for each),
+# LangChain.js integrations, obsidian-tc, Junie CLI, both Claude Agent SDKs,
+# d365fo-mcp and LiteLLM's CVE-2026-114612 row (`latest` resolved to a fixed
+# release for each),
 # Claude Code (the CLI updates itself), pi-llm-wiki (upstream registers it by a
 # node_modules path, which states none), bare `mcp` (a lone `mcp` names too much
 # to report unversioned), and `next`, where only a declared version says which
@@ -1538,6 +1545,30 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-D365FO-CVE-2026-114123-001", "d365fo-mcp", ("d365fo-mcp",), (1, 11, 0),
          fix_label="1.11.0",
          requires_version=True, ecosystem="js"),
+    # --- 2026-10-23 (#1081) ---
+    # LiteLLM sealed UI and CLI session tokens with `encrypt_value_helper`, the
+    # helper that seals secrets at rest, and from 1.87.0 (#27141, 3b2ce201) the key
+    # API seals a key's `callback_vars` metadata with the same helper, so an
+    # internal user could have a forged proxy_admin session sealed for them and
+    # present it as a bearer token (CVE-2026-114612, CVSS 3.1 9.9, CWE-269/CWE-345/
+    # CWE-441, GHSA-7hp6-4w63-5g45). 1.87.0 to 1.90.x accept that token only with
+    # EXPERIMENTAL_UI_LOGIN turned on; from 1.91.0 it is accepted unless the
+    # variable is false. Checked at every release tag and in the PyPI sdists: the
+    # fix (`encrypt_bearer_token`, its prefix doubling as the AES-GCM associated
+    # data) is in 1.100.4, 1.101.3, 1.102.2, 1.103.1, 1.104.0rc2 and every later
+    # release, and absent from 1.100.3, 1.101.2, 1.102.1, 1.103.0 and 1.104.0rc1;
+    # 1.86.7 never seals callback_vars. The 1.101 to 1.103 lines sort above the
+    # 1.100.4 floor, so they are `also` ranges on this row. 1.104.0rc1 reads as
+    # 1.104.0 (a pre-release folds into its release), which is fixed, so it cannot
+    # be a range here. The older litellm row's 1.84.0 floor sits below 1.87.0, so
+    # this is its own rule. `latest` is 1.106.2, fixed, so a stated version is
+    # required, and npm's `litellm` is a JavaScript port on its own 0.x line.
+    _Pin("AAK-MCP-LITELLM-CVE-2026-114612-001", "litellm", ("litellm",), (1, 100, 4),
+         introduced=(1, 87, 0),
+         also=(((1, 101, 0), (1, 101, 3)), ((1, 102, 0), (1, 102, 2)),
+               ((1, 103, 0), (1, 103, 1))),
+         fix_label="1.100.4, 1.101.3, 1.102.2, 1.103.1 or 1.104.0 (affected from 1.87.0)",
+         requires_version=True, ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

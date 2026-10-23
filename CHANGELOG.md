@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-LITELLM-CVE-2026-114612-001` (CRITICAL): `litellm` from 1.87.0 below the fixed releases, 1.100.4, 1.101.3, 1.102.2 and 1.103.1 on their lines and 1.104.0 (CVE-2026-114612, #1081). LiteLLM sealed UI and CLI session tokens with the helper that seals its secrets at rest, and from 1.87.0 the key API seals a key's `callback_vars` metadata with it too, so an internal user could have a forged administrator session sealed for them and present it as a bearer token: administrator access, and commands run through the proxy's MCP stdio endpoint. 1.87.0 to 1.90.x are exposed only with `EXPERIMENTAL_UI_LOGIN` turned on, later releases by default. Only a stated version on PyPI is reported, since `latest` is fixed, and 1.104.0rc1, the one affected 1.104 pre-release, reads as 1.104.0, which is fixed, so it is not reported. The older LiteLLM rule keeps its 1.84.0 floor.
+
 ## [0.6.25] - 2026-10-22
 
 ### Added

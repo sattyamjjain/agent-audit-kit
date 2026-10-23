@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-23T02:04:02Z",
+  "last_updated": "2026-10-23T17:43:17Z",
   "aak_version": "0.6.25",
-  "rule_count": 415,
+  "rule_count": 416,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1164,7 +1164,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 109,
+      "rule_density": 110,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1610,6 +1610,17 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-104873"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LITELLM-CVE-2026-114612-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-114612"
           ],
           "aicm_references": [
             "IAM-01",
@@ -2288,7 +2299,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 202,
+      "rule_density": 203,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -3450,6 +3461,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-LITELLM-CVE-2026-114612-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-114612"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-LITELLM-CVE-2026-59822-001",
           "severity": "high",
           "cve_references": [
@@ -4492,7 +4514,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 94,
+      "rule_density": 95,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5036,6 +5058,17 @@
             "CVE-2026-4965"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-LITELLM-CVE-2026-114612-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-114612"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-MARIMO-CVE-2026-75149-001",

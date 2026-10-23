@@ -363,6 +363,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
     "AAK-MCP-D365FO-CVE-2026-114123-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-LITELLM-CVE-2026-114612-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -16811,6 +16812,63 @@ _r(
         "own 1.0.x line, and `d365fo-mcp-server` is the repository's name, not a "
         "package; none is matched. PyPI has no `d365fo-mcp`, so a `uvx` launch is "
         "not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-10-23 (#1081). One watcher-filed CVE, one new pin below, beside the older
+# LiteLLM row, whose 1.84.0 floor sits below this flaw's range.
+
+_r(
+    "AAK-MCP-LITELLM-CVE-2026-114612-001",
+    "LiteLLM from 1.87.0 below its fixed releases: session tokens share the at-rest encryption context, so an internal user can become proxy admin",
+    "LiteLLM (`litellm` on PyPI; BerriAI/litellm), the LLM gateway proxy, sealed UI "
+    "and CLI session tokens with `encrypt_value_helper`, the helper that seals its "
+    "secrets at rest. From 1.87.0 the key API seals a key's `callback_vars` metadata "
+    "with the same helper (#27141), and per the advisory the API-key flow returns "
+    "what it sealed, so an authenticated `internal_user` can put a forged "
+    "`proxy_admin` session in that metadata, have the proxy seal it, and present the "
+    "result as a bearer token: the proxy opens it, trusts the forged administrator, "
+    "and grants administrative access, including commands run through its MCP stdio "
+    "endpoint (CVE-2026-114612, CVSS 3.1 9.9, CWE-269/CWE-345/CWE-441, "
+    "GHSA-7hp6-4w63-5g45). 1.87.0 to 1.90.x accept such a token only when "
+    "`EXPERIMENTAL_UI_LOGIN` is turned on; from 1.91.0 they accept it unless that "
+    "variable is explicitly false. 1.100.4, 1.101.3, 1.102.2, 1.103.1 and 1.104.0rc2 "
+    "seal session tokens through `encrypt_bearer_token`, under a prefix that is also "
+    "the AES-GCM associated data, so a sealed secret no longer opens as a session.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `litellm` to a fixed release and pin it: 1.100.4, 1.101.3, 1.102.2 or "
+    "1.103.1 on those release lines, or 1.104.0 or later. A lower bound below 1.103.1 "
+    "still admits affected releases (`litellm>=1.100.4` admits 1.101.0 to 1.101.2, "
+    "1.102.0 to 1.102.1 and 1.103.0), so raise it to 1.103.1 or pin the exact "
+    "version. Until you can upgrade, set `EXPERIMENTAL_UI_LOGIN=false`, which closes "
+    "the path but also breaks CLI SSO and Claude Code gateway login.",
+    sarif_name="LiteLLMSessionTokenSharedEncryptionContext",
+    cve_references=["CVE-2026-114612"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `litellm` from 1.87.0 below 1.100.4, and 1.101.0 to 1.101.2, 1.102.0 "
+        "to 1.102.1 and 1.103.0, where a requirements*.txt (at any depth), or at the "
+        "project root a pyproject.toml, Pipfile, Pipfile.lock, poetry.lock or uv.lock, "
+        "or an MCP config's `uvx` launch states the version, reporting a range that "
+        "admits an affected version (`litellm>=1.100.4` admits 1.101.0). `latest` was "
+        "1.106.2 on 2026-10-23 and states no version, so a bare `litellm` is not "
+        "reported. It reads the version, not the proxy's settings: 1.87.0 to 1.90.x "
+        "are reported although they are exposed only with `EXPERIMENTAL_UI_LOGIN` "
+        "turned on, and so is a later release run with it set to false. A pre-release "
+        "reads as its release, so 1.104.0rc1 and the 1.104.0 dev releases, which are "
+        "affected, read as 1.104.0, which is fixed, and are not reported, while "
+        "1.101.0rc1, 1.102.0rc1 and 1.103.0rc1 read as their affected releases and "
+        "are. The `ghcr.io/berriai/litellm` image tag is not read, in a compose file "
+        "or in an MCP config that starts it with `docker run`, and npm's `litellm` "
+        "(zya/litellmjs, a JavaScript port on its own 0.x line) is another package "
+        "and is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
