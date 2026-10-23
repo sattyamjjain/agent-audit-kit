@@ -7,21 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.25] - 2026-10-22
+
 ### Added
 
-- `AAK-MCP-D365FO-CVE-2026-114123-001` (HIGH): `d365fo-mcp`, the D365 F&O MCP Server on npm, below 1.11.0 (CVE-2026-114123, #1071). Before 1.11.0 the documented Azure one-click deployment left the `apiKey` parameter empty, the middleware passed every request through when `API_KEY` was empty, and the HTTP listener bound `0.0.0.0`, so a public App Service answered unauthenticated `tools/call` on `/mcp` and served the indexed X++ source, security roles and labels, read-only mode included. 1.11.0 requires the key in the templates, keeps a keyless server on loopback and refuses to start on a public interface without one. The rule reads the package version a project declares, not the deployment template or the App Service setting, and `latest` is fixed, so only a stated version is reported.
+- `AAK-MCP-D365FO-CVE-2026-114123-001` (HIGH): `d365fo-mcp`, the D365 F&O MCP Server on npm, below 1.11.0 (CVE-2026-114123, #1071, #1074). Before 1.11.0 the documented Azure one-click deployment left the `apiKey` parameter empty, the middleware passed every request through when `API_KEY` was empty, and the HTTP listener bound `0.0.0.0`, so a public App Service answered unauthenticated `tools/call` on `/mcp` and served the indexed X++ source, security roles and labels, read-only mode included. 1.11.0 requires the key in the templates, keeps a keyless server on loopback and refuses to start on a public interface without one. The rule reads the package version a project declares, not the deployment template or the App Service setting, and `latest` is fixed, so only a stated version is reported.
 
 ### Changed
 
-- The standards crosswalk page, `docs/crosswalk/nsa-csi-owasp-agentic.md`, is checked against its generator: `make crosswalk-check` (`scripts/sync_crosswalk.py --check`) runs in CI's counts job and pytest asserts the same equality, so a rule added, retired or remapped without `make crosswalk` turns the build red instead of leaving the page stale (#1060).
+- The standards crosswalk page, `docs/crosswalk/nsa-csi-owasp-agentic.md`, is checked against its generator: `make crosswalk-check` (`scripts/sync_crosswalk.py --check`) runs in CI's counts job and pytest asserts the same equality, so a rule added, retired or remapped without `make crosswalk` turns the build red instead of leaving the page stale (#1060, #1079).
 
 ### Fixed
 
-- `aak corpus update` writes only a bare file name from the manifest: an entry whose `target_filename` (or, without one, whose id) holds a path separator, is `.` or `..`, or is absolute is skipped with a warning that names it, where before `<data dir>/<target_filename>` was written wherever the name led (#1060).
-- AAK-TRUST-007 no longer fires on an empty `enabledMcpjsonServers` list, so `aak fix` clears it: a present key is the allowlist, and `[]` approves no server, the strictest allowlist there is. Through 0.6.24 the fix wrote `[]`, reported a fix, and the finding stayed (#1060).
-- `suggest --auto-pr` shows each fixed file in the draft PR's File column relative to the project root, never as the operator's absolute local path; a path outside the project, which no fix writes, shows its name alone (#1060).
-- The secret scanner (AAK-SECRET-001 to 004 and 007 to 009, and the private-key walk of AAK-SECRET-005) and AAK-MCP-016's source reader enforce their 1,000,000-byte cap in the read itself, through the capped reader, where before a stat decided and the read that followed took the file whole; a file whose reported size is under the cap but whose bytes are not is refused. The seven secret rules whose limitations did not state the cap now do (#1060).
-- AAK-STDIO-001's TypeScript and JavaScript reader places its findings in one pass over the file, where before each match's line was looked up on its own and the cost grew with the square of the file: 20,000 distinct matches in 489 KB took 0.82 s and doubling them cost 2.6x, now 0.44 s and 2.0x (#1060).
+- `aak corpus update` writes only a bare file name from the manifest: an entry whose `target_filename` (or, without one, whose id) holds a path separator, is `.` or `..`, or is absolute is skipped with a warning that names it, where before `<data dir>/<target_filename>` was written wherever the name led (#1060, #1075).
+- AAK-TRUST-007 no longer fires on an empty `enabledMcpjsonServers` list, so `aak fix` clears it: a present key is the allowlist, and `[]` approves no server, the strictest allowlist there is. Through 0.6.24 the fix wrote `[]`, reported a fix, and the finding stayed (#1060, #1076).
+- `suggest --auto-pr` shows each fixed file in the draft PR's File column relative to the project root, never as the operator's absolute local path; a path outside the project, which no fix writes, shows its name alone (#1060, #1077).
+- The secret scanner (AAK-SECRET-001 to 004 and 007 to 009, and the private-key walk of AAK-SECRET-005) and AAK-MCP-016's source reader enforce their 1,000,000-byte cap in the read itself, through the capped reader, where before a stat decided and the read that followed took the file whole; a file whose reported size is under the cap but whose bytes are not is refused. The seven secret rules whose limitations did not state the cap now do (#1060, #1078).
+- AAK-STDIO-001's TypeScript and JavaScript reader places its findings in one pass over the file, where before each match's line was looked up on its own and the cost grew with the square of the file: 20,000 distinct matches in 489 KB took 0.82 s and doubling them cost 2.6x, now 0.44 s and 2.0x (#1060, #1080).
 
 ## [0.6.24] - 2026-10-21
 
