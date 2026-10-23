@@ -1665,8 +1665,9 @@ _r(
 _r(
     "AAK-TRUST-007",
     "No MCP server allowlist configured",
-    "No enabledMcpjsonServers allowlist is configured, meaning server approval "
-    "relies entirely on user prompts.",
+    "The project's settings file has no `enabledMcpjsonServers` key while a root "
+    "`.mcp.json` declares servers, so which of them Claude Code may start is decided "
+    "by whoever answers the prompt rather than by the project.",
     Severity.MEDIUM,
     Category.TRUST_BOUNDARY,
     "Configure enabledMcpjsonServers with explicit server names.",
@@ -1678,7 +1679,13 @@ _r(
     limitations=(
         "Fires only when a settings file at the root of the scanned directory sits "
         "beside a root `.mcp.json`. A package directory that carries its own "
-        "`.claude/settings.json` and `.mcp.json` (`packages/web/`) is not looked at."
+        "`.claude/settings.json` and `.mcp.json` (`packages/web/`) is not looked at. "
+        "A present `enabledMcpjsonServers` key is the allowlist, an empty list "
+        "included: `[]` approves no server, the strictest allowlist there is, and it "
+        "is what `aak fix` writes, so the fix clears the finding. Through 0.6.24 an "
+        "empty list fired too, and `aak fix` reported a change that cleared nothing. "
+        "It reads the key, not the value: a list of names is the allowlist whether or "
+        "not `.mcp.json` declares them."
     ),
 )
 

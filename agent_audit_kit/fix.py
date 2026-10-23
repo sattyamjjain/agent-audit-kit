@@ -801,7 +801,8 @@ def _fix_missing_deny(path: Path, project_root: Path, dry_run: bool) -> FixActio
 
 def _fix_missing_allowlist(path: Path, project_root: Path, dry_run: bool) -> FixAction:
     """Add an empty enabledMcpjsonServers allowlist, reading and writing the settings
-    file only as `_write_refusal` allows."""
+    file only as `_write_refusal` allows. The rule takes the present key as the
+    allowlist, an empty list included, so this clears AAK-TRUST-007 (#1060)."""
     refused = _write_refusal(path, project_root)
     if refused is not None:
         return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)

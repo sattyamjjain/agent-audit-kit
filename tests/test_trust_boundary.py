@@ -141,3 +141,60 @@ def test_an_anthropic_host_is_not_flagged(tmp_path: Path, base_url: str) -> None
 ])
 def test_url_host_is_the_host_every_client_reads(value: str, host: str | None) -> None:
     assert url_host(value) == host
+
+
+# ---------------------------------------------------------------------------
+# AAK-TRUST-007: a present `enabledMcpjsonServers` key is the allowlist (#1060)
+# ---------------------------------------------------------------------------
+
+
+def _settings_beside_mcp_json(tmp_path: Path, settings: dict) -> None:
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "settings.json").write_text(json.dumps(settings, indent=2), encoding="utf-8")
+    (tmp_path / ".mcp.json").write_text('{"mcpServers": {}}', encoding="utf-8")
+
+
+def _trust_007(tmp_path: Path) -> list[int | None]:
+    return [f.line_number for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRUST-007"]
+
+
+def test_no_allowlist_key_beside_an_mcp_json_fires(tmp_path: Path) -> None:
+    _settings_beside_mcp_json(tmp_path, {"permissions": {}})
+    assert _trust_007(tmp_path) == [1]
+
+
+@pytest.mark.parametrize("value", [[], ["filesystem"], ["filesystem", "sqlite"]])
+def test_a_present_allowlist_key_is_the_allowlist_even_when_empty(tmp_path: Path, value: list[str]) -> None:
+    """`[]` approves no server, the strictest allowlist there is, and it is what
+    `aak fix` writes. Through 0.6.24 an empty list fired as if the key were absent."""
+    _settings_beside_mcp_json(tmp_path, {"enabledMcpjsonServers": value})
+    assert _trust_007(tmp_path) == []
+
+
+def test_enable_all_project_servers_stands_in_for_the_allowlist(tmp_path: Path) -> None:
+    _settings_beside_mcp_json(tmp_path, {"enableAllProjectMcpServers": True})
+    assert _trust_007(tmp_path) == []
+
+
+def test_no_mcp_json_means_nothing_to_allowlist(tmp_path: Path) -> None:
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
+    assert _trust_007(tmp_path) == []
+
+
+def test_fix_then_rescan_clears_trust_007(tmp_path: Path) -> None:
+    """`aak fix` writes `enabledMcpjsonServers: []`; a rescan reads the key as the
+    allowlist and reports nothing. Before, the fix said "Fixed 1 issue(s)" and the
+    finding stayed."""
+    from agent_audit_kit.fix import run_fixes
+
+    _settings_beside_mcp_json(tmp_path, {"permissions": {}})
+    assert _trust_007(tmp_path) == [1]
+    fixes = [f for f in run_fixes(tmp_path) if f.rule_id == "AAK-TRUST-007"]
+    assert [(f.applied, f.writes) for f in fixes] == [(True, True)]
+    written = json.loads((tmp_path / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    assert written["enabledMcpjsonServers"] == []
+    assert _trust_007(tmp_path) == []
+    # And the fix now has nothing left to do.
+    again = [f for f in run_fixes(tmp_path) if f.rule_id == "AAK-TRUST-007"]
+    assert again == []
