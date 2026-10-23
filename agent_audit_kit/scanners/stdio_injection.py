@@ -47,6 +47,7 @@ from agent_audit_kit.scanners._helpers import (
     loads_json,
     make_finding,
     parse_python,
+    placed,
     read_text_capped,
     refusing_overflow,
     unparse,
@@ -461,30 +462,38 @@ def _check_js_file(path: Path, project_root: Path) -> list[Finding]:
         return []
     if not _JS_MCP_HINT_RE.search(text):
         return []
-    findings: list[Finding] = []
     rel = str(path.relative_to(project_root))
 
+    # Each finding is made without a line and keyed by the first line of its match;
+    # `placed` then looks every key up in one pass over the text. Looking each match
+    # up on its own (`find_line_number` per finding) scanned the text up to each
+    # match's offset, so the cost grew with the square of the file: 20,000 distinct
+    # matches in 489 KB, under the 512,000-byte cap, took 0.82 s and doubling them
+    # cost 2.6x, against 0.44 s and 2.0x in one pass (#1060, row 1; identical matches
+    # share one key, found at the top of the text, and never showed it). The lines
+    # are the ones `find_line_number` gave, and the findings keep their order.
+    unplaced: list[tuple[Finding, object]] = []
     for match in _JS_SHELL_TRUE_RE.finditer(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-STDIO-001",
                 rel,
                 f"child_process spawn/exec/execa with {{shell: true}} in MCP server: {match.group(0)[:200]!r}",
-                line_number=find_line_number(text, match.group(0).splitlines()[0]),
-            )
-        )
+            ),
+            match.group(0).splitlines()[0],
+        ))
 
     for match in _JS_DYNAMIC_CMD_RE.finditer(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-STDIO-001",
                 rel,
                 f"child_process invocation with request-derived command: {match.group(0)[:200]!r}",
-                line_number=find_line_number(text, match.group(0).splitlines()[0]),
-            )
-        )
+            ),
+            match.group(0).splitlines()[0],
+        ))
 
-    return findings
+    return placed(text, unplaced)
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
