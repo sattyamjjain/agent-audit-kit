@@ -152,6 +152,8 @@ PINS = {
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": "medium",
     # 2026-10-22 (#1071)
     "AAK-MCP-D365FO-CVE-2026-114123-001": "high",
+    # 2026-10-23 (#1081)
+    "AAK-MCP-LITELLM-CVE-2026-114612-001": "critical",
 }
 
 
@@ -4191,3 +4193,114 @@ def test_d365fo_launches_report_only_a_stated_npm_version(
     tmp_path: Path, content: str, fires: bool
 ) -> None:
     assert (_D365FO in _ids(tmp_path, ".mcp.json", content)) is fires
+
+
+# --- 2026-10-23 (#1081): LiteLLM's shared session-token encryption context ---
+
+_LITELLM_114612 = "AAK-MCP-LITELLM-CVE-2026-114612-001"
+
+
+def test_litellm_114612_is_its_own_critical_rule_beside_the_older_litellm_row() -> None:
+    """CVE-2026-114612 (#1081): from 1.87.0 the key API seals `callback_vars` with the
+    same helper that seals session tokens. Fixed in 1.100.4, 1.101.3, 1.102.2, 1.103.1
+    and 1.104.0rc2 (GHSA-7hp6-4w63-5g45; checked at every release tag and in the
+    sdists). The 1.101 to 1.103 lines sort above the 1.100.4 floor, so they are
+    `also` ranges. The older row's 1.84.0 floor does not move and does not take the
+    CVE. PyPI only, a stated version required: `latest` (1.106.2) is fixed."""
+    rule = RULES[_LITELLM_114612]
+    assert rule.severity.value == "critical"
+    assert rule.cve_references == ["CVE-2026-114612"]
+    assert [(p.names, p.floor, p.introduced, p.also, p.requires_version, p.ecosystem)
+            for p in _PINS if p.rule_id == _LITELLM_114612] == [
+        (("litellm",), (1, 100, 4), (1, 87, 0),
+         (((1, 101, 0), (1, 101, 3)), ((1, 102, 0), (1, 102, 2)), ((1, 103, 0), (1, 103, 1))),
+         True, "py"),
+    ]
+    assert [p.floor for p in _PINS if p.rule_id == _LITELLM] == [(1, 84, 0)]
+    assert "CVE-2026-114612" not in RULES[_LITELLM].cve_references
+
+
+def test_litellm_114612_fixtures_positive_and_negative() -> None:
+    """1.100.3, the last affected 1.100 release, fires on this rule alone, on its own
+    line; 1.100.4 fires on neither litellm rule."""
+    root = _CVE_FIXTURES / "cve-2026-114612-litellm"
+    vulnerable = scan(root / "vulnerable")[0]
+    assert [(f.file_path, f.line_number) for f in vulnerable
+            if f.rule_id == _LITELLM_114612] == [("requirements.txt", 2)]
+    assert _LITELLM not in {f.rule_id for f in vulnerable}
+    negative = {f.rule_id for f in scan(root / "negative")[0]}
+    assert _LITELLM_114612 not in negative and _LITELLM not in negative
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("1.86.7", False),     # never seals callback_vars, so there is nothing to replay
+    ("1.87.0", True),      # #27141: callback_vars sealed with the session-token helper
+    ("1.90.7", True),      # exposed only with EXPERIMENTAL_UI_LOGIN turned on
+    ("1.91.0", True),      # on by default
+    ("1.99.4", True),      # no fixed 1.99 release
+    ("1.100.3", True),
+    ("1.100.4", False),    # encrypt_bearer_token
+    ("1.100.5", False),
+    ("1.101.0rc1", True),  # a pre-release reads as its release, here an affected one
+    ("1.101.2", True),
+    ("1.101.3", False),
+    ("1.101.6", False),
+    ("1.102.1", True),
+    ("1.102.2", False),
+    ("1.103.0", True),
+    ("1.103.1", False),
+    ("1.104.0rc1", False),  # affected, but it reads as 1.104.0, which is fixed (stated)
+    ("1.104.0rc2", False),
+    ("1.104.0", False),
+    ("1.106.2", False),    # latest on 2026-10-23
+])
+def test_litellm_114612_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    assert (_LITELLM_114612 in _ids(tmp_path, "requirements.txt", f"litellm=={version}\n")) is fires
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("litellm>=1.100.4", True),     # still admits 1.101.0 to 1.101.2, 1.102.0 to 1.102.1, 1.103.0
+    ("litellm>=1.103.1", False),
+    ("litellm~=1.101.0", True),
+    ("litellm[proxy]>=1.90,<2", True),
+    ("litellm<1.87", False),
+    ("litellm", False),             # a bare name resolves to latest, which is fixed
+])
+def test_litellm_114612_ranges_report_an_admitted_affected_version(
+    tmp_path: Path, spec: str, fires: bool
+) -> None:
+    assert (_LITELLM_114612 in _ids(tmp_path, "requirements.txt", spec + "\n")) is fires
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("uv.lock", '[[package]]\nname = "litellm"\nversion = "1.100.3"\n', True),
+    ("uv.lock", '[[package]]\nname = "litellm"\nversion = "1.100.4"\n', False),
+    ("poetry.lock", '[[package]]\nname = "litellm"\nversion = "1.102.1"\n', True),
+    ("poetry.lock", '[[package]]\nname = "litellm"\nversion = "1.102.2"\n', False),
+    ("pyproject.toml", '[project]\nname = "gw"\ndependencies = ["litellm[proxy]==1.95.0"]\n', True),
+    ("pyproject.toml", '[tool.poetry.dependencies]\n'
+                       'litellm = {version = "1.103.0", extras = ["proxy"]}\n', True),
+    ("Pipfile", '[packages]\nlitellm = "==1.91.0"\n', True),
+])
+def test_litellm_114612_lockfiles_and_manifests(
+    tmp_path: Path, name: str, content: str, fires: bool
+) -> None:
+    assert (_LITELLM_114612 in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("content", "fires"), [
+    ('{"mcpServers": {"gw": {"command": "uvx", "args": ["litellm@1.100.3"]}}}', True),
+    ('{"mcpServers": {"gw": {"command": "uvx", "args": ["litellm[proxy]@1.100.3"]}}}', True),
+    ('{"mcpServers": {"gw": {"command": "uvx", "args": ["litellm@1.100.4"]}}}', False),
+    ('{"mcpServers": {"gw": {"command": "uvx", "args": ["litellm"]}}}', False),  # resolves to latest
+    ('{"mcpServers": {"gw": {"command": "npx", "args": ["-y", "litellm@0.12.0"]}}}', False),  # npm's JS port
+])
+def test_litellm_114612_launches_read_pypi_only(tmp_path: Path, content: str, fires: bool) -> None:
+    assert (_LITELLM_114612 in _ids(tmp_path, ".mcp.json", content)) is fires
+
+
+def test_litellm_114612_ignores_npm_litellm_and_longer_names(tmp_path: Path) -> None:
+    """npm's `litellm` is zya/litellmjs, a JavaScript port on its own 0.x line, and
+    `litellm-proxy-extras` is another PyPI package."""
+    assert _LITELLM_114612 not in _ids(tmp_path, "package.json", '{"dependencies": {"litellm": "1.100.3"}}')
+    assert _LITELLM_114612 not in _ids(tmp_path, "requirements.txt", "litellm-proxy-extras==0.4.3\n")

@@ -16,6 +16,61 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-23 (v0.6.26): one disclosure, one new pin
+
+The watcher opened one `cve-response` issue, #1081, at 21:35Z on 2026-10-22; it was
+deferred to 2026-10-24 the same night with the ranges below, and gets a new pin, measured
+with the scanner on a firing fixture and a negative one. Its CVSS 3.1 9.9
+(AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H) is GitHub's metric, the only score on the record, and
+matches the `sev/critical` title the watcher filed; NVD lists the record as Received. NVD
+text below is quoted from the API record, read on 2026-10-23 at 17:41Z.
+
+**LiteLLM (CVE-2026-114612) gets `AAK-MCP-LITELLM-CVE-2026-114612-001`: `litellm` from
+1.87.0 below 1.100.4, and 1.101.0 to 1.101.2, 1.102.0 to 1.102.1 and 1.103.0.** NVD: "From
+1.87.0 until 1.100.4, 1.101.3, 1.102.2, 1.103.1, and 1.104.0-rc.2, the proxy reuses one
+cryptographic context for at-rest secrets and session tokens" and "Versions 1.87.0 through
+1.90.x require EXPERIMENTAL_UI_LOGIN to be enabled, while versions after 1.91.0 are
+exploitable in the default configuration." GHSA-7hp6-4w63-5g45 (2026-09-30) names PyPI's
+`litellm` with five package ranges, `>= 1.91.0, < 1.100.4`, `>= 1.101.0, < 1.101.3`,
+`>= 1.102.0, < 1.102.2`, `>= 1.103.0, < 1.103.1` and `>= 1.104.0rc1, < 1.104.0rc2`; its
+text explains why the first starts at 1.91.0: 1.87.0 through 1.90.x are exploitable "only
+if `EXPERIMENTAL_UI_LOGIN=true` was explicitly set". Every range was checked before the pin
+was written, in the source at 43 release tags and on main, and in eight PyPI sdists. The flaw needs two
+halves. The session-token half predates the range: 1.86.7 already seals UI and CLI session
+tokens with `encrypt_value_helper`, the at-rest secrets helper. The oracle half is #27141
+(3b2ce201, "encrypt callback_vars in key/team metadata at rest"), which has the key API seal
+a key's `callback_vars` with the same helper; it is in v1.87.0 and not in v1.86.7, and the
+1.86.7 sdist seals no `callback_vars`, so 1.87.0 is the floor. The bearer path that opens
+such a token runs only with `EXPERIMENTAL_UI_LOGIN` turned on through 1.90.7, and from
+1.91.0 unless the variable is false (`get_secret_bool("EXPERIMENTAL_UI_LOGIN") is not
+False` in `user_api_key_auth.py`), the default the advisory describes. The fix,
+"bind UI/CLI session tokens to their own AES-GCM context", seals session tokens through
+`encrypt_bearer_token` under a `litellm_login_` prefix that is also the AES-GCM associated
+data, so a sealed secret no longer opens as a session. At the tags it is in 1.100.4,
+1.101.3, 1.102.2, 1.103.1 and 1.104.0rc2, in every later release on those lines, in 1.104.0
+to 1.104.5 and in every 1.105 and 1.106 release, and absent from 1.100.3, 1.101.2,
+1.102.1, 1.103.0, 1.104.0rc1 and both 1.104.0 dev releases; the sdists of 1.100.3,
+1.100.4, 1.104.0rc1 and 1.104.0rc2 agree. One of NVD's five commit links,
+f7cd90f9, resolves to no commit in BerriAI/litellm; 1.100.4 carries the fix in its code all
+the same. The pin is CRITICAL, from the record's 9.9, starts at 1.87.0, and takes the
+1.101 to 1.103 lines as `also` ranges, since they sort above the 1.100.4 floor. AAK reads a
+pre-release as its release, so 1.104.0rc1 and the 1.104.0 dev releases read as 1.104.0,
+which is fixed, and are not reported; 1.101.0rc1, 1.102.0rc1 and 1.103.0rc1 read as their
+affected releases and are. It requires a stated version, since `latest` was 1.106.2 on
+2026-10-23, and reads PyPI only: npm's `litellm` is zya/litellmjs, a JavaScript port on its
+own 0.x line. It reads the version, not `EXPERIMENTAL_UI_LOGIN`, so 1.87.0 to 1.90.x are
+reported whether or not the flag is on, and the rule's limitations say so. The older
+LiteLLM row, `AAK-MCP-LITELLM-CVE-2026-59822-001`, keeps its 1.84.0 floor, which sits
+below this range, so 1.87.0 and later fire this rule alone.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-114612 | 9.9 | `litellm` (PyPI) | **New pin** `AAK-MCP-LITELLM-CVE-2026-114612-001` (CRITICAL): 1.87.0 up to 1.100.4, plus 1.101.0 to 1.101.2, 1.102.0 to 1.102.1 and 1.103.0; a stated version required. | #1081 |
+
+CVSS is GitHub's CVSS 3.1 score, the only metric on the record.
+
+Dispositioned at 2026-10-23T17:42:03Z.
+
 ## 2026-10-22 (v0.6.25): one disclosure, one new pin
 
 The watcher opened one `cve-response` issue, #1071, at 21:42Z on 2026-10-21. It gets a new
