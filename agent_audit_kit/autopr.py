@@ -300,7 +300,16 @@ def _branch_name(fixes: list[FixAction]) -> str:
     return "aak/autofix/" + _BRANCH_SAFE_RE.sub("-", stem).strip("-")
 
 
-def _render_body(fixes: list[FixAction]) -> str:
+def _shown_path(project_root: Path, file_path: str) -> str:
+    """``file_path`` for the PR body: relative to the project root, never the operator's
+    absolute local path. `FixAction.file_path` is the path the recipe wrote, as the
+    scan built it, so until #1060 a public draft PR carried the operator's home
+    directory in its File column. A path outside the project, which no fix writes,
+    shows its name alone."""
+    return _git_name(project_root, file_path) or Path(file_path).name
+
+
+def _render_body(fixes: list[FixAction], project_root: Path) -> str:
     lines = [
         "Mechanical remediation drafted by "
         "[agent-audit-kit](https://github.com/sattyamjjain/agent-audit-kit).",
@@ -317,7 +326,8 @@ def _render_body(fixes: list[FixAction]) -> str:
         cves = ", ".join(rule.cve_references) if rule and rule.cve_references else "—"
         title = rule.title if rule else fix.rule_id
         lines.append(
-            f"| `{fix.rule_id}` — {title} | `{fix.file_path}` | {fix.description} | {cves} |"
+            f"| `{fix.rule_id}` — {title} | `{_shown_path(project_root, fix.file_path)}` "
+            f"| {fix.description} | {cves} |"
         )
     lines += [
         "",
@@ -373,7 +383,7 @@ def plan_auto_pr(project_root: Path) -> AutoPrPlan:
             if len(rules) == 1
             else f"fix: mechanical remediation for {len(rules)} rules"
         )
-        plan.body = _render_body(writing)
+        plan.body = _render_body(writing, project_root)
     return plan
 
 

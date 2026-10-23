@@ -589,9 +589,46 @@ def test_the_guard_names_what_it_could_not_put_back(tmp_path: Path, monkeypatch,
 
 
 def test_body_cites_rule_and_cve(tmp_path: Path) -> None:
-    body = _render_body([FixAction("AAK-LITELLM-CVE-2026-30623-PIN-001", "req.txt", "bump")])
+    body = _render_body([FixAction("AAK-LITELLM-CVE-2026-30623-PIN-001", "req.txt", "bump")], tmp_path)
     assert "AAK-LITELLM-CVE-2026-30623-PIN-001" in body
     assert "CVE-2026-30623" in body
     assert "draft" in body.lower()
     for shape, _ in NON_MECHANICAL:
         assert shape in body, "the PR states its own limits"
+
+
+def test_body_shows_each_file_relative_to_the_project_root(tmp_path: Path) -> None:
+    """`FixAction.file_path` is the path the recipe wrote, absolute as the scan built it,
+    and until #1060 the File column carried it, operator's home directory included. The
+    body shows the project-relative path, a relative path as given, and for a path
+    outside the project, which no fix writes, the name alone."""
+    project = tmp_path / "work" / "agent"
+    (project / ".claude").mkdir(parents=True)
+    body = _render_body([
+        FixAction("AAK-TRUST-001", str(project / ".claude" / "settings.json"), "enableAllProjectMcpServers -> false", writes=True),
+        FixAction("AAK-LITELLM-CVE-2026-30623-PIN-001", "requirements.txt", "bump", writes=True),
+        FixAction("AAK-LITELLM-CVE-2026-30623-PIN-001", str(tmp_path / "elsewhere" / "requirements.txt"), "bump", writes=True),
+    ], project)
+    rows = [line for line in body.splitlines() if line.startswith("| `AAK-")]
+    assert [row.split(" | ")[1] for row in rows] == [
+        "`requirements.txt`", "`requirements.txt`", "`.claude/settings.json`",
+    ]
+    assert str(tmp_path) not in body
+    assert str(project) not in body
+
+
+def test_plan_body_never_carries_the_absolute_project_path(tmp_path: Path, monkeypatch) -> None:
+    """The plan's fixes come from `run_fixes`, which names each file by its absolute path."""
+    project = tmp_path / "home" / "operator" / "agent"
+    project.mkdir(parents=True)
+    monkeypatch.setattr(
+        "agent_audit_kit.autopr.run_fixes",
+        lambda root, dry_run=False: [
+            FixAction("AAK-TRUST-001", str(project / ".claude" / "settings.json"), "enableAllProjectMcpServers -> false", writes=True),
+        ],
+    )
+    plan = plan_auto_pr(project)
+    assert plan.is_runnable
+    assert "`.claude/settings.json`" in plan.body
+    assert str(project) not in plan.body
+    assert "operator" not in plan.body

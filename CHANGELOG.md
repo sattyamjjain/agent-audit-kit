@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `aak corpus update` writes only a bare file name from the manifest: an entry whose `target_filename` (or, without one, whose id) holds a path separator, is `.` or `..`, or is absolute is skipped with a warning that names it, where before `<data dir>/<target_filename>` was written wherever the name led (#1060).
 - AAK-TRUST-007 no longer fires on an empty `enabledMcpjsonServers` list, so `aak fix` clears it: a present key is the allowlist, and `[]` approves no server, the strictest allowlist there is. Through 0.6.24 the fix wrote `[]`, reported a fix, and the finding stayed (#1060).
+- `suggest --auto-pr` shows each fixed file in the draft PR's File column relative to the project root, never as the operator's absolute local path; a path outside the project, which no fix writes, shows its name alone (#1060).
 
 ## [0.6.24] - 2026-10-21
 
