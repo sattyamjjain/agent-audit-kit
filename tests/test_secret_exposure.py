@@ -1323,3 +1323,53 @@ def test_secret_005_accepts_every_freshly_generated_key_body() -> None:
     keys += [ec.generate_private_key(ec.SECP256R1()) for _ in range(300)]
     keys += [rsa.generate_private_key(public_exponent=65537, key_size=2048) for _ in range(6)]
     assert [k for k in keys if not _is_key_body(body(k))] == []
+
+
+# ---------------------------------------------------------------------------
+# The 1,000,000-byte cap is enforced by the read, not by a stat before it (#1060)
+# ---------------------------------------------------------------------------
+
+_CAP = secret_exposure._MAX_FILE_BYTES
+# Built from pieces so the repository's own self-scan, which reads this file, sees no
+# key-shaped literal; the scanned file gets it whole.
+_PLACEHOLDER_ANTHROPIC = "sk-ant-" + "api03-" + "q8Zr2Lm9Xc4Vb7Nk1Pw5Ty3Jh6Gf0Ds" + "W2eR4tY6uI8oP0aS"
+
+
+def _sized(head: str, size: int) -> str:
+    """`head` padded with comment lines to exactly `size` bytes."""
+    body = head + "# " + "x" * 70 + "\n"
+    filler = "# " + "x" * 70 + "\n"
+    while len(body) + len(filler) <= size:
+        body += filler
+    return body + "#" * (size - len(body) - 1) + "\n"
+
+
+@pytest.mark.parametrize("over", [0, 1])
+def test_the_secret_reader_enforces_its_cap_in_the_read(tmp_path: Path, over: int) -> None:
+    """A file at the cap is read and its key reported; one byte over is not read at all.
+    The read itself refuses it, so a file whose stat understates its size (a stat
+    taken before the file grew, or a filesystem that lies) is refused too, where the
+    stat-then-read it replaced read it in full."""
+    text = _sized(f"ANTHROPIC_API_KEY={_PLACEHOLDER_ANTHROPIC}\n", _CAP + over)
+    assert len(text.encode("utf-8")) == _CAP + over
+    path = tmp_path / "config.env"
+    path.write_text(text, encoding="utf-8")
+    rules = {f.rule_id for f in secret_exposure._scan_file_for_secrets(path, tmp_path)}
+    assert rules == (set() if over else {"AAK-SECRET-001", "AAK-SECRET-004"})
+    for rid in ("AAK-SECRET-001", "AAK-SECRET-002", "AAK-SECRET-003", "AAK-SECRET-004",
+                "AAK-SECRET-007", "AAK-SECRET-008", "AAK-SECRET-009"):
+        assert "A file over 1,000,000 bytes is not read." in RULES[rid].limitations
+
+
+def test_the_key_file_reader_enforces_its_cap_in_the_read(tmp_path: Path) -> None:
+    """A `.txt` holding a whole PEM key at the cap is reported for the key; one byte
+    over is not read. A `.pem` over the cap is still reported by its name, as the
+    stat-then-read reported one over the cap."""
+    (tmp_path / "at-cap.txt").write_text(_sized(_pem("PRIVATE KEY"), _CAP), encoding="utf-8")
+    (tmp_path / "over-cap.txt").write_text(_sized(_pem("PRIVATE KEY"), _CAP + 1), encoding="utf-8")
+    (tmp_path / "over-cap.pem").write_text(_sized(_pem("PRIVATE KEY"), _CAP + 1), encoding="utf-8")
+    found = sorted(
+        (f.file_path, f.evidence) for f in secret_exposure._check_private_key_files(tmp_path)
+    )
+    assert [path for path, _ in found] == ["at-cap.txt", "over-cap.pem"]
+    assert found[1][1] == "Private key file: over-cap.pem"

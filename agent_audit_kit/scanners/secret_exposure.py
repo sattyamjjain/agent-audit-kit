@@ -8,12 +8,15 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
+    FileNotRead,
     find_line_number,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
     placed,
+    read_bytes_capped,
+    read_text_capped,
 )
 
 # API key patterns
@@ -330,10 +333,11 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     findings: list[Finding] = []
     rel_path = str(file_path.relative_to(project_root))
 
+    # The cap is enforced by the read itself, not by a stat before it: a file whose
+    # reported size is under the cap but whose bytes are not is refused, where a
+    # stat-then-read read it in full (#1060). `FileNotRead` is an OSError.
     try:
-        if file_path.stat().st_size > 1_000_000:
-            return findings
-        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        content = read_text_capped(file_path, _MAX_FILE_BYTES, errors="ignore")
     except OSError:
         return findings
 
@@ -581,12 +585,15 @@ def _check_private_key_files(project_root: Path) -> list[Finding]:
             continue
         if suffix in _BINARY_EXTENSIONS:
             continue
+        # A keystore or PEM-named file the capped read refuses (over the cap, or not a
+        # regular file) is still reported by its name, as the stat-then-read it
+        # replaced reported one over the cap (#1060).
         try:
-            if path.stat().st_size > _MAX_FILE_BYTES:
-                if suffix in KEYSTORE_EXTENSIONS or suffix in PEM_KEY_EXTENSIONS:
-                    findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
-                continue
-            data = path.read_bytes()
+            data = read_bytes_capped(path, _MAX_FILE_BYTES)
+        except FileNotRead:
+            if suffix in KEYSTORE_EXTENSIONS or suffix in PEM_KEY_EXTENSIONS:
+                findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+            continue
         except OSError:
             continue
 

@@ -313,11 +313,17 @@ def _project_files(project_root: Path, suffix: str) -> list[Path]:
 
 
 def _read_texts(paths: list[Path], project_root: Path) -> list[tuple[Path, str, str]]:
-    """(path, path relative to the root, text) of each readable file."""
+    """(path, path relative to the root, text) of each readable file under the cap.
+
+    `_project_files` drops a file whose stat says it is over `_MCP016_MAX_BYTES`, and
+    the read here enforces the same cap on the bytes themselves, so a file whose
+    reported size is under the cap but whose bytes are not is refused rather than
+    read in full (#1060). `FileNotRead` is an OSError.
+    """
     texts: list[tuple[Path, str, str]] = []
     for path in paths:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, _MCP016_MAX_BYTES, errors="replace")
         except OSError:
             continue
         texts.append((path, path.relative_to(project_root).as_posix(), text))

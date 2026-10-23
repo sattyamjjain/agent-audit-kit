@@ -1758,6 +1758,7 @@ _r(
         "A key in any other kind of "
         "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) is "
         "missed, although the same content in a `.json` file is found."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1779,6 +1780,7 @@ _r(
         "is not recognised, so an Azure OpenAI key, which is 32 hexadecimal "
         "characters, is not reported, although an `sk-proj-` key in the same place is. "
         "In Markdown, a key shaped like a documentation stand-in (one repeated character after the prefix, a run of `x`, or REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME in it) is skipped."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1803,6 +1805,7 @@ _r(
         "key ID is missed. In Markdown, a key shaped like a documentation stand-in (one "
         "repeated character after the prefix, a run of `x`, REPLACE, YOUR, EXAMPLE, "
         "PLACEHOLDER or CHANGEME in it, or the AWS IAM User Guide's example key) is skipped."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1827,6 +1830,7 @@ _r(
         "character and is never reported. An unquoted YAML value (`SECRET_KEY: value` in a "
         "compose file) is not read, and neither is Markdown: read, they gave 23% and at most "
         "56% precision on 1,527 YAML and 1,909 Markdown files from public MCP repositories."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1917,6 +1921,7 @@ _r(
         "variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, "
         "OPENAI or AWS_. The name alone decides: a credential under any other name, "
         "such as a `DATABASE_URL` that carries `user:password@host`, is not reported."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1936,6 +1941,7 @@ _r(
         "fine-grained) and GitLab `glpat-` tokens. GitHub's other token types are not "
         "reported: OAuth (`gho_`), GitHub App user (`ghu_`) and installation (`ghs_`), "
         "and refresh (`ghr_`) tokens. " + "In Markdown, a key shaped like a documentation stand-in (one repeated character after the prefix, a run of `x`, or REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME in it) is skipped."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
@@ -1954,6 +1960,7 @@ _r(
         "Reports a file with a `.json` extension, in any case, that contains `\"type\": "
         "\"service_account\"`. The same key saved under another extension, such as "
         "`.yml`, is not reported."
+        " A file over 1,000,000 bytes is not read."
     ),
 )
 
