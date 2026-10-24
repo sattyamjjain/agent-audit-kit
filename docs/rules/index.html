@@ -1,0 +1,4313 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Security scanner for MCP-connected AI agent pipelines">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/rules/">
+      
+      
+        <link rel="prev" href="../rule-schema/">
+      
+      
+        <link rel="next" href="../owasp-mapping/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Per-rule pages - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#per-rule-pages" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Per-rule pages
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rule-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration & rule schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules & coverage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rules & coverage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Per-rule pages
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Per-rule pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v0384-2026-08-19-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.84 (2026-08-19) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0343-2026-07-04-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.43 (2026-07-04) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v035-2026-04-25-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.5 (2026-04-25) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#all-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="All rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supply-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supply Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-poisoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Poisoning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legal-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legal Compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret Exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hook-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook Injection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transport-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transport Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taint-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Taint Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2a-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2A Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-card" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Card
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentic-skills-ast10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic Skills (AST10)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retired-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retired rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../owasp-agentic-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Agentic coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VEX and SBOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why it works this way
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CI/CD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-action/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../circleci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CircleCI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & process
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & process
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../disclosure-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disclosure policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cve-triage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE triage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cve-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE-to-rule latency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STATE-OF-MCP-SECURITY-2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coverage & crosswalk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research/state-of-mcp-2026/REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The State of MCP Security, 2026 (corpus study)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research/state-of-mcp-2026/PREVALENCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prevalence & score calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v0384-2026-08-19-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.84 (2026-08-19) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v0343-2026-07-04-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.43 (2026-07-04) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v035-2026-04-25-net-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.3.5 (2026-04-25) — net-new
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#all-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        All rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="All rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supply-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supply Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-poisoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool Poisoning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legal-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legal Compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret Exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hook-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook Injection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transport-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transport Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taint-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Taint Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2a-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2A Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-card" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Card
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentic-skills-ast10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic Skills (AST10)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composition
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retired-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retired rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="per-rule-pages">Per-rule pages</h1>
+<p>Every rule in the AAK registry has a page: what it detects, how to fix it, what
+it does not catch, which scanner implements it, and which CVEs and standards it
+maps to. The canonical source of truth is <code>agent_audit_kit/rules/builtin.py</code>.
+The "more info" link on a finding in GitHub code scanning (the SARIF <code>helpUri</code>)
+opens the page for that rule. On the published site this page also carries two
+lists, which are added when the site is built and so are not in this file:
+<a href="#all-rules">All rules</a>, every rule in the registry grouped by category, and
+<a href="#retired-rules">Retired rules</a>, the rules that have left the registry, whose
+pages stay so that the link in an alert raised before they went still opens.</p>
+<p>Most pages are generated from the registry when this site is built, so they
+cannot say something the scanner does not. The CVE-driven and high-traffic rules
+also have a hand-written deep dive, listed in the release tables on this page.
+That text is shown on the rule's page exactly as written, with the registry
+reference appended to it.</p>
+<h2 id="v0384-2026-08-19-net-new">v0.3.84 (2026-08-19) — net-new</h2>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Severity</th>
+<th>Class</th>
+<th>CVE / source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="skill-composition/#aak-compose-001-an-ordered-path-to-egress-high">AAK-COMPOSE-001: an ordered path to egress</a></td>
+<td>HIGH</td>
+<td>COMPOSITION</td>
+<td>CompoSkill <a href="https://arxiv.org/abs/2608.16246">arXiv:2608.16246</a></td>
+</tr>
+<tr>
+<td><a href="skill-composition/#aak-compose-002-an-undeclared-shared-path-high">AAK-COMPOSE-002: an undeclared shared path</a></td>
+<td>HIGH</td>
+<td>COMPOSITION</td>
+<td>ColluSkill <a href="https://arxiv.org/abs/2608.09732">arXiv:2608.09732</a></td>
+</tr>
+<tr>
+<td><a href="skill-composition/#aak-compose-003-a-manifest-narrower-than-its-code-medium">AAK-COMPOSE-003: a manifest narrower than its code</a></td>
+<td>MEDIUM</td>
+<td>COMPOSITION</td>
+<td>CompoSkill <a href="https://arxiv.org/abs/2608.16246">arXiv:2608.16246</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="v0343-2026-07-04-net-new">v0.3.43 (2026-07-04) — net-new</h2>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Severity</th>
+<th>Class</th>
+<th>CVE / source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="AAK-MCP-AUTH-PATHTRAVERSAL-001/">AAK-MCP-AUTH-PATHTRAVERSAL-001</a></td>
+<td>CRITICAL</td>
+<td>MCP_CONFIG</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-52830">CVE-2026-52830</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="v035-2026-04-25-net-new">v0.3.5 (2026-04-25) — net-new</h2>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Severity</th>
+<th>Class</th>
+<th>CVE / source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="AAK-LANGCHAIN-SSRF-REDIR-001/">AAK-LANGCHAIN-SSRF-REDIR-001</a></td>
+<td>HIGH</td>
+<td>TRANSPORT_SECURITY</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-41481">CVE-2026-41481</a></td>
+</tr>
+<tr>
+<td><a href="AAK-SSRF-TOCTOU-001/">AAK-SSRF-TOCTOU-001</a></td>
+<td>MEDIUM</td>
+<td>TRANSPORT_SECURITY</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-41488">CVE-2026-41488</a></td>
+</tr>
+<tr>
+<td><a href="AAK-AZURE-MCP-001/">AAK-AZURE-MCP-001</a></td>
+<td>HIGH</td>
+<td>MCP_CONFIG</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-32211">CVE-2026-32211</a></td>
+</tr>
+<tr>
+<td><a href="AAK-TOXICFLOW-001/">AAK-TOXICFLOW-001</a></td>
+<td>HIGH</td>
+<td>TOOL_POISONING</td>
+<td>Snyk Agent Scan parity (feature-flagged)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="coverage">Coverage</h2>
+<ul>
+<li><a href="../owasp-agentic-coverage/">OWASP Agentic Top 10 2026 coverage</a></li>
+<li><a href="../owasp-mapping/">OWASP MCP Top 10 mapping</a></li>
+<li><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules.md">Rule counts by category, and what the scanner reads</a> (on GitHub)</li>
+</ul>
+<h2 id="all-rules">All rules</h2>
+<p>One row per rule in the registry, grouped by category. Each links to the rule's page.</p>
+<h3 id="supply-chain">Supply Chain</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AGENT-ZERO-CVE-2026-30624-PIN-001/">AAK-AGENT-ZERO-CVE-2026-30624-PIN-001</a></th>
+<td>HIGH</td>
+<td>Agent Zero 0.9.8 MCP-config RCE (CVE-2026-30624, git-only pin)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ANTHROPIC-SDK-001/">AAK-ANTHROPIC-SDK-001</a></th>
+<td>HIGH</td>
+<td>MCP server built on the upstream SDK without STDIO sanitizer</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ASTROMCP-SQLI-CVE-2026-7591-001/">AAK-ASTROMCP-SQLI-CVE-2026-7591-001</a></th>
+<td>HIGH</td>
+<td>astro-mcp-server SQL injection (CVE-2026-7591, npm &lt;=1.1.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CHATCHAT-CVE-2026-75128-001/">AAK-CHATCHAT-CVE-2026-75128-001</a></th>
+<td>CRITICAL</td>
+<td>Langchain-Chatchat, every release and image (no fix): POST /tools/call runs the shell tool for an unauthenticated caller</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001/">AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001</a></th>
+<td>HIGH</td>
+<td>chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git &lt;=0.1.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CLAUDECODE-CVE-2026-40068-PIN-001/">AAK-CLAUDECODE-CVE-2026-40068-PIN-001</a></th>
+<td>HIGH</td>
+<td>Anthropic Claude Code below 2.1.179: folder-trust bypass (CVE-2026-40068), write-time symlink following (CVE-2026-103435) and plugin commit-pin bypass (CVE-2026-86063)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-DNS-REBIND-002/">AAK-DNS-REBIND-002</a></th>
+<td>HIGH</td>
+<td>Vulnerable MCP SDK version pinned (DNS-rebinding fix missing)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-DOCSGPT-MCP-STDIO-MITM-001/">AAK-DOCSGPT-MCP-STDIO-MITM-001</a></th>
+<td>HIGH</td>
+<td>DocsGPT MCP transport-flip MITM (OX 2026-05-01, CVE-2026-26015 family)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-DORIS-001/">AAK-DORIS-001</a></th>
+<td>HIGH</td>
+<td>apache-doris-mcp-server &lt; 0.6.1 SQL injection</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-EXCEL-MCP-001/">AAK-EXCEL-MCP-001</a></th>
+<td>CRITICAL</td>
+<td>excel-mcp-server &lt;= 0.1.7 path traversal</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-FLOWISE-001/">AAK-FLOWISE-001</a></th>
+<td>CRITICAL</td>
+<td>Flowise &lt; 3.1.2 MCP adapter authenticated RCE</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-GHA-IMMUTABLE-001/">AAK-GHA-IMMUTABLE-001</a></th>
+<td>MEDIUM</td>
+<td>Third-party GitHub Action not pinned by full commit SHA</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-GPTRESEARCHER-MCP-STDIO-MITM-001/">AAK-GPTRESEARCHER-MCP-STDIO-MITM-001</a></th>
+<td>HIGH</td>
+<td>GPT-Researcher MCP transport-flip MITM (OX 2026-05-01, CVE-2025-65720)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-RCE-003/">AAK-HOOK-RCE-003</a></th>
+<td>HIGH</td>
+<td>Claude Code below 1.0.111 runs project code before the trust dialog (CVE-2025-59536)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGCHAIN-001/">AAK-LANGCHAIN-001</a></th>
+<td>HIGH</td>
+<td>Project depends on langchain-core &lt; 1.2.22 (load_prompt path traversal)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGCHAIN-003/">AAK-LANGCHAIN-003</a></th>
+<td>HIGH</td>
+<td>LangChain deserialization of untrusted data</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LITELLM-CVE-2026-30623-PIN-001/">AAK-LITELLM-CVE-2026-30623-PIN-001</a></th>
+<td>HIGH</td>
+<td>LiteLLM pin floor for CVE-2026-30623 (&lt;1.83.7)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MARKETPLACE-001/">AAK-MARKETPLACE-001</a></th>
+<td>HIGH</td>
+<td>Unsigned marketplace.json manifest</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MARKETPLACE-002/">AAK-MARKETPLACE-002</a></th>
+<td>MEDIUM</td>
+<td>Plugin permission set grants broad access</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MARKETPLACE-003/">AAK-MARKETPLACE-003</a></th>
+<td>HIGH</td>
+<td>Plugin name typosquats a well-known package</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MARKETPLACE-004/">AAK-MARKETPLACE-004</a></th>
+<td>HIGH</td>
+<td>Plugin source pins to a mutable git ref</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MARKETPLACE-005/">AAK-MARKETPLACE-005</a></th>
+<td>LOW</td>
+<td>Marketplace manifest could not be read</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-1MCP-CVE-2026-108586-001/">AAK-MCP-1MCP-CVE-2026-108586-001</a></th>
+<td>MEDIUM</td>
+<td>1MCP Agent from 0.20.0: a negated tag filter reaches servers outside an OAuth token's tag scopes (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-9ROUTER-CVE-2026-46339-001/">AAK-MCP-9ROUTER-CVE-2026-46339-001</a></th>
+<td>CRITICAL</td>
+<td>9Router unauthenticated MCP bridge → command execution (&lt; 0.5.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AGENTICFLOW-CVE-2026-58195-001/">AAK-MCP-AGENTICFLOW-CVE-2026-58195-001</a></th>
+<td>HIGH</td>
+<td>Agentic-Flow MCP tool params → execSync command injection (&lt; 2.0.14)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AGENTICMAIL-CVE-2026-57495-001/">AAK-MCP-AGENTICMAIL-CVE-2026-57495-001</a></th>
+<td>HIGH</td>
+<td>AgenticMail bridge-wake indirect prompt injection (unpinned @agenticmail/* below fix)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AMAZONMQ-CVE-2026-18655-001/">AAK-MCP-AMAZONMQ-CVE-2026-18655-001</a></th>
+<td>MEDIUM</td>
+<td>Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (&lt; 2.0.24)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-APACHEANSWER-CVE-2026-71563-001/">AAK-MCP-APACHEANSWER-CVE-2026-71563-001</a></th>
+<td>MEDIUM</td>
+<td>Apache Answer image 2.0.0 to 2.0.2: the MCP answer tool returns answers to hidden, deleted and pending questions</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-APIFY-CVE-2026-46341-001/">AAK-MCP-APIFY-CVE-2026-46341-001</a></th>
+<td>HIGH</td>
+<td>Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (<code>@apify/actors-mcp-server</code> &lt; 0.10.11)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-APPIUM-CVE-2026-58500-001/">AAK-MCP-APPIUM-CVE-2026-58500-001</a></th>
+<td>HIGH</td>
+<td>MCP Appium locator-UI HTML/JS injection → unauthorized tool exec (&lt; 1.85.10)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ARGOCD-CVE-2026-108585-001/">AAK-MCP-ARGOCD-CVE-2026-108585-001</a></th>
+<td>MEDIUM</td>
+<td>argocd-mcp builds Argo CD API paths from tool arguments, so delete_application can reach repositories and clusters (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ASTRBOT-CVE-2026-15501-001/">AAK-MCP-ASTRBOT-CVE-2026-15501-001</a></th>
+<td>MEDIUM</td>
+<td>AstrBot MCP-test endpoint SSRF (affected up to 4.25.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ATLASSIAN-CVE-2026-27825-001/">AAK-MCP-ATLASSIAN-CVE-2026-27825-001</a></th>
+<td>CRITICAL</td>
+<td>mcp-atlassian &lt; 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ATLASSIAN-CVE-2026-27826-001/">AAK-MCP-ATLASSIAN-CVE-2026-27826-001</a></th>
+<td>HIGH</td>
+<td>mcp-atlassian &lt; 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ATLASSIAN-CVE-2026-73498-001/">AAK-MCP-ATLASSIAN-CVE-2026-73498-001</a></th>
+<td>HIGH</td>
+<td>mcp-atlassian &lt; 0.22.0 (confluence_upload_attachment arbitrary file read)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001/">AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001</a></th>
+<td>HIGH</td>
+<td>atomic-agents-stack &lt; 1.1.0 (cleartext registry catalog reaches a local subprocess)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AUTHFETCH-CVE-2026-49857-001/">AAK-MCP-AUTHFETCH-CVE-2026-49857-001</a></th>
+<td>HIGH</td>
+<td>auth-fetch-mcp &lt;= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AWSAPIMCP-CVE-2026-16584-001/">AAK-MCP-AWSAPIMCP-CVE-2026-16584-001</a></th>
+<td>HIGH</td>
+<td>AWS API MCP Server security-policy bypass on init failure (0.2.13–&lt;1.3.47)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001/">AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001</a></th>
+<td>CRITICAL</td>
+<td>awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (&lt; 1.1.7)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AWSSECAGENT-CVE-2026-87913-001/">AAK-MCP-AWSSECAGENT-CVE-2026-87913-001</a></th>
+<td>MEDIUM</td>
+<td>awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (&lt; 0.2.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-BETTERAUTH-CVE-2026-53512-001/">AAK-MCP-BETTERAUTH-CVE-2026-53512-001</a></th>
+<td>HIGH</td>
+<td>Better Auth OAuth/MCP plugin flaw cluster — token bypass, code replay, weak crypto, open redirect (&lt; 1.6.13)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-BROWSEMCP-CVE-2026-55557-001/">AAK-MCP-BROWSEMCP-CVE-2026-55557-001</a></th>
+<td>HIGH</td>
+<td>browse-mcp writes fetched content to a caller-controlled path (&lt; 0.8.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CCTEMPLATES-CVE-2026-73222-001/">AAK-MCP-CCTEMPLATES-CVE-2026-73222-001</a></th>
+<td>HIGH</td>
+<td>claude-code-templates &lt; 1.29.4 (--studio server: unauth 0.0.0.0:3444 → command-injection RCE)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CKAN-CVE-2026-73846-001/">AAK-MCP-CKAN-CVE-2026-73846-001</a></th>
+<td>MEDIUM</td>
+<td>@aborruso/ckan-mcp-server &lt; 0.4.112 (cache-key collision, prefix-only host check, verbose errors)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001/">AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001</a></th>
+<td>CRITICAL</td>
+<td>Claude Agent SDK below 0.2.121 (TypeScript below 0.3.208): a session id passed to <code>resume</code> can inject Claude CLI flags that run a command</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CLAUDECODE-CVE-2026-103012-001/">AAK-MCP-CLAUDECODE-CVE-2026-103012-001</a></th>
+<td>LOW</td>
+<td>Claude Code 2.0.68 to 2.1.259 fetched managed settings with a stored API key ahead of the Enterprise or Team sign-in</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CLINE-CVE-2026-59723-001/">AAK-MCP-CLINE-CVE-2026-59723-001</a></th>
+<td>HIGH</td>
+<td>Cline &lt; 3.0.30 (Hub dashboard WebSocket origin bypass → RCE)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CODEWHALE-CVE-2026-75858-001/">AAK-MCP-CODEWHALE-CVE-2026-75858-001</a></th>
+<td>HIGH</td>
+<td>CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (<code>codewhale</code> &gt;= 0.8.41, &lt; 0.8.64)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CONDUCTOR-CVE-2026-109402-001/">AAK-MCP-CONDUCTOR-CVE-2026-109402-001</a></th>
+<td>MEDIUM</td>
+<td>Conductor image from 3.22.0: the LIST_MCP_TOOLS task connects to any mcpServer URL (SSRF, no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CONTENTFUL-CVE-2026-53957-001/">AAK-MCP-CONTENTFUL-CVE-2026-53957-001</a></th>
+<td>HIGH</td>
+<td>@contentful/mcp-server &lt; 1.7.19 / @contentful/mcp-tools &lt; 0.4.5 (LLM-controlled host and proxy carry the management token)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001/">AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001</a></th>
+<td>CRITICAL</td>
+<td>IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (&lt;= 1.0.8)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CORTEX-CVE-2026-49986-001/">AAK-MCP-CORTEX-CVE-2026-49986-001</a></th>
+<td>HIGH</td>
+<td>neuro-cortex-memory &lt;= 3.17.0 (CLAUDE_PROJECT_DIR treated as a trusted source root)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-D365FO-CVE-2026-114123-001/">AAK-MCP-D365FO-CVE-2026-114123-001</a></th>
+<td>HIGH</td>
+<td>D365 F&amp;O MCP Server below 1.11.0: the documented Azure deployment serves /mcp unauthenticated by default</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DBTMCP-CVE-2026-44968-001/">AAK-MCP-DBTMCP-CVE-2026-44968-001</a></th>
+<td>MEDIUM</td>
+<td>dbt-mcp flag injection + tool-arg leakage (<code>dbt-mcp</code> &lt; 1.17.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DEEPSEEK-CVE-2026-55604-001/">AAK-MCP-DEEPSEEK-CVE-2026-55604-001</a></th>
+<td>HIGH</td>
+<td>@arikusi/deepseek-mcp-server &lt; 1.8.0 (unbound session IDs + unauth HTTP transport)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DIFY-CVE-2026-105761-001/">AAK-MCP-DIFY-CVE-2026-105761-001</a></th>
+<td>HIGH</td>
+<td>Dify below 1.16.0: a workspace member can change another app's MCP server</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DOCUMENTDB-CVE-2026-18954-001/">AAK-MCP-DOCUMENTDB-CVE-2026-18954-001</a></th>
+<td>MEDIUM</td>
+<td>AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (&lt; 1.0.12)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-EDGEEVER-CVE-2026-109557-001/">AAK-MCP-EDGEEVER-CVE-2026-109557-001</a></th>
+<td>HIGH</td>
+<td>EdgeEver image below 1.113.0: notebook names, memo titles and templates written through MCP run as script (stored XSS)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ELVIX-CVE-2026-108542-001/">AAK-MCP-ELVIX-CVE-2026-108542-001</a></th>
+<td>MEDIUM</td>
+<td>@elvix.is/sdk MCP server below 0.10.2: a tool's path argument can send the elvix API key to any host</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001/">AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001</a></th>
+<td>HIGH</td>
+<td>fast-mcp-telegram below 0.30.1 fetches attachment URLs its SSRF guard never resolved</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FLORENCE2-CVE-2026-19984-001/">AAK-MCP-FLORENCE2-CVE-2026-19984-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-florence2 SSRF via the get_images src argument (&lt;= 0.3.13, no code fix planned)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FLOWISE-CVE-2026-91931-001/">AAK-MCP-FLOWISE-CVE-2026-91931-001</a></th>
+<td>HIGH</td>
+<td>flowise &lt; 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FLYTO-CVE-2026-67425-001/">AAK-MCP-FLYTO-CVE-2026-67425-001</a></th>
+<td>HIGH</td>
+<td>Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (&lt;2.26.6)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FROMOPENAPI-CVE-2026-115750-001/">AAK-MCP-FROMOPENAPI-CVE-2026-115750-001</a></th>
+<td>LOW</td>
+<td>mcp-from-openapi from 2.2.0 below 2.9.0: spec credentials follow a cross-origin redirect, and a trailing dot slips past blockedHosts</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FROMOPENAPI-CVE-2026-59973-001/">AAK-MCP-FROMOPENAPI-CVE-2026-59973-001</a></th>
+<td>HIGH</td>
+<td>mcp-from-openapi &lt; 2.5.0 (external $ref guard does not resolve or pin addresses — SSRF)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FRONTMCP-CVE-2026-67531-001/">AAK-MCP-FRONTMCP-CVE-2026-67531-001</a></th>
+<td>HIGH</td>
+<td>FrontMCP sandbox escape via Zod schema proxy reaches RCE (&lt; 1.5.7)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001/">AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001</a></th>
+<td>HIGH</td>
+<td>Amazon mcp-gateway-registry &lt; 1.0.13 (SQL injection)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001/">AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001</a></th>
+<td>MEDIUM</td>
+<td>gemini-bridge tool-argument path traversal reads arbitrary files (1.0.0–&lt;1.3.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GENIEACS-CVE-2026-55637-001/">AAK-MCP-GENIEACS-CVE-2026-55637-001</a></th>
+<td>HIGH</td>
+<td>genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (&lt; 0.3.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001/">AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001</a></th>
+<td>CRITICAL</td>
+<td>@zereight/mcp-gitlab &lt; 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001/">AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001</a></th>
+<td>MEDIUM</td>
+<td>adenot mcp-google-search SSRF via the read_webpage url argument (&lt;= 0.3.1, no fix released)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-GRAFANA-CVE-2026-19516-001/">AAK-MCP-GRAFANA-CVE-2026-19516-001</a></th>
+<td>CRITICAL</td>
+<td>Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (&lt; 1.1.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-HEALTHLAKE-CVE-2026-15643-001/">AAK-MCP-HEALTHLAKE-CVE-2026-15643-001</a></th>
+<td>HIGH</td>
+<td>AWS HealthLake MCP server pagination SSRF → credential exfil (&lt; 0.0.14)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-HEALTHOMICS-CVE-2026-15415-001/">AAK-MCP-HEALTHOMICS-CVE-2026-15415-001</a></th>
+<td>MEDIUM</td>
+<td>AWS HealthOmics MCP workflow-bundle path traversal (&lt; 0.0.36)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-HEYM-CVE-2026-100858-001/">AAK-MCP-HEYM-CVE-2026-100858-001</a></th>
+<td>MEDIUM</td>
+<td>heym image below 0.0.109 fetches workflow-node URLs past its SSRF guard</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-INSPECTOR-CVE-2026-23744-001/">AAK-MCP-INSPECTOR-CVE-2026-23744-001</a></th>
+<td>CRITICAL</td>
+<td>Vendored mcpjam-inspector fork carries CVE-2026-23744</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-JAVASDK-CVE-2026-108395-001/">AAK-MCP-JAVASDK-CVE-2026-108395-001</a></th>
+<td>HIGH</td>
+<td>MCP Java SDK 0.8.0 to 0.18.3, 1.0.0 to 1.1.3 and 2.0.0: the Servlet HTTP server transports read request bodies of any size</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-JSHOOK-CVE-2026-49856-001/">AAK-MCP-JSHOOK-CVE-2026-49856-001</a></th>
+<td>MEDIUM</td>
+<td>@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-JUNIE-CVE-2026-111091-001/">AAK-MCP-JUNIE-CVE-2026-111091-001</a></th>
+<td>HIGH</td>
+<td>JetBrains Junie CLI before 26.8.3 (npm build below 2548.5.0): an untrusted project's MCP server configuration runs code</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-K6-CVE-2026-89039-001/">AAK-MCP-K6-CVE-2026-89039-001</a></th>
+<td>MEDIUM</td>
+<td>Grafana mcp-k6 0.3.0 to 0.6.1: the convert_playwright_script prompt reads any file</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-K8S-CVE-2026-61459-001/">AAK-MCP-K8S-CVE-2026-61459-001</a></th>
+<td>CRITICAL</td>
+<td>mcp-server-kubernetes &lt; 3.9.0 (argument injection → kubectl --server redirect)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-KIMICODE-CVE-2026-95660-001/">AAK-MCP-KIMICODE-CVE-2026-95660-001</a></th>
+<td>MEDIUM</td>
+<td>Kimi Code up to 0.31.0 starts a workspace's MCP servers before the trust prompt</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-KNOWNS-CVE-2026-86439-001/">AAK-MCP-KNOWNS-CVE-2026-86439-001</a></th>
+<td>HIGH</td>
+<td>knowns MCP doc/memory and code.find tools: path traversal outside the project directory (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-KORTIX-CVE-2026-108115-001/">AAK-MCP-KORTIX-CVE-2026-108115-001</a></th>
+<td>MEDIUM</td>
+<td>Kortix API image 0.10.7 to 0.13.51: IPv6 6to4 and Teredo addresses get past the SSRF guard</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-KOTLINSDK-CVE-2026-108714-001/">AAK-MCP-KOTLINSDK-CVE-2026-108714-001</a></th>
+<td>HIGH</td>
+<td>MCP Kotlin SDK from 0.7.3: Application.mcpWebSocket accepts WebSocket frames of any size (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGBOT-CVE-2026-54449-001/">AAK-MCP-LANGBOT-CVE-2026-54449-001</a></th>
+<td>HIGH</td>
+<td>LangBot lets any authenticated user configure an STDIO MCP command (no fix)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001/">AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001</a></th>
+<td>MEDIUM</td>
+<td>LangChain.js MongoDB chat history through 1.3.0: an object session id reaches another user's conversation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001/">AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001</a></th>
+<td>LOW</td>
+<td>LangChain.js Redis vector store below 1.1.1: unescaped filter values widen a RediSearch query</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGFLOW-CVE-2026-12940-001/">AAK-MCP-LANGFLOW-CVE-2026-12940-001</a></th>
+<td>CRITICAL</td>
+<td>Langflow MCP stdio launcher env-var-injection RCE (1.0.0–&lt;1.12.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001/">AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001</a></th>
+<td>MEDIUM</td>
+<td>langgraph-api &lt; 0.10.0 (loopback webhook bypasses per-user authorization)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001/">AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001</a></th>
+<td>MEDIUM</td>
+<td>LangGraph Postgres and SQLite stores leak across tenant namespaces (postgres below 3.1.3, sqlite below 3.1.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001/">AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001</a></th>
+<td>MEDIUM</td>
+<td>LangGraph CLI from 0.4.15 below 0.4.32: <code>langgraph deploy --verbose</code> prints the registry push token</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001/">AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001</a></th>
+<td>MEDIUM</td>
+<td>LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (&lt; 1.3.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001/">AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001</a></th>
+<td>HIGH</td>
+<td>LangGraph SDK 0.1.45 to 0.4.3: resource-scoped auth decorators ignore <code>actions</code></td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LETTA-CVE-2025-51482-001/">AAK-MCP-LETTA-CVE-2025-51482-001</a></th>
+<td>HIGH</td>
+<td>Letta (MemGPT) &lt;= 0.16.4 (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LINEAGE-STAINLESS-001/">AAK-MCP-LINEAGE-STAINLESS-001</a></th>
+<td>INFO</td>
+<td>Stainless-generator provenance / lineage (informational)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LITELLM-CVE-2026-114612-001/">AAK-MCP-LITELLM-CVE-2026-114612-001</a></th>
+<td>CRITICAL</td>
+<td>LiteLLM from 1.87.0 below its fixed releases: session tokens share the at-rest encryption context, so an internal user can become proxy admin</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-LITELLM-CVE-2026-59822-001/">AAK-MCP-LITELLM-CVE-2026-59822-001</a></th>
+<td>HIGH</td>
+<td>LiteLLM &lt; 1.84.0 (MCP auth bypass + skills-archive path traversal)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MARIMO-CVE-2026-75149-001/">AAK-MCP-MARIMO-CVE-2026-75149-001</a></th>
+<td>HIGH</td>
+<td>marimo launches a notebook-supplied MCP server command on open (&lt; 0.23.15)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001/">AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001</a></th>
+<td>MEDIUM</td>
+<td>mark3labs mcp-filesystem-server image (every tag): writes follow a dangling symlink out of the allowed directories</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MARKETPLACE-CONFIG-FETCH-001/">AAK-MCP-MARKETPLACE-CONFIG-FETCH-001</a></th>
+<td>CRITICAL</td>
+<td>MCP server config fetched from a marketplace URL and spawned</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MCPHUB-CVE-2026-79748-001/">AAK-MCP-MCPHUB-CVE-2026-79748-001</a></th>
+<td>CRITICAL</td>
+<td>@samanhappy/mcphub &lt; 1.0.32 (eight MCP gateway authorization + SSRF defects)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MEMSERVICE-CVE-2026-50027-001/">AAK-MCP-MEMSERVICE-CVE-2026-50027-001</a></th>
+<td>CRITICAL</td>
+<td>mcp-memory-service &lt; 10.67.1 (/api/documents/* served with no authentication)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-METAMCP-CVE-2026-79538-001/">AAK-MCP-METAMCP-CVE-2026-79538-001</a></th>
+<td>CRITICAL</td>
+<td>MetaMCP image up to 2.4.22: inspector proxy code execution and cross-tenant session dispatch (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-MYSQLMCP-CVE-2026-59971-001/">AAK-MCP-MYSQLMCP-CVE-2026-59971-001</a></th>
+<td>CRITICAL</td>
+<td>mysql-mcp-server &lt; 0.4.2 (unauthenticated SSE transport reaches execute_sql)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-N8N-CVE-2026-59207-001/">AAK-MCP-N8N-CVE-2026-59207-001</a></th>
+<td>MEDIUM</td>
+<td>n8n &lt; 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-N8N-CVE-2026-65594-001/">AAK-MCP-N8N-CVE-2026-65594-001</a></th>
+<td>HIGH</td>
+<td>n8n MCP Server Trigger OAuth workflow-authorization bypass (2.27.0–&lt;2.29.8, 2.30.0–&lt;2.30.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-N8N-CVE-2026-72768-001/">AAK-MCP-N8N-CVE-2026-72768-001</a></th>
+<td>HIGH</td>
+<td>n8n &lt; 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client SSRF bypass, node-schema loader RCE, cross-project credential reference, inline sub-workflow credential exfiltration)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-N8NMCP-CVE-2026-54052-001/">AAK-MCP-N8NMCP-CVE-2026-54052-001</a></th>
+<td>CRITICAL</td>
+<td>n8n-MCP multi-tenant backup isolation bypass (<code>n8n-mcp</code> &lt; 2.57.4)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NEOMJS-CVE-2026-18482-001/">AAK-MCP-NEOMJS-CVE-2026-18482-001</a></th>
+<td>HIGH</td>
+<td>Neo.mjs file-system MCP server shell injection (no released fix yet)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NETBOX-CVE-2026-57207-001/">AAK-MCP-NETBOX-CVE-2026-57207-001</a></th>
+<td>MEDIUM</td>
+<td>NetBox MCP Server image below 1.2.1: the HTTP transport serves every NetBox tool without authentication</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NETLICENSING-CVE-2026-54446-001/">AAK-MCP-NETLICENSING-CVE-2026-54446-001</a></th>
+<td>CRITICAL</td>
+<td>netlicensing-mcp &lt; 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NETWORKAI-CVE-2026-109331-001/">AAK-MCP-NETWORKAI-CVE-2026-109331-001</a></th>
+<td>HIGH</td>
+<td>network-ai 5.14.0 to 5.15.1: ClaudeHookBridge checks deny patterns against one truncated field</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NETWORKAI-CVE-2026-109332-001/">AAK-MCP-NETWORKAI-CVE-2026-109332-001</a></th>
+<td>LOW</td>
+<td>network-ai 4.0.0 to 5.15.1: the MCP SSE server lets other origins read its unauthenticated endpoints</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NEXTCLOUD-CVE-2026-55640-001/">AAK-MCP-NEXTCLOUD-CVE-2026-55640-001</a></th>
+<td>CRITICAL</td>
+<td>Nextcloud MCP Server webhook endpoint is unauthenticated by default (&lt; 0.117.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NEXTJS-CVE-2026-94486-001/">AAK-MCP-NEXTJS-CVE-2026-94486-001</a></th>
+<td>LOW</td>
+<td>Next.js 16.0.0 to 16.3.7: the <code>next dev</code> server's MCP endpoint answers cross-site requests (dev server only)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NEZHA-CVE-2026-111385-001/">AAK-MCP-NEZHA-CVE-2026-111385-001</a></th>
+<td>MEDIUM</td>
+<td>Nezha dashboard image v2.1.0 to v2.3.14: MCP file-transfer URLs built from the Host header</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NGINXUI-CVE-2026-84317-001/">AAK-MCP-NGINXUI-CVE-2026-84317-001</a></th>
+<td>HIGH</td>
+<td>Nginx UI image 2.0.1 to 2.4.0: MCP config tools write blocked nginx directives and skip the secure-session step-up (code execution where njs or Perl is loaded)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NULLHUB-CVE-2026-110616-001/">AAK-MCP-NULLHUB-CVE-2026-110616-001</a></th>
+<td>HIGH</td>
+<td>NullHub image through v2026.5.29: the /api management routes accept requests with no authentication (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OBOT-CVE-2026-101084-001/">AAK-MCP-OBOT-CVE-2026-101084-001</a></th>
+<td>CRITICAL</td>
+<td>Obot image below v0.25.0: MCP gateway access-control bypasses, open OAuth client registration, SSRF</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OBOT-CVE-2026-105138-001/">AAK-MCP-OBOT-CVE-2026-105138-001</a></th>
+<td>MEDIUM</td>
+<td>Obot image v0.12.0 to v0.26.1: a user granted a catalog entry can read its static secrets</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OBSIDIANTC-CVE-2026-115477-001/">AAK-MCP-OBSIDIANTC-CVE-2026-115477-001</a></th>
+<td>HIGH</td>
+<td>obsidian-tc from 1.0.1 below 1.31.4: a declined confirmation can still run a destructive call, and memory tools overwrite notes they do not own</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OBSIDIANTC-CVE-2026-77366-001/">AAK-MCP-OBSIDIANTC-CVE-2026-77366-001</a></th>
+<td>CRITICAL</td>
+<td>obsidian-tc below 1.3.1: any HTTP token reaches every configured vault, the HTTP transport answers cross-origin requests, and the read ACL leaks</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ODOOMCP-CVE-2026-108861-001/">AAK-MCP-ODOOMCP-CVE-2026-108861-001</a></th>
+<td>MEDIUM</td>
+<td>odoo-mcp from 1.0.0: execute_method returns fields the field-level ACL denies (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OFFICEPPT-CVE-2025-71427-001/">AAK-MCP-OFFICEPPT-CVE-2025-71427-001</a></th>
+<td>MEDIUM</td>
+<td>Office-PowerPoint-MCP-Server tools read and write any path they are given (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OMNIGENT-CVE-2026-62674-001/">AAK-MCP-OMNIGENT-CVE-2026-62674-001</a></th>
+<td>CRITICAL</td>
+<td>Omnigent shared-agent swap injects a stdio MCP command (&lt; 0.3.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENCLAW-CVE-2026-102807-001/">AAK-MCP-OPENCLAW-CVE-2026-102807-001</a></th>
+<td>MEDIUM</td>
+<td>OpenClaw 2026.7.2 up to 2026.9.4: a read-scoped operator runs write-scoped MCP App tools</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENCLAW-CVE-2026-62195-001/">AAK-MCP-OPENCLAW-CVE-2026-62195-001</a></th>
+<td>HIGH</td>
+<td>OpenClaw MCP authorization bypasses (below 2026.7.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001/">AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001</a></th>
+<td>MEDIUM</td>
+<td>Open Computer Use on macOS: a case-variant bundle id passes the password-manager denylist (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PAYLOAD-CVE-2026-105806-001/">AAK-MCP-PAYLOAD-CVE-2026-105806-001</a></th>
+<td>HIGH</td>
+<td>Payload MCP plugin 3.61.0 to 3.87.x: a user can manage another account's MCP API keys</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PENPOT-CVE-2026-100868-001/">AAK-MCP-PENPOT-CVE-2026-100868-001</a></th>
+<td>MEDIUM</td>
+<td>Penpot MCP plugin WebSocket bridge listens on every interface (&lt; 2.18.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PENPOT-CVE-2026-45805-001/">AAK-MCP-PENPOT-CVE-2026-45805-001</a></th>
+<td>CRITICAL</td>
+<td>Penpot MCP ReplServer unauthenticated /execute RCE (&lt; 2.15.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PILLMWIKI-CVE-2026-102911-001/">AAK-MCP-PILLMWIKI-CVE-2026-102911-001</a></th>
+<td>CRITICAL</td>
+<td>pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-POSTGRESMCP-CVE-2026-85620-001/">AAK-MCP-POSTGRESMCP-CVE-2026-85620-001</a></th>
+<td>HIGH</td>
+<td>Postgres MCP Pro restricted-mode bypass via FROM-clause functions (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PRAISONAI-CVE-2026-61427-001/">AAK-MCP-PRAISONAI-CVE-2026-61427-001</a></th>
+<td>HIGH</td>
+<td>PraisonAI MCP unauthenticated-default + path traversal (&lt; 4.6.78)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001/">AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001</a></th>
+<td>CRITICAL</td>
+<td>praisonai (npm, TypeScript) &lt; 1.7.2 (MCP HTTP server binds unrestricted with no auth)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-QWED-CVE-2026-55546-001/">AAK-MCP-QWED-CVE-2026-55546-001</a></th>
+<td>CRITICAL</td>
+<td>QWED-MCP evaluates a tool argument through SymPy parse_expr (&lt; 0.2.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-REMOTE-CVE-2026-108716-001/">AAK-MCP-REMOTE-CVE-2026-108716-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-remote from 0.8.0 launched with --device-code: client secret and tokens over plain HTTP (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-REMOTE-CVE-2026-51994-001/">AAK-MCP-REMOTE-CVE-2026-51994-001</a></th>
+<td>CRITICAL</td>
+<td>mcp-remote 0.1.16–0.1.38 trusts URLs a remote MCP server chooses (SSRF, browser launch)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-REPOMIX-CVE-2026-49988-001/">AAK-MCP-REPOMIX-CVE-2026-49988-001</a></th>
+<td>MEDIUM</td>
+<td>Repomix MCP server bypasses secret-scan file-read boundary (&lt; 1.14.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-RIPGREP-CVE-2026-113378-001/">AAK-MCP-RIPGREP-CVE-2026-113378-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-ripgrep hands a tool's fileType argument to a shell unescaped (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-RUFLO-CVE-2026-59726-001/">AAK-MCP-RUFLO-CVE-2026-59726-001</a></th>
+<td>CRITICAL</td>
+<td>ruflo &lt; 3.16.3 (unauthenticated MCP bridge → tools/call RCE)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SDK-CVE-2026-52869-001/">AAK-MCP-SDK-CVE-2026-52869-001</a></th>
+<td>HIGH</td>
+<td>MCP Python SDK session/task cross-client access and unbounded request bodies (<code>mcp</code> &lt; 1.29.1, and 2.0.x)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SDK-CVE-2026-59951-001/">AAK-MCP-SDK-CVE-2026-59951-001</a></th>
+<td>MEDIUM</td>
+<td>MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: stateful Streamable HTTP sessions never expire</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SEARXNG-CVE-2026-58483-001/">AAK-MCP-SEARXNG-CVE-2026-58483-001</a></th>
+<td>HIGH</td>
+<td>mcp-searxng &lt; 1.7.1 (a missing Content-Length bypasses the read cap)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SEQTHINKING-CVE-2026-81845-001/">AAK-MCP-SEQTHINKING-CVE-2026-81845-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-sequential-thinking &lt;= 0.5.0 (session import/export path traversal)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001/">AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001</a></th>
+<td>MEDIUM</td>
+<td>@0xshariq/github-mcp-server runs git commands built from tool arguments through a shell (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STATA-CVE-2026-47708-001/">AAK-MCP-STATA-CVE-2026-47708-001</a></th>
+<td>HIGH</td>
+<td>stata-mcp &lt; 1.19.0 (Stata command injection, two CVEs)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-CMD-INJ-001/">AAK-MCP-STDIO-CMD-INJ-001</a></th>
+<td>CRITICAL</td>
+<td>MCP STDIO server launched from network-controlled input (Python)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-CMD-INJ-002/">AAK-MCP-STDIO-CMD-INJ-002</a></th>
+<td>CRITICAL</td>
+<td>MCP StdioClientTransport built from network-controlled input (TypeScript)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-CMD-INJ-003/">AAK-MCP-STDIO-CMD-INJ-003</a></th>
+<td>CRITICAL</td>
+<td>MCP StdioServerParameters built from network-controlled input (Java)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-CMD-INJ-004/">AAK-MCP-STDIO-CMD-INJ-004</a></th>
+<td>CRITICAL</td>
+<td>MCP STDIO command spawned from network-controlled input (Rust)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-CMD-INJ-005/">AAK-MCP-STDIO-CMD-INJ-005</a></th>
+<td>CRITICAL</td>
+<td>MCP STDIO command spawned from network-controlled input (Go)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-UNBOUNDED-BUFFER-001/">AAK-MCP-STDIO-UNBOUNDED-BUFFER-001</a></th>
+<td>MEDIUM</td>
+<td>MCP Kotlin SDK stdio read buffer grows without bound (CVE-2026-53937, 0.7.0–0.12.0)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SUBLINEAR-CVE-2026-55609-001/">AAK-MCP-SUBLINEAR-CVE-2026-55609-001</a></th>
+<td>HIGH</td>
+<td>consciousness-explorer state tools accept a caller-controlled path (sublinear-time-solver &lt; 1.6.0, consciousness-explorer &lt; 1.1.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TEXTEDITOR-CVE-2026-15138-001/">AAK-MCP-TEXTEDITOR-CVE-2026-15138-001</a></th>
+<td>MEDIUM</td>
+<td>tumf mcp-text-editor path traversal (affected up to 1.0.2)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOLBOX-CVE-2026-102242-001/">AAK-MCP-TOOLBOX-CVE-2026-102242-001</a></th>
+<td>HIGH</td>
+<td>Google MCP Toolbox 1.2.0 to 1.9.0: local-path checks follow symlinks out of the allowed roots</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001/">AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001</a></th>
+<td>CRITICAL</td>
+<td>ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (&lt;= 1.2.6)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TRINITY-CVE-2026-108756-001/">AAK-MCP-TRINITY-CVE-2026-108756-001</a></th>
+<td>MEDIUM</td>
+<td>Trinity backend image through 0.9.5: an agent's MCP key can replace or delete its owner's Telegram binding (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TSSDK-CVE-2026-104850-001/">AAK-MCP-TSSDK-CVE-2026-104850-001</a></th>
+<td>HIGH</td>
+<td>MCP TypeScript SDK 1.12.0 to 1.30.1 (2.x client below 2.2.0): the MCP server picks where OAuth credentials go</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TSSDK-CVE-2026-111767-001/">AAK-MCP-TSSDK-CVE-2026-111767-001</a></th>
+<td>HIGH</td>
+<td>MCP TypeScript SDK 1.24.0 to 1.31.0: experimental tasks are not tied to the session that created them</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-UNICLI-CVE-2026-58497-001/">AAK-MCP-UNICLI-CVE-2026-58497-001</a></th>
+<td>HIGH</td>
+<td>Uni-CLI from 0.208.0 below 0.225.2: the legacy HTTP MCP transport answers a web page's request to loopback /mcp</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-UNLA-CVE-2026-108865-001/">AAK-MCP-UNLA-CVE-2026-108865-001</a></th>
+<td>HIGH</td>
+<td>Unla gateway image through v0.10.0: the built-in OAuth2 server issues tokens without authenticating anyone (no fixed release)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-UTCP-CVE-2026-101057-001/">AAK-MCP-UTCP-CVE-2026-101057-001</a></th>
+<td>LOW</td>
+<td>utcp-mcp below 1.1.3 dials plain-HTTP MCP server URLs from a call template</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-VOICEMODE-CVE-2026-79535-001/">AAK-MCP-VOICEMODE-CVE-2026-79535-001</a></th>
+<td>MEDIUM</td>
+<td>VoiceMode below 8.10.2 writes MCP-supplied config values into a sourced env file unescaped</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-WHATSAPP-CVE-2026-46555-001/">AAK-MCP-WHATSAPP-CVE-2026-46555-001</a></th>
+<td>HIGH</td>
+<td>WhatsApp MCP (verygoodplugins/whatsapp-mcp) below 0.2.1 (unauthenticated loopback bridge + media_path traversal → file exfil)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ZSCALER-CVE-2026-59563-001/">AAK-MCP-ZSCALER-CVE-2026-59563-001</a></th>
+<td>MEDIUM</td>
+<td>Zscaler MCP Server 0.7.0 and 0.7.1: delete confirmation tokens are not bound to the resource</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCPCALC-CVE-2026-44717-PIN-001/">AAK-MCPCALC-CVE-2026-44717-PIN-001</a></th>
+<td>CRITICAL</td>
+<td>MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI &lt;0.1.1)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-METAADS-CVE-2026-48039-001/">AAK-METAADS-CVE-2026-48039-001</a></th>
+<td>CRITICAL</td>
+<td>Meta Ads MCP forwards unauthenticated requests and leaks the access token (&lt; 1.0.109)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-NEO4J-001/">AAK-NEO4J-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-neo4j-cypher &lt; 0.6.0 APOC read-only bypass</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-3P-001/">AAK-OAUTH-3P-001</a></th>
+<td>MEDIUM</td>
+<td>Repo depends on a third-party agent-platform SDK</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SEC-MD-001/">AAK-SEC-MD-001</a></th>
+<td>LOW</td>
+<td>MCP server repo missing SECURITY.md or security_contact</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001/">AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001</a></th>
+<td>CRITICAL</td>
+<td>Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI &lt;1.39.4)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-UNTRUSTED-EXEC-PATH/">AAK-SKILL-UNTRUSTED-EXEC-PATH</a></th>
+<td>HIGH</td>
+<td>Untrusted-search-path executable override in skill/install flow</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-001/">AAK-SUPPLY-001</a></th>
+<td>MEDIUM</td>
+<td>MCP server package not pinned to exact version</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-002/">AAK-SUPPLY-002</a></th>
+<td>HIGH</td>
+<td>Known vulnerable package in lockfile</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-003/">AAK-SUPPLY-003</a></th>
+<td>MEDIUM</td>
+<td>Dependency uses install scripts</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-004/">AAK-SUPPLY-004</a></th>
+<td>MEDIUM</td>
+<td>No lockfile present</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-005/">AAK-SUPPLY-005</a></th>
+<td>LOW</td>
+<td>Dependency count exceeds threshold</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SUPPLY-006/">AAK-SUPPLY-006</a></th>
+<td>HIGH</td>
+<td>Dependency with known MCP-specific vulnerability</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mcp-configuration">MCP Configuration</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AZURE-MCP-001/">AAK-AZURE-MCP-001</a></th>
+<td>HIGH</td>
+<td>Azure MCP server consumed without authentication</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AZURE-MCP-NOAUTH-001/">AAK-AZURE-MCP-NOAUTH-001</a></th>
+<td>HIGH</td>
+<td>Azure MCP server published without auth middleware on /mcp routes</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-001/">AAK-MCP-001</a></th>
+<td>CRITICAL</td>
+<td>Remote MCP server without authentication</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-002/">AAK-MCP-002</a></th>
+<td>CRITICAL</td>
+<td>MCP server command runs with shell expansion</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-003/">AAK-MCP-003</a></th>
+<td>HIGH</td>
+<td>MCP server environment exposes secrets</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-004/">AAK-MCP-004</a></th>
+<td>HIGH</td>
+<td>Excessive number of MCP servers declared</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-005/">AAK-MCP-005</a></th>
+<td>MEDIUM</td>
+<td>MCP server uses npx/uvx to fetch and execute remote packages</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-006/">AAK-MCP-006</a></th>
+<td>MEDIUM</td>
+<td>MCP server command uses relative path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-007/">AAK-MCP-007</a></th>
+<td>LOW</td>
+<td>MCP server lacks version pinning in args</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-008/">AAK-MCP-008</a></th>
+<td>CRITICAL</td>
+<td>MCP server headersHelper executes arbitrary commands</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-009/">AAK-MCP-009</a></th>
+<td>HIGH</td>
+<td>MCP server URL contains an internal network address</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-010/">AAK-MCP-010</a></th>
+<td>HIGH</td>
+<td>MCP server config allows arbitrary filesystem root access</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-011/">AAK-MCP-011</a></th>
+<td>CRITICAL</td>
+<td>Remote MCP server handler lacks authentication middleware</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-012/">AAK-MCP-012</a></th>
+<td>CRITICAL</td>
+<td>MCP server default IP allowlist is empty (allow-all)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-013/">AAK-MCP-013</a></th>
+<td>HIGH</td>
+<td>Wildcard CORS on MCP endpoint</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-014/">AAK-MCP-014</a></th>
+<td>HIGH</td>
+<td>Auth token transmitted via URL query parameter</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-015/">AAK-MCP-015</a></th>
+<td>CRITICAL</td>
+<td>Path traversal in MCP resource or tool file handler</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-016/">AAK-MCP-016</a></th>
+<td>MEDIUM</td>
+<td>Unbounded prompt/argument size on MCP endpoint</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-017/">AAK-MCP-017</a></th>
+<td>HIGH</td>
+<td>MCP server accepts HTTP (non-TLS) in production config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-018/">AAK-MCP-018</a></th>
+<td>MEDIUM</td>
+<td>Missing rate limiting on MCP endpoint</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-019/">AAK-MCP-019</a></th>
+<td>MEDIUM</td>
+<td>MCP auth check runs after a resource lookup</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-020/">AAK-MCP-020</a></th>
+<td>CRITICAL</td>
+<td>MCP handler shares routing with an unauthenticated path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ARGV-TOCTOU-001/">AAK-MCP-ARGV-TOCTOU-001</a></th>
+<td>HIGH</td>
+<td>Argv re-built after allowlist approval before spawn (command-injection TOCTOU)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ATTEST-001/">AAK-MCP-ATTEST-001</a></th>
+<td>MEDIUM</td>
+<td>MCP server admitted without attestation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-AUTH-PATHTRAVERSAL-001/">AAK-MCP-AUTH-PATHTRAVERSAL-001</a></th>
+<td>CRITICAL</td>
+<td>MCP bearer-token joined into a session file path (path traversal)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CONFIG-MALFORMED-001/">AAK-MCP-CONFIG-MALFORMED-001</a></th>
+<td>MEDIUM</td>
+<td>MCP server entry has a field of the wrong type</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DEPRECATED-001/">AAK-MCP-DEPRECATED-001</a></th>
+<td>MEDIUM</td>
+<td>Use of deprecated <code>roots</code> capability (roots/list)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DEPRECATED-002/">AAK-MCP-DEPRECATED-002</a></th>
+<td>MEDIUM</td>
+<td>Use of deprecated <code>sampling</code> capability (sampling/createMessage)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DEPRECATED-003/">AAK-MCP-DEPRECATED-003</a></th>
+<td>MEDIUM</td>
+<td>Use of deprecated <code>logging</code> capability (logging/setLevel)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-DEST-UNVALIDATED-001/">AAK-MCP-DEST-UNVALIDATED-001</a></th>
+<td>HIGH</td>
+<td>MCP-configured destination reaches an outbound fetch with no guard (absence or asymmetry)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-HTTP-NOAUTH-SERVER-001/">AAK-MCP-HTTP-NOAUTH-SERVER-001</a></th>
+<td>HIGH</td>
+<td>Published MCP HTTP/SSE server exposes an unauthenticated network-bound endpoint</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-NOAUTH-DEFAULT/">AAK-MCP-NOAUTH-DEFAULT</a></th>
+<td>HIGH</td>
+<td>MCP server unauthenticated-by-default / fail-open authentication</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SAMPLING-001/">AAK-MCP-SAMPLING-001</a></th>
+<td>HIGH</td>
+<td>MCP <code>sampling</code> capability declared without consent / elicitation guard</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SERENA-CVE-2026-49471-001/">AAK-MCP-SERENA-CVE-2026-49471-001</a></th>
+<td>HIGH</td>
+<td>Serena MCP toolkit &lt; 1.5.2 (unauthenticated dashboard → DNS-rebinding RCE)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SIDECAR-NOAUTH-001/">AAK-MCP-SIDECAR-NOAUTH-001</a></th>
+<td>HIGH</td>
+<td>MCP server binds an unauthenticated sidecar HTTP surface</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SSRF-001/">AAK-MCP-SSRF-001</a></th>
+<td>MEDIUM</td>
+<td>MCP tool handler fetches a caller-supplied URL without host/scheme allow-list</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STATELESS-001/">AAK-MCP-STATELESS-001</a></th>
+<td>HIGH</td>
+<td>Reliance on <code>Mcp-Session-Id</code> header / protocol-level session id</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STATELESS-002/">AAK-MCP-STATELESS-002</a></th>
+<td>HIGH</td>
+<td>Use of removed <code>tasks/list</code> method</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STATELESS-003/">AAK-MCP-STATELESS-003</a></th>
+<td>MEDIUM</td>
+<td>Sticky-session / shared-store dependency in MCP deployment</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STATELESS-004/">AAK-MCP-STATELESS-004</a></th>
+<td>LOW</td>
+<td>MCP client never caches <code>tools/list</code> and depends on per-session state</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-STDIO-LAUNCHER-INJECT-001/">AAK-MCP-STDIO-LAUNCHER-INJECT-001</a></th>
+<td>HIGH</td>
+<td>MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOLGATE-ASYMMETRY-001/">AAK-MCP-TOOLGATE-ASYMMETRY-001</a></th>
+<td>HIGH</td>
+<td>MCP tool gate enforced in tools/list but not tools/call</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOLS-LIST-UNBOUNDED-001/">AAK-MCP-TOOLS-LIST-UNBOUNDED-001</a></th>
+<td>MEDIUM</td>
+<td>MCP tool catalogue built from an upstream response with no cap</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TUNNEL-001/">AAK-MCP-TUNNEL-001</a></th>
+<td>CRITICAL</td>
+<td>MCP Tunnels proxy: SSRF defense disabled or bypassed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TUNNEL-002/">AAK-MCP-TUNNEL-002</a></th>
+<td>HIGH</td>
+<td>MCP Tunnels proxy: HTTPS upstream without trust anchor</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TUNNEL-003/">AAK-MCP-TUNNEL-003</a></th>
+<td>CRITICAL</td>
+<td>MCP Tunnels: tunnel credentials hardcoded in repo / CI</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-UFO-CVE-2026-73296-001/">AAK-MCP-UFO-CVE-2026-73296-001</a></th>
+<td>CRITICAL</td>
+<td>Microsoft UFO &lt; 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCPWN-001/">AAK-MCPWN-001</a></th>
+<td>CRITICAL</td>
+<td>MCP route twin-asymmetry: auth middleware missing on sibling route (MCPwn, CVE-2026-33032)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-001/">AAK-OAUTH-001</a></th>
+<td>HIGH</td>
+<td>OAuth flow without PKCE</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-002/">AAK-OAUTH-002</a></th>
+<td>HIGH</td>
+<td>PKCE using the plain challenge method</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-003/">AAK-OAUTH-003</a></th>
+<td>CRITICAL</td>
+<td>OAuth token passthrough between tenants</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-004/">AAK-OAUTH-004</a></th>
+<td>HIGH</td>
+<td>Wildcard or overly-broad redirect_uri</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-005/">AAK-OAUTH-005</a></th>
+<td>MEDIUM</td>
+<td>Bearer token used where DPoP or mTLS is required</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-006/">AAK-OAUTH-006</a></th>
+<td>MEDIUM</td>
+<td>OAuth client does not validate the <code>iss</code> authorization-response parameter (RFC 9207)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-007/">AAK-OAUTH-007</a></th>
+<td>MEDIUM</td>
+<td>OAuth flow does not set the RFC 8707 <code>resource</code> parameter (Resource Indicators)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-008/">AAK-OAUTH-008</a></th>
+<td>LOW</td>
+<td>MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SHELL-DEFAULT-PROFILE-001/">AAK-SHELL-DEFAULT-PROFILE-001</a></th>
+<td>HIGH</td>
+<td>Command-executing tool is reachable in the default tool profile</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-001/">AAK-SSRF-001</a></th>
+<td>CRITICAL</td>
+<td>Unvalidated outbound HTTP in MCP tool handler</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-002/">AAK-SSRF-002</a></th>
+<td>HIGH</td>
+<td>Localhost/loopback reachable from MCP tool</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-003/">AAK-SSRF-003</a></th>
+<td>CRITICAL</td>
+<td>Cloud metadata endpoint reachable via MCP tool</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-004/">AAK-SSRF-004</a></th>
+<td>HIGH</td>
+<td>Redirect chains followed without re-validation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-005/">AAK-SSRF-005</a></th>
+<td>HIGH</td>
+<td>Missing SSRF allowlist on outbound fetch</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-STDIO-001/">AAK-STDIO-001</a></th>
+<td>CRITICAL</td>
+<td>MCP STDIO command-injection (Ox architectural class)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TASKS-001/">AAK-TASKS-001</a></th>
+<td>HIGH</td>
+<td>MCP task read endpoint lacks per-task authorization</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TASKS-002/">AAK-TASKS-002</a></th>
+<td>HIGH</td>
+<td>MCP tasks persist credentials past completion</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TASKS-003/">AAK-TASKS-003</a></th>
+<td>MEDIUM</td>
+<td>MCP task has no TTL or cancellation path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TASKS-004/">AAK-TASKS-004</a></th>
+<td>MEDIUM</td>
+<td>MCP Tasks creation has no quota / concurrency bound (task-flood DoS)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tool-poisoning">Tool Poisoning</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-CREWAI-CVE-2026-2285-001/">AAK-CREWAI-CVE-2026-2285-001</a></th>
+<td>HIGH</td>
+<td>CrewAI JSON loader path traversal</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001/">AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001</a></th>
+<td>HIGH</td>
+<td>DeepSeek V4 MoE-routed tool description injection</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGCHAIN-PROMPT-LOADER-PATH-001/">AAK-LANGCHAIN-PROMPT-LOADER-PATH-001</a></th>
+<td>HIGH</td>
+<td>LangChain load_prompt path traversal (CVE-2026-34070)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LLM-001/">AAK-LLM-001</a></th>
+<td>HIGH</td>
+<td>Model flagged tool metadata as manipulative</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LLM-002/">AAK-LLM-002</a></th>
+<td>INFO</td>
+<td>LLM analysis did not cover a tool</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-APPS-001/">AAK-MCP-APPS-001</a></th>
+<td>HIGH</td>
+<td>MCP Apps UI iframe rendered without a hardening sandbox</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-APPS-002/">AAK-MCP-APPS-002</a></th>
+<td>HIGH</td>
+<td>MCP Apps UI content rendered without sanitization (DOM XSS)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-FHI-001/">AAK-MCP-FHI-001</a></th>
+<td>HIGH</td>
+<td>MCP tool description carries adversarial-suffix shape</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENAPI-BLOATED-PARAMS-001/">AAK-MCP-OPENAPI-BLOATED-PARAMS-001</a></th>
+<td>LOW</td>
+<td>OpenAPI operation with &gt;12 parameters or &gt;24 request-body properties (Hermes BLOATED)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001/">AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001</a></th>
+<td>MEDIUM</td>
+<td>OpenAPI operation with missing or sub-40-char description (Hermes LAZY)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-OPENAPI-TANGLED-METHODS-001/">AAK-MCP-OPENAPI-TANGLED-METHODS-001</a></th>
+<td>MEDIUM</td>
+<td>OpenAPI path serving &gt;4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOL-ARG-OSCMD-001/">AAK-MCP-TOOL-ARG-OSCMD-001</a></th>
+<td>CRITICAL</td>
+<td>Tool handler passes a model-supplied argument into an OS command</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TOOL-UNSAFE-EVAL-001/">AAK-MCP-TOOL-UNSAFE-EVAL-001</a></th>
+<td>CRITICAL</td>
+<td>Unsafe eval()/exec()/compile() inside @mcp.tool handler (CVE-2026-44717 class)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-METIS-REFUSAL-REFEED-001/">AAK-METIS-REFUSAL-REFEED-001</a></th>
+<td>MEDIUM</td>
+<td>Refusal text re-fed into prompt without policy mediation (Metis, research-grade)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-METIS-SCORING-SINK-001/">AAK-METIS-SCORING-SINK-001</a></th>
+<td>MEDIUM</td>
+<td>Scoring / judge value flows into prompt-sink call (Metis, research-grade)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-001/">AAK-POISON-001</a></th>
+<td>CRITICAL</td>
+<td>Invisible Unicode characters in tool description</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-002/">AAK-POISON-002</a></th>
+<td>CRITICAL</td>
+<td>Prompt injection patterns in tool description</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-003/">AAK-POISON-003</a></th>
+<td>HIGH</td>
+<td>Cross-tool reference in tool description</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-004/">AAK-POISON-004</a></th>
+<td>HIGH</td>
+<td>Encoded content in tool description</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-005/">AAK-POISON-005</a></th>
+<td>MEDIUM</td>
+<td>Excessive tool description length</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POISON-006/">AAK-POISON-006</a></th>
+<td>MEDIUM</td>
+<td>URL or file path in tool description</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-RUGPULL-001/">AAK-RUGPULL-001</a></th>
+<td>CRITICAL</td>
+<td>Tool definition changed since last pin</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-RUGPULL-002/">AAK-RUGPULL-002</a></th>
+<td>HIGH</td>
+<td>New tool added since last pin</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-RUGPULL-003/">AAK-RUGPULL-003</a></th>
+<td>MEDIUM</td>
+<td>Tool removed since last pin</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-001/">AAK-SKILL-001</a></th>
+<td>CRITICAL</td>
+<td>SKILL.md contains a post-install / side-effect command</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-002/">AAK-SKILL-002</a></th>
+<td>HIGH</td>
+<td>SKILL.md uses unicode steganography in tool descriptions</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-003/">AAK-SKILL-003</a></th>
+<td>CRITICAL</td>
+<td>SKILL.md embeds data-exfiltration primitives</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-004/">AAK-SKILL-004</a></th>
+<td>HIGH</td>
+<td>SKILL.md description hijacks a trusted skill name</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-005/">AAK-SKILL-005</a></th>
+<td>HIGH</td>
+<td>SKILL.md frontmatter contains prompt-injection triggers</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-006/">AAK-SKILL-006</a></th>
+<td>HIGH</td>
+<td>SKILL.md body hides an instruction in an HTML comment</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SKILL-LIFECYCLE-ATTRIBUTION-001/">AAK-SKILL-LIFECYCLE-ATTRIBUTION-001</a></th>
+<td>MEDIUM</td>
+<td>Skill execute mutates state without outcome-attribution record (SkillsVote arXiv:2605.18401, research-grade)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TOXICFLOW-001/">AAK-TOXICFLOW-001</a></th>
+<td>HIGH</td>
+<td>Toxic flow: sensitive source paired with external sink</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-config">Agent Config</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AGENT-001/">AAK-AGENT-001</a></th>
+<td>CRITICAL</td>
+<td>Agent instruction file contains shell command directives</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-002/">AAK-AGENT-002</a></th>
+<td>LOW</td>
+<td>Agent instruction file links an external host</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-003/">AAK-AGENT-003</a></th>
+<td>HIGH</td>
+<td>Agent instructions override security controls</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-004/">AAK-AGENT-004</a></th>
+<td>MEDIUM</td>
+<td>Agent instructions contain credential references</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-005/">AAK-AGENT-005</a></th>
+<td>MEDIUM</td>
+<td>Agent instruction file contains hidden content</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-006/">AAK-AGENT-006</a></th>
+<td>HIGH</td>
+<td>Agent instruction file tells the agent to fetch a URL and act on it</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-TRUST-003/">AAK-AGENT-TRUST-003</a></th>
+<td>HIGH</td>
+<td>Repo-resident agent settings bake in trust / auto-approval</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-TRUST-004/">AAK-AGENT-TRUST-004</a></th>
+<td>MEDIUM</td>
+<td>Gemini context/instruction file carries an embedded shell payload</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CLAUDE-WIN-001/">AAK-CLAUDE-WIN-001</a></th>
+<td>HIGH</td>
+<td>Claude Code &lt; 2.1.75 reads managed-settings.json from unsafe ProgramData path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CREWAI-CHAIN-2026-04-001/">AAK-CREWAI-CHAIN-2026-04-001</a></th>
+<td>CRITICAL</td>
+<td>CrewAI four-CVE exploit chain reachable in one module</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CREWAI-CVE-2026-2275-001/">AAK-CREWAI-CVE-2026-2275-001</a></th>
+<td>CRITICAL</td>
+<td>CrewAI CodeInterpreterTool with unsafe_mode=True</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-CREWAI-CVE-2026-2287-001/">AAK-CREWAI-CVE-2026-2287-001</a></th>
+<td>CRITICAL</td>
+<td>CrewAI sandbox fallback without Docker liveness check</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-IDE-TASK-004/">AAK-IDE-TASK-004</a></th>
+<td>LOW</td>
+<td>VS Code task/launch config could not be parsed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INTERNAL-SCANNER-FAIL/">AAK-INTERNAL-SCANNER-FAIL</a></th>
+<td>INFO</td>
+<td>A scanner did not finish every file</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001/">AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001</a></th>
+<td>MEDIUM</td>
+<td>langgraph.prebuilt.ToolNode positional-list misuse</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-PROJECT-DEAL-DRIFT-001/">AAK-PROJECT-DEAL-DRIFT-001</a></th>
+<td>HIGH</td>
+<td>Cross-tier LLM pricing without parity check (Project Deal class)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ROUTINE-001/">AAK-ROUTINE-001</a></th>
+<td>HIGH</td>
+<td>Routine grants broader permissions than interactive path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ROUTINE-002/">AAK-ROUTINE-002</a></th>
+<td>MEDIUM</td>
+<td>Routine schedule interpolates unsanitized input</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ROUTINE-003/">AAK-ROUTINE-003</a></th>
+<td>MEDIUM</td>
+<td>Routine executes without audit trail</td>
+</tr>
+</tbody>
+</table>
+<h3 id="legal-compliance">Legal Compliance</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-ADMT-001/">AAK-ADMT-001</a></th>
+<td>MEDIUM</td>
+<td>No developer documentation for a declared covered-domain decision surface</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ADMT-002/">AAK-ADMT-002</a></th>
+<td>MEDIUM</td>
+<td>Developer documentation does not name the categories of training data</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ADMT-003/">AAK-ADMT-003</a></th>
+<td>MEDIUM</td>
+<td>Developer documentation names no known limitations</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-ADMT-004/">AAK-ADMT-004</a></th>
+<td>MEDIUM</td>
+<td>Developer documentation gives no human-review instruction</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AIACT50-001/">AAK-AIACT50-001</a></th>
+<td>MEDIUM</td>
+<td>Conversational agent surface with no AI-disclosure to the user</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AIACT50-002/">AAK-AIACT50-002</a></th>
+<td>MEDIUM</td>
+<td>Synthetic media generation with no machine-readable provenance marking</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AIACT50-003/">AAK-AIACT50-003</a></th>
+<td>MEDIUM</td>
+<td>Deep-fake or public-interest text generation with no artificiality disclosure</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-EU-AI-ACT-ART15-LOCALE-001/">AAK-EU-AI-ACT-ART15-LOCALE-001</a></th>
+<td>INFO</td>
+<td>Multilingual user-facing agent lacks per-locale eval coverage</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HEALTHCARE-AI-001/">AAK-HEALTHCARE-AI-001</a></th>
+<td>CRITICAL</td>
+<td>AI described as a mental-health professional (Tennessee SB 1580)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HEALTHCARE-AI-002/">AAK-HEALTHCARE-AI-002</a></th>
+<td>HIGH</td>
+<td>AI makes prior-authorization / medical-necessity decisions alone</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HEALTHCARE-AI-003/">AAK-HEALTHCARE-AI-003</a></th>
+<td>HIGH</td>
+<td>AI-only insurance coverage decision</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HEALTHCARE-AI-004/">AAK-HEALTHCARE-AI-004</a></th>
+<td>MEDIUM</td>
+<td>Healthcare context without explicit AI-disclosure to user</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HEALTHCARE-AI-005/">AAK-HEALTHCARE-AI-005</a></th>
+<td>HIGH</td>
+<td>Crisis keywords handled without escalation path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LEGAL-001/">AAK-LEGAL-001</a></th>
+<td>HIGH</td>
+<td>Copyleft license (AGPL, SSPL, GPL-3 or EUPL) declared in package.json</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LEGAL-002/">AAK-LEGAL-002</a></th>
+<td>MEDIUM</td>
+<td>package.json declares no license</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LEGAL-003/">AAK-LEGAL-003</a></th>
+<td>CRITICAL</td>
+<td>DMCA-flagged package detected</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-STATE-PRIVACY-001/">AAK-STATE-PRIVACY-001</a></th>
+<td>MEDIUM</td>
+<td>Privacy doc missing 'do-not-sell' / opt-out-of-sale language</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-STATE-PRIVACY-002/">AAK-STATE-PRIVACY-002</a></th>
+<td>MEDIUM</td>
+<td>Privacy doc missing access / deletion / portability rights</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-STATE-PRIVACY-003/">AAK-STATE-PRIVACY-003</a></th>
+<td>LOW</td>
+<td>Privacy doc missing data-controller contact</td>
+</tr>
+</tbody>
+</table>
+<h3 id="secret-exposure">Secret Exposure</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-001/">AAK-INDIA-PII-001</a></th>
+<td>CRITICAL</td>
+<td>Aadhaar number in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-002/">AAK-INDIA-PII-002</a></th>
+<td>HIGH</td>
+<td>PAN (Permanent Account Number) in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-003/">AAK-INDIA-PII-003</a></th>
+<td>HIGH</td>
+<td>UPI ID in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-004/">AAK-INDIA-PII-004</a></th>
+<td>MEDIUM</td>
+<td>IFSC code in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-005/">AAK-INDIA-PII-005</a></th>
+<td>MEDIUM</td>
+<td>Indian mobile number in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-INDIA-PII-006/">AAK-INDIA-PII-006</a></th>
+<td>LOW</td>
+<td>Indian vehicle registration in source / config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ENV-PLACEHOLDER-EXFIL-001/">AAK-MCP-ENV-PLACEHOLDER-EXFIL-001</a></th>
+<td>CRITICAL</td>
+<td>MCP server resolves ${VAR} placeholders against process.env on a user-supplied server config (secret exfiltration)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-001/">AAK-SECRET-001</a></th>
+<td>CRITICAL</td>
+<td>Anthropic API key exposed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-002/">AAK-SECRET-002</a></th>
+<td>CRITICAL</td>
+<td>OpenAI API key exposed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-003/">AAK-SECRET-003</a></th>
+<td>CRITICAL</td>
+<td>AWS credentials exposed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-004/">AAK-SECRET-004</a></th>
+<td>HIGH</td>
+<td>Generic high-entropy secret</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-005/">AAK-SECRET-005</a></th>
+<td>HIGH</td>
+<td>Private key file present</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-006/">AAK-SECRET-006</a></th>
+<td>MEDIUM</td>
+<td>.env file not in .gitignore</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-007/">AAK-SECRET-007</a></th>
+<td>MEDIUM</td>
+<td>Secret in MCP server environment block</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-008/">AAK-SECRET-008</a></th>
+<td>CRITICAL</td>
+<td>GitHub/GitLab personal access token exposed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SECRET-009/">AAK-SECRET-009</a></th>
+<td>HIGH</td>
+<td>Google Cloud service account key file</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SPLUNK-MCP-TOKEN-LEAK-001/">AAK-SPLUNK-MCP-TOKEN-LEAK-001</a></th>
+<td>HIGH</td>
+<td>splunk-mcp-server configured to write tokens to _internal / _audit</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SPLUNK-TOKLOG-001/">AAK-SPLUNK-TOKLOG-001</a></th>
+<td>HIGH</td>
+<td>Session token written to log sink in cleartext</td>
+</tr>
+</tbody>
+</table>
+<h3 id="trust-boundaries">Trust Boundaries</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AGENT-COMPOSE-001/">AAK-AGENT-COMPOSE-001</a></th>
+<td>HIGH</td>
+<td>Skill set's composed capability union crosses a risk boundary no single skill requested</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-COMPOSE-002/">AAK-AGENT-COMPOSE-002</a></th>
+<td>MEDIUM</td>
+<td>Tool-call arguments spliced across a session reconstruct a denied file path or URL</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-SHARED-RES-AUTHZ-001/">AAK-AGENT-SHARED-RES-AUTHZ-001</a></th>
+<td>HIGH</td>
+<td>Mutating tool on a shared/multi-agent resource lacks a per-actor authorization parameter</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-APPROVAL-PARSER-DESYNC-001/">AAK-APPROVAL-PARSER-DESYNC-001</a></th>
+<td>HIGH</td>
+<td>Command-safety parser and the executing shell disagree about a token</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SANDBOX-SELFDISABLE-001/">AAK-MCP-SANDBOX-SELFDISABLE-001</a></th>
+<td>CRITICAL</td>
+<td>Tool schema exposes an LLM-settable sandbox/isolation-disable parameter</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ZCODE-CVE-2026-88755-001/">AAK-MCP-ZCODE-CVE-2026-88755-001</a></th>
+<td>HIGH</td>
+<td>ZCode connects the MCP servers a workspace's config declares when the folder is opened, without approval</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OAUTH-SCOPE-001/">AAK-OAUTH-SCOPE-001</a></th>
+<td>HIGH</td>
+<td>Third-party OAuth client granted broad Workspace scopes</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-POLICY-TRUNCATION-001/">AAK-POLICY-TRUNCATION-001</a></th>
+<td>HIGH</td>
+<td>Deny policy evaluated on a truncated copy of the value the executor receives</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SANDBOX-DENYLIST-001/">AAK-SANDBOX-DENYLIST-001</a></th>
+<td>CRITICAL</td>
+<td>Deny-list of names used as a Python sandbox boundary, with the lookup builtins still reachable</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TIKTOK-AGENT-HIJACK-001/">AAK-TIKTOK-AGENT-HIJACK-001</a></th>
+<td>HIGH</td>
+<td>Social-agent auto-reply without human-in-loop gate</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-001/">AAK-TRUST-001</a></th>
+<td>CRITICAL</td>
+<td>enableAllProjectMcpServers is true</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-002/">AAK-TRUST-002</a></th>
+<td>CRITICAL</td>
+<td>ANTHROPIC_BASE_URL overridden in project settings</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-003/">AAK-TRUST-003</a></th>
+<td>HIGH</td>
+<td>Wildcard or overly broad permission allows</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-004/">AAK-TRUST-004</a></th>
+<td>HIGH</td>
+<td>No deny rules defined</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-005/">AAK-TRUST-005</a></th>
+<td>HIGH</td>
+<td>Custom API base URL for any provider</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-006/">AAK-TRUST-006</a></th>
+<td>MEDIUM</td>
+<td>Project settings may override user deny rules</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-007/">AAK-TRUST-007</a></th>
+<td>MEDIUM</td>
+<td>No MCP server allowlist configured</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRUST-008/">AAK-TRUST-008</a></th>
+<td>HIGH</td>
+<td>Proxy or certificate-authority override in project settings</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hook-injection">Hook Injection</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AGENT-TRUST-001/">AAK-AGENT-TRUST-001</a></th>
+<td>HIGH</td>
+<td>Coding agent run non-interactively (-p / headless) in CI trusts repo-resident config</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-TRUST-002/">AAK-AGENT-TRUST-002</a></th>
+<td>CRITICAL</td>
+<td>Headless agent CI runs on an attacker-controllable ref (fork-PR config executes with secrets)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-001/">AAK-HOOK-001</a></th>
+<td>CRITICAL</td>
+<td>Hook executes network-capable command</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-002/">AAK-HOOK-002</a></th>
+<td>CRITICAL</td>
+<td>Hook command contains environment variable exfiltration</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-003/">AAK-HOOK-003</a></th>
+<td>HIGH</td>
+<td>Hook command writes to files outside project directory</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-004/">AAK-HOOK-004</a></th>
+<td>LOW</td>
+<td>Hook runs a command on tool use, prompt submit or session start</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-005/">AAK-HOOK-005</a></th>
+<td>HIGH</td>
+<td>Hook command uses base64 encoding/decoding</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-006/">AAK-HOOK-006</a></th>
+<td>MEDIUM</td>
+<td>Hook command runs with elevated privileges</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-007/">AAK-HOOK-007</a></th>
+<td>MEDIUM</td>
+<td>Excessive number of hooks defined</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-008/">AAK-HOOK-008</a></th>
+<td>CRITICAL</td>
+<td>Hook command contains obfuscated or encoded payload</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-009/">AAK-HOOK-009</a></th>
+<td>MEDIUM</td>
+<td>Hook command references project source files</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-RCE-001/">AAK-HOOK-RCE-001</a></th>
+<td>CRITICAL</td>
+<td>Hook command interpolates user-controlled input</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-HOOK-RCE-002/">AAK-HOOK-RCE-002</a></th>
+<td>CRITICAL</td>
+<td>Hook runs with shell=True and variable interpolation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-IDE-TASK-001/">AAK-IDE-TASK-001</a></th>
+<td>HIGH</td>
+<td>VS Code task auto-executes on folderOpen (pre-trust code execution)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-IDE-TASK-002/">AAK-IDE-TASK-002</a></th>
+<td>HIGH</td>
+<td>VS Code task command reaches a shell via pipe, repo-path interpreter, or interpolation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-IDE-TASK-003/">AAK-IDE-TASK-003</a></th>
+<td>HIGH</td>
+<td>VS Code launch.json preLaunchTask chains to a flagged auto-exec task</td>
+</tr>
+</tbody>
+</table>
+<h3 id="transport-security">Transport Security</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-CREWAI-CVE-2026-2286-001/">AAK-CREWAI-CVE-2026-2286-001</a></th>
+<td>CRITICAL</td>
+<td>CrewAI RagTool / WebsiteSearchTool SSRF</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-DNS-REBIND-001/">AAK-DNS-REBIND-001</a></th>
+<td>CRITICAL</td>
+<td>MCP StreamableHTTP transport without Host-header allow-list</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGCHAIN-SSRF-REDIR-001/">AAK-LANGCHAIN-SSRF-REDIR-001</a></th>
+<td>HIGH</td>
+<td>Validate-then-fetch SSRF (redirects enabled past allow-list)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LMDEPLOY-VL-SSRF-001/">AAK-LMDEPLOY-VL-SSRF-001</a></th>
+<td>HIGH</td>
+<td>LMDeploy VL image loader fetches user-controlled URLs without allow-list</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-ROUTING-DESYNC-001/">AAK-MCP-ROUTING-DESYNC-001</a></th>
+<td>HIGH</td>
+<td>MCP routable header (Mcp-Method/Mcp-Name) trusted without body cross-check</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-SIDECAR-REBIND-001/">AAK-MCP-SIDECAR-REBIND-001</a></th>
+<td>HIGH</td>
+<td>Loopback bind used as access control with no Host-header allow-list</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-TRANSPORT-SESSION-UNAUTH-001/">AAK-MCP-TRANSPORT-SESSION-UNAUTH-001</a></th>
+<td>CRITICAL</td>
+<td>MCP HTTP transport binds every interface and authenticates no caller</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCPFRAME-001/">AAK-MCPFRAME-001</a></th>
+<td>MEDIUM</td>
+<td>mcp-framework &lt; 0.2.22 HTTP-body DoS</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-NEXT-AI-DRAW-001/">AAK-NEXT-AI-DRAW-001</a></th>
+<td>MEDIUM</td>
+<td>next-ai-draw-io &lt; 0.4.15 body-accumulation DoS</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-BRACKETED-HOST-001/">AAK-SSRF-BRACKETED-HOST-001</a></th>
+<td>HIGH</td>
+<td>SSRF guard classifies an IPv6 hostname it never unbracketed</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SSRF-TOCTOU-001/">AAK-SSRF-TOCTOU-001</a></th>
+<td>MEDIUM</td>
+<td>Validate-then-fetch DNS-rebind / TOCTOU on URL allow-list</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRANSPORT-001/">AAK-TRANSPORT-001</a></th>
+<td>CRITICAL</td>
+<td>MCP server uses a cleartext transport (http:// or ws://)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRANSPORT-002/">AAK-TRANSPORT-002</a></th>
+<td>HIGH</td>
+<td>TLS certificate validation disabled</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRANSPORT-003/">AAK-TRANSPORT-003</a></th>
+<td>MEDIUM</td>
+<td>Deprecated SSE transport in use</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TRANSPORT-004/">AAK-TRANSPORT-004</a></th>
+<td>HIGH</td>
+<td>Session token in URL query parameter</td>
+</tr>
+</tbody>
+</table>
+<h3 id="taint-analysis">Taint Analysis</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-IPI-WILD-CORPUS-001/">AAK-IPI-WILD-CORPUS-001</a></th>
+<td>HIGH</td>
+<td>Indirect-prompt-injection wild payload checked into repo</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LANGCHAIN-002/">AAK-LANGCHAIN-002</a></th>
+<td>MEDIUM</td>
+<td>Call to load_prompt without allow_dangerous_paths review</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LLM-SQL-RCE-001/">AAK-LLM-SQL-RCE-001</a></th>
+<td>CRITICAL</td>
+<td>LLM-generated SQL executed on an RCE-capable database role</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-LOGINJ-001/">AAK-LOGINJ-001</a></th>
+<td>MEDIUM</td>
+<td>MCP tool logs caller-controlled input without CRLF/ANSI sanitization</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-PRTITLE-IPI-001/">AAK-PRTITLE-IPI-001</a></th>
+<td>HIGH</td>
+<td>PR/issue title flows into LLM client without sanitiser</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-SHELL-QUOTED-INTERP-001/">AAK-SHELL-QUOTED-INTERP-001</a></th>
+<td>HIGH</td>
+<td>Tool argument interpolated into a shell command, quoting notwithstanding</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-001/">AAK-TAINT-001</a></th>
+<td>CRITICAL</td>
+<td>Tool parameter flows to shell command</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-002/">AAK-TAINT-002</a></th>
+<td>CRITICAL</td>
+<td>Tool parameter flows to eval/exec</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-003/">AAK-TAINT-003</a></th>
+<td>HIGH</td>
+<td>Tool parameter flows to file open</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-004/">AAK-TAINT-004</a></th>
+<td>HIGH</td>
+<td>Tool parameter flows to HTTP request</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-005/">AAK-TAINT-005</a></th>
+<td>HIGH</td>
+<td>Tool parameter flows to SQL query</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-006/">AAK-TAINT-006</a></th>
+<td>MEDIUM</td>
+<td>Tool parameter flows to deserialization</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-007/">AAK-TAINT-007</a></th>
+<td>MEDIUM</td>
+<td>Tool function missing input validation</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-TAINT-008/">AAK-TAINT-008</a></th>
+<td>MEDIUM</td>
+<td>Tool function with excessive dangerous sinks</td>
+</tr>
+</tbody>
+</table>
+<h3 id="a2a-protocol">A2A Protocol</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-A2A-001/">AAK-A2A-001</a></th>
+<td>HIGH</td>
+<td>Agent Card exposes internal capabilities</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-002/">AAK-A2A-002</a></th>
+<td>HIGH</td>
+<td>Agent Card lacks authentication requirement</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-003/">AAK-A2A-003</a></th>
+<td>MEDIUM</td>
+<td>No input schema validation in A2A skill definitions</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-004/">AAK-A2A-004</a></th>
+<td>MEDIUM</td>
+<td>A2A endpoint using HTTP instead of HTTPS</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-005/">AAK-A2A-005</a></th>
+<td>HIGH</td>
+<td>JWT token lifetime exceeds 1 hour</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-006/">AAK-A2A-006</a></th>
+<td>HIGH</td>
+<td>Weak JWT validation configuration</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-007/">AAK-A2A-007</a></th>
+<td>MEDIUM</td>
+<td>Agent impersonation risk</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-008/">AAK-A2A-008</a></th>
+<td>HIGH</td>
+<td>A2A connection lacks mutual authentication</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-009/">AAK-A2A-009</a></th>
+<td>HIGH</td>
+<td>Unbounded delegation in A2A call chain</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-010/">AAK-A2A-010</a></th>
+<td>HIGH</td>
+<td>Transitive trust accepted in A2A</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-011/">AAK-A2A-011</a></th>
+<td>MEDIUM</td>
+<td>A2A tokens not anti-replay protected</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-A2A-012/">AAK-A2A-012</a></th>
+<td>MEDIUM</td>
+<td>A2A schema confusion between major versions</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AGENT-HARNESS-SHARED-STATE-001/">AAK-AGENT-HARNESS-SHARED-STATE-001</a></th>
+<td>MEDIUM</td>
+<td>Multi-agent shared state mutated by &gt;=2 agents without a lock primitive (Code-as-Harness, research-grade)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mcp-server-card">MCP Server Card</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-MCP-CARD-001/">AAK-MCP-CARD-001</a></th>
+<td>CRITICAL</td>
+<td>Poisoned tool description in an MCP server card</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CARD-002/">AAK-MCP-CARD-002</a></th>
+<td>HIGH</td>
+<td>MCP server card transport / advertised-capability mismatch</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CARD-003/">AAK-MCP-CARD-003</a></th>
+<td>HIGH</td>
+<td>MCP server card missing or invalid signature / provenance</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-MCP-CARD-004/">AAK-MCP-CARD-004</a></th>
+<td>MEDIUM</td>
+<td>Over-broad capability claims in an MCP server card</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agentic-skills-ast10">Agentic Skills (AST10)</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-AST02-001/">AAK-AST02-001</a></th>
+<td>HIGH</td>
+<td>Skill bundle pulls an external resource that nothing pins</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AST04-001/">AAK-AST04-001</a></th>
+<td>CRITICAL</td>
+<td>Skill frontmatter carries a deserialization tag that executes on parse</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-AST10-001/">AAK-AST10-001</a></th>
+<td>MEDIUM</td>
+<td>Skill ships platform manifests whose security metadata disagrees</td>
+</tr>
+</tbody>
+</table>
+<h3 id="composition">Composition</h3>
+<table>
+<thead>
+<tr>
+<th scope="col">Rule</th>
+<th scope="col">Severity</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-COMPOSE-001/">AAK-COMPOSE-001</a></th>
+<td>HIGH</td>
+<td>Untrusted input reaches network egress through a 2- or 3-component chain that no single component would trip</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-COMPOSE-002/">AAK-COMPOSE-002</a></th>
+<td>HIGH</td>
+<td>Two or more skills share an undeclared writable path</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-COMPOSE-003/">AAK-COMPOSE-003</a></th>
+<td>MEDIUM</td>
+<td>A skill declares a narrower capability than its code exercises</td>
+</tr>
+</tbody>
+</table>
+<h2 id="retired-rules">Retired rules</h2>
+<p>Rules that have left the registry. Each keeps its page, so the link in an alert raised before it went still opens.</p>
+<table>
+<thead>
+<tr>
+<th scope="col">Retired rule</th>
+<th scope="col">Last shipped in</th>
+<th scope="col">Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row"><a href="AAK-MCP-KONG-CVE-2026-13341-001/">AAK-MCP-KONG-CVE-2026-13341-001</a></th>
+<td>0.6.22</td>
+<td>Kong Konnect MCP server below 1.0.0 (indirect prompt injection)</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OPENCLAW-PRIVESC-001/">AAK-OPENCLAW-PRIVESC-001</a></th>
+<td>0.6.22</td>
+<td>OpenClaw agent role missing or attacker-influenced</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-OX-COVERAGE-MANIFEST-001/">AAK-OX-COVERAGE-MANIFEST-001</a></th>
+<td>0.6.22</td>
+<td>Project OX-disclosed CVE coverage manifest</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-PRISMA-AIRS-COVERAGE-001/">AAK-PRISMA-AIRS-COVERAGE-001</a></th>
+<td>0.6.22</td>
+<td>Prisma AIRS catalog coverage manifest</td>
+</tr>
+<tr>
+<th scope="row"><a href="AAK-WINDSURF-001/">AAK-WINDSURF-001</a></th>
+<td>0.6.22</td>
+<td>Windsurf .windsurf/mcp.json auto-approves server registrations</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
