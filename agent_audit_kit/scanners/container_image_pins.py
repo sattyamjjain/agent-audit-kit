@@ -28,7 +28,9 @@ server whose install script runs `ghcr.io/nezhahq/nezha` or unpacks a release zi
 PyPI's `nezha` is an unrelated utility library, and npm's a 2017 0.0.1 by another
 author. Apache Answer is a Go server too, whose README runs the Docker Hub image
 `apache/answer`, tagged by release; npm's `answer-ui` and PyPI's `answer` are
-other projects.
+other projects. NetBox MCP Server is on neither registry either: its README runs
+`uv run netbox-mcp-server` from a checkout, or the Docker Hub image
+`netboxlabs/netbox-mcp-server`, tagged by release from 1.2.0.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -48,7 +50,7 @@ the only place a deployment states which release it runs, so this module reads
 image references and nothing else. That also holds for a package that ships an
 image beside its npm release: obsidian-tc's npm package is a row in
 `mcp_cve_pins_2026_07`, and a deployment that runs `ghcr.io/the-40-thieves/obsidian-tc`
-states its release only in the tag, so the same rule has a row here too.
+states its release only in the tag, so each of its two rules has a row here too.
 
 Where a reference is read
 -------------------------
@@ -434,6 +436,28 @@ _PINS: tuple[_ImagePin, ...] = (
         "ccr.ccs.tencentyun.com/langchain-chatchat/chatchat",
         (0, 3, 3), "on every tag through 0.3.2-dev", "No fixed release.",
         ("CVE-2026-75128",),
+    ),
+    # CVE-2026-115477 and CVE-2026-115478, both fixed in 1.31.4 (#1084, #1085): the
+    # image twin of the pin table's second obsidian-tc row. GHCR's tags start at
+    # 1.0.1, so no `introduced` is needed, and `latest` (1.33.1 on 2026-10-15) is
+    # fixed.
+    _ImagePin(
+        "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001", "obsidian-tc",
+        "ghcr.io/the-40-thieves/obsidian-tc",
+        (1, 31, 4), "below 1.31.4", "Fixed in 1.31.4.",
+        ("CVE-2026-115477", "CVE-2026-115478"),
+    ),
+    # CVE-2026-57207 (#1086): before 1.2.1 the NetBox MCP Server's HTTP transport had
+    # no authentication. 1.2.1 (17df4653) adds a bearer token, `MCP_AUTH_TOKEN`, and
+    # leaves it unset by default. Docker Hub carries 1.2.0 and 1.2.1, the floating
+    # `1`, `1.2` and `latest` (all the 1.2.1 digest on 2026-10-24), `main` and a
+    # `0.0.0-test` tag; no release before 1.2.0 was pushed as an image.
+    _ImagePin(
+        "AAK-MCP-NETBOX-CVE-2026-57207-001", "NetBox MCP Server",
+        "netboxlabs/netbox-mcp-server",
+        (1, 2, 1), "below 1.2.1",
+        "Fixed in 1.2.1, which adds an optional bearer token: set MCP_AUTH_TOKEN.",
+        ("CVE-2026-57207",),
     ),
 )
 

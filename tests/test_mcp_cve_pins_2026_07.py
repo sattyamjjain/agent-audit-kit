@@ -154,6 +154,11 @@ PINS = {
     "AAK-MCP-D365FO-CVE-2026-114123-001": "high",
     # 2026-10-23 (#1081)
     "AAK-MCP-LITELLM-CVE-2026-114612-001": "critical",
+    # 2026-10-24 (#1083 to #1092)
+    "AAK-MCP-UNICLI-CVE-2026-58497-001": "high",
+    "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001": "high",
+    "AAK-MCP-FROMOPENAPI-CVE-2026-115750-001": "low",
+    "AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001": "medium",
 }
 
 
@@ -1125,8 +1130,10 @@ def test_langgraph_checkpoint_sqlite_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_langgraph_checkpoint_patched_passes(tmp_path: Path) -> None:
+    """3.1.1 fixed CVE-2026-71433; CVE-2026-115883 (#1091) moved the floors to
+    postgres 3.1.3 and sqlite 3.1.2, so 3.1.3 is now the first quiet postgres."""
     assert "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001" not in _ids(
-        tmp_path, "requirements.txt", "langgraph-checkpoint-postgres==3.1.1\n"
+        tmp_path, "requirements.txt", "langgraph-checkpoint-postgres==3.1.3\n"
     )
 
 
@@ -4304,3 +4311,165 @@ def test_litellm_114612_ignores_npm_litellm_and_longer_names(tmp_path: Path) -> 
     `litellm-proxy-extras` is another PyPI package."""
     assert _LITELLM_114612 not in _ids(tmp_path, "package.json", '{"dependencies": {"litellm": "1.100.3"}}')
     assert _LITELLM_114612 not in _ids(tmp_path, "requirements.txt", "litellm-proxy-extras==0.4.3\n")
+
+
+# --- 2026-10-24 (#1083 to #1092): Uni-CLI, obsidian-tc, mcp-from-openapi, LangGraph ---
+
+_UNICLI = "AAK-MCP-UNICLI-CVE-2026-58497-001"
+_OBSIDIANTC_115477 = "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001"
+_OBSIDIANTC_77366 = "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001"
+_FROMOPENAPI_115750 = "AAK-MCP-FROMOPENAPI-CVE-2026-115750-001"
+_FROMOPENAPI_59973 = "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001"
+_LANGGRAPH_CLI = "AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001"
+_LANGGRAPH_CKPT = "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001"
+
+
+def _rows(rule_id: str) -> list[tuple]:
+    return [(p.names, p.floor, p.introduced, p.requires_version, p.ecosystem)
+            for p in _PINS if p.rule_id == rule_id]
+
+
+def test_the_2026_10_24_pins_are_the_ranges_the_artifacts_show() -> None:
+    """Each range was read in the published artifacts, not only the advisory.
+    Uni-CLI: 0.207.1 has no HTTP transport, 0.208.0 adds one without an Origin
+    check, 0.225.2 adds the guard. obsidian-tc: 1.31.3 has neither fix string,
+    1.31.4 both. mcp-from-openapi: blockedHosts from 2.2.0, safeFetch from 2.5.0,
+    normalizeHostname in 2.9.0. langgraph-cli: --password-stdin from 0.4.15,
+    verbose=False on it in 0.4.32."""
+    assert _rows(_UNICLI) == [(("@zenalexa/unicli",), (0, 225, 2), (0, 208, 0), True, "js")]
+    assert _rows(_OBSIDIANTC_115477) == [(("obsidian-tc",), (1, 31, 4), (1, 0, 1), True, "js")]
+    assert _rows(_FROMOPENAPI_115750) == [(("mcp-from-openapi",), (2, 9, 0), (2, 2, 0), True, "js")]
+    assert _rows(_LANGGRAPH_CLI) == [(("langgraph-cli",), (0, 4, 32), (0, 4, 15), True, "py")]
+    assert RULES[_OBSIDIANTC_115477].cve_references == ["CVE-2026-115477", "CVE-2026-115478"]
+    assert RULES[_FROMOPENAPI_115750].cve_references == ["CVE-2026-115750", "CVE-2026-115751"]
+
+
+def test_obsidian_tc_and_mcp_from_openapi_keep_their_older_rows() -> None:
+    """A raised floor would have reported 1.3.1 to 1.31.3 as obsidian-tc's CRITICAL
+    vault-binding flaw, and 2.5.0 to 2.8.x as mcp-from-openapi's HIGH $ref SSRF, both
+    fixed at those floors. The older rows do not move and do not take the new CVEs."""
+    assert _rows(_OBSIDIANTC_77366) == [(("obsidian-tc",), (1, 3, 1), (1, 0, 0), True, "js")]
+    assert _rows(_FROMOPENAPI_59973) == [(("mcp-from-openapi",), (2, 5, 0), None, False, "js")]
+    assert RULES[_OBSIDIANTC_77366].severity.value == "critical"
+    assert RULES[_FROMOPENAPI_59973].severity.value == "high"
+    assert not {"CVE-2026-115477", "CVE-2026-115478"} & set(RULES[_OBSIDIANTC_77366].cve_references)
+    assert not {"CVE-2026-115750", "CVE-2026-115751"} & set(RULES[_FROMOPENAPI_59973].cve_references)
+
+
+def test_langgraph_checkpoint_floors_split_per_package() -> None:
+    """CVE-2026-115883 (#1091) is the same cross-tenant namespace flaw, fixed in
+    postgres 3.1.3 and sqlite 3.1.2, so the one rule takes a row per package."""
+    assert _rows(_LANGGRAPH_CKPT) == [
+        (("langgraph-checkpoint-postgres",), (3, 1, 3), None, False, None),
+        (("langgraph-checkpoint-sqlite",), (3, 1, 2), None, False, None),
+    ]
+    assert RULES[_LANGGRAPH_CKPT].cve_references == ["CVE-2026-71433", "CVE-2026-115883"]
+    assert RULES[_LANGGRAPH_CKPT].severity.value == "medium"
+
+
+@pytest.mark.parametrize(("fixture", "rule_id", "where"), [
+    ("cve-2026-58497-unicli", _UNICLI, [("package.json", 5)]),
+    ("cve-2026-115477-obsidian-tc", _OBSIDIANTC_115477, [("package.json", 5)]),
+    ("cve-2026-115750-mcp-from-openapi", _FROMOPENAPI_115750, [("package.json", 5)]),
+    ("cve-2026-115885-langgraph-cli", _LANGGRAPH_CLI, [("requirements-dev.txt", 2)]),
+    ("cve-2026-115883-langgraph-checkpoint", _LANGGRAPH_CKPT, [("requirements.txt", 2), ("requirements.txt", 3)]),
+])
+def test_2026_10_24_fixtures_positive_and_negative(fixture: str, rule_id: str, where: list) -> None:
+    """The last affected release fires, on its own line, and nothing else from the
+    table does; the first fixed release is quiet. The langgraph-checkpoint file
+    declares both packages below their floors and gets one finding for each."""
+    root = _CVE_FIXTURES / fixture
+    vulnerable = scan(root / "vulnerable")[0]
+    assert sorted((f.file_path, f.line_number) for f in vulnerable if f.rule_id == rule_id) == where
+    assert {f.rule_id for f in vulnerable} == {rule_id}
+    assert scan(root / "negative")[0] == []
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.207.1", False),   # the first release: no HTTP transport at all
+    ("0.208.0", True),    # the HTTP transport arrives without an Origin check
+    ("0.213.3", True),    # split out into dist/mcp/http-transport.js
+    ("0.225.1", True),
+    ("^0.224.0", True),
+    ("0.225.2", False),   # isOriginAllowed on every transport (d675c267)
+    ("1.3.0", False),     # latest on 2026-10-24
+    ("latest", False),    # resolves to a fixed release
+])
+def test_unicli_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"@zenalexa/unicli": "%s"}}' % version
+    assert (_UNICLI in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("content", "fires"), [
+    ('{"mcpServers": {"u": {"command": "npx", "args": ["-y", "@zenalexa/unicli@0.225.1", "mcp", "serve"]}}}', True),
+    ('{"mcpServers": {"u": {"command": "npx", "args": ["-y", "@zenalexa/unicli", "mcp", "serve"]}}}', False),
+])
+def test_unicli_launches_report_only_a_stated_version(tmp_path: Path, content: str, fires: bool) -> None:
+    assert (_UNICLI in _ids(tmp_path, ".mcp.json", content)) is fires
+
+
+def test_unicli_lookalike_is_quiet(tmp_path: Path) -> None:
+    """npm's `uni-cli` (ImagineZzf/uni-cli) is another project."""
+    assert _UNICLI not in _ids(tmp_path, "package.json", '{"dependencies": {"uni-cli": "0.1.0"}}')
+
+
+@pytest.mark.parametrize(("version", "new", "old"), [
+    ("0.0.1", False, False),    # the placeholder
+    ("1.0.1", True, True),      # below 1.3.1: both obsidian-tc rules
+    ("1.2.1", True, True),
+    ("1.13.0", True, False),    # CVE-2026-115477's floor; the CRITICAL rule is fixed
+    ("1.31.3", True, False),
+    ("1.31.4", False, False),   # both fixes (101c91c6, 99f7914c)
+    ("1.33.1", False, False),
+    ("latest", False, False),
+])
+def test_obsidian_tc_115477_versions(tmp_path: Path, version: str, new: bool, old: bool) -> None:
+    found = _ids(tmp_path, "package.json", '{"dependencies": {"obsidian-tc": "%s"}}' % version)
+    assert (_OBSIDIANTC_115477 in found, _OBSIDIANTC_77366 in found) == (new, old)
+
+
+@pytest.mark.parametrize(("version", "new", "old"), [
+    ("2.1.0", False, True),     # no blockedHosts yet; the 2.5.0 rule still applies
+    ("2.2.0", True, True),      # blockedHosts arrives: CVE-2026-115751
+    ("2.4.0", True, True),
+    ("2.5.0", True, False),     # safeFetch arrives: CVE-2026-115750 too
+    ("2.8.0", True, False),
+    ("2.9.0", False, False),    # normalizeHostname, credentials kept on their origin
+    ("2.9.1", False, False),
+])
+def test_mcp_from_openapi_115750_versions(tmp_path: Path, version: str, new: bool, old: bool) -> None:
+    found = _ids(tmp_path, "package.json", '{"dependencies": {"mcp-from-openapi": "%s"}}' % version)
+    assert (_FROMOPENAPI_115750 in found, _FROMOPENAPI_59973 in found) == (new, old)
+
+
+def test_mcp_from_openapi_115750_needs_a_stated_version_and_npm(tmp_path: Path) -> None:
+    """`latest` is fixed, and PyPI's mcp-from-openapi (0.1.0) is another project."""
+    assert _FROMOPENAPI_115750 not in _ids(tmp_path, "package.json", '{"dependencies": {"mcp-from-openapi": "latest"}}')
+    assert _FROMOPENAPI_115750 not in _ids(tmp_path, "requirements.txt", "mcp-from-openapi==0.1.0\n")
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("requirements.txt", "langgraph-cli==0.4.14\n", False),   # no --password-stdin yet
+    ("requirements.txt", "langgraph-cli==0.4.15\n", True),
+    ("requirements.txt", "langgraph-cli==0.4.31\n", True),
+    ("requirements.txt", "langgraph-cli==0.4.32\n", False),   # docker login runs with verbose=False
+    ("requirements.txt", "langgraph-cli==0.4.38\n", False),   # latest on 2026-10-24
+    ("requirements.txt", "langgraph-cli\n", False),
+    ("requirements.txt", "langgraph-cli[inmem]>=0.4,<0.5\n", True),
+    ("pyproject.toml", '[dependency-groups]\ndev = ["langgraph-cli[inmem]==0.4.20"]\n', True),
+    ("package.json", '{"dependencies": {"@langchain/langgraph-cli": "1.5.5"}}', False),
+])
+def test_langgraph_cli_versions(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_LANGGRAPH_CLI in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("langgraph-checkpoint-postgres==3.1.1", True),   # fixed for CVE-2026-71433, not CVE-2026-115883
+    ("langgraph-checkpoint-postgres==3.1.2", True),
+    ("langgraph-checkpoint-postgres==3.1.3", False),
+    ("langgraph-checkpoint-postgres==3.2.0", False),
+    ("langgraph-checkpoint-sqlite==3.1.1", True),
+    ("langgraph-checkpoint-sqlite==3.1.2", False),
+])
+def test_langgraph_checkpoint_115883_floors(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_LANGGRAPH_CKPT in _ids(tmp_path, "requirements.txt", line + "\n")) is fires

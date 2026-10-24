@@ -16,6 +16,123 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-24 (v0.6.26): nine disclosures, five new pins, one floor raised, one out of scope
+
+The watcher opened nine `cve-response` issues between 17:07Z on 2026-10-23 and 04:36Z on
+2026-10-24 (#1083 to #1087, #1089 to #1092). Eight are in scope: five get new pins, each
+measured with the scanner on a firing fixture and a negative one, and one raises the
+floors of an existing rule. Every range below was read in the published artifacts, not
+only the advisory, before the pin was written. #1090 is out of scope. Four of the records
+carry only a CVSS 4.0 score, marked `(4.0)` below, and the bands the watcher filed match
+each rule's severity. NVD text is quoted from the API records, read on 2026-10-24.
+
+**Uni-CLI (CVE-2026-58497) gets `AAK-MCP-UNICLI-CVE-2026-58497-001`: `@zenalexa/unicli`
+from 0.208.0 below 0.225.2.** NVD: "Prior to version 0.225.2, Uni-CLI exposed the legacy
+JSON-RPC-over-HTTP MCP transport on loopback without validating browser Origin headers
+before routing requests." GHSA-v3f4-w7r7-v3hm names npm's `@zenalexa/unicli`, `< 0.225.2`.
+Checked in the npm tarballs: 0.207.1, the first release, has no HTTP transport at all;
+0.208.0 (2026-04-08) adds one, with no Origin check; it is split out into
+`dist/mcp/http-transport.js` at 0.213.3 and still has none at 0.225.1; 0.225.2 (d675c267,
+"validate Origin on legacy HTTP transport against DNS rebinding") routes every request
+through the shared `isOriginAllowed` guard. So the pin starts at 0.208.0. HIGH, from GitHub's
+8.6 (4.0). `latest` is 1.3.0, fixed, so a stated version is required. npm's `uni-cli` is
+another project.
+
+**obsidian-tc (CVE-2026-115477, CVE-2026-115478) gets
+`AAK-MCP-OBSIDIANTC-CVE-2026-115477-001`: `obsidian-tc` from 1.0.1 below 1.31.4, on npm and
+as `ghcr.io/the-40-thieves/obsidian-tc`.** NVD, CVE-2026-115477: "From 1.13.0 until
+1.31.4, on a Streamable HTTP deployment with `auth.jwtSecret` configured and a
+2026-07-28-era client declaring `elicitation.form` support, a dispatch-gated tool call
+offered an `inputRequired` confirmation could still complete after the human declined or
+cancelled". NVD, CVE-2026-115478: "From 1.0.1 until 1.31.4, `create_entity`,
+`link_entities`, `rename_entity`, `unlink_entities` and `delete_entity` regenerate memory
+notes from SQLite at the computed `memory/<type>/<name>.md` path without reliably
+preserving note ownership". GHSA-737x-cwfr-5vvc and GHSA-r3g7-r4hr-m258 give `>= 1.13.0,
+<= 1.31.3` and `>= 1.0.1, <= 1.31.3`, both patched in 1.31.4. Checked in the npm tarballs,
+whose bundle is minified, by the fixes' own strings: 1.31.3 carries neither "refusing to
+touch a note this entity does not own" (99f7914c) nor "The user declined this change"
+(101c91c6), and 1.31.4 carries both; the memory materializer is already in 1.0.1 and the
+`requestState` round trip in 1.13.0. The existing rule, `AAK-MCP-OBSIDIANTC-CVE-2026-77366-001`,
+is CRITICAL with a 1.3.1 floor, and 1.3.1 to 1.31.3 are affected here, so raising its floor
+would report those releases as the vault-binding flaw at the wrong severity: this is its
+own rule, HIGH from both records' 7.1 (4.0), with an npm row and an image row like the
+older one. It starts at 1.0.1, the first 1.x release, which CVE-2026-115478 reaches.
+`latest` is 1.33.1, fixed.
+
+**NetBox MCP Server (CVE-2026-57207) gets `AAK-MCP-NETBOX-CVE-2026-57207-001`: the image
+`netboxlabs/netbox-mcp-server` below 1.2.1.** NVD: "Prior to version 1.2.1, when running
+with TRANSPORT=http, the MCP server has no authentication on the HTTP endpoint." The server
+is on neither PyPI nor npm: its README runs `uv run netbox-mcp-server` from a checkout, or
+the Docker Hub image, tagged by release, so the image tag is the one artifact that states
+a version, and this is a row in `container_image_pins.py`. The fix, 17df4653 ("add
+optional bearer token authentication for HTTP transport"), is in v1.2.1 and not v1.2.0,
+and it is optional: `MCP_AUTH_TOKEN` unset, a 1.2.1 endpoint is still open, which the rule
+cannot see and its limitations say. Docker Hub carries 1.2.0, 1.2.1, the floating `1`,
+`1.2` and `latest` (all the 1.2.1 digest on 2026-10-24), `main` and `0.0.0-test`. MEDIUM,
+from GitHub's CVSS 3.1 5.9.
+
+**mcp-from-openapi (CVE-2026-115750, CVE-2026-115751) gets
+`AAK-MCP-FROMOPENAPI-CVE-2026-115750-001`: `mcp-from-openapi` from 2.2.0 below 2.9.0.**
+NVD, CVE-2026-115750: "mcp-from-openapi from 2.5.0 before 2.9.0 contains a credential
+exposure vulnerability that allows attackers to capture Authorization and Cookie headers
+because safeFetch() forwards them on cross-origin redirects." NVD, CVE-2026-115751: "from
+2.2.0 before 2.9.0 contains a server-side request forgery vulnerability that allows
+attackers to bypass the ssrf.blockedHosts denylist using trailing-dot hostnames."
+GHSA-ff5q-5r4v-fw4v gives `<= 2.8.0`, patched in 2.9.0. Checked in the npm tarballs:
+`blockedHosts` first ships in 2.2.0 (absent in 2.1.0), `safeFetch` in 2.5.0 (absent in
+2.4.0), and `normalizeHostname` in 2.9.0 (absent in 2.8.0; 47fb7a65, "keep spec
+credentials on their origin and normalize host lists"). The existing rule,
+`AAK-MCP-FROMOPENAPI-CVE-2026-59973-001`, is HIGH for an external-`$ref` SSRF fixed in
+2.5.0, so raising its floor would report 2.5.0 to 2.8.x as that SSRF: this is its own rule,
+LOW from VulnCheck's CVSS 3.1 3.7, NVD's Primary metric for both. `latest` is 2.9.1, fixed,
+and PyPI's `mcp-from-openapi` (0.1.0) is another project.
+
+**langgraph-checkpoint (CVE-2026-115883) raises the floors of
+`AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001`: postgres from 3.1.1 to 3.1.3, sqlite from
+3.1.1 to 3.1.2.** NVD: "Prior to langgraph-checkpoint-postgres 3.1.3 and
+langgraph-checkpoint-sqlite 3.1.2, PostgresStore, AsyncPostgresStore, SqliteStore, and
+AsyncSqliteStore flatten namespace labels with \".\".join(namespace), while BaseStore
+validates labels only for put and aput." GHSA-6hmw-9432-67qq gives `< 3.1.3` and `< 3.1.2`.
+Checked in the sdists: postgres 3.1.2 and sqlite 3.1.1 never call `validate_op_namespace`,
+and postgres 3.1.3 and sqlite 3.1.2 do (bfcfea55). It is the same flaw class as
+CVE-2026-71433 at the same severity, MEDIUM, from GitHub's 6.0 (4.0), so this one is a
+floor bump: the rule's one row splits into a row per package, since they are fixed at
+different releases, and a file declaring both below their floors now gets a finding for
+each.
+
+**LangGraph CLI (CVE-2026-115885) gets `AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001`:
+`langgraph-cli` from 0.4.15 below 0.4.32.** NVD: "From 0.4.15 until 0.4.32, langgraph deploy
+--verbose passes a temporary registry push token on standard input to docker login
+--password-stdin, but the CLI subprocess helper prints command input in verbose mode."
+GHSA-8prr-f582-jqq3 gives `>= 0.4.15, <= 0.4.31`, patched in 0.4.32. Checked in the
+sdists: 0.4.14 has no `--password-stdin`; 0.4.15 adds it; 0.4.31 runs that `docker login`
+with `verbose=verbose`, and `subp_exec` prints a command's input when verbose; 0.4.32 runs
+it with `verbose=False`. A deploy CLI is in scope here for the reason every pin is: it is
+a dependency a project declares, and the scanner reads the version it declares. MEDIUM,
+from GitHub's 4.1 (4.0). `latest` is 0.4.38, fixed, so a stated version is required. npm's
+LangGraph CLI is the scoped `@langchain/langgraph-cli`, another package.
+
+**AWS MCP Server (CVE-2026-115845, #1090) is out of scope.** NVD: "AWS fixed this issue
+service-side. No customer action is required." The AWS bulletin, 2026-149-AWS, gives
+"Impacted versions: N/A (managed service, exclusively hosted)": there is no package,
+image or version in a project file to read.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-58497 | 8.6 (4.0) | `@zenalexa/unicli` (npm) | **New pin** `AAK-MCP-UNICLI-CVE-2026-58497-001` (HIGH): 0.208.0 up to 0.225.2; a stated version required. | #1083 |
+| CVE-2026-115477 | 7.1 (4.0) | `obsidian-tc` (npm, GHCR) | **New pin** `AAK-MCP-OBSIDIANTC-CVE-2026-115477-001` (HIGH): 1.0.1 up to 1.31.4, this CVE from 1.13.0; a stated version required. | #1084 |
+| CVE-2026-115478 | 7.1 (4.0) | `obsidian-tc` (npm, GHCR) | The same new pin, from 1.0.1. | #1085 |
+| CVE-2026-57207 | 5.9 | `netboxlabs/netbox-mcp-server` (Docker Hub) | **New image pin** `AAK-MCP-NETBOX-CVE-2026-57207-001` (MEDIUM): tags below 1.2.1. | #1086 |
+| CVE-2026-115750 | 3.7 | `mcp-from-openapi` (npm) | **New pin** `AAK-MCP-FROMOPENAPI-CVE-2026-115750-001` (LOW): 2.2.0 up to 2.9.0, this CVE from 2.5.0; a stated version required. | #1087 |
+| CVE-2026-115751 | 3.7 | `mcp-from-openapi` (npm) | The same new pin, from 2.2.0. | #1089 |
+| CVE-2026-115883 | 6.0 (4.0) | `langgraph-checkpoint-postgres`, `langgraph-checkpoint-sqlite` (PyPI) | **Floors raised** on `AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001`: postgres 3.1.1 to 3.1.3, sqlite 3.1.1 to 3.1.2. | #1091 |
+| CVE-2026-115885 | 4.1 (4.0) | `langgraph-cli` (PyPI) | **New pin** `AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001` (MEDIUM): 0.4.15 up to 0.4.32; a stated version required. | #1092 |
+
+CVSS is the record's CVSS 3.1 score where it has one, and its CVSS 4.0 score, marked
+`(4.0)`, where that is the only metric.
+
+Dispositioned at 2026-10-24T11:06:45Z.
+
 ## 2026-10-23 (v0.6.26): one disclosure, one new pin
 
 The watcher opened one `cve-response` issue, #1081, at 21:35Z on 2026-10-22; it was

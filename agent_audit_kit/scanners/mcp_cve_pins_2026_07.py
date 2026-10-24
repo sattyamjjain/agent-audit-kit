@@ -42,7 +42,8 @@ available) before shipping:
   - @langchain/langgraph-checkpoint-mongodb >= 1.3.1 (CVE-2026-48121)
   - awslabs.documentdb-mcp-server   >= 1.0.12  (CVE-2026-18954)
   - frontmcp                        >= 1.5.7   (CVE-2026-67531)
-  - langgraph-checkpoint-postgres/sqlite >= 3.1.1 (CVE-2026-71433)
+  - langgraph-checkpoint-postgres >= 3.1.3, langgraph-checkpoint-sqlite >= 3.1.2
+    (CVE-2026-71433, CVE-2026-115883; one rule, a row per package)
   - meta-ads-mcp                    >= 1.0.109 (CVE-2026-48039)
   - verygoodplugins/whatsapp-mcp   >= 0.2.1   (CVE-2026-46555; read from a reference to
     the GitHub repository that names a release, `_REPO_PINS`. npm's and PyPI's
@@ -251,6 +252,20 @@ available) before shipping:
     so an internal user could have an administrator session minted and replay it.
     Its own CRITICAL rule above the 1.84.0 row; PyPI only, a stated version
     required; 1.104.0rc1 reads as 1.104.0, which is fixed)
+  - @zenalexa/unicli               0.208.0 <= v < 0.225.2  (CVE-2026-58497; the legacy
+    JSON-RPC-over-HTTP MCP transport took a web page's cross-origin POST to loopback
+    /mcp with no Origin check. 0.207.1 has no HTTP transport; a stated version is
+    required)
+  - obsidian-tc                    1.0.1 <= v < 1.31.4  (CVE-2026-115477, CVE-2026-115478;
+    a declined human-in-the-loop confirmation could still complete over HTTP, and the
+    memory tools overwrote notes they did not own. Its own HIGH rule beside the
+    CRITICAL 1.3.1 row, with an image row in container_image_pins)
+  - mcp-from-openapi               2.2.0 <= v < 2.9.0  (CVE-2026-115750, CVE-2026-115751;
+    spec fetches carried Authorization and Cookie across a cross-origin redirect, and
+    a trailing dot slipped past ssrf.blockedHosts. Its own LOW rule beside the 2.5.0
+    row)
+  - langgraph-cli                  0.4.15 <= v < 0.4.32  (CVE-2026-115885; `langgraph
+    deploy --verbose` printed the registry push token it hands to docker login)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -634,10 +649,20 @@ _PINS: tuple[_Pin, ...] = (
     # langgraph-checkpoint-postgres / -sqlite (PyPI) < 3.1.1: namespaces stored as a
     # dot-joined string and read by simple prefix match → a scoped read spills into a
     # sibling namespace, cross-tenant checkpoint leak (CVE-2026-71433). Fixed 3.1.1.
+    # Floors raised 2026-10-24 (#1091) for CVE-2026-115883, the same flattening: the
+    # stores join namespace labels with "." and validated labels only on put and
+    # aput, so a dotted label passed to get, search, delete or list_namespaces
+    # reached another tenant's namespace (CVSS 4.0 6.0, GHSA-6hmw-9432-67qq). Checked
+    # in the sdists: postgres 3.1.2 and sqlite 3.1.1 never call
+    # `validate_op_namespace`; postgres 3.1.3 and sqlite 3.1.2 do (bfcfea55). The two
+    # packages are fixed at different releases, so the row splits in two on the one
+    # rule, one name each.
     _Pin("AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001",
-         "langgraph-checkpoint-postgres/sqlite",
-         ("langgraph-checkpoint-postgres", "langgraph-checkpoint-sqlite"),
-         (3, 1, 1), fix_label="3.1.1"),
+         "langgraph-checkpoint-postgres", ("langgraph-checkpoint-postgres",),
+         (3, 1, 3), fix_label="3.1.3"),
+    _Pin("AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001",
+         "langgraph-checkpoint-sqlite", ("langgraph-checkpoint-sqlite",),
+         (3, 1, 2), fix_label="3.1.2"),
     # meta-ads-mcp (PyPI) < 1.0.109: AuthInjectionMiddleware forwards unauthenticated
     # requests without a 401, and a failed Graph API call serialises the request URL
     # (with the access_token) into the response → unauth tool invocation + token leak
@@ -1568,6 +1593,55 @@ _PINS: tuple[_Pin, ...] = (
          also=(((1, 101, 0), (1, 101, 3)), ((1, 102, 0), (1, 102, 2)),
                ((1, 103, 0), (1, 103, 1))),
          fix_label="1.100.4, 1.101.3, 1.102.2, 1.103.1 or 1.104.0 (affected from 1.87.0)",
+         requires_version=True, ecosystem="py"),
+    # --- 2026-10-24 (#1083 to #1092) ---
+    # Uni-CLI (npm `@zenalexa/unicli`) served its legacy JSON-RPC-over-HTTP MCP
+    # transport on loopback without checking a browser's Origin, so a web page's
+    # CORS-simple POST to the local /mcp endpoint reached the dispatcher and drove
+    # tools/call (CVE-2026-58497, CVSS 4.0 8.6, CWE-346/CWE-352,
+    # GHSA-v3f4-w7r7-v3hm). Checked in the npm tarballs: 0.207.1, the first release,
+    # has no HTTP transport; 0.208.0 adds one with no Origin check; 0.225.1 still has
+    # none; 0.225.2 (d675c267) routes every request through the shared
+    # `isOriginAllowed` guard. `latest` is 1.3.0, fixed, so a stated version is
+    # required. npm's `uni-cli` is another project.
+    _Pin("AAK-MCP-UNICLI-CVE-2026-58497-001", "@zenalexa/unicli", ("@zenalexa/unicli",),
+         (0, 225, 2), introduced=(0, 208, 0), fix_label="0.225.2 (affected from 0.208.0)",
+         requires_version=True, ecosystem="js"),
+    # obsidian-tc, two more flaws fixed in 1.31.4 (GHSA-737x-cwfr-5vvc,
+    # GHSA-r3g7-r4hr-m258, both CVSS 4.0 7.1). CVE-2026-115477, 1.13.0 to 1.31.3: on
+    # a Streamable HTTP deployment with auth.jwtSecret set, a dispatch-gated
+    # destructive call could still complete after the human declined the elicitation
+    # form, because an authentic call-bound requestState was taken as approval.
+    # CVE-2026-115478, 1.0.1 to 1.31.3: the memory tools rewrote a note at its computed
+    # path without checking who owned it. Checked in the npm tarballs: 1.31.3 carries
+    # neither fix, 1.31.4 both (101c91c6, 99f7914c). The CRITICAL row above is fixed at
+    # 1.3.1 and 1.3.1 to 1.31.3 are affected here, so a raised floor would report those
+    # releases as the vault-binding flaw: this is its own HIGH rule, from 1.0.1, the
+    # first 1.x release. `latest` is 1.33.1, fixed.
+    _Pin("AAK-MCP-OBSIDIANTC-CVE-2026-115477-001", "obsidian-tc", ("obsidian-tc",),
+         (1, 31, 4), introduced=(1, 0, 1), fix_label="1.31.4 (affected from 1.0.1)",
+         requires_version=True, ecosystem="js"),
+    # mcp-from-openapi: CVE-2026-115750 (2.5.0 to 2.8.x) carries the caller's
+    # Authorization and Cookie headers when safeFetch follows a cross-origin
+    # redirect, and CVE-2026-115751 (2.2.0 to 2.8.x) lets a trailing-dot hostname
+    # past ssrf.blockedHosts (CVSS 3.1 3.7 each, GHSA-ff5q-5r4v-fw4v). Checked in the
+    # tarballs: `blockedHosts` first ships in 2.2.0 and `safeFetch` in 2.5.0, and
+    # 2.9.0 (47fb7a65) adds `normalizeHostname` and keeps credentials on their origin.
+    # The 2.5.0 row above is HIGH for another SSRF, fixed in 2.5.0, so this is its own
+    # LOW rule rather than a raised floor. `latest` is 2.9.1, fixed. PyPI's
+    # mcp-from-openapi is another project.
+    _Pin("AAK-MCP-FROMOPENAPI-CVE-2026-115750-001", "mcp-from-openapi",
+         ("mcp-from-openapi",), (2, 9, 0), introduced=(2, 2, 0),
+         fix_label="2.9.0 (affected from 2.2.0)", requires_version=True, ecosystem="js"),
+    # LangGraph CLI from 0.4.15 printed the temporary registry push token that
+    # `langgraph deploy --verbose` hands to `docker login --password-stdin`, since its
+    # subprocess helper echoes a command's input in verbose mode (CVE-2026-115885,
+    # CVSS 4.0 4.1, CWE-532, GHSA-8prr-f582-jqq3). Checked in the sdists: 0.4.14 has
+    # no `--password-stdin`, 0.4.15 adds it; 0.4.31 runs that docker login with
+    # `verbose=verbose`, 0.4.32 with `verbose=False`. `latest` is 0.4.38, fixed. npm's
+    # LangGraph CLI is the scoped `@langchain/langgraph-cli`, another package.
+    _Pin("AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001", "langgraph-cli", ("langgraph-cli",),
+         (0, 4, 32), introduced=(0, 4, 15), fix_label="0.4.32 (affected from 0.4.15)",
          requires_version=True, ecosystem="py"),
 )
 

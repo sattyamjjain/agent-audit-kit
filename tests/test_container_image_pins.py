@@ -38,6 +38,10 @@ KORTIX = "AAK-MCP-KORTIX-CVE-2026-108115-001"
 UNLA = "AAK-MCP-UNLA-CVE-2026-108865-001"
 # CVE-2026-108756 (#976): Trinity's backend image through 0.9.5.
 TRINITY = "AAK-MCP-TRINITY-CVE-2026-108756-001"
+# CVE-2026-57207 (#1086): NetBox MCP Server's image below 1.2.1.
+NETBOX = "AAK-MCP-NETBOX-CVE-2026-57207-001"
+# CVE-2026-115477 and CVE-2026-115478 (#1084, #1085): obsidian-tc below 1.31.4.
+OBSIDIANTC_115477 = "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001"
 
 
 def _ids(root: Path) -> list[str]:
@@ -527,13 +531,17 @@ def test_nginx_ui_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
 
 def test_obsidian_tc_image_fixtures_positive_and_negative() -> None:
     """A client config that runs the GHCR image on 1.2.1, as the install docs run
-    it, fires on the image argument; the same config on 1.3.1 does not."""
+    it, fires on the image argument; the same config on 1.3.1 does not. Both tags are
+    below 1.31.4, so the second obsidian-tc rule (CVE-2026-115477 and CVE-2026-115478,
+    #1084, #1085) reads both, on the same line."""
     root = FIXTURES / "cve-2026-77366-obsidian-tc"
     findings = scan(root / "vulnerable")[0]
-    assert [(f.rule_id, f.file_path, f.line_number) for f in findings] == [
+    assert sorted((f.rule_id, f.file_path, f.line_number) for f in findings) == [
+        (OBSIDIANTC_115477, "claude_desktop_config.json", 9),
         (OBSIDIANTC, "claude_desktop_config.json", 9),
     ]
-    assert _ids(root / "negative") == []
+    assert OBSIDIANTC not in _ids(root / "negative")
+    assert OBSIDIANTC_115477 in _ids(root / "negative")
 
 
 @pytest.mark.parametrize(("ref", "fires"), [
@@ -994,3 +1002,66 @@ def test_chatchat_image_fixtures_positive_and_negative() -> None:
 def test_chatchat_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  chatchat:\n    image: {ref}\n")
     assert (CHATCHAT in ids) is fires
+
+
+# --- 2026-10-24: NetBox MCP Server (#1086), obsidian-tc's second image row ---------
+
+
+def test_netbox_pin_carries_its_cve_and_severity() -> None:
+    rows = [p for p in __import__("agent_audit_kit.scanners.container_image_pins", fromlist=["_PINS"])._PINS
+            if p.rule_id == NETBOX]
+    assert [(p.image, p.floor, p.cves, p.floating_affected) for p in rows] == [
+        ("netboxlabs/netbox-mcp-server", (1, 2, 1), ("CVE-2026-57207",), False),
+    ]
+    assert RULES[NETBOX].cve_references == ["CVE-2026-57207"]
+    assert RULES[NETBOX].severity.value == "medium"
+
+
+def test_netbox_fixtures_positive_and_negative() -> None:
+    """1.2.0 is the one release pushed as an image before the fix; 1.2.1 adds the
+    optional bearer token, which the negative fixture sets."""
+    root = FIXTURES / "cve-2026-57207-netbox-mcp-server"
+    assert [(f.rule_id, f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]] == [
+        (NETBOX, "compose.yaml", 3),
+    ]
+    assert _ids(root / "negative") == []
+    assert NETBOX in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("1.2.0", True),
+    ("0.0.0-test", True),   # a version tag, read as 0.0.0
+    ("1.2.1", False),
+    ("1.2", False),         # floats to 1.2.1, fixed
+    ("1", False),           # not a version tag
+    ("latest", False),      # the 1.2.1 digest on 2026-10-24
+    ("main", False),
+])
+def test_netbox_tag_reading(tmp_path: Path, tag: str, fires: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  n:\n    image: netboxlabs/netbox-mcp-server:{tag}\n")
+    assert (NETBOX in ids) is fires
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("Dockerfile", "FROM netboxlabs/netbox-mcp-server:1.2.0\n", True),
+    (".mcp.json", '{"mcpServers": {"netbox": {"command": "docker", "args": ["run", "-i", "--rm", '
+                  '"netboxlabs/netbox-mcp-server:1.2.0"]}}}', True),
+    ("compose.yaml", "services:\n  n:\n    image: docker.io/netboxlabs/netbox-mcp-server:1.2.0\n", False),
+])
+def test_netbox_reference_forms(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    """The Docker Hub image is matched by the bare name its README uses, as for every
+    Docker Hub pin, so the `docker.io/` spelling is not read (stated on the rule)."""
+    assert (NETBOX in _write(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("1.2.1", True), ("1.31.3", True), ("1.31.4", False), ("1.33.1", False), ("latest", False),
+])
+def test_obsidian_tc_115477_image_row(tmp_path: Path, tag: str, fires: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  o:\n    image: ghcr.io/the-40-thieves/obsidian-tc:{tag}\n")
+    assert (OBSIDIANTC_115477 in ids) is fires
+    rows = [p for p in __import__("agent_audit_kit.scanners.container_image_pins", fromlist=["_PINS"])._PINS
+            if p.rule_id == OBSIDIANTC_115477]
+    assert [(p.image, p.floor) for p in rows] == [("ghcr.io/the-40-thieves/obsidian-tc", (1, 31, 4))]
+    assert rows[0].cves == tuple(RULES[OBSIDIANTC_115477].cve_references)
+
