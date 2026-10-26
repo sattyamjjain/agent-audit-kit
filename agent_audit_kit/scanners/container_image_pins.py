@@ -30,7 +30,11 @@ author. Apache Answer is a Go server too, whose README runs the Docker Hub image
 `apache/answer`, tagged by release; npm's `answer-ui` and PyPI's `answer` are
 other projects. NetBox MCP Server is on neither registry either: its README runs
 `uv run netbox-mcp-server` from a checkout, or the Docker Hub image
-`netboxlabs/netbox-mcp-server`, tagged by release from 1.2.0.
+`netboxlabs/netbox-mcp-server`, tagged by release from 1.2.0. SiYuan, a notes
+app whose kernel serves MCP, ships as desktop installers and the Docker Hub image
+`b3log/siyuan`, tagged `vX.Y.Z` by release; npm's `siyuan` is its plugin API
+typings and PyPI's a third-party client, so the image tag is the one place a
+deployment states its release.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -458,6 +462,19 @@ _PINS: tuple[_ImagePin, ...] = (
         (1, 2, 1), "below 1.2.1",
         "Fixed in 1.2.1, which adds an optional bearer token: set MCP_AUTH_TOKEN.",
         ("CVE-2026-57207",),
+    ),
+    # CVE-2026-116168 (#1096): the MCP asset tool's `upload` copies a local file into
+    # the workspace, where `/assets/` serves it back. It arrived in v3.7.0-rc.1
+    # (`kernel/mcp/tools/asset.go` is absent through v3.6.5); v3.8.1 added a
+    # sensitive-path blacklist that leaves out `.env`, and 9ffcc734 adds it, in
+    # v3.8.7 and not v3.8.6. Docker Hub tags releases `vX.Y.Z`; every pre-release tag
+    # that reads as 3.8.7 or later was pushed after the fix (the first,
+    # v3.8.8-alpha.4, on 2026-10-17), and `latest` was the v3.8.8 digest on
+    # 2026-10-26.
+    _ImagePin(
+        "AAK-MCP-SIYUAN-CVE-2026-116168-001", "SiYuan", "b3log/siyuan",
+        (3, 8, 7), "from 3.7.0 below 3.8.7", "Fixed in 3.8.7.",
+        ("CVE-2026-116168",), introduced=(3, 7, 0),
     ),
 )
 

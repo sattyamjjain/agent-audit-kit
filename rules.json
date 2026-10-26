@@ -7979,6 +7979,38 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-06"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-17",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-116168"
+      ],
+      "description": "SiYuan (siyuan-note/siyuan), a self-hosted notes app, serves MCP from its own kernel, and the Docker Hub image `b3log/siyuan` is how it runs on a server. Its `asset` MCP tool has an `upload` action that copies local files into the workspace, and the kernel serves workspace assets back over HTTP at `/assets/`. The action shipped in 3.7.0 reading any absolute path (GHSA-p23f-cm6q-2qp8, fixed in 3.8.1), and 3.8.1 checks paths against a sensitive-path list that leaves out `.env` and other secret files, so through 3.8.6 a client holding an API token could have a `.env` from the server user's home copied into the workspace and read it back (CVE-2026-116168, CVSS 3.1 6.2, CWE-22, GHSA-q768-4j87-gf3w). 3.8.7 adds `.env`, matched as a prefix so `.env.local` too, macOS `Library` and Windows `AppData` to the list.",
+      "incident_references": [],
+      "limitations": "Reads image references only: an `image:` value or any other mention of `b3log/siyuan:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. Tags from v3.7.0 below v3.8.7 are reported, pre-release tags included (v3.7.0-rc.1 reads as 3.7.0); tags below v3.7.0 predate the MCP asset tool and are not. Every pre-release tag that reads as 3.8.7 or later was pushed after the fix, and `latest` was the v3.8.8 image on 2026-10-26, so an untagged reference is not reported. The rule reads the tag, not whether any MCP client holds a token for the kernel, so a container no agent talks to is reported too. A desktop install, or a kernel built from source, states no version AAK reads, and npm's and PyPI's `siyuan` are other projects. `docker.io/b3log/siyuan` and mirrors under another registry are not matched, and commented-out lines are skipped.",
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP01:2025",
+        "MCP04:2025"
+      ],
+      "remediation": "Run `b3log/siyuan` v3.8.7 or later, pinned by version. 3.8.7 still checks names against a list, so keep credential files out of the home directory of the user SiYuan runs as, and give MCP clients a token only on a workspace they may read in full.",
+      "rule_id": "AAK-MCP-SIYUAN-CVE-2026-116168-001",
+      "sarif_name": "SiyuanMcpAssetUploadSecretFileRead",
+      "severity": "medium",
+      "title": "SiYuan image from 3.7.0 below 3.8.7: the MCP asset tool copies .env files into the workspace, where /assets/ serves them back"
+    },
+    {
+      "adversa_references": [
         "ADV-SSRF-01"
       ],
       "aicm_references": [

@@ -42,6 +42,8 @@ TRINITY = "AAK-MCP-TRINITY-CVE-2026-108756-001"
 NETBOX = "AAK-MCP-NETBOX-CVE-2026-57207-001"
 # CVE-2026-115477 and CVE-2026-115478 (#1084, #1085): obsidian-tc below 1.31.4.
 OBSIDIANTC_115477 = "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001"
+# CVE-2026-116168 (#1096): SiYuan's image from v3.7.0 below v3.8.7.
+SIYUAN = "AAK-MCP-SIYUAN-CVE-2026-116168-001"
 
 
 def _ids(root: Path) -> list[str]:
@@ -1065,3 +1067,66 @@ def test_obsidian_tc_115477_image_row(tmp_path: Path, tag: str, fires: bool) -> 
     assert [(p.image, p.floor) for p in rows] == [("ghcr.io/the-40-thieves/obsidian-tc", (1, 31, 4))]
     assert rows[0].cves == tuple(RULES[OBSIDIANTC_115477].cve_references)
 
+
+
+# --- 2026-10-26: SiYuan (#1096) ----------------------------------------------------
+
+
+def test_siyuan_pin_carries_its_cve_and_severity() -> None:
+    rows = [p for p in __import__("agent_audit_kit.scanners.container_image_pins", fromlist=["_PINS"])._PINS
+            if p.rule_id == SIYUAN]
+    assert [(p.image, p.introduced, p.floor, p.cves, p.floating_affected) for p in rows] == [
+        ("b3log/siyuan", (3, 7, 0), (3, 8, 7), ("CVE-2026-116168",), False),
+    ]
+    assert RULES[SIYUAN].cve_references == ["CVE-2026-116168"]
+    assert RULES[SIYUAN].severity.value == "medium"
+
+
+def test_siyuan_fixtures_positive_and_negative() -> None:
+    """v3.8.6 is the last image whose sensitive-path list leaves out `.env`; v3.8.7
+    adds it (9ffcc734)."""
+    root = FIXTURES / "cve-2026-116168-siyuan"
+    assert [(f.rule_id, f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]] == [
+        (SIYUAN, "compose.yaml", 3),
+    ]
+    assert _ids(root / "negative") == []
+    assert SIYUAN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("v3.8.6", True),
+    ("v3.8.1", True),          # the list arrives, without `.env`
+    ("v3.7.0", True),          # the asset tool's first release, reading any path
+    ("v3.7.0-rc.1", True),     # the first tag carrying kernel/mcp, read as 3.7.0
+    ("3.8.6", True),           # the same release without the `v`
+    ("v3.6.5", False),         # no MCP in the kernel yet
+    ("v3.8.7", False),
+    ("v3.8.8", False),
+    ("v3.8.8-alpha.4", False), # pushed 2026-10-17, after the fix
+    ("latest", False),         # the v3.8.8 digest on 2026-10-26
+])
+def test_siyuan_tag_reading(tmp_path: Path, tag: str, fires: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  s:\n    image: b3log/siyuan:{tag}\n")
+    assert (SIYUAN in ids) is fires
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("compose.yaml", "services:\n  s:\n    image: b3log/siyuan\n", False),
+    ("Dockerfile", "FROM b3log/siyuan:v3.8.6\n", True),
+    (".mcp.json", '{"mcpServers": {"siyuan": {"command": "docker", "args": ["run", "--rm", '
+                  '"b3log/siyuan:v3.8.6", "serve"]}}}', True),
+    ("compose.yaml", "services:\n  s:\n    image: docker.io/b3log/siyuan:v3.8.6\n", False),
+    ("compose.yaml", "services:\n  s:\n    # image: b3log/siyuan:v3.8.6\n    image: b3log/siyuan:v3.8.7\n", False),
+])
+def test_siyuan_reference_forms(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    """The bare Docker Hub name the README uses is matched; `docker.io/`, an untagged
+    reference and a commented-out line are not read (stated on the rule)."""
+    assert (SIYUAN in _write(tmp_path, name, content)) is fires
+
+
+def test_siyuan_package_names_stay_quiet(tmp_path: Path) -> None:
+    """npm's `siyuan` (plugin API typings) and PyPI's (a third-party client) are other
+    projects, the 2026-08-24 boundary; only the image is read."""
+    (tmp_path / "package.json").write_text('{"dependencies": {"siyuan": "1.2.7"}}', encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("siyuan==0.1.2\n", encoding="utf-8")
+    assert SIYUAN not in {f.rule_id for f in run_scan(tmp_path).findings}
