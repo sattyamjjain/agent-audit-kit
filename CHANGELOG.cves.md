@@ -16,6 +16,83 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-26 (v0.6.26): three disclosures, one new image pin, two deferred
+
+The watcher opened three `cve-response` issues between 11:30Z on 2026-10-25 and 04:47Z on
+2026-10-26 (#1094, #1096, #1097). One gets a new image pin, measured with the scanner on a
+firing fixture and a negative one, after its range was read in the published images and in
+the source at each tag. Two have no fixed release on any registry the scanner reads, so they
+stay open with `cve-deferred` and a date. NVD text is quoted from the API records, read on
+2026-10-26.
+
+### CVE-2026-116168 (#1096): new image pin 2026-10-26
+
+**SiYuan gets `AAK-MCP-SIYUAN-CVE-2026-116168-001`: the image `b3log/siyuan` from v3.7.0
+below v3.8.7.** NVD: "SiYuan before 3.8.7 contains a path traversal vulnerability in the MCP
+asset tool because validateAssetUploadPaths relies on an incomplete sensitive-path blacklist
+that omits .env and other secret files. Authenticated attackers driving the MCP asset upload
+action can copy such local files into the workspace and read them back via /assets/ over
+HTTP." GHSA-q768-4j87-gf3w gives the Go package `siyuan-note` at `<= 3.8.6`, patched in
+v3.8.7, as an incomplete fix of GHSA-p23f-cm6q-2qp8, under which the asset tool's `upload`
+read any absolute path through v3.8.0. Checked in the source at each tag: `kernel/mcp` is
+absent through v3.6.5, and `kernel/mcp/tools/asset.go` ships with its `upload` action from
+v3.7.0-rc.1; `validateAssetUploadPaths` arrives in v3.8.1; `kernel/util/path.go` has no
+`.env` entry at v3.8.6 and has one at v3.8.7 (9ffcc734, "Reject dotenv configs and platform
+app data in sensitive path checks", 2026-10-09). So the pin starts at 3.7.0. Earlier SiYuan
+records, from CVE-2026-66012 (#499) to CVE-2026-85580 (#694), were closed as out of scope
+because no scanned file stated SiYuan's version. Since the 2026-10-03 (v0.6.14) image-tag
+entry that holds only for the desktop app: the README's server deployment is the Docker Hub
+image `b3log/siyuan`, tagged `vX.Y.Z` by release, and the advisory's lab ran v3.8.6 from it.
+Those records are all fixed by v3.8.2, below this floor, and are not re-dispositioned here.
+npm's `siyuan` (the plugin API typings) and PyPI's (a third-party client) are still other
+projects, and nothing keys on them. Docker Hub carries v3.8.6 (2026-09-29), v3.8.7
+(2026-10-15) and `latest`, the v3.8.8 digest on 2026-10-26; every pre-release tag that reads
+as 3.8.7 or later was pushed after the fix, so an untagged reference and those alpha and beta
+tags are not reported. MEDIUM, from VulnCheck's CVSS 3.1 6.2.
+
+### CVE-2026-116045 (#1094): deferred 2026-10-26 (target 2026-11-09), only a commit
+
+NVD: "A vulnerability was detected in 1999AZZAR designer-mcp up to 2.1.0. This affects the
+function get_reference of the file skills/motion-designer/references/motion-dev-guidelines.md
+of the component MCP Interface. The manipulation of the argument Name results in path
+traversal." And: "Therefore, version details for affected and updated releases are not
+available. The patch is identified as c8c2951dcbed9b1710a745993f028317f10a3f10." Checked in
+the repository: it has no tags and no releases, and its `package.json` names the package
+`the-designer-mcp` at 2.2.0 both before and after the fix (bumped to 2.2.0 at ce8f5919 hours
+earlier the same day), so not even the version number separates vulnerable code from fixed.
+Neither `designer-mcp` nor `the-designer-mcp` is on npm or PyPI. The fix, c8c2951
+(2026-09-29), sends `get_reference` and `get_ellis_ui_template` through a `resolveWithinRoot()`
+containment check. With no release there is no floor to pin and no name a project declares.
+Deferred to 2026-11-09 to re-check: a release on npm or PyPI that carries c8c2951 makes it a
+pin on that name. #1094 stays open with `cve-deferred`.
+
+### CVE-2026-116109 (#1097): deferred 2026-10-26 (target 2026-11-09), no vendor fix
+
+NVD: "A vulnerability has been found in continuedev Continue 2.0.0. This vulnerability affects
+the function MCPManagerSingleton.setConnections of the file core/config/ConfigHandler.ts of
+the component MCP Server Transport. Such manipulation leads to os command injection." And:
+"The vendor was contacted early about this disclosure but did not respond in any way."
+Continue 2.0.0 is the VS Code extension's newest stable release, `v2.0.0-vscode`
+(2026-06-19), beside the `v2.1.0-vscode` pre-release. At that tag `setConnections` is defined
+in `core/context/mcp/MCPManagerSingleton.ts`; `core/config/ConfigHandler.ts` last changed on
+2026-06-06, and the repository has published no security advisory. npm's `@continuedev/cli`
+(1.5.47, the newest) carries neither `MCPManagerSingleton` nor `setConnections`, so the flaw
+is in the IDE extensions, whose version no project file states. VulDB's pages, NVD's only
+references, answer 403 to an automated read, so nothing past NVD's text has been read about
+the vector. Deferred to 2026-11-09 to re-check: a vendor fix decides between a pin, if it
+ships in an artifact a project declares, and out of scope; and if a write-up shows a
+repository's own Continue config starting the servers, the ZCode response (2026-10-16), a
+rule on that config, applies. #1097 stays open with `cve-deferred`.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-116168 | 6.2 | `b3log/siyuan` (Docker Hub) | **New image pin** `AAK-MCP-SIYUAN-CVE-2026-116168-001` (MEDIUM): tags from v3.7.0 below v3.8.7. | #1096 |
+
+CVE-2026-116045 and CVE-2026-116109 have no row: a row is a coverage claim, and neither has
+coverage. CVSS is the record's CVSS 3.1 score.
+
+Dispositioned at 2026-10-26T16:55:57Z.
+
 ## 2026-10-24 (v0.6.26): nine disclosures, five new pins, one floor raised, one out of scope
 
 The watcher opened nine `cve-response` issues between 17:07Z on 2026-10-23 and 04:36Z on
