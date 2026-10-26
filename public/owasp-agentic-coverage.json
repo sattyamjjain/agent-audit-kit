@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-24T11:07:05Z",
+  "last_updated": "2026-10-26T16:56:49Z",
   "aak_version": "0.6.25",
-  "rule_count": 421,
+  "rule_count": 422,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 102,
+      "rule_density": 103,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -864,6 +864,18 @@
           ],
           "aicm_references": [
             "AIS-08",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SIYUAN-CVE-2026-116168-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-116168"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-17",
             "STA-08"
           ]
         },
@@ -2345,7 +2357,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 208,
+      "rule_density": 209,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4155,6 +4167,18 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SIYUAN-CVE-2026-116168-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-116168"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-17",
             "STA-08"
           ]
         },
