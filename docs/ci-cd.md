@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.6.25
+      - uses: sattyamjjain/agent-audit-kit@v0.6.26
         with:
           severity: low
           fail-on: high
@@ -22,7 +22,7 @@ jobs:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.6.25
+    rev: v0.6.26
     hooks:
       - id: agent-audit-kit
         # Stricter: fail on MEDIUM and above. This replaces the hook's default
