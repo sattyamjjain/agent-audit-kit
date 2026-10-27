@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-TOOLBOX-CVE-2026-93328-001` (CRITICAL): `@toolbox-sdk/server`, the npm launcher for Google MCP Toolbox for Databases, from 1.2.0 below 1.5.0 (CVE-2026-93328, #1100). The Cloud Storage tools took any bucket and any absolute local path from the tool call, so anyone who could invoke them could send host files to a bucket outside the project or overwrite local files. 1.5.0 adds `allowedBuckets` and `allowedLocalRoots`, which still allow everything when omitted, so the fix advice names 1.10.0 and setting both. It is its own rule beside the HIGH CVE-2026-102242 one, whose symlink flaw presumes the roots 1.5.0 adds, and `latest` is fixed, so only a stated version is reported.
+- `AAK-MCP-CLOUDRUN-CVE-2026-85297-001` (HIGH): `@google-cloud/cloud-run-mcp`, Google's Cloud Run MCP server, below 1.11.0, and the unscoped `cloud-run-mcp`, the same 1.0.0 build under its first name (CVE-2026-85297, #1101). Source deploys were staged in a bucket named `<project id>-source-bucket` without checking that the project owns it, and bucket names are global, so a bucket created first under that name elsewhere received the source. `latest` is fixed, so only a stated version of the scoped package is reported; the unscoped name has no other release, so any reference to it is.
+
+### Changed
+
+- `AAK-MCP-TOOLBOX-CVE-2026-102242-001` no longer tells a server below 1.5.0 to keep symlinks out of the Cloud Storage tools' directories (#1100). Below 1.5.0 there is no `allowedLocalRoots` and the tools take any absolute path, so that stopgap protected nothing; it now applies to 1.5.0 to 1.9.x and points older releases at the upgrade and at the CVE-2026-93328 rule.
+
 ## [0.6.26] - 2026-10-26
 
 ### Added
