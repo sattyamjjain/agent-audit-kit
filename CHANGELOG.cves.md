@@ -16,6 +16,77 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-27 (v0.6.27): two disclosures, two new pins
+
+The watcher opened two `cve-response` issues at 22:40Z on 2026-10-26 (#1100, #1101), both
+for Google MCP servers. Both get new pins, each measured with the scanner on a firing fixture
+and a negative one, after its range was read in the published artifacts and in the source at
+each tag. NVD text is quoted from the API records, read on 2026-10-27. Both records carry only
+a CVSS 4.0 score, from the CNA.
+
+### CVE-2026-93328 (#1100): new pin 2026-10-27
+
+**Google MCP Toolbox for Databases gets `AAK-MCP-TOOLBOX-CVE-2026-93328-001`:
+`@toolbox-sdk/server` from 1.2.0 below 1.5.0, CRITICAL.** NVD: "Path Traversal and Missing
+Authorization in cloud-storage source in Google Cloud MCP Toolbox for Databases
+(googleapis/mcp-toolbox) versions 1.2.0 through 1.4.0 allows an unauthenticated remote
+attacker to exfiltrate host files to external Google Cloud Storage buckets and overwrite
+arbitrary local files via crafted tool invocation parameters." The record's affected data is
+1.2.0 up to 1.5.0, and its only reference is googleapis/mcp-toolbox#3454, "restrict bucket and
+local path access" (2c3ca5d2, merged 2026-06-18), whose description reads "Defaults to allow
+all." Checked at the tags: v1.1.0 has no cloud-storage source; v1.2.0 adds it, and its
+`upload_object` and `download_object` tools pass the local path through `ValidateLocalPath`,
+which asks only for an absolute path with no `..` segment, and check the bucket not at all;
+the source file is byte-identical at v1.4.0. #3454 is in v1.5.0 and not in v1.4.0, and adds
+`allowedBuckets` and `allowedLocalRoots`. Both still allow everything when omitted, at v1.5.0,
+v1.10.0 and v1.15.0, the newest, and the source's docs say so ("If omitted, all buckets are
+allowed."). npm carries `@toolbox-sdk/server` 1.2.0, 1.3.0, 1.4.0 and 1.5.0 (2026-06-18), each
+pulling the platform binaries of its own version, so the launcher's number is the server's.
+
+Why not "already covered": `AAK-MCP-TOOLBOX-CVE-2026-102242-001` fires on 1.2.0 up to 1.10.0,
+which holds this whole range, and 1.10.0 is above this fix. But its message would tell a 1.4.x
+user three things that are false at 1.4.x: that the path checks hold until a symlink leads out
+of an allowed root, when below 1.5.0 there are no roots and any absolute path is accepted; that
+keeping symlinks out of the tools' directories helps meanwhile, which protects nothing when the
+tools may use every directory; and, through its HIGH severity, that the worst flaw in the range
+needs an authenticated caller, where this record is CRITICAL 9.3 and requires no privileges.
+So this is its own CRITICAL rule beside the HIGH one, a stated version required (`latest` is
+1.15.0), and its fix advice names 1.10.0 and setting both options, since upgrading alone leaves
+them open. The 102242 rule keeps its range, severity and CVE; its stopgap now applies to 1.5.0
+to 1.9.x and sends older releases to the upgrade.
+
+### CVE-2026-85297 (#1101): new pin 2026-10-27
+
+**Cloud Run MCP gets `AAK-MCP-CLOUDRUN-CVE-2026-85297-001`: `@google-cloud/cloud-run-mcp`
+below 1.11.0, HIGH.** NVD: "Bucket Squatting in Google Cloud Run MCP versions prior to 1.11.0
+on Google Cloud Platform allows an attacker to intercept and access proprietary source code,
+execute arbitrary code and exfiltrate data." And: "Users must upgrade to Cloud Run MCP version
+1.11.0 or later." The record's only reference is the v1.11.0 release, whose notes list
+GoogleCloudPlatform/cloud-run-mcp#300, "fix: check bucket ownership" (0c707803, merged
+2026-08-06); it is in v1.11.0 and not in v1.10.0. Checked in every npm tarball: 1.0.0, the
+first release (2025-08-12), through 1.10.0 stage a source deploy in a bucket named
+`${projectId}-source-bucket` and only ask whether it exists before uploading to it; 1.11.0
+(2026-09-28) compares the bucket's project number with the deploying project's and otherwise
+falls back to a randomized name. So the pin has no lower bound. The README registers the server
+as `npx -y @google-cloud/cloud-run-mcp`, which now installs 1.11.0, so a stated version is
+required. npm also carries an unscoped `cloud-run-mcp`, a single 1.0.0 published the same day by
+Google's release bot, whose `lib/` and server entry point are identical to the scoped 1.0.0: the
+rule takes it as a second row and reports it unversioned too, since nothing newer exists under
+that name. Not read: Docker's MCP catalog image `mcp/cloud-run-mcp`, tagged only `latest` (last
+pushed 2026-06-29, before the fix, so affected when this was written), the remote-server image
+`us-docker.pkg.dev/cloudrun/container/mcp`, which carries no version tag, and the Gemini CLI
+extension, installed from the repository; none states a version AAK reads. PyPI has no
+`cloud-run-mcp`.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-93328 | 9.3 (4.0) | `@toolbox-sdk/server` (npm) | **New pin** `AAK-MCP-TOOLBOX-CVE-2026-93328-001` (CRITICAL): 1.2.0 up to 1.5.0. The stopgap in `AAK-MCP-TOOLBOX-CVE-2026-102242-001` now applies from 1.5.0. | #1100 |
+| CVE-2026-85297 | 7.7 (4.0) | `@google-cloud/cloud-run-mcp` and the unscoped `cloud-run-mcp` (npm) | **New pin** `AAK-MCP-CLOUDRUN-CVE-2026-85297-001` (HIGH): below 1.11.0. | #1101 |
+
+CVSS is each record's CVSS 4.0 score; neither carries a 3.1 score.
+
+Dispositioned at 2026-10-27T17:50:40Z.
+
 ## 2026-10-26 (v0.6.26): three disclosures, one new image pin, two deferred
 
 The watcher opened three `cve-response` issues between 11:30Z on 2026-10-25 and 04:47Z on

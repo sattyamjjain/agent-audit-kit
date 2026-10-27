@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-26T17:14:03Z",
+  "last_updated": "2026-10-27T17:51:58Z",
   "aak_version": "0.6.26",
-  "rule_count": 422,
+  "rule_count": 424,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 103,
+      "rule_density": 104,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -925,6 +925,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-TOOLBOX-CVE-2026-93328-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-93328"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
           "severity": "high",
           "cve_references": [
@@ -1199,7 +1211,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 112,
+      "rule_density": 113,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -2041,6 +2053,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-TOOLBOX-CVE-2026-93328-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-93328"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TRANSPORT-SESSION-UNAUTH-001",
           "severity": "critical",
           "cve_references": [
@@ -2357,7 +2381,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 209,
+      "rule_density": 211,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2965,6 +2989,17 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CLOUDRUN-CVE-2026-85297-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-85297"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },
@@ -4241,6 +4276,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-TOOLBOX-CVE-2026-93328-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-93328"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001",
           "severity": "critical",
           "cve_references": [
@@ -4642,7 +4689,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 95,
+      "rule_density": 96,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5056,6 +5103,17 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CLOUDRUN-CVE-2026-85297-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-85297"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },

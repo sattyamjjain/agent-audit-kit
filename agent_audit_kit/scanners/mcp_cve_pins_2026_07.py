@@ -266,6 +266,17 @@ available) before shipping:
     row)
   - langgraph-cli                  0.4.15 <= v < 0.4.32  (CVE-2026-115885; `langgraph
     deploy --verbose` printed the registry push token it hands to docker login)
+  - @toolbox-sdk/server            1.2.0 <= v < 1.5.0  (CVE-2026-93328; Google MCP
+    Toolbox's Cloud Storage tools took any bucket and any absolute local path, so a
+    caller could send a host file to an outside bucket or write over a local one.
+    Its own CRITICAL rule beside the HIGH 1.10.0 row; 1.5.0 adds allowedBuckets and
+    allowedLocalRoots, which allow everything when omitted. A stated version is
+    required)
+  - @google-cloud/cloud-run-mcp    < 1.11.0  (CVE-2026-85297; source deploys were
+    staged in `<project id>-source-bucket` without checking that the project owns
+    it, so a bucket made first under that global name received the source. A stated
+    version is required. The unscoped `cloud-run-mcp` is the same 1.0.0 build, its
+    only release, and is reported unversioned too)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1268,6 +1279,8 @@ _PINS: tuple[_Pin, ...] = (
     # googleapis/mcp-toolbox#3810 (`ResolveSymlinks`), is in v1.10.0 and not v1.9.0.
     # The server is a Go binary, but the docs register it with an MCP client as
     # the npm `@toolbox-sdk/server`, which runs the binary of its own version.
+    # Below 1.5.0 there are no roots to escape and the tools take any absolute
+    # path: that is CVE-2026-93328, its own CRITICAL row below.
     _Pin("AAK-MCP-TOOLBOX-CVE-2026-102242-001", "@toolbox-sdk/server",
          ("@toolbox-sdk/server",), (1, 10, 0), introduced=(1, 2, 0),
          fix_label="1.10.0 (affected 1.2.0–1.9.0)",
@@ -1643,6 +1656,41 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001", "langgraph-cli", ("langgraph-cli",),
          (0, 4, 32), introduced=(0, 4, 15), fix_label="0.4.32 (affected from 0.4.15)",
          requires_version=True, ecosystem="py"),
+    # --- 2026-10-27 (#1100, #1101) ---
+    # Google MCP Toolbox's Cloud Storage tools took any bucket and any absolute local
+    # path before 1.5.0, so a caller could send a host file to a bucket outside the
+    # project or write over a local file (CVE-2026-93328, CVSS 4.0 9.3, CWE-22/
+    # CWE-862). The cloud-storage source arrives in v1.2.0 (v1.1.0 has none), and
+    # `ValidateLocalPath` asks only for an absolute path with no `..` segment. The
+    # fix, googleapis/mcp-toolbox#3454 (2c3ca5d2), is in v1.5.0 and not v1.4.0, and
+    # adds `allowedBuckets` and `allowedLocalRoots`, which still allow everything
+    # when omitted (through 1.15.0). Its own CRITICAL rule beside the HIGH 102242 row
+    # above, whose symlink flaw presumes the roots 1.5.0 adds. `latest` is 1.15.0, so
+    # a stated version is required.
+    _Pin("AAK-MCP-TOOLBOX-CVE-2026-93328-001", "@toolbox-sdk/server",
+         ("@toolbox-sdk/server",), (1, 5, 0), introduced=(1, 2, 0),
+         fix_label="1.5.0 (affected 1.2.0 to 1.4.0), once allowedBuckets and "
+                   "allowedLocalRoots are set, since either allows everything when omitted",
+         requires_version=True, ecosystem="js"),
+    # Cloud Run MCP stages a source deploy in a bucket named `<project id>-source-bucket`
+    # and, before 1.11.0, used an existing bucket of that name without asking which
+    # project owns it. Bucket names are global, so a bucket made first in another
+    # project received the source, and its owner could read it or change it before
+    # the build (CVE-2026-85297, CVSS 4.0 7.7, CWE-340). Checked in the npm tarballs:
+    # 1.0.0, the first release, to 1.10.0 name the bucket so and only ask whether it
+    # exists; 1.11.0 (GoogleCloudPlatform/cloud-run-mcp#300, 0c707803) compares the
+    # bucket's project number with the project's and otherwise falls back to a
+    # randomized name. `latest` is 1.11.0, so a stated version is required. The
+    # unscoped `cloud-run-mcp` is the same 1.0.0 build, published by Google under the
+    # project's first name and never updated, so its row reports an unversioned
+    # reference too.
+    _Pin("AAK-MCP-CLOUDRUN-CVE-2026-85297-001", "@google-cloud/cloud-run-mcp",
+         ("@google-cloud/cloud-run-mcp",), (1, 11, 0), fix_label="1.11.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CLOUDRUN-CVE-2026-85297-001", "cloud-run-mcp", ("cloud-run-mcp",),
+         (1, 11, 0),
+         fix_label="@google-cloud/cloud-run-mcp 1.11.0 (the unscoped name has only 1.0.0)",
+         ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

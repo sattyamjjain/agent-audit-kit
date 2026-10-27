@@ -159,6 +159,9 @@ PINS = {
     "AAK-MCP-OBSIDIANTC-CVE-2026-115477-001": "high",
     "AAK-MCP-FROMOPENAPI-CVE-2026-115750-001": "low",
     "AAK-MCP-LANGGRAPH-CLI-CVE-2026-115885-001": "medium",
+    # 2026-10-27 (#1100, #1101)
+    "AAK-MCP-TOOLBOX-CVE-2026-93328-001": "critical",
+    "AAK-MCP-CLOUDRUN-CVE-2026-85297-001": "high",
 }
 
 
@@ -4473,3 +4476,122 @@ def test_langgraph_cli_versions(tmp_path: Path, name: str, content: str, fires: 
 ])
 def test_langgraph_checkpoint_115883_floors(tmp_path: Path, line: str, fires: bool) -> None:
     assert (_LANGGRAPH_CKPT in _ids(tmp_path, "requirements.txt", line + "\n")) is fires
+
+
+# --- 2026-10-27 (#1100, #1101): MCP Toolbox's Cloud Storage tools, Cloud Run MCP's bucket ---
+
+_TOOLBOX_93328 = "AAK-MCP-TOOLBOX-CVE-2026-93328-001"
+_CLOUDRUN = "AAK-MCP-CLOUDRUN-CVE-2026-85297-001"
+
+
+def test_the_2026_10_27_pins_are_the_ranges_the_artifacts_show() -> None:
+    """MCP Toolbox: v1.1.0 has no cloud-storage source, v1.2.0 adds it with
+    `ValidateLocalPath` (absolute, no `..`) and no bucket check, and v1.5.0 carries
+    googleapis/mcp-toolbox#3454 (2c3ca5d2), which v1.4.0 does not. Cloud Run MCP:
+    every npm release from 1.0.0 to 1.10.0 stages source in `<project
+    id>-source-bucket` and only asks whether it exists; 1.11.0 (#300, 0c707803)
+    checks the owner. The unscoped `cloud-run-mcp` is the 1.0.0 build, its only
+    release, so an unversioned reference to it is reported."""
+    assert _rows(_TOOLBOX_93328) == [(("@toolbox-sdk/server",), (1, 5, 0), (1, 2, 0), True, "js")]
+    assert _rows(_CLOUDRUN) == [
+        (("@google-cloud/cloud-run-mcp",), (1, 11, 0), None, True, "js"),
+        (("cloud-run-mcp",), (1, 11, 0), None, False, "js"),
+    ]
+    assert RULES[_TOOLBOX_93328].cve_references == ["CVE-2026-93328"]
+    assert RULES[_CLOUDRUN].cve_references == ["CVE-2026-85297"]
+
+
+def test_toolbox_93328_is_its_own_critical_rule_beside_the_high_symlink_pin() -> None:
+    """Below 1.5.0 there are no allowed roots, so CVE-2026-102242's symlink escape is
+    not the flaw a 1.4.x server has. The older row keeps its range, severity and CVE,
+    and its stopgap no longer tells a 1.4.x user that keeping symlinks out helps."""
+    assert _rows(_TOOLBOX) == [(("@toolbox-sdk/server",), (1, 10, 0), (1, 2, 0), False, "js")]
+    assert RULES[_TOOLBOX_93328].severity.value == "critical"
+    assert RULES[_TOOLBOX].severity.value == "high"
+    assert "CVE-2026-93328" not in RULES[_TOOLBOX].cve_references
+    assert "below 1.5.0 the option does not exist" in RULES[_TOOLBOX].remediation
+    assert _TOOLBOX_93328 in RULES[_TOOLBOX].remediation
+    assert "`allowedBuckets` and `allowedLocalRoots`" in RULES[_TOOLBOX_93328].remediation
+
+
+@pytest.mark.parametrize(("fixture", "fires", "quiet"), [
+    ("cve-2026-93328-mcp-toolbox", {_TOOLBOX_93328, _TOOLBOX}, {_TOOLBOX}),
+    ("cve-2026-85297-cloud-run-mcp", {_CLOUDRUN}, set()),
+])
+def test_2026_10_27_fixtures_positive_and_negative(fixture: str, fires: set, quiet: set) -> None:
+    """The last affected release fires on its launch line, and nothing else from the
+    table does but the Toolbox's HIGH symlink pin, which covers 1.4.0 and 1.5.0
+    alike; the first fixed release leaves the new rule quiet."""
+    root = _CVE_FIXTURES / fixture
+    vulnerable = scan(root / "vulnerable")[0]
+    assert {f.rule_id for f in vulnerable} == fires
+    assert {(f.file_path, f.line_number) for f in vulnerable} == {(".mcp.json", 5)}
+    assert {f.rule_id for f in scan(root / "negative")[0]} == quiet
+
+
+@pytest.mark.parametrize(("version", "new", "old"), [
+    ("1.1.0", False, False),    # no cloud-storage source yet
+    ("1.2.0", True, True),      # the source arrives: any bucket, any absolute path
+    ("1.3.0", True, True),
+    ("1.4.0", True, True),
+    ("^1.4.0", True, True),     # a range reads as its lowest version
+    ("1.5.0", False, True),     # allowedBuckets and allowedLocalRoots (#3454)
+    ("1.9.0", False, True),
+    ("1.10.0", False, False),   # ResolveSymlinks (#3810)
+    ("1.15.0", False, False),   # latest on 2026-10-27
+    ("latest", False, True),    # the 102242 row reports an unversioned reference; this one does not
+])
+def test_toolbox_93328_versions(tmp_path: Path, version: str, new: bool, old: bool) -> None:
+    found = _ids(tmp_path, "package.json", '{"dependencies": {"@toolbox-sdk/server": "%s"}}' % version)
+    assert (_TOOLBOX_93328 in found, _TOOLBOX in found) == (new, old)
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    (".mcp.json", '{"mcpServers": {"s": {"command": "npx", "args": ["-y", "@toolbox-sdk/server@1.4.0", '
+                  '"--prebuilt=cloud-storage", "--stdio"]}}}', True),
+    (".mcp.json", '{"mcpServers": {"s": {"command": "npx", "args": ["-y", "@toolbox-sdk/server", '
+                  '"--prebuilt=cloud-storage", "--stdio"]}}}', False),
+    ("package-lock.json", '{"lockfileVersion": 3, "packages": {"": {"name": "x"}, '
+                          '"node_modules/@toolbox-sdk/server": {"version": "1.4.0"}}}', True),
+    ("package.json", '{"optionalDependencies": {"@toolbox-sdk/server-linux-x64": "1.4.0"}}', False),
+])
+def test_toolbox_93328_reads_a_stated_launcher_version(tmp_path: Path, name: str, content: str,
+                                                       fires: bool) -> None:
+    """`latest` is 1.15.0, so an unversioned launch is not this rule's to report, and
+    the per-platform binary packages are not the launcher."""
+    assert (_TOOLBOX_93328 in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("1.0.0", True),      # the first release: `<project id>-source-bucket`, exists() only
+    ("1.6.0", True),      # moved to lib/cloud-api/storage.js, unchanged
+    ("1.10.0", True),
+    ("^1.10.0", True),
+    ("1.11.0", False),    # the bucket's project number is checked (#300, 0c707803)
+    ("^1.11.0", False),
+    ("latest", False),    # resolves to 1.11.0
+])
+def test_cloud_run_mcp_versions(tmp_path: Path, spec: str, fires: bool) -> None:
+    content = '{"dependencies": {"@google-cloud/cloud-run-mcp": "%s"}}' % spec
+    assert (_CLOUDRUN in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    # the README's own config installs latest, which is fixed
+    (".mcp.json", '{"mcpServers": {"cloud-run": {"command": "npx", '
+                  '"args": ["-y", "@google-cloud/cloud-run-mcp"]}}}', False),
+    # the unscoped name's only release is the affected 1.0.0 build
+    (".mcp.json", '{"mcpServers": {"cloud-run": {"command": "npx", "args": ["-y", "cloud-run-mcp"]}}}', True),
+    (".mcp.json", '{"mcpServers": {"cloud-run": {"command": "npx", '
+                  '"args": ["-y", "cloud-run-mcp@1.0.0"]}}}', True),
+    ("package.json", '{"dependencies": {"cloud-run-mcp": "1.0.0"}}', True),
+    # a server run by the bare executable name states neither package nor version
+    (".mcp.json", '{"mcpServers": {"cloud-run": {"command": "cloud-run-mcp", "args": []}}}', True),
+    # Docker's MCP catalog image carries only `latest`, so no tag states a version
+    (".mcp.json", '{"mcpServers": {"cloud-run": {"command": "docker", '
+                  '"args": ["run", "-i", "--rm", "mcp/cloud-run-mcp:latest"]}}}', False),
+    # PyPI has no cloud-run-mcp
+    ("requirements.txt", "cloud-run-mcp==1.0.0\n", False),
+])
+def test_cloud_run_mcp_references(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_CLOUDRUN in _ids(tmp_path, name, content)) is fires

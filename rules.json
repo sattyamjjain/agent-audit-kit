@@ -4310,6 +4310,36 @@
     },
     {
       "adversa_references": [
+        "ADV-EXFIL-02"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-85297"
+      ],
+      "description": "Cloud Run MCP (`@google-cloud/cloud-run-mcp`, GoogleCloudPlatform/cloud-run-mcp) deploys local source to Cloud Run by uploading an archive to a Cloud Storage bucket named `<project id>-source-bucket` and building from it. Before 1.11.0 it used an existing bucket of that name without checking which project owns it. Bucket names are global, so a bucket created first under that name in another project, and left open to writes, receives the source: its owner can read it, or change it before Cloud Build runs it (CVE-2026-85297, CVSS 4.0 7.7, CWE-340). 1.11.0 checks that the bucket belongs to the deploying project and otherwise uses a randomized name (GoogleCloudPlatform/cloud-run-mcp#300).",
+      "incident_references": [],
+      "limitations": "Reports an npm reference to `@google-cloud/cloud-run-mcp` below 1.11.0 that states a version: a package.json or lockfile entry, or the package in an MCP config, reporting a range that admits an affected version. `latest` was 1.11.0 on 2026-10-27 and states no version, so the README's own unversioned `npx -y @google-cloud/cloud-run-mcp` is not reported. The unscoped npm `cloud-run-mcp` is the same 1.0.0 build under the project's first name, and that is its only release, so any reference to it is reported, an unversioned one included; that takes in an MCP server run by the bare name `cloud-run-mcp`, which is also the executable a global install of the scoped package provides. It reads the version, not whether the server ever deploys from source, nor which bucket a past deploy used. Docker's MCP catalog image `mcp/cloud-run-mcp` is tagged only `latest`, the remote-server image `us-docker.pkg.dev/cloudrun/container/mcp` carries no version tag, and the Gemini CLI extension installs from the repository, so none states a version AAK reads and none is reported. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `@google-cloud/cloud-run-mcp` to 1.11.0 or later and pin it, in place of the unscoped `cloud-run-mcp`, whose only release is 1.0.0. If an earlier release has deployed source, check that `<project id>-source-bucket` belongs to your project, and redeploy from a known-good tree if it does not.",
+      "rule_id": "AAK-MCP-CLOUDRUN-CVE-2026-85297-001",
+      "sarif_name": "CloudRunMcpSourceBucketSquatting",
+      "severity": "high",
+      "title": "Cloud Run MCP below 1.11.0: source deploys use a bucket named after the project without checking who owns it"
+    },
+    {
+      "adversa_references": [
         "ADV-INJECT-01"
       ],
       "aicm_references": [
@@ -8540,11 +8570,45 @@
         "MCP04:2025",
         "MCP05:2025"
       ],
-      "remediation": "Upgrade `@toolbox-sdk/server`, and any toolbox binary or image, to 1.10.0 or later and pin it. Until then, keep symlinks out of the directories the Cloud Storage tools may use.",
+      "remediation": "Upgrade `@toolbox-sdk/server`, and any toolbox binary or image, to 1.10.0 or later and pin it. Until then, on 1.5.0 to 1.9.x, set `allowedLocalRoots` and keep symlinks out of those directories; below 1.5.0 the option does not exist and the tools take any absolute path (CVE-2026-93328, reported as `AAK-MCP-TOOLBOX-CVE-2026-93328-001`), so only the upgrade helps.",
       "rule_id": "AAK-MCP-TOOLBOX-CVE-2026-102242-001",
       "sarif_name": "McpToolboxSymlinkPathTraversal",
       "severity": "high",
       "title": "Google MCP Toolbox 1.2.0 to 1.9.0: local-path checks follow symlinks out of the allowed roots"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-06",
+        "ADV-SCOPE-02"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "IAM-01",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-93328"
+      ],
+      "description": "Google MCP Toolbox for Databases (googleapis/mcp-toolbox), which MCP clients start through the npm launcher `@toolbox-sdk/server`, has a Cloud Storage source from 1.2.0 whose tools take the bucket and the local path from the tool call. Before 1.5.0 nothing limits either: `upload_object` sends any file the server process can read to whatever bucket the call names, `download_object` writes over any file it can write, and `ValidateLocalPath` asks only for an absolute path with no `..` segment. Anyone who can invoke those tools can send host files to a bucket outside the project or overwrite local files (CVE-2026-93328, CVSS 4.0 9.3, CWE-22/CWE-862). 1.5.0 adds the `allowedBuckets` and `allowedLocalRoots` source options (googleapis/mcp-toolbox#3454), and both still allow everything when omitted.",
+      "incident_references": [],
+      "limitations": "Reports an npm reference to `@toolbox-sdk/server` from 1.2.0 below 1.5.0 that states a version: a package.json or lockfile entry, or the launcher in an MCP config, reporting a range that admits an affected version. `latest` was 1.15.0 on 2026-10-27 and states no version, so an unversioned reference is not reported here (`AAK-MCP-TOOLBOX-CVE-2026-102242-001` reports one as unpinned). It reads the version, not the toolbox configuration: a server with no `cloud-storage` source is reported too, and 1.5.0 and later are not reported although a `cloud-storage` source that sets neither option is as exposed. The launcher runs the binary of its own version, so its number is the server's; a toolbox binary started by path, or the container image, states no version AAK reads and is not reported. 1.2.0 to 1.4.x also fire `AAK-MCP-TOOLBOX-CVE-2026-102242-001`. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI03",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `@toolbox-sdk/server`, and any toolbox binary or image, to 1.10.0 or later and pin it (1.5.0 adds the options; 1.10.0 also fixes CVE-2026-102242), then set `allowedBuckets` and `allowedLocalRoots` on every `cloud-storage` source: with either omitted, every bucket, or every absolute path the server process can reach, is allowed.",
+      "rule_id": "AAK-MCP-TOOLBOX-CVE-2026-93328-001",
+      "sarif_name": "McpToolboxCloudStorageUnrestricted",
+      "severity": "critical",
+      "title": "Google MCP Toolbox 1.2.0 to 1.4.x: the Cloud Storage tools take any bucket and any local path"
     },
     {
       "adversa_references": [],
