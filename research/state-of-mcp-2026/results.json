@@ -10,18 +10,18 @@
   "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 789,
-    "B": 1279,
+    "A": 788,
+    "B": 1280,
     "C": 96,
     "D": 52,
     "F": 87
   },
-  "configs_with_critical": 1184,
-  "configs_with_critical_pct": 51.4,
+  "configs_with_critical": 1185,
+  "configs_with_critical_pct": 51.5,
   "configs_with_high": 110,
   "configs_with_high_pct": 4.8,
   "severity_totals": {
-    "critical": 1292,
+    "critical": 1293,
     "high": 208,
     "medium": 4930,
     "low": 652
@@ -64,6 +64,10 @@
     "AAK-POISON": {
       "configs": 1,
       "pct": 0.0
+    },
+    "AAK-RUNTIME": {
+      "configs": 1,
+      "pct": 0.0
     }
   },
   "category_hit_rate": {
@@ -72,7 +76,7 @@
       "pct": 99.9
     },
     "supply-chain": {
-      "configs": 287,
+      "configs": 288,
       "pct": 12.5
     },
     "transport-security": {
@@ -106,8 +110,8 @@
       "pct": 19.8
     },
     "MCP04:2025": {
-      "configs": 452,
-      "pct": 19.6
+      "configs": 453,
+      "pct": 19.7
     },
     "MCP05:2025": {
       "configs": 213,
@@ -372,6 +376,10 @@
       "pct": 0.0
     },
     "AAK-POISON-006": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-RUNTIME-ADV-001": {
       "configs": 1,
       "pct": 0.0
     },

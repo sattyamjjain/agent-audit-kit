@@ -9,7 +9,7 @@
 > deterministic, Apache-2.0; the exact ruleset is the committed
 > [`rules.json`](../../rules.json) bundle at this repo's HEAD) over a
 > content-deduplicated corpus of public MCP configs, and is the figure of report
-> version 1.1. Raw aggregate: [`results.json`](results.json). External figures are
+> version 1.2. Raw aggregate: [`results.json`](results.json). External figures are
 > attributed to their sources, not measured by us.
 >
 > **On the corpus.** Two provenance-tracked sources — a GitHub Code Search crawl of
@@ -26,7 +26,7 @@
    authentication** — a *critical*-severity posture (`AAK-MCP-001`) and the single
    most common finding in the corpus. It corroborates Knostic's 119-of-119
    unauthenticated tool-listing finding from the deployment side.
-2. **<!-- report:critical-pct -->51.4<!-- /report -->% (<!-- report:critical-n -->1,184<!-- /report -->/<!-- report:corpus -->2,303<!-- /report -->) contain at least one critical-severity finding** — driven
+2. **<!-- report:critical-pct -->51.5<!-- /report -->% (<!-- report:critical-n -->1,185<!-- /report -->/<!-- report:corpus -->2,303<!-- /report -->) contain at least one critical-severity finding** — driven
    almost entirely by that no-auth remote-server class.
 3. **The median public MCP config scores a <!-- report:median-grade -->B<!-- /report -->; the top 10% score an <!-- report:top-decile-grade -->A<!-- /report -->.**
    (This is the empirical score-calibration anchor issue #23 asked for. The
@@ -40,15 +40,15 @@
 
 | Grade | Configs | Share | Cumulative |
 |:-----:|--------:|------:|-----------:|
-| **A** | <!-- report:grade-a -->789<!-- /report --> | <!-- report:grade-a-pct -->34.3<!-- /report -->% | <!-- report:grade-a-cum -->34.3<!-- /report -->% |
-| **B** | <!-- report:grade-b -->1,279<!-- /report --> | <!-- report:grade-b-pct -->55.5<!-- /report -->% | <!-- report:grade-b-cum -->89.8<!-- /report -->% |
+| **A** | <!-- report:grade-a -->788<!-- /report --> | <!-- report:grade-a-pct -->34.2<!-- /report -->% | <!-- report:grade-a-cum -->34.2<!-- /report -->% |
+| **B** | <!-- report:grade-b -->1,280<!-- /report --> | <!-- report:grade-b-pct -->55.6<!-- /report -->% | <!-- report:grade-b-cum -->89.8<!-- /report -->% |
 | **C** | <!-- report:grade-c -->96<!-- /report --> | <!-- report:grade-c-pct -->4.2<!-- /report -->% | <!-- report:grade-c-cum -->94.0<!-- /report -->% |
 | **D** | <!-- report:grade-d -->52<!-- /report --> | <!-- report:grade-d-pct -->2.3<!-- /report -->% | <!-- report:grade-d-cum -->96.2<!-- /report -->% |
 | **F** | <!-- report:grade-f -->87<!-- /report --> | <!-- report:grade-f-pct -->3.8<!-- /report -->% | 100% |
 
 - **Median grade: <!-- report:median-grade -->B<!-- /report -->**, the grade of config <!-- report:median-rank -->1,152<!-- /report --> of <!-- report:corpus -->2,303<!-- /report --> ranked best
-  first (cumulative A = <!-- report:grade-a -->789<!-- /report -->, A+B = <!-- report:grade-ab-n -->2,068<!-- /report -->).
-- **Top 10% (the best <!-- report:top-decile-n -->230<!-- /report --> configs): none below <!-- report:top-decile-grade -->A<!-- /report -->** (A alone holds <!-- report:grade-a -->789<!-- /report -->).
+  first (cumulative A = <!-- report:grade-a -->788<!-- /report -->, A+B = <!-- report:grade-ab-n -->2,068<!-- /report -->).
+- **Top 10% (the best <!-- report:top-decile-n -->230<!-- /report --> configs): none below <!-- report:top-decile-grade -->A<!-- /report -->** (A alone holds <!-- report:grade-a -->788<!-- /report -->).
 - **<!-- report:grade-df-pct -->6.0<!-- /report -->% (<!-- report:grade-df-n -->139<!-- /report -->) land at D or F.**
 
 The grade is AAK's penalty-based score (start at 100; deduct 20/CRITICAL,
@@ -63,15 +63,15 @@ posture is. No penalty re-weighting is done in this report (that's a follow-up).
 
 ## Severity + category prevalence
 
-**All findings:** <!-- report:findings-critical -->1,292<!-- /report --> critical · <!-- report:findings-high -->208<!-- /report --> high · <!-- report:findings-medium -->4,930<!-- /report --> medium · <!-- report:findings-low -->652<!-- /report --> low.
-**Per-config:** <!-- report:critical-pct -->51.4<!-- /report -->% have ≥1 critical; <!-- report:high-pct -->4.8<!-- /report -->% have ≥1 high.
+**All findings:** <!-- report:findings-critical -->1,293<!-- /report --> critical · <!-- report:findings-high -->208<!-- /report --> high · <!-- report:findings-medium -->4,930<!-- /report --> medium · <!-- report:findings-low -->652<!-- /report --> low.
+**Per-config:** <!-- report:critical-pct -->51.5<!-- /report -->% have ≥1 critical; <!-- report:high-pct -->4.8<!-- /report -->% have ≥1 high.
 
 <!-- report:category-table -->
 
 | AAK category | Configs with ≥1 finding | Share |
 |---|--:|--:|
 | MCP Configuration | 2,300 | 99.9% |
-| Supply Chain | 287 | 12.5% |
+| Supply Chain | 288 | 12.5% |
 | Transport Security | 53 | 2.3% |
 | Legal Compliance | 8 | 0.3% |
 | Secret Exposure | 4 | 0.2% |
@@ -94,7 +94,7 @@ for the ids, in a different order, so the two do not compare row for row.
 |---|---|--:|--:|
 | **MCP07:2025** | Insufficient Authentication & Authorization | 1,595 | 69.3% |
 | **MCP01:2025** | Token Mismanagement & Secret Exposure | 455 | 19.8% |
-| **MCP04:2025** | Software Supply Chain Attacks & Dependency Tampering | 452 | 19.6% |
+| **MCP04:2025** | Software Supply Chain Attacks & Dependency Tampering | 453 | 19.7% |
 | **MCP05:2025** | Command Injection & Execution | 213 | 9.2% |
 | **MCP02:2025** | Privilege Escalation via Scope Creep | 14 | 0.6% |
 | **MCP09:2025** | Shadow MCP Servers | 3 | 0.1% |

@@ -7,8 +7,8 @@ with score-calibration detail in
 **Nothing here auto-posts.** Copy, sanity-check the links, post one surface at a
 time, reply to comments.
 
-**Canonical numbers (from `results.json`, report version 1.1 — do not round):**
-2,303 distinct configs · 51.4% (1,184) with a critical finding · median grade B
+**Canonical numbers (from `results.json`, report version 1.2 — do not round):**
+2,303 distinct configs · 51.5% (1,185) with a critical finding · median grade B
 (top 10% A) · top misconfig = remote server with **no authentication**
 (`AAK-MCP-001`, critical, 50.6%) · 50.6% (1,166) no-auth remote · 19.5% (450)
 `npx`/`uvx` fetch-and-execute · 12.3% (284) launch a package with no pinned
@@ -34,7 +34,7 @@ MCP Registry's latest-version servers — and scanned each one offline and
 deterministically: no cloud, no LLM, same input gives the same result.
 
 Headline: 50.6% (1,166 of 2,303) declare a remote server with no authentication —
-that's the single most common finding, and it's critical-severity. 51.4% carry at
+that's the single most common finding, and it's critical-severity. 51.5% carry at
 least one critical finding overall; the median config still grades a B. It lines
 up with Knostic's separate finding that 119 of 119 exposed servers they probed
 allowed unauthenticated tool-listing. Another common issue is more boring and
@@ -73,7 +73,7 @@ latest-version servers — with an offline, deterministic static analyzer and
 aggregated the results.
 
 Headline: 50.6% (1,166 of 2,303) declare a remote server with no authentication
-(critical severity, the single most common finding); 51.4% carry at least one
+(critical severity, the single most common finding); 51.5% carry at least one
 critical finding; median grade B. Mapped to the OWASP MCP Top 10, 69.3% trip
 MCP07 (insufficient authentication & authorization). Other common issues: npx/uvx
 fetch-and-execute at launch (19.5%), a package launched with no pinned version

@@ -1,0 +1,99 @@
+{
+  "generated_at": "2026-10-28T05:53:03Z",
+  "source": "Bundled with agent-audit-kit: the PHP and Node.js vendor advisories, GHSA-9v8h-qqgm-4m35, NVD and the CISA KEV catalog (2026.10.27), and endoflife.date, each read on 2026-10-28 (the url and read_at of each entry).",
+  "advisories": [
+    {
+      "id": "CVE-2026-109618",
+      "aliases": ["GHSA-w8hw-w9fx-j79w"],
+      "subject": "php",
+      "title": "PHP2Shell: remote code execution via out-of-memory corruption",
+      "fixed_by_line": {"8.2": "8.2.35", "8.3": "8.3.36", "8.4": "8.4.27", "8.5": "8.5.12"},
+      "unfixed_lines_affected": true,
+      "affected_from": "7.3.0",
+      "kev_added": "2026-10-26",
+      "kev_due": "2026-10-29",
+      "severity": "CRITICAL",
+      "cvss": "NVD CVSS 3.1 9.8; PHP CVSS 4.0 9.2",
+      "url": "https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w",
+      "read_at": "2026-10-28",
+      "notes": "Fixed releases from the advisory; affected_from from NVD's CPE range (7.3.0 up to 8.2.35). KEV dates from the CISA catalog."
+    },
+    {
+      "id": "CVE-2026-109619",
+      "aliases": ["GHSA-6wmf-4rv5-p3rp"],
+      "subject": "php",
+      "title": "PHP2Shell: remote code execution via stale global state",
+      "fixed_by_line": {"8.2": "8.2.35", "8.3": "8.3.36", "8.4": "8.4.27", "8.5": "8.5.12"},
+      "unfixed_lines_affected": true,
+      "affected_from": "5.4.0",
+      "kev_added": "2026-10-26",
+      "kev_due": "2026-10-29",
+      "severity": "CRITICAL",
+      "cvss": "NVD CVSS 3.1 8.1; PHP CVSS 4.0 9.2",
+      "url": "https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp",
+      "read_at": "2026-10-28",
+      "notes": "Fixed releases from the advisory; affected_from from NVD's CPE range (5.4.0 up to 8.2.35). CRITICAL because it is in KEV; NVD scores it HIGH."
+    },
+    {
+      "id": "CVE-2026-111497",
+      "aliases": ["GHSA-9v8h-qqgm-4m35"],
+      "subject": "node",
+      "title": "Brotli decoder out-of-bounds write in Node.js's bundled Brotli",
+      "fixed_by_line": {"22": "22.23.4", "24": "24.22.1", "26": "26.12.1"},
+      "unfixed_lines_affected": true,
+      "affected_from": "10.16.0",
+      "affected_from_by_line": {"11": "11.7.0"},
+      "kev_added": "2026-10-27",
+      "kev_due": "2026-11-10",
+      "severity": "CRITICAL",
+      "cvss": "Google CVSS 4.0 9.2; Node.js rates it high",
+      "url": "https://nodejs.org/en/blog/vulnerability/october-2026-security-releases",
+      "read_at": "2026-10-28",
+      "notes": "Node.js: 'affects Node.js 26.x, 24.x, and 22.x', fixed in v22.23.4, v24.22.1 and v26.12.1, and 'End-of-Life versions are always affected'. Node.js bundles Brotli from 11.7.0 and 10.16.0 (doc/changelogs), so older releases are not affected by this CVE. No 27.x existed on 2026-10-28."
+    },
+    {
+      "id": "CVE-2026-111497",
+      "aliases": ["GHSA-9v8h-qqgm-4m35", "PYSEC-2026-4322"],
+      "subject": "pypi:Brotli",
+      "title": "Brotli decoder out-of-bounds write in Google's Brotli bindings on PyPI",
+      "fixed_by_line": {"1.2": "1.2.1"},
+      "unfixed_lines_affected": true,
+      "affected_from": "1.0.3",
+      "kev_added": "2026-10-27",
+      "kev_due": "2026-11-10",
+      "severity": "CRITICAL",
+      "cvss": "CVSS 4.0 9.2",
+      "url": "https://github.com/advisories/GHSA-9v8h-qqgm-4m35",
+      "read_at": "2026-10-28",
+      "notes": "GHSA: pip brotli >= 1.0.3, < 1.2.1, first patched 1.2.1. Upstream also fixed 1.0.10 and 1.1.1, but PyPI has neither: 1.2.1 (2026-10-22) is the only fixed release there."
+    },
+    {
+      "id": "CVE-2026-111497",
+      "aliases": ["GHSA-9v8h-qqgm-4m35", "PYSEC-2026-4323"],
+      "subject": "pypi:brotlicffi",
+      "title": "Brotli decoder out-of-bounds write in brotlicffi's bundled Brotli",
+      "fixed_by_line": {"1.2": "1.2.1.0"},
+      "unfixed_lines_affected": true,
+      "affected_from": "1.0.3",
+      "kev_added": "2026-10-27",
+      "kev_due": "2026-11-10",
+      "severity": "CRITICAL",
+      "cvss": "CVSS 4.0 9.2",
+      "url": "https://github.com/advisories/GHSA-9v8h-qqgm-4m35",
+      "read_at": "2026-10-28",
+      "notes": "GHSA: pip brotlicffi >= 1.0.3, < 1.2.1.0, first patched 1.2.1.0 (2026-10-22); 1.2.0.0, 1.2.0.1 and 1.2.0.2 are affected."
+    }
+  ],
+  "eol": {
+    "node": {
+      "url": "https://endoflife.date/api/nodejs.json",
+      "read_at": "2026-10-28",
+      "lines": {"25": "2026-06-01", "23": "2025-06-01", "21": "2024-06-01", "20": "2026-04-30", "19": "2023-06-01", "18": "2025-04-30", "17": "2022-06-01", "16": "2023-09-11", "15": "2021-06-01", "14": "2023-04-30", "13": "2020-06-01", "12": "2022-04-30", "11": "2019-06-30", "10": "2021-04-30"}
+    },
+    "php": {
+      "url": "https://endoflife.date/api/php.json",
+      "read_at": "2026-10-28",
+      "lines": {"8.1": "2025-12-31", "8.0": "2023-11-26", "7.4": "2022-11-28", "7.3": "2021-12-06", "7.2": "2020-11-30", "7.1": "2019-12-01", "7.0": "2019-01-10", "5.6": "2018-12-31", "5.5": "2016-07-21", "5.4": "2015-09-14"}
+    }
+  }
+}

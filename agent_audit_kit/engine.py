@@ -127,6 +127,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
+    ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
 ]
 
 
@@ -349,11 +350,18 @@ def _data_feeds() -> dict[str, dict[str, str]]:
     that cannot be read is reported as such rather than failing the scan.
     """
     from agent_audit_kit import malicious_feed
+    from agent_audit_kit.scanners import runtime_advisories
 
-    try:
-        return {"maliciousReleases": malicious_feed.feed_summary()}
-    except (OSError, ValueError) as exc:
-        return {"maliciousReleases": {"error": f"{type(exc).__name__}: {exc}"}}
+    feeds: dict[str, dict[str, str]] = {}
+    for name, summary in (
+        ("maliciousReleases", malicious_feed.feed_summary),
+        ("runtimeAdvisories", runtime_advisories.advisories_summary),
+    ):
+        try:
+            feeds[name] = summary()
+        except (OSError, ValueError) as exc:
+            feeds[name] = {"error": f"{type(exc).__name__}: {exc}"}
+    return feeds
 
 
 def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]:

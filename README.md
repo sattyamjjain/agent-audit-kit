@@ -8,7 +8,7 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-429-blue.svg" alt="Rules: 429"></a>
-  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.1-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.1"></a>
+  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.2-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.2"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
 
@@ -193,6 +193,8 @@ Two of them read what an install leaves behind, not only what the repository dec
 
 - `startup_hooks` flags Python startup hooks (`.pth` lines that run code, `.start` entry points, `sitecustomize`) in site-packages, inside virtualenvs and [unpacked image root filesystems](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/scan-image-rootfs.md) included, Dockerfiles that add them, and npm install scripts in MCP projects.
 - `malicious_releases` checks declared, locked and installed versions and image digests against an offline feed of published malware (OSV `MAL-` records), which `aak update` refreshes; scans stay offline.
+
+`runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
 
 <!-- test-count:total -->4,817<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.

@@ -377,6 +377,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
+    "AAK-RUNTIME-ADV-001": ["STA-08", "IVS-04"],
+    "AAK-RUNTIME-ADV-002": ["STA-08"],
+    "AAK-RUNTIME-ADV-003": ["STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -17487,6 +17490,123 @@ _r(
         "an image reference is quoted from at most 256 characters before its digest. A "
         "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
         "is not read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-28: runtime advisories. PHP2Shell (CVE-2026-109618/109619, KEV
+# 2026-10-26) and CVE-2026-111497 (Brotli in Node.js and on PyPI, KEV
+# 2026-10-27) sit in the runtime or a bundled codec, which no pin read.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-RUNTIME-ADV-001",
+    "Declared Node.js, PHP or Python runtime below the fixed release on its line",
+    "A Dockerfile `FROM`, a version file (`.nvmrc`, `.node-version`, "
+    "`.python-version`, `.tool-versions`), `engines.node`, a managed runtime "
+    "(`runtime:` in app.yaml or serverless.yml) or an MCP server's launcher path "
+    "names a runtime release that an advisory in AAK's bundled advisory file covers: "
+    "below the fixed release on its line, or on a line that got no fixed release. "
+    "PHP2Shell (CVE-2026-109618 and CVE-2026-109619, remote code execution, fixed in "
+    "PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12) and CVE-2026-111497 (an out-of-bounds "
+    "write in the Brotli decoder Node.js bundles, fixed in 22.23.4, 24.22.1 and "
+    "26.12.1 only) are in CISA's Known Exploited Vulnerabilities catalog. No "
+    "dependency pin sees them: the version that matters is the interpreter an MCP "
+    "server runs on.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Move to the fixed release on the same line (PHP 8.4.27, Node.js 24.22.1 and so "
+    "on) or to a supported line that has one, and pin the full version (or the image "
+    "digest) so the next fix is a visible change. An end-of-life line gets no fix: "
+    "upgrade the line. Rebuild images after changing the base.",
+    sarif_name="RuntimeBelowAdvisoryFix",
+    cve_references=["CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    incident_references=["CISA-KEV-2026-10-26-PHP", "CISA-KEV-2026-10-27-BROTLI"],
+    limitations=(
+        "Judges a runtime against `data/runtime_advisories.json`, or a copy at "
+        "`~/.agent-audit-kit/runtime_advisories.json`, read first; a scan never fetches "
+        "it. The bundled file names PHP (CVE-2026-109618 from 7.3.0, CVE-2026-109619 from "
+        "5.4.0) and Node.js (CVE-2026-111497 from 10.16.0, 11.7.0 on the 11 line) and no "
+        "Python advisory, so a Python runtime is read and reported by nothing today. A "
+        "release is judged against the fixed release on its line (the major for Node.js, "
+        "major.minor for PHP and Python); a line with no fixed release is affected when "
+        "it is older than the newest fixed line, and a newer line is taken to carry the "
+        "fix. Reads the `FROM` of Dockerfiles and Containerfiles naming the official "
+        "`node`, `php` or `python` image (Docker Hub, `mirror.gcr.io/library` or "
+        "`public.ecr.aws/docker/library`), with global `ARG` defaults filled in; an image "
+        "pinned by digest alone, a stage built from another, and other publishers' images "
+        "(`bitnami/node`) are not judged. Reads `.nvmrc` and `.node-version` (first line), "
+        "`.python-version` and `.tool-versions` (every version listed), `engines.node`, "
+        "judged at the lowest release the range admits, which says what the package "
+        "supports and not what runs, `runtime:` in app.yaml and serverless.yml (a line "
+        "with no fix is reported, a managed line with one is AAK-RUNTIME-ADV-002), and an "
+        "MCP server's `command` or argument under an nvm, asdf, mise, Volta, fnm, n, pyenv "
+        "or Homebrew Cellar path that carries a version. Reports one finding per "
+        "declaration, at the most severe advisory's severity (CRITICAL for a KEV entry). "
+        "A file over 1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-RUNTIME-ADV-002",
+    "Runtime named by a floating tag on a line an advisory fixed",
+    "A Dockerfile `FROM`, a version file or a managed runtime names a Node.js, PHP or "
+    "Python runtime that an advisory in AAK's bundled advisory file covers without "
+    "naming a release: a floating tag (`node:24`, `php:8`, `latest`, `lts`), a line "
+    "number in a version file, or a platform runtime such as App Engine's `nodejs22`, "
+    "where the platform picks the patch. Whether it already runs the fixed release "
+    "cannot be told from the file.",
+    Severity.INFO,
+    Category.SUPPLY_CHAIN,
+    "Pin a full version (`node:24.22.1-slim`) or an image digest so the release you run "
+    "is the one you reviewed. For a managed runtime, confirm in the platform's release "
+    "notes that it runs the fixed release.",
+    sarif_name="RuntimeFloatingTagUnjudged",
+    cve_references=["CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-02"],
+    limitations=(
+        "Reported only for a runtime some advisory in the advisory file covers, and only "
+        "when the line it names has a fixed release, or it names no line at all (`latest`, "
+        "`lts`, no tag, a major PHP tag such as `php:8`); a floating name on a line with "
+        "no fix is AAK-RUNTIME-ADV-001. It reads the same files as AAK-RUNTIME-ADV-001, "
+        "and an image pinned by digest is not reported."
+    ),
+)
+
+_r(
+    "AAK-RUNTIME-ADV-003",
+    "Lockfile or exact pin puts a library bundling an affected codec below its fix",
+    "A lockfile resolves, or a manifest pins exactly, a library that bundles a codec an "
+    "advisory in AAK's bundled advisory file covers, below the library's fixed "
+    "release: Brotli below 1.2.1 or brotlicffi below 1.2.1.0 on PyPI, which bundle the "
+    "Brotli decoder with CVE-2026-111497 (an out-of-bounds write on a crafted stream, "
+    "in CISA KEV since 2026-10-27). Google fixed the decoder in 1.0.10, 1.1.1 and 1.2.1; "
+    "PyPI has only the 1.2 line's fix.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to the fixed release (Brotli 1.2.1, brotlicffi 1.2.1.0) and re-lock. Until "
+    "then, do not decompress Brotli data from a source you do not trust.",
+    sarif_name="BundledCodecBelowFix",
+    cve_references=["CVE-2026-111497"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    incident_references=["CISA-KEV-2026-10-27-BROTLI"],
+    limitations=(
+        "Reads uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, "
+        "pnpm-lock.yaml and yarn.lock (v1) through the pin table's lockfile reader, and the "
+        "exact pins (`==`, `===`) in requirements*.txt, pyproject.toml, Pipfile and "
+        "package.json, for the libraries the advisory file names: today PyPI's Brotli "
+        "(affected from 1.0.3, fixed 1.2.1) and brotlicffi (from 1.0.3, fixed 1.2.1.0). A "
+        "range is not reported, since it does not say which release is installed, and "
+        "neither is a copy of the decoder vendored in other code or a system library. A "
+        "manifest over 2 MB or a lockfile over 32 MiB is not read."
     ),
 )
 

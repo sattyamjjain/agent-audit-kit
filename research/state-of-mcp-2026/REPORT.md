@@ -1,14 +1,16 @@
 # The State of MCP Security, 2026
 
-**Report version 1.1** · **Published 2026-08-17, revised 2026-10-15** · **Scan date 2026-07-26** · **Corpus:** <!-- report:corpus -->2,303<!-- /report --> distinct public MCP server configs · **Tool:** AgentAuditKit (offline, deterministic) · **Licence:** Apache-2.0 (same as the tool)
+**Report version 1.2** · **Published 2026-08-17, revised 2026-10-15 and 2026-10-28** · **Scan date 2026-07-26** · **Corpus:** <!-- report:corpus -->2,303<!-- /report --> distinct public MCP server configs · **Tool:** AgentAuditKit (offline, deterministic) · **Licence:** Apache-2.0 (same as the tool)
 
 > **Stable identity.** Cite this document as *The State of MCP Security, 2026*,
-> version 1.1. The version changes only when a number in it changes; re-running the
-> pipeline on the same committed corpus reproduces this exact file, so version 1.1
-> always refers to these numbers. Version 1.1 supersedes version 1.0 (2026-08-17):
-> the corpus is the same, and corrected rules and a corrected scan harness moved
-> the figures. [What changed in v1.1](#what-changed-in-v11) lists every number that
-> moved and why. See [How to cite this report](#how-to-cite-this-report).
+> version 1.2. The version changes only when a number in it changes; re-running the
+> pipeline on the same committed corpus reproduces this exact file, so version 1.2
+> always refers to these numbers. Version 1.2 supersedes version 1.1 (2026-10-15):
+> the corpus and the harness are the same, and a rule added in agent-audit-kit
+> 0.6.28 found a critical flaw in one more config. Version 1.1 had superseded 1.0
+> (2026-08-17) after corrected rules and a corrected scan harness moved the figures.
+> [What changed in v1.2](#what-changed-in-v12) lists every number that moved and
+> why. See [How to cite this report](#how-to-cite-this-report).
 
 We statically scanned **<!-- report:corpus -->2,303<!-- /report --> distinct public Model Context Protocol server
 configurations** — the largest snapshot we know of — and measured what fraction
@@ -36,7 +38,7 @@ including what a config-only corpus cannot measure, is in [Method](#method) and
 | Finding | Rule | Share of corpus |
 |---------|------|----------------:|
 | Remote MCP server with **no authentication** | `AAK-MCP-001` (critical) | **<!-- report:noauth-pct -->50.6<!-- /report -->%**, <!-- report:noauth-n -->1,166<!-- /report --> of <!-- report:corpus -->2,303<!-- /report --> |
-| Carries at least one **critical** finding | — | <!-- report:critical-pct -->51.4<!-- /report -->% (<!-- report:critical-n -->1,184<!-- /report -->) |
+| Carries at least one **critical** finding | — | <!-- report:critical-pct -->51.5<!-- /report -->% (<!-- report:critical-n -->1,185<!-- /report -->) |
 | Fetches and executes a package at launch via `npx`/`uvx` (supply-chain surface) | `AAK-MCP-005` (medium) | <!-- report:mcp005-pct -->19.5<!-- /report -->% (<!-- report:mcp005-n -->450<!-- /report -->) |
 | OAuth surface with **no RFC 9728** Protected-Resource-Metadata discovery | `AAK-OAUTH-008` (low) | <!-- report:oauth008-pct -->18.4<!-- /report -->% (<!-- report:oauth008-n -->424<!-- /report -->) |
 | Launches a package with **no pinned version** | `AAK-SUPPLY-001` (medium) | <!-- report:supply001-pct -->12.3<!-- /report -->% (<!-- report:supply001-n -->284<!-- /report -->) |
@@ -142,13 +144,13 @@ this document by `tests/test_corpus_target_consistency.py`.)
 
 | Grade | Configs | Share |
 |:-----:|--------:|------:|
-| A | <!-- report:grade-a -->789<!-- /report --> | <!-- report:grade-a-pct -->34.3<!-- /report -->% |
-| B | <!-- report:grade-b -->1,279<!-- /report --> | <!-- report:grade-b-pct -->55.5<!-- /report -->% |
+| A | <!-- report:grade-a -->788<!-- /report --> | <!-- report:grade-a-pct -->34.2<!-- /report -->% |
+| B | <!-- report:grade-b -->1,280<!-- /report --> | <!-- report:grade-b-pct -->55.6<!-- /report -->% |
 | C | <!-- report:grade-c -->96<!-- /report --> | <!-- report:grade-c-pct -->4.2<!-- /report -->% |
 | D | <!-- report:grade-d -->52<!-- /report --> | <!-- report:grade-d-pct -->2.3<!-- /report -->% |
 | F | <!-- report:grade-f -->87<!-- /report --> | <!-- report:grade-f-pct -->3.8<!-- /report -->% |
 
-n = <!-- report:corpus -->2,303<!-- /report -->. The median config scores **<!-- report:median-grade -->B<!-- /report -->**. **<!-- report:critical-n -->1,184<!-- /report --> (<!-- report:critical-pct -->51.4<!-- /report -->%)** carry at least one
+n = <!-- report:corpus -->2,303<!-- /report -->. The median config scores **<!-- report:median-grade -->B<!-- /report -->**. **<!-- report:critical-n -->1,185<!-- /report --> (<!-- report:critical-pct -->51.5<!-- /report -->%)** carry at least one
 critical-severity finding — driven almost entirely by the no-auth remote server
 class. Most public configs are not catastrophic, but the single most common
 public posture is *a remote server anyone can call*.
@@ -222,6 +224,46 @@ notification.
   see the [benign-slice false-positive rate](../../benchmarks/false_positive/RESULTS.md)
   for how precise the high-severity findings are.
 
+## What changed in v1.2
+
+Version 1.2 rescans the same 2026-07-26 corpus with agent-audit-kit 0.6.28. No config
+was added or removed, and the harness did not change. One step moved figures:
+
+- **(ix)** `AAK-RUNTIME-ADV-001`, new in 0.6.28, reads the runtime an MCP server is
+  launched with. One config starts its server from an nvm install of Node.js
+  22.22.3, below 22.23.4, the 22 line's fix for CVE-2026-111497 (an out-of-bounds
+  write in the Brotli decoder Node.js bundles, in CISA's Known Exploited
+  Vulnerabilities catalog since 2026-10-27). It is that config's first critical
+  finding, so it moves from grade A to B. No other rule added since v1.1 fired on
+  the corpus.
+
+Every figure since v1.0, and the step that moved it; steps (0) to (viii) are
+[v1.1's](#what-changed-in-v11):
+
+| Figure | v1.0 | v1.1 | v1.2 | What moved it |
+|---|--:|--:|--:|---|
+| Configs with a remote server and no auth (`AAK-MCP-001`) | 1,201 (52.1%) | 1,166 (50.6%) | <!-- report:noauth-n -->1,166<!-- /report --> (<!-- report:noauth-pct -->50.6<!-- /report -->%) | (ii) -34 · (iii) -1 |
+| Configs with a critical finding | 1,213 (52.7%) | 1,184 (51.4%) | <!-- report:critical-n -->1,185<!-- /report --> (<!-- report:critical-pct -->51.5<!-- /report -->%) | (ii) -34 · (iii) -1 · (v) +6 · (ix) +1 |
+| Configs with a high finding | 165 (7.2%) | 110 (4.8%) | <!-- report:high-n -->110<!-- /report --> (<!-- report:high-pct -->4.8<!-- /report -->%) | (ii) -37 · (iv) -36 · (v) +18 |
+| Configs launching a package with no pinned version (`AAK-SUPPLY-001`) | 0 (0.0%) | 284 (12.3%) | <!-- report:supply001-n -->284<!-- /report --> (<!-- report:supply001-pct -->12.3<!-- /report -->%) | (v) +444 · (vi) -160 |
+| Configs with an env secret, `AAK-MCP-003` | 70 (3.0%) | 30 (1.3%) | <!-- report:mcp003-n -->30<!-- /report --> (<!-- report:mcp003-pct -->1.3<!-- /report -->%) | (iv) -40 |
+| Configs with an env secret, `AAK-SECRET-007` | 70 (3.0%) | 0 (0.0%) | <!-- report:secret007-n -->0<!-- /report --> (<!-- report:secret007-pct -->0.0<!-- /report -->%) | (v) -70 |
+| Configs with an internal-network URL (`AAK-MCP-009`) | 44 (1.9%) | 3 (0.1%) | <!-- report:mcp009-n -->3<!-- /report --> (<!-- report:mcp009-pct -->0.1<!-- /report -->%) | (ii) -41 |
+| Configs declaring SSE (`AAK-TRANSPORT-003`) | 36 (1.6%) | 47 (2.0%) | <!-- report:transport003-n -->47<!-- /report --> (<!-- report:transport003-pct -->2.0<!-- /report -->%) | (viii) +11 |
+| Grade A | 637 (27.7%) | 789 (34.3%) | <!-- report:grade-a -->788<!-- /report --> (<!-- report:grade-a-pct -->34.2<!-- /report -->%) | (0) -1 · (ii) +21 · (iv) +2 · (v) -28 · (vi) +160 · (viii) -2 · (ix) -1 |
+| Grade B | 1,421 (61.7%) | 1,279 (55.5%) | <!-- report:grade-b -->1,280<!-- /report --> (<!-- report:grade-b-pct -->55.6<!-- /report -->%) | (ii) +5 · (iii) +1 · (iv) +10 · (v) +8 · (vi) -160 · (viii) -6 · (ix) +1 |
+| Grade C | 111 (4.8%) | 96 (4.2%) | <!-- report:grade-c -->96<!-- /report --> (<!-- report:grade-c-pct -->4.2<!-- /report -->%) | (ii) -13 · (iv) -10 · (viii) +8 |
+| Grade D | 49 (2.1%) | 52 (2.3%) | <!-- report:grade-d -->52<!-- /report --> (<!-- report:grade-d-pct -->2.3<!-- /report -->%) | (ii) -8 · (v) +11 |
+| Grade F | 85 (3.7%) | 87 (3.8%) | <!-- report:grade-f -->87<!-- /report --> (<!-- report:grade-f-pct -->3.8<!-- /report -->%) | (0) +1 · (ii) -5 · (iii) -1 · (iv) -2 · (v) +9 |
+| Critical findings | 1,335 | 1,292 | <!-- report:findings-critical -->1,293<!-- /report --> | (ii) -46 · (iii) -3 · (v) +6 · (ix) +1 |
+| High findings | 319 | 208 | <!-- report:findings-high -->208<!-- /report --> | (ii) -49 · (iv) -85 · (v) +23 |
+| Medium findings | 4,432 | 4,930 | <!-- report:findings-medium -->4,930<!-- /report --> | (v) +645 · (vi) -160 · (viii) +13 |
+| Low findings | 1,224 | 652 | <!-- report:findings-low -->652<!-- /report --> | (v) -572 |
+| Configs with a secret-exposure finding | 70 (3.0%) | 4 (0.2%) | <!-- report:cat-secret-n -->4<!-- /report --> (<!-- report:cat-secret-pct -->0.2<!-- /report -->%) | (v) -66 |
+| Configs with a transport-security finding | 42 (1.8%) | 53 (2.3%) | <!-- report:cat-transport-n -->53<!-- /report --> (<!-- report:cat-transport-pct -->2.3<!-- /report -->%) | (viii) +11 |
+| Configs with a supply-chain finding | 0 (0.0%) | 287 (12.5%) | <!-- report:cat-supply-chain-n -->288<!-- /report --> (<!-- report:cat-supply-chain-pct -->12.5<!-- /report -->%) | (v) +447 · (vi) -160 · (ix) +1 |
+| Configs with a legal-compliance finding | 0 (0.0%) | 8 (0.3%) | <!-- report:cat-legal-n -->8<!-- /report --> (<!-- report:cat-legal-pct -->0.3<!-- /report -->%) | (v) +8 |
+
 ## What changed in v1.1
 
 Version 1.1 rescans the same 2026-07-26 corpus. No config was added or removed.
@@ -254,29 +296,7 @@ recorded after each.
 - **(viii)** `AAK-TRANSPORT-003` reads the `type` key, where Claude Code and VS Code
   declare SSE, as well as `transport`, and reports each server once.
 
-| Figure | v1.0 | v1.1 | What moved it |
-|---|--:|--:|---|
-| Configs with a remote server and no auth (`AAK-MCP-001`) | 1,201 (52.1%) | <!-- report:noauth-n -->1,166<!-- /report --> (<!-- report:noauth-pct -->50.6<!-- /report -->%) | (ii) -34 · (iii) -1 |
-| Configs with a critical finding | 1,213 (52.7%) | <!-- report:critical-n -->1,184<!-- /report --> (<!-- report:critical-pct -->51.4<!-- /report -->%) | (ii) -34 · (iii) -1 · (v) +6 |
-| Configs with a high finding | 165 (7.2%) | <!-- report:high-n -->110<!-- /report --> (<!-- report:high-pct -->4.8<!-- /report -->%) | (ii) -37 · (iv) -36 · (v) +18 |
-| Configs launching a package with no pinned version (`AAK-SUPPLY-001`) | 0 (0.0%) | <!-- report:supply001-n -->284<!-- /report --> (<!-- report:supply001-pct -->12.3<!-- /report -->%) | (v) +444 · (vi) -160 |
-| Configs with an env secret, `AAK-MCP-003` | 70 (3.0%) | <!-- report:mcp003-n -->30<!-- /report --> (<!-- report:mcp003-pct -->1.3<!-- /report -->%) | (iv) -40 |
-| Configs with an env secret, `AAK-SECRET-007` | 70 (3.0%) | <!-- report:secret007-n -->0<!-- /report --> (<!-- report:secret007-pct -->0.0<!-- /report -->%) | (v) -70 |
-| Configs with an internal-network URL (`AAK-MCP-009`) | 44 (1.9%) | <!-- report:mcp009-n -->3<!-- /report --> (<!-- report:mcp009-pct -->0.1<!-- /report -->%) | (ii) -41 |
-| Configs declaring SSE (`AAK-TRANSPORT-003`) | 36 (1.6%) | <!-- report:transport003-n -->47<!-- /report --> (<!-- report:transport003-pct -->2.0<!-- /report -->%) | (viii) +11 |
-| Grade A | 637 (27.7%) | <!-- report:grade-a -->789<!-- /report --> (<!-- report:grade-a-pct -->34.3<!-- /report -->%) | (0) -1 · (ii) +21 · (iv) +2 · (v) -28 · (vi) +160 · (viii) -2 |
-| Grade B | 1,421 (61.7%) | <!-- report:grade-b -->1,279<!-- /report --> (<!-- report:grade-b-pct -->55.5<!-- /report -->%) | (ii) +5 · (iii) +1 · (iv) +10 · (v) +8 · (vi) -160 · (viii) -6 |
-| Grade C | 111 (4.8%) | <!-- report:grade-c -->96<!-- /report --> (<!-- report:grade-c-pct -->4.2<!-- /report -->%) | (ii) -13 · (iv) -10 · (viii) +8 |
-| Grade D | 49 (2.1%) | <!-- report:grade-d -->52<!-- /report --> (<!-- report:grade-d-pct -->2.3<!-- /report -->%) | (ii) -8 · (v) +11 |
-| Grade F | 85 (3.7%) | <!-- report:grade-f -->87<!-- /report --> (<!-- report:grade-f-pct -->3.8<!-- /report -->%) | (0) +1 · (ii) -5 · (iii) -1 · (iv) -2 · (v) +9 |
-| Critical findings | 1,335 | <!-- report:findings-critical -->1,292<!-- /report --> | (ii) -46 · (iii) -3 · (v) +6 |
-| High findings | 319 | <!-- report:findings-high -->208<!-- /report --> | (ii) -49 · (iv) -85 · (v) +23 |
-| Medium findings | 4,432 | <!-- report:findings-medium -->4,930<!-- /report --> | (v) +645 · (vi) -160 · (viii) +13 |
-| Low findings | 1,224 | <!-- report:findings-low -->652<!-- /report --> | (v) -572 |
-| Configs with a secret-exposure finding | 70 (3.0%) | <!-- report:cat-secret-n -->4<!-- /report --> (<!-- report:cat-secret-pct -->0.2<!-- /report -->%) | (v) -66 |
-| Configs with a transport-security finding | 42 (1.8%) | <!-- report:cat-transport-n -->53<!-- /report --> (<!-- report:cat-transport-pct -->2.3<!-- /report -->%) | (viii) +11 |
-| Configs with a supply-chain finding | 0 (0.0%) | <!-- report:cat-supply-chain-n -->287<!-- /report --> (<!-- report:cat-supply-chain-pct -->12.5<!-- /report -->%) | (v) +447 · (vi) -160 |
-| Configs with a legal-compliance finding | 0 (0.0%) | <!-- report:cat-legal-n -->8<!-- /report --> (<!-- report:cat-legal-pct -->0.3<!-- /report -->%) | (v) +8 |
+The table under [What changed in v1.2](#what-changed-in-v12) gives every figure at v1.0, v1.1 and v1.2, with the step that moved it.
 
 The new findings in (v) are `AAK-SUPPLY-001`, eight CVE version pins (the Serena
 pin, on 19 configs that launch Serena from its git repository or a local checkout
@@ -321,17 +341,17 @@ own `MCPnn` labels, which named different risks from OWASP's list; #971 remapped
 every rule to the risk OWASP names (step i). Under OWASP's ids, with the advisory
 rules left out (step vii), the most common risk is MCP07, Insufficient
 Authentication & Authorization, at <!-- report:owasp-mcp07-pct -->69.3<!-- /report -->% (<!-- report:owasp-mcp07-n -->1,595<!-- /report -->). v1.0's table put its own
-MCP07 label at 99.8%. The full v1.1 table is in [PREVALENCE.md](PREVALENCE.md).
+MCP07 label at 99.8%. The full v1.2 table is in [PREVALENCE.md](PREVALENCE.md).
 
 ## How to cite this report
 
 Cite the report, not the repository, when you are citing a number from it — the
-repository moves and the report does not. Version 1.1 refers to the 2026-07-26 scan
+repository moves and the report does not. Version 1.2 refers to the 2026-07-26 scan
 of <!-- report:corpus -->2,303<!-- /report --> configs described above.
 
 **Plain text**
 
-> Jain, S. (2026). *The State of MCP Security, 2026* (Version 1.1). AgentAuditKit.
+> Jain, S. (2026). *The State of MCP Security, 2026* (Version 1.2). AgentAuditKit.
 > https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md
 
 **BibTeX**
@@ -344,7 +364,7 @@ of <!-- report:corpus -->2,303<!-- /report --> configs described above.
   year        = {2026},
   month       = {10},
   type        = {Technical Report},
-  number      = {Version 1.1},
+  number      = {Version 1.2},
   url         = {https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md},
   note        = {Corpus: 2,303 distinct public MCP server configurations, collected 2026-07-26. Offline, deterministic scan; reproducible with \texttt{make report}.}
 }
@@ -356,6 +376,6 @@ identity, so the two cannot disagree about the report version.
 
 **Citing a specific number.** Every figure above carries its numerator and
 denominator; quote both. For example: "<!-- report:rfc9728-n -->0<!-- /report --> of <!-- report:corpus -->2,303<!-- /report --> public MCP configs referenced
-RFC 9728 Protected Resource Metadata discovery (Jain 2026, v1.1)." If you need the
+RFC 9728 Protected Resource Metadata discovery (Jain 2026, v1.2)." If you need the
 raw data, `results.json` beside this file is the machine-readable output, and
 `corpus/registry-manifest.json` records per-server provenance.
