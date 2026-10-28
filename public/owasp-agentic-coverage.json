@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-28T05:35:50Z",
+  "last_updated": "2026-10-28T08:05:27Z",
   "aak_version": "0.6.27",
-  "rule_count": 429,
+  "rule_count": 432,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2381,7 +2381,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 216,
+      "rule_density": 219,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4561,6 +4561,41 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-RUNTIME-ADV-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-109618",
+            "CVE-2026-109619",
+            "CVE-2026-111497"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-RUNTIME-ADV-002",
+          "severity": "info",
+          "cve_references": [
+            "CVE-2026-109618",
+            "CVE-2026-109619",
+            "CVE-2026-111497"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-RUNTIME-ADV-003",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-111497"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-SEC-MD-001",
           "severity": "low",
           "cve_references": [],
@@ -4732,7 +4767,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 100,
+      "rule_density": 102,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5664,6 +5699,29 @@
             "CVE-2026-73614"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-RUNTIME-ADV-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-109618",
+            "CVE-2026-109619",
+            "CVE-2026-111497"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-RUNTIME-ADV-003",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-111497"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-SANDBOX-DENYLIST-001",

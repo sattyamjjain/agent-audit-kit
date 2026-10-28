@@ -9079,6 +9079,97 @@
       "title": "Tool removed since last pin"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-109618",
+        "CVE-2026-109619",
+        "CVE-2026-111497"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-RUNTIME-ADV-001",
+      "severity": "critical",
+      "title": "Declared Node.js, PHP or Python runtime below the fixed release on its line"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-109618",
+        "CVE-2026-109619",
+        "CVE-2026-111497"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-RUNTIME-ADV-002",
+      "severity": "info",
+      "title": "Runtime named by a floating tag on a line an advisory fixed"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-111497"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-RUNTIME-ADV-003",
+      "severity": "critical",
+      "title": "Lockfile or exact pin puts a library bundling an affected codec below its fix"
+    },
+    {
       "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-53710",
@@ -10653,36 +10744,36 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 188,
+      "supply-chain": 191,
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 218,
+      "Art. 10 - Data Governance": 221,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 322,
-      "Art. 9 - Risk Management": 219
+      "Art. 15 - Robustness & Security": 325,
+      "Art. 9 - Risk Management": 221
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 218,
-      "Constrain and sandbox tool execution (p.11)": 202,
-      "Design for boundaries (p.10)": 310,
-      "Filter and monitor output pipelines and chained execution (p.12)": 120,
+      "Choose supported MCP projects when possible (p.10)": 221,
+      "Constrain and sandbox tool execution (p.11)": 204,
+      "Design for boundaries (p.10)": 312,
+      "Filter and monitor output pipelines and chained execution (p.12)": 122,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 278,
-      "Sign and verify MCP messages (p.12)": 288,
-      "Track and patch MCP related vulnerabilities (p.13)": 223,
-      "Validate parameters (p.11)": 206
+      "Scan local network for open or vulnerable MCP servers (p.14)": 281,
+      "Sign and verify MCP messages (p.12)": 291,
+      "Track and patch MCP related vulnerabilities (p.13)": 226,
+      "Validate parameters (p.11)": 208
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
       "ASI03": 113,
-      "ASI04": 216,
-      "ASI05": 100,
+      "ASI04": 219,
+      "ASI05": 102,
       "ASI06": 5,
       "ASI07": 24,
       "ASI08": 9,
@@ -10693,7 +10784,7 @@
       "MCP01:2025": 34,
       "MCP02:2025": 16,
       "MCP03:2025": 13,
-      "MCP04:2025": 165,
+      "MCP04:2025": 168,
       "MCP05:2025": 116,
       "MCP06:2025": 4,
       "MCP07:2025": 88,
@@ -10702,14 +10793,14 @@
       "MCP10:2025": 15
     },
     "by_severity": {
-      "critical": 96,
+      "critical": 98,
       "high": 184,
-      "info": 4,
+      "info": 5,
       "low": 19,
       "medium": 126
     },
-    "total_cves_covered": 364,
-    "total_rules": 429
+    "total_cves_covered": 367,
+    "total_rules": 432
   },
   "tool": "agent-audit-kit"
 }
