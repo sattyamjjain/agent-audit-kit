@@ -94,11 +94,30 @@ def test_sarif_round_trip_places_the_rule_on_a_line() -> None:
         'echo "${{ secrets.TOKEN }}" | base64 >> "$GITHUB_STEP_SUMMARY"',
         'set -euo pipefail\necho "${{ secrets[\'TOKEN\'] }}" | xxd -p',
         "make build && env | base64",
+        "sudo env | LC_ALL=C base64 -w0",  # the program after `sudo` and assignments
         "echo start; \\\n  env | \\\n  base64",
+        # The step is skipped unless it names an encoder; one ending a continued line still counts.
+        "echo '${{ secrets.TOKEN }}' | base64\\\n| cat",
+        'echo "\\"" ; env | base64',  # an escaped quote does not end the string
+        "base64 <<A\nhello\nA\nbase64 <<B\n${{ secrets.DEPLOY_KEY }}\nB",  # each heredoc read for itself
     ],
 )
 def test_a_dump_reaching_the_log_is_reported(tmp_path: Path, run: str) -> None:
     assert [s for s, _, _ in _dumps(_workflow(tmp_path, run))] == [Severity.HIGH]
+
+
+def test_a_step_naming_no_encoder_is_not_parsed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The rule needs an encoder, so a step without one is skipped before it is
+    parsed: a workflow of ordinary steps costs only its YAML parse."""
+    from agent_audit_kit.scanners import gha_hardening
+
+    parsed: list[str] = []
+    real = gha_hardening._commands
+    monkeypatch.setattr(gha_hardening, "_commands", lambda script: parsed.append(script) or real(script))
+    _workflow(tmp_path, 'echo "${{ secrets.TOKEN }}" | node build.js\ngit rev-parse HEAD > rev.txt')
+    assert _dumps(tmp_path) == [] and parsed == []
+    _workflow(tmp_path, "env | base64")
+    assert len(_dumps(tmp_path)) == 1 and parsed == ["env | base64\n"]
 
 
 def test_an_env_var_set_from_a_secret_counts_as_the_secret(tmp_path: Path) -> None:

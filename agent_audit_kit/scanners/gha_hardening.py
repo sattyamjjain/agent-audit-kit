@@ -173,37 +173,65 @@ _CAMPAIGN_STEP = "toJSON(secrets) }}' | base32 -w 120"
 _CAMPAIGN_STRING = "===== gdmp-pivot:"
 
 
+# Every reader below costs the length of the run script once. A first version
+# re-sliced a stage's word list for each leading `VAR=value` word, searched every
+# later pipeline stage again for each stage that reads a secret, read a heredoc body
+# again for each stage and each `;` piece that fed it, and rebuilt a joined line for
+# each backslash continuation: 250,000 stages of `env|` in one step (1 MB) would
+# have run for hours. A step that names no encoder at all is skipped before any of
+# it, which is what keeps a large workflow of ordinary steps at the YAML parse's cost.
+_ENCODER_WORD_RE = re.compile(
+    r"(?<![^\s()/|;&])(?:base32|base64|basenc|xxd|od|hexdump|rev|gzip|bzip2|xz|zstd|uuencode|openssl)(?![^\s()|;&\\])"
+)
+_EXPR_EVENT_RE = re.compile(r"\$\{\{|\}\}")
+_DOUBLE_QUOTE_EVENT_RE = re.compile(r'[\\"]')
+_SPLIT_EVENT_RES: dict[tuple[str, ...], re.Pattern[str]] = {}
+
+
+def _quote_end(text: str, i: int, quote: str) -> int:
+    """Where the quoted run that opened just before `i` ends: past its closing quote,
+    or the end of `text`. A backslash escapes the next character in double quotes only."""
+    if quote == "'":
+        j = text.find("'", i)
+        return len(text) if j < 0 else j + 1
+    while True:
+        m = _DOUBLE_QUOTE_EVENT_RE.search(text, i)
+        if m is None:
+            return len(text)
+        if m.group() == '"':
+            return m.end()
+        i = m.start() + 2
+
+
 def _split_unquoted(text: str, separators: tuple[str, ...]) -> list[str]:
-    """`text` split at each separator outside quotes and `${{ }}` expressions."""
+    """`text` split at each separator outside quotes and `${{ }}` expressions, in one
+    pass that jumps from one quote, expression bracket or separator to the next."""
+    events = _SPLIT_EVENT_RES.get(separators)
+    if events is None:
+        events = _SPLIT_EVENT_RES[separators] = re.compile(
+            "|".join([r"\$\{\{", "['\"]", *(re.escape(s) for s in separators)])
+        )
     parts: list[str] = []
     start = i = depth = 0
-    quote = ""
     while i < len(text):
-        c = text[i]
-        if quote:
-            if c == "\\" and quote == '"':
-                i += 2
-                continue
-            if c == quote:
-                quote = ""
-        elif text.startswith("${{", i):
-            depth += 1
-            i += 3
+        if depth:
+            m = _EXPR_EVENT_RE.search(text, i)
+            if m is None:
+                break
+            depth += 1 if m.group() == "${{" else -1
+            i = m.end()
             continue
-        elif depth and text.startswith("}}", i):
-            depth -= 1
-            i += 2
-            continue
-        elif not depth and c in "'\"":
-            quote = c
-        elif not depth:
-            hit = next((s for s in separators if text.startswith(s, i)), None)
-            if hit is not None:
-                parts.append(text[start:i])
-                i += len(hit)
-                start = i
-                continue
-        i += 1
+        m = events.search(text, i)
+        if m is None:
+            break
+        token = m.group()
+        if token == "${{":
+            depth, i = 1, m.end()
+        elif token in ("'", '"'):
+            i = _quote_end(text, m.end(), token)
+        else:
+            parts.append(text[start:m.start()])
+            i = start = m.end()
     parts.append(text[start:])
     return parts
 
@@ -212,13 +240,14 @@ def _program(segment: str) -> tuple[str, list[str]]:
     """The program a pipeline stage runs and its arguments, past `sudo`,
     `command`, `exec` and leading `VAR=value` assignments."""
     words = segment.replace("(", " ").replace(")", " ").split()
-    while words and (
-        ("=" in words[0] and not words[0].startswith(("-", "/", "$"))) or words[0] in ("sudo", "command", "exec")
+    k = 0
+    while k < len(words) and (
+        ("=" in words[k] and not words[k].startswith(("-", "/", "$"))) or words[k] in ("sudo", "command", "exec")
     ):
-        words = words[1:]
-    if not words:
+        k += 1
+    if k == len(words):
         return "", []
-    return words[0].rsplit("/", 1)[-1], words[1:]
+    return words[k].rsplit("/", 1)[-1], words[k + 1:]
 
 
 def _secret_vars(*envs: object) -> set[str]:
@@ -273,28 +302,36 @@ def _reaches_log(last: str) -> bool:
     )
 
 
-def _dump_in(command: str, body: str, secret_vars: set[str]) -> str | None:
+def _dump_in(command: str, body: str, secret_vars: set[str], body_sources: dict[str, str | None]) -> str | None:
     """The secret material `command` prints encoded, or None. `body` is the
-    heredoc the command feeds, if any."""
+    heredoc the command feeds, if any; what it holds is read once per step,
+    through `body_sources`, however many stages and commands it feeds."""
     stages = [s.strip() for s in _split_unquoted(command, ("|&", "|"))]
-    if not _reaches_log(stages[-1]):
+    encoders = [_is_encoder(s) for s in stages]
+    if not any(encoders) or not _reaches_log(stages[-1]):
         return None
-    for i, stage in enumerate(stages):
-        source = _source(stage, secret_vars)
-        if source is not None and any(_is_encoder(s) for s in stages[i + 1:]):
-            return source
-    for stage in stages:
-        if not _is_encoder(stage):
+    # Is there an encoder further down the pipeline than each stage?
+    encoded_later = [False] * len(stages)
+    for i in range(len(stages) - 2, -1, -1):
+        encoded_later[i] = encoded_later[i + 1] or encoders[i + 1]
+    for stage, later in zip(stages, encoded_later):
+        if later:
+            source = _source(stage, secret_vars)
+            if source is not None:
+                return source
+    for stage, encoder in zip(stages, encoders):
+        if not encoder:
             continue
         if "<<<" in stage:
-            fed = stage.split("<<<", 1)[1]
+            source = _source(stage.split("<<<", 1)[1], secret_vars)
         elif "<(" in stage:
-            fed = stage.split("<(", 1)[1]
+            source = _source(stage.split("<(", 1)[1], secret_vars)
         elif _HEREDOC_START_RE.search(stage):
-            fed = body
+            if body not in body_sources:
+                body_sources[body] = _source(body, secret_vars)
+            source = body_sources[body]
         else:
             continue
-        source = _source(fed, secret_vars)
         if source is not None:
             return source
     return None
@@ -309,10 +346,19 @@ def _commands(script: str) -> list[tuple[str, str, str]]:
     i = 0
     while i < len(lines):
         first = lines[i].rstrip().rstrip("\\").strip()
-        line = lines[i]
-        while line.rstrip().endswith("\\") and i + 1 < len(lines):
+        # The joined line, kept as pieces and joined once: what `rstrip()` would drop
+        # from its end is popped, and the continuation backslash cut from the piece
+        # that ends in it.
+        pieces = [lines[i]]
+        while i + 1 < len(lines):
+            while pieces and not pieces[-1].rstrip():
+                pieces.pop()
+            if not pieces or not pieces[-1].rstrip().endswith("\\"):
+                break
+            pieces[-1] = pieces[-1].rstrip()[:-1]
             i += 1
-            line = line.rstrip()[:-1] + " " + lines[i].strip()
+            pieces.extend((" ", lines[i].strip()))
+        line = "".join(pieces)
         i += 1
         body: list[str] = []
         m = _HEREDOC_START_RE.search(line)
@@ -321,9 +367,10 @@ def _commands(script: str) -> list[tuple[str, str, str]]:
                 body.append(lines[i])
                 i += 1
             i += 1
+        joined = "\n".join(body)
         for piece in _split_unquoted(line, (";", "&&", "||")):
             if piece.strip() and not piece.strip().startswith("#"):
-                out.append((piece.strip(), "\n".join(body), first))
+                out.append((piece.strip(), joined, first))
     return out
 
 
@@ -353,8 +400,11 @@ def _secret_dump_findings(path: Path, rel: str, text: str, doc: object) -> list[
         marker = None
     unplaced: list[tuple[Finding, str]] = []
     for script, secret_vars in _steps(doc):
+        if not _ENCODER_WORD_RE.search(script):
+            continue
+        body_sources: dict[str, str | None] = {}
         for command, body, first in _commands(script):
-            source = _dump_in(command, body, secret_vars)
+            source = _dump_in(command, body, secret_vars, body_sources)
             if source is None:
                 continue
             shown = command if len(command) <= 160 else command[:160] + "…"
