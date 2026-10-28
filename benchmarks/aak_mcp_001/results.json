@@ -31,16 +31,16 @@
     },
     "configs_with_a_critical_other_than_aak_mcp_001": {
       "denominator": 2303,
-      "n": 19,
-      "pct": 0.8
+      "n": 20,
+      "pct": 0.9
     },
     "configs_with_aak_mcp_001_and_another_critical": 1,
     "configs_with_critical": {
       "denominator": 2303,
-      "n": 1184,
-      "pct": 51.4
+      "n": 1185,
+      "pct": 51.5
     },
-    "configs_with_critical_but_no_aak_mcp_001": 18,
+    "configs_with_critical_but_no_aak_mcp_001": 19,
     "distinct_configs_scanned": 2303,
     "other_critical_rules_by_config": {
       "AAK-MCP-002": 9,
@@ -50,6 +50,7 @@
       "AAK-MCP-RUFLO-CVE-2026-59726-001": 1,
       "AAK-POISON-001": 1,
       "AAK-POISON-002": 1,
+      "AAK-RUNTIME-ADV-001": 1,
       "AAK-SECRET-008": 2,
       "AAK-TRANSPORT-001": 1
     },
@@ -61,13 +62,13 @@
       },
       "configs_with_critical": {
         "equal": true,
-        "fresh": 1184,
-        "published": 1184
+        "fresh": 1185,
+        "published": 1185
       },
       "configs_with_critical_pct": {
         "equal": true,
-        "fresh": 51.4,
-        "published": 51.4
+        "fresh": 51.5,
+        "published": 51.5
       },
       "distinct_configs_scanned": {
         "equal": true,
@@ -84,8 +85,8 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 1184,
-          "pct": 51.4
+          "n": 1185,
+          "pct": 51.5
         },
         "description": "the rule as shipped",
         "scenario": "as-published"
@@ -98,8 +99,8 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 19,
-          "pct": 0.8
+          "n": 20,
+          "pct": 0.9
         },
         "description": "every AAK-MCP-001 hit is a false positive",
         "scenario": "every-hit-wrong"
@@ -112,8 +113,8 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 1184,
-          "pct": 51.4
+          "n": 1185,
+          "pct": 51.5
         },
         "description": "loopback hosts exempt",
         "scenario": "loopback-exempt"
@@ -126,8 +127,8 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 1184,
-          "pct": 51.4
+          "n": 1185,
+          "pct": 51.5
         },
         "description": "loopback and private-network hosts exempt",
         "scenario": "loopback-and-private-exempt"
@@ -140,7 +141,7 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 22,
+          "n": 23,
           "pct": 1.0
         },
         "description": "https without a header downgraded below critical",
@@ -154,7 +155,7 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 22,
+          "n": 23,
           "pct": 1.0
         },
         "description": "loopback exempt and https downgraded",

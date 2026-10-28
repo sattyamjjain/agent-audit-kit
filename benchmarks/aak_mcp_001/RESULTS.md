@@ -73,30 +73,33 @@ every headline figure:
 |---|---:|---:|
 | Distinct configs scanned | 2,303 | 2,303 |
 | Configs with `AAK-MCP-001` | 1,166 | 1,166 |
-| Configs with a critical finding | 1,184 | 1,184 |
-| Share with a critical finding | 51.4% | 51.4% |
+| Configs with a critical finding | 1,185 | 1,185 |
+| Share with a critical finding | 51.5% | 51.5% |
 
-All 1,166 `AAK-MCP-001` configs are among the 1,184. Those 1,166 configs carry
+All 1,166 `AAK-MCP-001` configs are among the 1,185. Those 1,166 configs carry
 **1,263 hits** (findings: one per server entry the rule fires on): 1,136
-configs have one, 30 have between 2 and 11. Only **19 configs (0.8%) carry a
+configs have one, 30 have between 2 and 11. Only **20 configs (0.9%) carry a
 critical finding other than `AAK-MCP-001`**: `AAK-MCP-002` (9), four CVE version
 pins (K8s 2, n8n-MCP 2, GitLab 1, Ruflo 1), `AAK-SECRET-008` (2),
-`AAK-TRANSPORT-001` (1), `AAK-POISON-001` (1) and `AAK-POISON-002` (1). Eighteen of
-the 1,184 have no `AAK-MCP-001` hit at all, and 1 has both. In v1.0 these were
-1,311 hits on 1,201 configs, and 14 configs with another critical finding.
+`AAK-TRANSPORT-001` (1), `AAK-POISON-001` (1), `AAK-POISON-002` (1) and
+`AAK-RUNTIME-ADV-001` (1). Nineteen of the 1,185 have no `AAK-MCP-001` hit at all,
+and 1 has both. In v1.0 these were 1,311 hits on 1,201 configs, and 14 configs with
+another critical finding. The twentieth arrived with report v1.2: `AAK-RUNTIME-ADV-001`
+(agent-audit-kit 0.6.28) reads an MCP server launched from an nvm install of Node.js
+22.22.3, below that line's fix for CVE-2026-111497.
 
 The headline under counterfactual versions of the rule, from the URLs alone:
 
 | Scenario | Configs with a critical finding | Share | `AAK-MCP-001` still critical |
 |---|---:|---:|---:|
-| The rule as shipped | 1,184 | 51.4% | 1,166 |
-| Every `AAK-MCP-001` hit is a false positive | 19 | 0.8% | 0 |
-| Loopback hosts exempt | 1,184 | 51.4% | 1,166 |
-| Loopback and private-network hosts exempt | 1,184 | 51.4% | 1,165 |
-| https without a header downgraded below critical | 22 | 1.0% | 4 |
-| Loopback exempt and https downgraded | 22 | 1.0% | 4 |
+| The rule as shipped | 1,185 | 51.5% | 1,166 |
+| Every `AAK-MCP-001` hit is a false positive | 20 | 0.9% | 0 |
+| Loopback hosts exempt | 1,185 | 51.5% | 1,166 |
+| Loopback and private-network hosts exempt | 1,185 | 51.5% | 1,165 |
+| https without a header downgraded below critical | 23 | 1.0% | 4 |
+| Loopback exempt and https downgraded | 23 | 1.0% | 4 |
 
-The headline is, to within 19 configs, `AAK-MCP-001`. The rule exempts loopback
+The headline is, to within 20 configs, `AAK-MCP-001`. The rule exempts loopback
 itself since v1.1, so that scenario now equals the rule as shipped, and exempting
 private hosts as well leaves `AAK-MCP-001` critical on one config fewer.
 Downgrading https without a header still removes almost all of it: the 4

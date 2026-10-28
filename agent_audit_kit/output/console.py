@@ -167,6 +167,12 @@ def format_results(
             if "error" not in feed else f"not read ({feed['error']})"
         )
         lines.append(f"{DIM}Malicious-release feed: {shown}{RESET}")
+    advisories = result.data_feeds.get("runtimeAdvisories")
+    if advisories and "error" not in advisories:
+        lines.append(
+            f"{DIM}Runtime advisories: {advisories.get('origin', '?')} copy, generated "
+            f"{advisories.get('generatedAt') or 'at an unknown time'}{RESET}"
+        )
     lines.append(f"{DIM}Time: {result.scan_duration_ms:.0f}ms{RESET}")
     lines.append(f"\n{DIM}\U0001f4a1 GitHub Action: uses: sattyamjjain/agent-audit-kit@v1{RESET}\n{DIM}\U0001f4a1 CI mode: agent-audit-kit scan . --ci{RESET}\n")
     return "\n".join(lines)

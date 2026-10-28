@@ -57,8 +57,16 @@ SEVERITY_OVERRIDE_MODULES = {
         "AAK-IDE-TASK-001 escalates HIGH -> CRITICAL when the auto-run command "
         "is a shell, interpreter or network fetch"
     ),
+    "runtime_advisories.py": (
+        "AAK-RUNTIME-ADV-001 and -003 take the severity of the advisory that "
+        "decided them; a KEV entry is CRITICAL, the registry's level"
+    ),
 }
-SEVERITY_OVERRIDE_RULES = {"AAK-IDE-TASK-001": {Severity.CRITICAL}}
+SEVERITY_OVERRIDE_RULES = {
+    "AAK-IDE-TASK-001": {Severity.CRITICAL},
+    "AAK-RUNTIME-ADV-001": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
+    "AAK-RUNTIME-ADV-003": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
+}
 
 # The fixtures root fires most scanners. These three only read configs at the
 # project root, so they get their own fixture directories as roots.

@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New scanner `startup_hooks`: flags executable .pth lines, sitecustomize/usercustomize in site-packages, Dockerfiles that add them, and npm install scripts in MCP projects. litellm 1.107.0 (21 Oct 2026) used this route.
 - New rule AAK-MALICIOUS-RELEASE-001 with an offline feed seeded from OSV MAL-2026-2144; `aak update` refreshes it. Scans stay offline.
+- New scanner `runtime_advisories`: Node, PHP and Python runtime versions in Dockerfiles, version files, engines and MCP launchers, plus Brotli/brotlicffi in lockfiles, against a bundled advisory file. Triggers: PHP2Shell (KEV, 26 Oct) and CVE-2026-111497.
 
 ### Changed
 
 - `aak update` now also rebuilds the malicious-release feed from OSV's PyPI and npm exports (about 260 MB), adds GitHub's malware advisories with `--github-malware` and a token, and exits 2 when either update fails, where it used to exit 0; a failed rebuild keeps the cached feed as it was.
+- The State of MCP Security report is version 1.2. `AAK-RUNTIME-ADV-001` finds a critical flaw in one more config of the same 2026-07-26 corpus, an MCP server launched from an nvm install of Node.js 22.22.3, so configs with a critical finding go from 1,184 (51.4%) to 1,185 (51.5%) and one config moves from grade A to B; nothing else moved. The AAK-MCP-001 measurement's re-derivation of the headline follows.
 
 ## [0.6.27] - 2026-10-27
 

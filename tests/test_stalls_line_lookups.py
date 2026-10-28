@@ -48,6 +48,7 @@ from agent_audit_kit.scanners import (
     mcp_stdio_launcher,
     mcp_stdio_params,
     oauth_surface,
+    runtime_advisories,
     secret_exposure,
     shared_resource_authz,
     ssrf_toctou,
@@ -78,6 +79,16 @@ def _workflow(k: int) -> dict[str, str]:
     )
     return {".github/workflows/ci.yml": "on: [pull_request_target]\njobs:\n  b:\n    runs-on: ubuntu-latest\n"
             "    steps:\n" + steps}
+
+
+def _python_runtime(i: int) -> str:
+    """The i-th distinct spelling runtime_advisories reads as a managed Python runtime."""
+    major, rest = divmod(i, 220)
+    dotted, minor = divmod(rest, 110)
+    minor_text = str(minor) if minor < 10 else f"{minor - 10:02d}"
+    case, major = divmod(major, 10)
+    word = "".join(c.upper() if case >> j & 1 else c for j, c in enumerate("python"))
+    return f"{word}{major}{'.' if dotted else ''}{minor_text}"
 
 
 # The litellm image digest the bundled malicious-release feed lists (LITELLM-2026-10-21).
@@ -375,6 +386,14 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         "compose.yaml": "image: " + ("@" + _LISTED_DIGEST + " ") * k + "\n"}, 400, True),
     "malicious-digests-unseparated": (malicious_releases.scan, lambda k: {
         "compose.yaml": "image: x" + ("@" + _LISTED_DIGEST) * k + "\n"}, 150, True),
+    # runtime_advisories, before it was released: shlex grew a FROM word one character at a
+    # time (900,000 characters, 5.2 s), and a `.tool-versions` value was reported once per
+    # repetition (140,000, 14 s). Its per-value line searches are timed by
+    # test_serverless_runtime_lines_are_placed_in_one_pass, below.
+    "runtime-long-from-word": (runtime_advisories.scan, lambda k: {"Dockerfile": "FROM " + "a" * k + "\n"},
+                               90_000, False),
+    "runtime-repeated-tool-versions": (runtime_advisories.scan,
+                                       lambda k: {".tool-versions": "nodejs " + "22.0.0 " * k + "\n"}, 14_000, False),
 }
 
 
@@ -1609,3 +1628,27 @@ def test_a_lockfile_of_escaped_quotes_reads_its_keys_in_linear_time() -> None:
     t_small, t_large = _seconds(lambda: read(small)), _seconds(lambda: read(large))
     assert t_large < 5.0
     assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+
+def test_serverless_runtime_lines_are_placed_in_one_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each serverless runtime value's line was searched for from the top of the file:
+    30,000 spellings took 7.5 s on 3.12, most of it those searches. The rest is PyYAML's
+    pure-Python parse, linear but close to a slow runner's bound at that size, so the
+    parse is stubbed here and the placement alone is timed."""
+    def project(k: int) -> tuple[str, dict]:
+        values = [_python_runtime(i) for i in range(k)]
+        text = "functions:\n" + "".join(f"  f{i}: {{runtime: {v}}}\n" for i, v in enumerate(values))
+        return text, {"functions": {f"f{i}": {"runtime": v} for i, v in enumerate(values)}}
+
+    small, large = project(3_000), project(30_000)
+    parsed = {small[0]: small[1], large[0]: large[1]}
+    monkeypatch.setattr(runtime_advisories, "load_yaml", lambda text, path: parsed[text])
+    path = Path("serverless.yml")
+    found = runtime_advisories._runtime_key_declared(path, large[0])
+    assert len(found) == 30_000 and found[-1].line_no == 30_001
+    t_small = _seconds(lambda: runtime_advisories._runtime_key_declared(path, small[0]))
+    t_large = _seconds(lambda: runtime_advisories._runtime_key_declared(path, large[0]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
