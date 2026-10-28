@@ -1425,6 +1425,31 @@
       "title": "Third-party GitHub Action not pinned by full commit SHA"
     },
     {
+      "category": "secret-exposure",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token Mismanagement & Secret Exposure"
+      ],
+      "rule_id": "AAK-GHA-SECRET-DUMP-001",
+      "severity": "high",
+      "title": "Workflow step prints secrets through an encoder"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [
         "CVE-2025-65720"
@@ -10743,7 +10768,7 @@
       "legal-compliance": 19,
       "mcp-config": 67,
       "mcp-server-card": 4,
-      "secret-exposure": 18,
+      "secret-exposure": 19,
       "supply-chain": 191,
       "taint-analysis": 14,
       "tool-poisoning": 32,
@@ -10751,28 +10776,28 @@
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 221,
+      "Art. 10 - Data Governance": 222,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 325,
+      "Art. 15 - Robustness & Security": 326,
       "Art. 9 - Risk Management": 221
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 221,
+      "Choose supported MCP projects when possible (p.10)": 222,
       "Constrain and sandbox tool execution (p.11)": 204,
-      "Design for boundaries (p.10)": 312,
+      "Design for boundaries (p.10)": 313,
       "Filter and monitor output pipelines and chained execution (p.12)": 122,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 281,
-      "Sign and verify MCP messages (p.12)": 291,
-      "Track and patch MCP related vulnerabilities (p.13)": 226,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 282,
+      "Sign and verify MCP messages (p.12)": 292,
+      "Track and patch MCP related vulnerabilities (p.13)": 227,
       "Validate parameters (p.11)": 208
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
-      "ASI03": 113,
-      "ASI04": 219,
+      "ASI03": 114,
+      "ASI04": 220,
       "ASI05": 102,
       "ASI06": 5,
       "ASI07": 24,
@@ -10781,7 +10806,7 @@
       "ASI10": 5
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 34,
+      "MCP01:2025": 35,
       "MCP02:2025": 16,
       "MCP03:2025": 13,
       "MCP04:2025": 168,
@@ -10794,13 +10819,13 @@
     },
     "by_severity": {
       "critical": 98,
-      "high": 184,
+      "high": 185,
       "info": 5,
       "low": 19,
       "medium": 126
     },
     "total_cves_covered": 367,
-    "total_rules": 432
+    "total_rules": 433
   },
   "tool": "agent-audit-kit"
 }

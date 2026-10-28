@@ -1633,6 +1633,36 @@
       "title": "Third-party GitHub Action not pinned by full commit SHA"
     },
     {
+      "adversa_references": [
+        "ADV-TOKEN-06"
+      ],
+      "aicm_references": [
+        "DSP-17",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A `run:` step in a GitHub Actions workflow expands the secrets context (`toJSON(secrets)`, `secrets.X`, or an env var set from a secret) or the whole environment (`env`, `printenv`, `set`) and passes it through an encoder or transformer (base32, base64, xxd, od, rev, gzip, `openssl enc` and the like) whose output reaches the job log. GitHub masks a secret in the log only where its exact value appears, so an encoded copy prints in full, and anyone who can read the log can decode it. The Gheist campaign (Wiz, 2026-10-25) pushed exactly this step, `echo -n '${{ toJSON(secrets) }}' | base32 -w 120`, on `ci-sync-*` branches of every repository stolen tokens could reach, then downloaded the log and deleted the run.",
+      "incident_references": [
+        "WIZ-GHEIST-2026-10-25"
+      ],
+      "limitations": "Reads the `run:` steps of the workflow files directly inside `.github/workflows`; a composite action, a reusable workflow kept elsewhere and the code of an action are not read. A command line is joined across backslash continuations, split at `;`, `&&` and `||`, and its pipeline at `|`; secret material reaches an encoder through a pipe, a here-string, a heredoc or a process substitution. Secret material is a `secrets` expression (`toJSON(secrets)`, `secrets.X`, `secrets['X']`), an env var that a workflow, job or step `env:` sets from one, or a whole-environment dump (`env` without a command, `printenv`, `set` without arguments, `export -p`, `declare -p` or `-x`). A step is reported only when the encoded output reaches the log: the pipeline ends in a program that prints (an encoder, `cat`, `tee`, `tr`, `sed`, `jq` and the like) and redirects it nowhere but stdout, stderr or `$GITHUB_STEP_SUMMARY`. A secret written to a file, to `$GITHUB_OUTPUT` or `$GITHUB_ENV`, or piped into a program that consumes it (`docker login --password-stdin`, `gpg --import`) is not reported, and neither is a dump made by a script the step calls or through a variable the step builds. CRITICAL when the workflow carries a published Gheist marker: the file `sync-check.yml` with the step `toJSON(secrets) }}' | base32 -w 120`, or the string `===== gdmp-pivot:`. A workflow file over 1 MB is not read.",
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove the step. If you did not write it, treat every repository, organization and environment secret the workflow could read as exposed: rotate them, revoke the token that pushed the commit, and look for `ci-sync-*` branches and for workflow runs deleted soon after they finished (`workflows.delete_workflow_run` in the audit log). To give a tool a secret, pass it as an env var or on stdin; never print it, encoded or not.",
+      "rule_id": "AAK-GHA-SECRET-DUMP-001",
+      "sarif_name": "GhaSecretDumpThroughEncoder",
+      "severity": "high",
+      "title": "Workflow step prints secrets through an encoder"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "AIS-08",

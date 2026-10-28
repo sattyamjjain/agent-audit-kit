@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-28T08:05:27Z",
+  "last_updated": "2026-10-28T08:22:31Z",
   "aak_version": "0.6.27",
-  "rule_count": 432,
+  "rule_count": 433,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1211,7 +1211,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 113,
+      "rule_density": 114,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1324,6 +1324,15 @@
           "aicm_references": [
             "AIS-07",
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-GHA-SECRET-DUMP-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17",
             "STA-08"
           ]
         },
@@ -2381,7 +2390,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 219,
+      "rule_density": 220,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2556,6 +2565,15 @@
           "aicm_references": [
             "CCC-08",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-GHA-SECRET-DUMP-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17",
+            "STA-08"
           ]
         },
         {

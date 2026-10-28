@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New scanner `startup_hooks`: flags executable .pth lines, sitecustomize/usercustomize in site-packages, Dockerfiles that add them, and npm install scripts in MCP projects. litellm 1.107.0 (21 Oct 2026) used this route.
 - New rule AAK-MALICIOUS-RELEASE-001 with an offline feed seeded from OSV MAL-2026-2144; `aak update` refreshes it. Scans stay offline.
 - New scanner `runtime_advisories`: Node, PHP and Python runtime versions in Dockerfiles, version files, engines and MCP launchers, plus Brotli/brotlicffi in lockfiles, against a bundled advisory file. Triggers: PHP2Shell (KEV, 26 Oct) and CVE-2026-111497.
+- AAK-GHA-SECRET-DUMP-001 flags workflow steps that print secrets through an encoder, the route the Gheist campaign used.
 
 ### Changed
 

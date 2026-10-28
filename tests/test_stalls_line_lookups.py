@@ -95,6 +95,16 @@ def _python_runtime(i: int) -> str:
 _LISTED_DIGEST = "sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e"
 
 
+def _gha_run(run: str) -> dict[str, str]:
+    """A workflow of one step whose `run:` is the YAML scalar `run`, as written."""
+    return {".github/workflows/ci.yml": "on: push\njobs:\n a:\n  runs-on: x\n  steps:\n  - run: " + run + "\n"}
+
+
+def _gha_heredocs(separator: str, k: int) -> dict[str, str]:
+    """k encoders on one line, joined by `separator`, all fed one heredoc of k lines."""
+    return _gha_run("|\n     " + f"base64 <<A{separator}" * k + "cat\n" + "     x\n" * k + "     A")
+
+
 def _npx_servers(k: int) -> dict[str, str]:
     return {".mcp.json": _js({"mcpServers": {f"s{i}": {"command": "npx", "args": ["-y", f"pkg{i}"]}
                                              for i in range(k)}})}
@@ -270,6 +280,16 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.
     "workflow-steps": (gha_hardening.scan, _workflow, 1_000, True),
+    # AAK-GHA-SECRET-DUMP-001's reader, before it was released: each stage that reads
+    # the environment searched every later stage for an encoder (12,000 `env|` stages
+    # in one step, 48 KB, took 16 s), a stage's words were re-sliced for each leading
+    # `VAR=value` (80,000 of them 22 s), and a heredoc body was read again for every
+    # stage and every `;` command it fed (40,000 of each, 720 KB, 12 s and 18 s).
+    "secret-dump-env-stages": (gha_hardening.scan, lambda k: _gha_run('"base64|' + "env|" * k + 'cat"'), 1_200,
+                               False),
+    "secret-dump-assignments": (gha_hardening.scan, lambda k: _gha_run('"' + "A=1 " * k + 'base64"'), 8_000, False),
+    "secret-dump-heredoc-stages": (gha_hardening.scan, lambda k: _gha_heredocs("|", k), 4_000, False),
+    "secret-dump-heredoc-commands": (gha_hardening.scan, lambda k: _gha_heredocs(";", k), 4_000, False),
     # Row 4: one per launched package: 4,000 servers took 3.2 s.
     "npx-servers": (supply_chain.scan, _npx_servers, 800, True),
     # Row 5: the UPI pattern read a dotted run from every word boundary: 60 KB took 14 s.

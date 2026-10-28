@@ -1,0 +1,8 @@
+name: assets
+on: workflow_dispatch
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: decode the logo
+        run: base64 -d assets/logo.b64 > logo.png
