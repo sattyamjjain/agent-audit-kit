@@ -7,21 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.28] - 2026-10-28
+
 ### Added
 
-- New scanner `startup_hooks`: flags executable .pth lines, sitecustomize/usercustomize in site-packages, Dockerfiles that add them, and npm install scripts in MCP projects. litellm 1.107.0 (21 Oct 2026) used this route.
-- New rule AAK-MALICIOUS-RELEASE-001 with an offline feed seeded from OSV MAL-2026-2144; `aak update` refreshes it. Scans stay offline.
-- New scanner `runtime_advisories`: Node, PHP and Python runtime versions in Dockerfiles, version files, engines and MCP launchers, plus Brotli/brotlicffi in lockfiles, against a bundled advisory file. Triggers: PHP2Shell (KEV, 26 Oct) and CVE-2026-111497.
-- AAK-GHA-SECRET-DUMP-001 flags workflow steps that print secrets through an encoder, the route the Gheist campaign used.
-- `AAK-MCP-AWSAPIMCP-CVE-2026-115413-001` (HIGH): `awslabs.aws-api-mcp-server`, the AWS API MCP Server, from 1.3.0 below 1.6.0 (CVE-2026-115413, #1111). The OAuth mode added in 1.3.0, which HTTP mode turns on unless `AUTH_TYPE=no-auth` is set, did not check which application a token was issued to, so a token the same identity provider issued to another application could run AWS operations with the server's credentials. 1.6.0 adds `AUTH_AUDIENCE` and `AUTH_CLIENT_ID` and requires one of them. `latest` is fixed, so only a stated version is reported. It is its own rule beside the 1.3.47 one, whose range ends at 1.3.46.
-- `AAK-MCP-FFMPEG-CVE-2026-117568-001` (HIGH): `mcp-ffmpeg` on npm from 1.0.3, every version (CVE-2026-117568, #1112). Its `resize-video`, `extract-audio` and `get-video-info` tools put video paths inside a double-quoted string run through `child_process.exec`, so a file name holding a command substitution or a quote runs commands. There is no fixed release: 1.0.5 is the newest and the project's issue is open. 1.0.0 to 1.0.2 were an upload service with no MCP tools and are not reported, and PyPI's `mcp-ffmpeg` is another project.
+- New scanner `startup_hooks`: flags executable .pth lines, sitecustomize/usercustomize in site-packages, Dockerfiles that add them, and npm install scripts in MCP projects (#1119). litellm 1.107.0 (21 Oct 2026) used this route.
+- New rule AAK-MALICIOUS-RELEASE-001 with an offline feed seeded from OSV MAL-2026-2144; `aak update` refreshes it (#1119). Scans stay offline.
+- New scanner `runtime_advisories`: Node, PHP and Python runtime versions in Dockerfiles, version files, engines and MCP launchers, plus Brotli/brotlicffi in lockfiles, against a bundled advisory file (#1120). Triggers: PHP2Shell (KEV, 26 Oct) and CVE-2026-111497.
+- AAK-GHA-SECRET-DUMP-001 flags workflow steps that print secrets through an encoder, the route the Gheist campaign used (#1121).
+- `AAK-MCP-AWSAPIMCP-CVE-2026-115413-001` (HIGH): `awslabs.aws-api-mcp-server`, the AWS API MCP Server, from 1.3.0 below 1.6.0 (CVE-2026-115413, #1111, #1123). The OAuth mode added in 1.3.0, which HTTP mode turns on unless `AUTH_TYPE=no-auth` is set, did not check which application a token was issued to, so a token the same identity provider issued to another application could run AWS operations with the server's credentials. 1.6.0 adds `AUTH_AUDIENCE` and `AUTH_CLIENT_ID` and requires one of them. `latest` is fixed, so only a stated version is reported. It is its own rule beside the 1.3.47 one, whose range ends at 1.3.46.
+- `AAK-MCP-FFMPEG-CVE-2026-117568-001` (HIGH): `mcp-ffmpeg` on npm from 1.0.3, every version (CVE-2026-117568, #1112, #1123). Its `resize-video`, `extract-audio` and `get-video-info` tools put video paths inside a double-quoted string run through `child_process.exec`, so a file name holding a command substitution or a quote runs commands. There is no fixed release: 1.0.5 is the newest and the project's issue is open. 1.0.0 to 1.0.2 were an upload service with no MCP tools and are not reported, and PyPI's `mcp-ffmpeg` is another project.
 
 ### Changed
 
-- `aak update` now also rebuilds the malicious-release feed from OSV's PyPI and npm exports (about 260 MB), adds GitHub's malware advisories with `--github-malware` and a token, and exits 2 when either update fails, where it used to exit 0; a failed rebuild keeps the cached feed as it was.
-- cve-watcher now also reads OSV for every package the pin tables name.
-- `AAK-MCP-SDK-CVE-2026-59951-001` also covers CVE-2026-116684, CVE-2026-116685 and CVE-2026-116686 (#1113, #1117, #1118), three more MCP Python SDK flaws that 1.30.0 and 2.2.0 fix: server-side bearer authentication that accepts a token issued for another resource, client transports that send custom credential headers across a cross-origin redirect, and output-schema validation that fetches a server-chosen `$ref`. Their ranges sit inside the rule's, so what it reports is unchanged; its title, remediation and limitations now name all four.
-- The State of MCP Security report is version 1.2. `AAK-RUNTIME-ADV-001` finds a critical flaw in one more config of the same 2026-07-26 corpus, an MCP server launched from an nvm install of Node.js 22.22.3, so configs with a critical finding go from 1,184 (51.4%) to 1,185 (51.5%) and one config moves from grade A to B; nothing else moved. The AAK-MCP-001 measurement's re-derivation of the headline follows.
+- `aak update` now also rebuilds the malicious-release feed from OSV's PyPI and npm exports (about 260 MB), adds GitHub's malware advisories with `--github-malware` and a token, and exits 2 when either update fails, where it used to exit 0; a failed rebuild keeps the cached feed as it was (#1119).
+- cve-watcher now also reads OSV for every package the pin tables name (#1122).
+- `AAK-MCP-SDK-CVE-2026-59951-001` also covers CVE-2026-116684, CVE-2026-116685 and CVE-2026-116686 (#1113, #1117, #1118, #1123), three more MCP Python SDK flaws that 1.30.0 and 2.2.0 fix: server-side bearer authentication that accepts a token issued for another resource, client transports that send custom credential headers across a cross-origin redirect, and output-schema validation that fetches a server-chosen `$ref`. Their ranges sit inside the rule's, so what it reports is unchanged; its title, remediation and limitations now name all four.
+- The State of MCP Security report is version 1.2 (#1120). `AAK-RUNTIME-ADV-001` finds a critical flaw in one more config of the same 2026-07-26 corpus, an MCP server launched from an nvm install of Node.js 22.22.3, so configs with a critical finding go from 1,184 (51.4%) to 1,185 (51.5%) and one config moves from grade A to B; nothing else moved. The AAK-MCP-001 measurement's re-derivation of the headline follows.
 
 ## [0.6.27] - 2026-10-27
 
