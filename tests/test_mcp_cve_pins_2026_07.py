@@ -162,6 +162,9 @@ PINS = {
     # 2026-10-27 (#1100, #1101)
     "AAK-MCP-TOOLBOX-CVE-2026-93328-001": "critical",
     "AAK-MCP-CLOUDRUN-CVE-2026-85297-001": "high",
+    # 2026-10-28 (#1111, #1112)
+    "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001": "high",
+    "AAK-MCP-FFMPEG-CVE-2026-117568-001": "high",
 }
 
 
@@ -4595,3 +4598,113 @@ def test_cloud_run_mcp_versions(tmp_path: Path, spec: str, fires: bool) -> None:
 ])
 def test_cloud_run_mcp_references(tmp_path: Path, name: str, content: str, fires: bool) -> None:
     assert (_CLOUDRUN in _ids(tmp_path, name, content)) is fires
+
+
+# --- 2026-10-28 (#1109-#1118): AWS API MCP Server's OAuth audience, mcp-ffmpeg's exec
+# strings, and three MCP Python SDK CVEs on the 59951 rule ---
+
+_AWSAPI_115413 = "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001"
+_AWSAPI_16584 = "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001"
+_FFMPEG = "AAK-MCP-FFMPEG-CVE-2026-117568-001"
+
+
+def test_the_2026_10_28_pins_are_the_ranges_the_artifacts_show() -> None:
+    """AWS API MCP Server: OAuth arrives in 1.3.0 (awslabs/mcp#1902), and the audience
+    check (#4865, b97eefc7c) is in the 1.6.0 release commit and not at 1.5.6.
+    mcp-ffmpeg: 1.0.0 to 1.0.2 are an Express upload service with no MCP tools, 1.0.3
+    to 1.0.5 build `ffmpeg -i "${absVideoPath}"` strings for `child_process.exec`, and
+    nothing newer exists, so the pin is presence-only from 1.0.3, on npm only."""
+    assert _rows(_AWSAPI_115413) == [(("awslabs.aws-api-mcp-server",), (1, 6, 0), (1, 3, 0), True, None)]
+    assert _rows(_FFMPEG) == [(("mcp-ffmpeg",), None, (1, 0, 3), False, "js")]
+    assert RULES[_AWSAPI_115413].cve_references == ["CVE-2026-115413"]
+    assert RULES[_FFMPEG].cve_references == ["CVE-2026-117568"]
+
+
+def test_the_sdk_sessions_rule_carries_the_three_cves_its_releases_also_fix() -> None:
+    """GHSA-w4fh-qvv9-3v23, GHSA-5h93-6whr-6q8j and GHSA-rwrf-2pqf-9j8j give `mcp` from
+    1.10.0, 1.8.0 and 1.10.0 below 1.30.0, and from 2.0.0 below 2.2.0: inside the
+    rule's range, fixed by the same releases, and MEDIUM like it."""
+    assert RULES[_SDK_SESSIONS].cve_references == [
+        "CVE-2026-59951", "CVE-2026-116684", "CVE-2026-116685", "CVE-2026-116686"]
+    assert _rows(_SDK_SESSIONS) == [(("mcp",), (1, 30, 0), (1, 8, 0), True, "py")]
+    assert RULES[_SDK_SESSIONS].severity.value == "medium"
+    for cve in ("CVE-2026-116684", "CVE-2026-116685", "CVE-2026-116686"):
+        assert cve in RULES[_SDK_SESSIONS].description
+
+
+@pytest.mark.parametrize(("fixture", "fires"), [
+    ("cve-2026-115413-aws-api-mcp-server", _AWSAPI_115413),
+    ("cve-2026-117568-mcp-ffmpeg", _FFMPEG),
+])
+def test_2026_10_28_fixtures_positive_and_negative(fixture: str, fires: str) -> None:
+    """The last affected release fires on its launch line and nothing else from the
+    table does; the fixed release, the Express-era release and PyPI's namesake stay
+    quiet."""
+    root = _CVE_FIXTURES / fixture
+    vulnerable = scan(root / "vulnerable")[0]
+    assert {f.rule_id for f in vulnerable} == {fires}
+    assert {(f.file_path, f.line_number) for f in vulnerable} == {(".mcp.json", 5)}
+    for negative in sorted(p for p in root.iterdir() if p.name.startswith("negative")):
+        assert not scan(negative)[0], negative.name
+
+
+@pytest.mark.parametrize(("spec", "new", "old"), [
+    ("1.2.1", False, True),      # no OAuth mode yet; the 16584 row's own range
+    ("1.3.0", True, True),       # OAuth arrives (#1902)
+    ("1.3.47", True, False),     # the 16584 fix; the audience is still unchecked
+    ("1.5.6", True, False),      # the last release before the fix
+    (">=1.4,<2", True, False),   # a range that admits an affected version
+    ("1.6.0", False, False),     # AUTH_AUDIENCE and AUTH_CLIENT_ID (#4865)
+])
+def test_aws_api_115413_versions(tmp_path: Path, spec: str, new: bool, old: bool) -> None:
+    pinned = spec if spec[0] in "<>=!~" else f"=={spec}"
+    found = _ids(tmp_path, "requirements.txt", f"awslabs.aws-api-mcp-server{pinned}\n")
+    assert (_AWSAPI_115413 in found, _AWSAPI_16584 in found) == (new, old)
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    (".mcp.json", '{"mcpServers": {"s": {"command": "uvx", "args": ["awslabs.aws-api-mcp-server@1.5.6"]}}}',
+     True),
+    # the README's own launch installs latest, 1.6.0, which is fixed
+    (".mcp.json", '{"mcpServers": {"s": {"command": "uvx", "args": ["awslabs.aws-api-mcp-server@latest"]}}}',
+     False),
+    ("requirements.txt", "awslabs.aws-api-mcp-server\n", False),
+    ("pyproject.toml", '[project]\nname = "x"\nversion = "0"\n'
+                       'dependencies = ["awslabs.aws-api-mcp-server==1.5.0"]\n', True),
+    ("uv.lock", '[[package]]\nname = "awslabs-aws-api-mcp-server"\nversion = "1.5.6"\n', True),
+])
+def test_aws_api_115413_reads_a_stated_version(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_AWSAPI_115413 in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("package.json", '{"dependencies": {"mcp-ffmpeg": "1.0.5"}}', True),    # the newest release
+    ("package.json", '{"dependencies": {"mcp-ffmpeg": "^1.0.0"}}', True),   # admits 1.0.3 to 1.0.5
+    ("package.json", '{"dependencies": {"mcp-ffmpeg": "1.0.2"}}', False),   # the Express service
+    ("package-lock.json", '{"lockfileVersion": 3, "packages": {"": {"name": "x"}, '
+                          '"node_modules/mcp-ffmpeg": {"version": "1.0.4"}}}', True),
+    # an unversioned launch installs 1.0.5
+    (".mcp.json", '{"mcpServers": {"s": {"command": "npx", "args": ["-y", "mcp-ffmpeg"]}}}', True),
+    # a global install run by its bare name
+    (".mcp.json", '{"mcpServers": {"s": {"command": "mcp-ffmpeg", "args": []}}}', True),
+    # PyPI's mcp-ffmpeg is priyanshum143/MCP-FFMPEG, another project
+    (".mcp.json", '{"mcpServers": {"s": {"command": "uvx", "args": ["mcp-ffmpeg"]}}}', False),
+    ("requirements.txt", "mcp-ffmpeg==0.1.6\n", False),
+])
+def test_mcp_ffmpeg_references(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_FFMPEG in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("1.7.1", False),
+    ("1.8.0", True),     # CVE-2026-59951 and CVE-2026-116685
+    ("1.9.4", True),
+    ("1.10.0", True),    # CVE-2026-116684 and CVE-2026-116686 too
+    ("1.29.1", True),
+    ("1.30.0", False),
+    ("2.0.0", True),
+    ("2.1.1", True),
+    ("2.2.0", False),
+])
+def test_mcp_sdk_rule_range_holds_every_cve_it_names(tmp_path: Path, version: str, fires: bool) -> None:
+    assert (_SDK_SESSIONS in _ids(tmp_path, "requirements.txt", f"mcp=={version}\n")) is fires
