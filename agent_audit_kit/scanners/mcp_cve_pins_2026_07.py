@@ -205,7 +205,11 @@ available) before shipping:
     version is the Junie build, and 2548.5 is 26.8.3. A stated version is required)
   - mcp (MCP Python SDK)            1.8.0 <= v < 1.30.0, and 2.0.x/2.1.x below 2.2.0
     (CVE-2026-59951; stateful Streamable HTTP sessions never expire. MEDIUM, its own
-    rule beside the HIGH pin on the same name)
+    rule beside the HIGH pin on the same name. CVE-2026-116684, CVE-2026-116685 and
+    CVE-2026-116686 joined it on 2026-10-28: a bearer token issued for another
+    resource accepted, credentials sent across a cross-origin redirect, and a
+    server-chosen `$ref` fetched. Each falls inside the range and the same releases
+    fix all four)
   - network-ai                     5.14.0 <= v < 5.15.2  (CVE-2026-109331 and
     CVE-2026-73614; ClaudeHookBridge matches deny patterns against one truncated
     field. A stated version is required)
@@ -277,6 +281,13 @@ available) before shipping:
     it, so a bucket made first under that global name received the source. A stated
     version is required. The unscoped `cloud-run-mcp` is the same 1.0.0 build, its
     only release, and is reported unversioned too)
+  - awslabs.aws-api-mcp-server     1.3.0 <= v < 1.6.0  (CVE-2026-115413; the OAuth mode
+    added in 1.3.0, on by default in HTTP mode, did not check which application a
+    token was issued to. Its own HIGH rule beside the 1.3.47 row. A stated version
+    is required)
+  - mcp-ffmpeg                     >= 1.0.3, presence-only  (CVE-2026-117568; video
+    paths reach a double-quoted `child_process.exec` string. No fixed release, and
+    1.0.0 to 1.0.2 had no MCP tools. npm only: PyPI's `mcp-ffmpeg` is another project)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1448,6 +1459,9 @@ _PINS: tuple[_Pin, ...] = (
     # session with no idle expiry or count limit (CVE-2026-59951, CVSS 4.0 6.9). The
     # manager arrives in 1.8.0; 1.30.0 and 2.2.0 add a 30-minute default idle timeout
     # and a 10,000-session cap. MEDIUM, so its own rule beside the HIGH pin above.
+    # CVE-2026-116684, -116685 and -116686 (#1113, #1117, #1118) joined it on
+    # 2026-10-28: their advisories give 1.10.0, 1.8.0 and 1.10.0 below 1.30.0, and
+    # 2.0.0 below 2.2.0, each inside this range, and the same releases fix them.
     _Pin("AAK-MCP-SDK-CVE-2026-59951-001", "mcp (MCP Python SDK)", ("mcp",), (1, 30, 0),
          introduced=(1, 8, 0), also=(((2, 0, 0), (2, 2, 0)),),
          fix_label="1.30.0, or 2.2.0 on the 2.x line (affected from 1.8.0)",
@@ -1691,6 +1705,30 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-CLOUDRUN-CVE-2026-85297-001", "cloud-run-mcp", ("cloud-run-mcp",),
          (1, 11, 0),
          fix_label="@google-cloud/cloud-run-mcp 1.11.0 (the unscoped name has only 1.0.0)",
+         ecosystem="js"),
+    # --- 2026-10-28 batch (#1109-#1118) ---
+    # AWS API MCP Server: the OAuth mode added in 1.3.0 (awslabs/mcp#1902) did not
+    # check which application a token was issued to, so a token the same identity
+    # provider issued to another application was accepted (CVE-2026-115413). 1.6.0
+    # (awslabs/mcp#4865, b97eefc7c) adds AUTH_AUDIENCE and AUTH_CLIENT_ID and requires
+    # one of them; 1.5.6 has neither. Its own HIGH rule beside the 1.3.47 row above.
+    # `latest` is 1.6.0, so a stated version is required.
+    _Pin("AAK-MCP-AWSAPIMCP-CVE-2026-115413-001", "awslabs.aws-api-mcp-server",
+         ("awslabs.aws-api-mcp-server",), (1, 6, 0), introduced=(1, 3, 0),
+         fix_label="1.6.0, with AUTH_AUDIENCE or AUTH_CLIENT_ID set (affected from 1.3.0, "
+                   "in OAuth mode)",
+         requires_version=True),
+    # mcp-ffmpeg (bitscorp-mcp/mcp-ffmpeg): the MCP server, first published as 1.0.3
+    # (1.0.0 to 1.0.2 are an Express upload service with no MCP tools), builds
+    # `ffmpeg -i "${absVideoPath}" ...` strings from the tools' videoPath and outputDir
+    # and runs them with child_process.exec (CVE-2026-117568). 1.0.5 (2025-03-13) is
+    # the newest and still does, and issue #8 is open, so presence-only from 1.0.3.
+    # PyPI's `mcp-ffmpeg` is priyanshum143/MCP-FFMPEG, another project.
+    _Pin("AAK-MCP-FFMPEG-CVE-2026-117568-001", "mcp-ffmpeg", ("mcp-ffmpeg",), None,
+         introduced=(1, 0, 3),
+         fix_label="no fixed release (1.0.5, 2025-03-13, is the newest and "
+                   "bitscorp-mcp/mcp-ffmpeg#8 is open); keep it away from agents that read "
+                   "untrusted text",
          ecosystem="js"),
 )
 

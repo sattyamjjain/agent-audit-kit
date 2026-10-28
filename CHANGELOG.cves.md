@@ -16,6 +16,137 @@ gate blocks a tag while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-28 (v0.6.28): ten disclosures, two new pins, three CVEs on the MCP SDK rule, two out of scope, three deferred
+
+The watcher opened ten `cve-response` issues: five at 22:14Z on 2026-10-27 (#1109 to #1113)
+and five at 05:42Z on 2026-10-28 (#1114 to #1118). Two get new pins and three join the MCP
+Python SDK rule whose releases fix them, each measured with the scanner on a firing fixture
+and a negative one after its range was read in the published artifacts. Two are out of
+scope, a WordPress plugin and a desktop app, and three are deferred: MCP servers that ship
+only from a git repository, with no release that holds the flaw. NVD text is quoted from the
+API records, read on 2026-10-28.
+
+### CVE-2026-115413 (#1111): new pin 2026-10-28
+
+**The AWS API MCP Server gets `AAK-MCP-AWSAPIMCP-CVE-2026-115413-001`:
+`awslabs.aws-api-mcp-server` from 1.3.0 below 1.6.0, HIGH.** NVD: "Missing token audience
+validation in the OAuth authentication mode of AWS API MCP Server before version 1.6.0 might
+allow local users to run AWS operations with the server's configured AWS credentials via an
+access token issued to another application by the same identity provider."
+GHSA-4prq-p2x5-w9fh gives the same package from 1.3.0 below 1.6.0. Checked in the source: the
+server's changelog adds OAuth support in 1.3.0 (awslabs/mcp#1902), and the fix
+(awslabs/mcp#4865, b97eefc7c, 2026-10-27) is in the 1.6.0 release commit and not in 1.5.6's:
+at 1.6.0 `config.py` reads `AUTH_AUDIENCE` and `AUTH_CLIENT_ID`, and the changelog entry says
+one of them is required beside `AUTH_ISSUER` and `AUTH_JWKS_URI`. The README turns OAuth on by
+default in HTTP mode unless `AUTH_TYPE=no-auth` is set, and stdio has no OAuth mode; the rule
+reads the version, not the transport. It is its own rule beside
+`AAK-MCP-AWSAPIMCP-CVE-2026-16584-001`, whose range ends at 1.3.46, so a declaration from 1.3.0
+to 1.3.46 carries both flaws and gets both findings. `latest` is 1.6.0 (2026-10-27), so a
+stated version is required, and the README's own `uvx awslabs.aws-api-mcp-server@latest` is
+not this rule's to report. Not read: the ECR image
+`public.ecr.aws/awslabs-mcp/awslabs/aws-api-mcp-server`, which the README runs at `latest`.
+
+### CVE-2026-117568 (#1112): new pin 2026-10-28
+
+**mcp-ffmpeg gets `AAK-MCP-FFMPEG-CVE-2026-117568-001`: npm `mcp-ffmpeg` from 1.0.3, every
+version, HIGH.** NVD: "mcp-ffmpeg through 1.0.5 contains an OS command injection vulnerability
+that allows attackers to run shell commands by supplying crafted videoPath or outputDir values
+to the resize-video, extract-audio and get-video-info tools. Attackers can embed $(), backticks
+or a closing double quote in an existing file or directory name to break out of the
+child_process.exec command string and execute commands as the MCP server user." The npm
+package is the project's own: its homepage and bug tracker are bitscorp-mcp/mcp-ffmpeg (its
+`repository` field still names the template it started from, platformatic/mcp-node), and the
+repository's package.json carries the same name at 1.0.5. Checked in the published packages:
+1.0.0 to 1.0.2 are an Express upload service on fluent-ffmpeg, with no MCP tools and no
+`child_process` call; 1.0.3 is the MCP server, whose `resize-video`, `extract-audio` and
+`get-video-info` tools build `ffmpeg -i "${absVideoPath}" ...` and `ffprobe ...
+"${absVideoPath}"` strings and run them through `exec`; 1.0.5 does the same. All six releases
+are from 2025-03-13 and 1.0.5 is the newest, the default branch's newest commit is a
+dependabot merge of 2026-02-22, and bitscorp-mcp/mcp-ffmpeg#8 is open. So the pin is
+presence-only from 1.0.3, on npm only, like `mcp-ripgrep`: a dependency, a lockfile entry, an
+`npx` launch and a config that runs a global install by its bare name are reported, and an
+unversioned reference too, since it installs 1.0.5. PyPI's `mcp-ffmpeg`
+(priyanshum143/MCP-FFMPEG, 0.1.x) is another project and the second negative fixture.
+
+### CVE-2026-116684, CVE-2026-116685 and CVE-2026-116686 (#1113, #1117, #1118): on the MCP Python SDK rule 2026-10-28
+
+**Three MCP Python SDK CVEs join `AAK-MCP-SDK-CVE-2026-59951-001`.** NVD: "From 1.10.0 until
+1.30.0 and 2.2.0, server-side bearer authentication configured through AuthSettings with
+token_verifier accepts a valid token issued for another service when the authorization server
+serves multiple resources and the TokenVerifier does not independently validate the aud
+audience" (CVE-2026-116684). "From 1.8.0 until 1.30.0 and 2.2.0, streamable_http_client,
+streamablehttp_client, sse_client, ClientSessionGroup, OAuth, and create_mcp_http_client client
+paths enable follow_redirects and follow redirects to a different origin, forwarding
+caller-supplied custom credential headers and, for 307 or 308 responses, the request body"
+(CVE-2026-116685). "From 1.10.0 until 1.30.0 and 2.2.0, ClientSession, ClientSessionGroup, and
+Client tool calls validate server-declared outputSchema documents with jsonschema's default
+resolver, causing an unresolved $ref value to fetch an HTTP, HTTPS, or file URL from the
+client's network and filesystem context" (CVE-2026-116686). Their advisories
+(GHSA-w4fh-qvv9-3v23, GHSA-5h93-6whr-6q8j, GHSA-rwrf-2pqf-9j8j) give the same ranges, with the
+2.x line from 2.0.0 below 2.2.0. Each range sits inside the rule's own (1.8.0 below 1.30.0,
+2.0.0 below 2.2.0), the same two releases fix all four, and all four are MEDIUM (6.8, 5.9 and
+6.5 beside 59951's CVSS 4.0 6.9), so a second rule would only report every affected
+declaration twice with the same advice. The rule now names all four, its title and
+remediation cover the new flaws, and its limitations say that 1.8.0 to 1.9.x carry two of
+them. The ranges are the advisories'; unlike 59951's, they were not read in the source.
+
+### CVE-2026-117569, CVE-2026-117573 and CVE-2026-117570 (#1109, #1110, #1114): deferred 2026-10-28 (target 2026-11-11), no release
+
+Kali-GPT, hagent and nmap-mcp are VulnCheck records against a commit, not a release. NVD:
+"Kali-GPT through commit a608c74 contains an OS command injection vulnerability in
+execute_tool() in kali_gpt/tools/mcp_server.py that allows MCP clients to run commands via
+unsanitized scanner parameters"; "hagent through commit 761eec6 contains an OS command
+injection vulnerability that allows MCP clients to execute shell commands by injecting
+metacharacters into the args parameter of the hagent_arduino and hagent_esp32 tools"; and
+"Vorota-ai nmap-mcp through commit 3636afa contains an improper allowlist validation
+vulnerability in the scan_vulnerabilities tool that lets callers run blocked NSE script
+categories." Checked in the repositories: alishahid74/kali-gpt has one tag, v3.0.0
+(2026-01-17), and `kali_gpt/tools/` does not exist there, since the MCP server was added on
+2026-01-31 and no tag has been cut since; masc-ucsc/hagent and Vorota-ai/nmap-mcp have no tags
+or releases at all. None is on PyPI or npm under its own name: PyPI's `hagent`
+(jbheeman/hagent, 0.0.1) and npm's `hagent` (avwo/hagent) are other projects. With no release
+there is no name a project declares and no version to compare, and `_RepoPin` reads a git
+reference only where it names a tag. None has a fix: each project's issue
+(alishahid74/kali-gpt#12, masc-ucsc/hagent#98, Vorota-ai/nmap-mcp#3) was open on 2026-10-28.
+Deferred to 2026-11-11 to re-check, like designer-mcp (#1094): a release on npm or PyPI, or a
+tag that holds the flawed code, makes each a pin on that name. #1109, #1110 and #1114 stay
+open with `cve-deferred`.
+
+### CVE-2026-107745 and CVE-2026-118378 (#1115, #1116): out of scope 2026-10-28
+
+**AI Engine is out of scope, non-pinnable.** NVD: "The AI Engine – The Chatbot, AI Framework &
+MCP for WordPress plugin for WordPress is vulnerable to limited media file deletion due to
+insufficient file path validation in the upload_file function in all versions up to, and
+including, 3.8.4". It is #523's and #852's plugin again: the wordpress.org plugin `ai-engine`,
+installed into a WordPress site, on neither npm nor PyPI, and no file the scanner reads states
+its version. The changeset NVD cites runs from 3.8.4 to 3.8.5.
+
+**Tabularis is out of scope, non-pinnable.** NVD: "Tabularis before 0.28.0 contains an SQL
+injection vulnerability in its SQLite driver that allows MCP clients to execute stacked
+statements by supplying a crafted table_name to the describe_table tool." Tabularis
+(TabularisDB/tabularis) is a Tauri desktop app shipped as GitHub release builds (`.dmg`,
+`.AppImage`, `.rpm` and an `.app` archive). Its package.json is private, it is on neither PyPI
+nor crates.io, and npm's `tabularis` is an unrelated 1.0.0 that names no repository.
+GHSA-xrx3-j98v-67x9 lists its ecosystem as "other". No file the scanner reads states a
+Tabularis version.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-115413 | 7.8 | `awslabs.aws-api-mcp-server` (PyPI) | **New pin** `AAK-MCP-AWSAPIMCP-CVE-2026-115413-001` (HIGH): 1.3.0 up to 1.6.0, a stated version required. | #1111 |
+| CVE-2026-117568 | 7.0 | `mcp-ffmpeg` (npm) | **New pin** `AAK-MCP-FFMPEG-CVE-2026-117568-001` (HIGH): every version from 1.0.3. No fixed release. | #1112 |
+| CVE-2026-116684 | 6.8 | `mcp` (PyPI) | **Joins** `AAK-MCP-SDK-CVE-2026-59951-001` (MEDIUM): 1.10.0 up to 1.30.0, and 2.0.0 up to 2.2.0, inside the rule's range. | #1113 |
+| CVE-2026-116685 | 5.9 | `mcp` (PyPI) | **Joins** `AAK-MCP-SDK-CVE-2026-59951-001` (MEDIUM): 1.8.0 up to 1.30.0, and 2.0.0 up to 2.2.0, the rule's own range. | #1117 |
+| CVE-2026-116686 | 6.5 | `mcp` (PyPI) | **Joins** `AAK-MCP-SDK-CVE-2026-59951-001` (MEDIUM): 1.10.0 up to 1.30.0, and 2.0.0 up to 2.2.0, inside the rule's range. | #1118 |
+| CVE-2026-107745 | 4.2 | AI Engine (wordpress.org plugin `ai-engine`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 3.8.4; fixed in 3.8.5. | #1115 |
+| CVE-2026-118378 | 7.8 | Tabularis (desktop app, `github.com/TabularisDB/tabularis`) | **Out of scope**, non-pinnable: release builds only, on no registry. Fixed in 0.28.0. | #1116 |
+
+CVE-2026-117569, CVE-2026-117573 and CVE-2026-117570 have no row: a row is a coverage claim,
+and none of them has coverage. CVSS is each record's CVSS 3.1 score, all from the CNA: AWS's
+for CVE-2026-115413, GitHub's for the three SDK records, Wordfence's for AI Engine and
+VulnCheck's for mcp-ffmpeg and Tabularis.
+
+Dispositioned at 2026-10-28T09:48:23Z.
+
 ## 2026-10-27 (v0.6.27): two disclosures, two new pins
 
 The watcher opened two `cve-response` issues at 22:40Z on 2026-10-26 (#1100, #1101), both

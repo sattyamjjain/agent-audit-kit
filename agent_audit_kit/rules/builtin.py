@@ -372,6 +372,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-SIYUAN-CVE-2026-116168-001": ["AIS-07", "DSP-17", "STA-08"],
     "AAK-MCP-TOOLBOX-CVE-2026-93328-001": ["AIS-07", "IAM-01", "STA-08"],
     "AAK-MCP-CLOUDRUN-CVE-2026-85297-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-FFMPEG-CVE-2026-117568-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -16162,37 +16164,50 @@ _r(
 
 _r(
     "AAK-MCP-SDK-CVE-2026-59951-001",
-    "MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: stateful Streamable HTTP sessions never expire",
-    "The MCP Python SDK (`mcp` on PyPI) keeps a stateful Streamable HTTP session "
-    "(FastMCP, `Server.streamable_http_app()`, `StreamableHTTPSessionManager`) with "
-    "no idle expiry and no limit on how many are open. DELETE, refused opening "
-    "requests and completed sessions do not reliably discard their entries, and "
-    "each entry can keep its parsed initialize parameters, so a client that can "
-    "reach the endpoint grows the server's memory with short ordinary requests "
-    "until it restarts (CVE-2026-59951, CVSS 4.0 6.9, CWE-770). Checked in the "
-    "source: the session manager arrives in 1.8.0, 1.29.1 still has only an "
-    "optional idle timeout that is off by default, and 1.30.0 and 2.2.0 add a "
-    "30-minute default idle timeout and a 10,000-session cap. Stateless HTTP, "
-    "stdio and SSE are not affected.",
+    "MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: unbounded sessions, credentials sent across redirects, "
+    "audience-blind bearer auth and fetched schema $refs",
+    "The MCP Python SDK (`mcp` on PyPI) carries four flaws that 1.30.0 and, on the "
+    "2.x line, 2.2.0 fix. A stateful Streamable HTTP session (FastMCP, "
+    "`Server.streamable_http_app()`, `StreamableHTTPSessionManager`) is kept with no "
+    "idle expiry and no limit on how many are open, so a client that can reach the "
+    "endpoint grows the server's memory with short ordinary requests until it "
+    "restarts (CVE-2026-59951, CVSS 4.0 6.9, CWE-770; from 1.8.0, where the session "
+    "manager arrives). The HTTP client transports follow a redirect to another origin "
+    "and send it the caller's custom credential headers and, for a 307 or 308, the "
+    "request body (CVE-2026-116685, CVSS 5.9, CWE-200; from 1.8.0). Server-side "
+    "bearer authentication configured through `AuthSettings` with a `token_verifier` "
+    "accepts a valid token issued for another resource when the verifier does not "
+    "check its audience (CVE-2026-116684, CVSS 6.8, CWE-863; from 1.10.0). And a "
+    "client that validates a tool result against the server's `outputSchema` fetches "
+    "an unresolved `$ref` from its HTTP, HTTPS or file URL, synchronously and with "
+    "no timeout, so a server can make the client send blind requests, read local "
+    "files or stall every session (CVE-2026-116686, CVSS 6.5, CWE-918; from 1.10.0). "
+    "Checked in the source for CVE-2026-59951: 1.29.1 still has only an optional "
+    "idle timeout, off by default, and 1.30.0 and 2.2.0 add a 30-minute default and "
+    "a 10,000-session cap.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
     "Upgrade `mcp` to 1.30.0 or later, or to 2.2.0 or later on the 2.x line, and pin "
-    "it. Until then, pass `session_idle_timeout` to the session manager, or run the "
-    "server stateless.",
+    "it. Until then, pass `session_idle_timeout` to the session manager or run the "
+    "server stateless, give a server's `TokenVerifier` an audience check, and keep "
+    "custom credential headers off client transports whose endpoint can redirect.",
     sarif_name="McpPythonSdkUnboundedSessions",
-    cve_references=["CVE-2026-59951"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI04", "ASI08"],
-    adversa_references=["ADV-DOS-01"],
+    cve_references=["CVE-2026-59951", "CVE-2026-116684", "CVE-2026-116685", "CVE-2026-116686"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025", "MCP01:2025"],
+    owasp_agentic_references=["ASI04", "ASI08", "ASI03"],
+    adversa_references=["ADV-DOS-01", "ADV-AUTH-01"],
     limitations=(
         "Reads `mcp` from 1.8.0 below 1.30.0, and from 2.0.0 below 2.2.0, where a "
         "version is stated, in the same files as the HIGH `mcp` pin: requirements*.txt "
         "at any depth and, at the project root only, pyproject.toml, Pipfile, "
         ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock and uv.lock lockfiles. A bare `mcp` is not reported. It reads "
-        "versions, not code, so a stateless, stdio-only or SSE-only server, or one "
-        "that already sets `session_idle_timeout`, is reported too. A file over 2 MB, "
-        "or a lockfile over 32 MiB, is not read."
+        "poetry.lock and uv.lock lockfiles. A bare `mcp` is not reported. One finding "
+        "stands for all four CVEs, so 1.8.0 to 1.9.x, which carry only CVE-2026-59951 "
+        "and CVE-2026-116685, are reported with the rest. It reads versions, not code, "
+        "so a project that uses none of the affected parts (stateful Streamable HTTP, "
+        "bearer authentication with a `token_verifier`, the HTTP client transports, "
+        "output-schema validation), or that already sets `session_idle_timeout`, is "
+        "reported too. A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
@@ -17261,6 +17276,94 @@ _r(
     ),
 )
 
+
+
+# 2026-10-28 batch (#1109-#1118).
+
+_r(
+    "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001",
+    "AWS API MCP Server 1.3.0 to 1.5.x: OAuth mode accepts tokens issued to other applications",
+    "The AWS API MCP Server (`awslabs.aws-api-mcp-server`) added OAuth authentication "
+    "in 1.3.0 (`AUTH_TYPE=oauth`, which the README says is on by default in HTTP mode "
+    "unless `AUTH_TYPE=no-auth` is set). Before 1.6.0 it did not check a token's "
+    "audience, so a local user holding an access token that the same identity "
+    "provider issued to another application could call the server and run AWS "
+    "operations with the server's configured AWS credentials (CVE-2026-115413, CVSS "
+    "7.8, CWE-346; GHSA-4prq-p2x5-w9fh). 1.6.0 adds `AUTH_AUDIENCE` and "
+    "`AUTH_CLIENT_ID`, matched against the token's `aud` and `client_id` or `azp` "
+    "claims, and requires one of them in OAuth mode (awslabs/mcp#4865).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.aws-api-mcp-server` to 1.6.0 or later and pin it, then set "
+    "`AUTH_AUDIENCE` to the server's own audience, or `AUTH_CLIENT_ID` for a provider "
+    "whose access tokens carry no `aud` claim, such as Amazon Cognito. Until then, run "
+    "it over stdio, or keep its HTTP port to the one client that should reach it.",
+    sarif_name="AwsApiMcpServerOAuthAudience",
+    cve_references=["CVE-2026-115413"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `awslabs.aws-api-mcp-server` from 1.3.0 below 1.6.0 where a version is "
+        "stated: a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or "
+        "lockfile entry at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "`latest` was 1.6.0 on 2026-10-28 and states no version, so the README's own "
+        "`uvx awslabs.aws-api-mcp-server@latest` is not reported. It reads the version, "
+        "not the transport or `AUTH_TYPE`, so a server run over stdio, which has no "
+        "OAuth mode, or with `AUTH_TYPE=no-auth` is reported too. The ECR image "
+        "`public.ecr.aws/awslabs-mcp/awslabs/aws-api-mcp-server`, which the README runs "
+        "at `latest`, is not read. A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FFMPEG-CVE-2026-117568-001",
+    "mcp-ffmpeg from 1.0.3: video paths reach a shell command string",
+    "mcp-ffmpeg (npm `mcp-ffmpeg`, bitscorp-mcp/mcp-ffmpeg), an MCP server for "
+    "FFmpeg, builds the commands its `resize-video`, `extract-audio` and "
+    "`get-video-info` tools run by placing the `videoPath` and `outputDir` parameters "
+    "inside a double-quoted string handed to `child_process.exec`. A path holding "
+    "`$()`, backticks or a closing double quote, which an existing file or directory "
+    "name can carry, breaks out of the string, so a client or a prompt-injected agent "
+    "that can name a file runs commands as the server's user (CVE-2026-117568, CVSS "
+    "7.0, CWE-78). Checked in the published npm packages: the MCP server first ships "
+    "in 1.0.3 (1.0.0 to 1.0.2 are an Express upload service on fluent-ffmpeg with no "
+    "MCP tools), and 1.0.5, the newest release (2025-03-13), still builds "
+    "`ffmpeg -i \"${absVideoPath}\" ...` strings. bitscorp-mcp/mcp-ffmpeg#8 is open "
+    "and there is no fixed release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Remove `mcp-ffmpeg` from agents that read untrusted content, or run it as a user "
+    "that can reach nothing worth taking; there is no fixed release. A fork that "
+    "passes FFmpeg its arguments as an array (`execFile`, or `spawn` without a shell) "
+    "closes the injection.",
+    sarif_name="McpFfmpegPathShellInjection",
+    cve_references=["CVE-2026-117568"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports an npm reference to `mcp-ffmpeg` from 1.0.3: a package.json or lockfile "
+        "entry, the package an `npx` launch in an MCP config names, or a config that runs "
+        "a global install by that bare name. Presence-only from 1.0.3: every later "
+        "version is reported, a future fixed one included, until the pin gets a floor, "
+        "and so is a reference that states no version, which installs 1.0.5. 1.0.0 to "
+        "1.0.2 had no MCP tools and are not reported. PyPI's `mcp-ffmpeg` "
+        "(priyanshum143/MCP-FFMPEG) is another project, so a Python requirement and a "
+        "`uvx` launch are not matched. It reads the name and version, not which tools the "
+        "client lets the model call. A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
 
 # ---------------------------------------------------------------------------
 # 2026-10-28: startup hooks and known malicious releases. litellm 1.107.0
