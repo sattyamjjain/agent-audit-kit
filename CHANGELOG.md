@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `aak update` now also rebuilds the malicious-release feed from OSV's PyPI and npm exports (about 260 MB), adds GitHub's malware advisories with `--github-malware` and a token, and exits 2 when either update fails, where it used to exit 0; a failed rebuild keeps the cached feed as it was.
+- cve-watcher now also reads OSV for every package the pin tables name.
 - The State of MCP Security report is version 1.2. `AAK-RUNTIME-ADV-001` finds a critical flaw in one more config of the same 2026-07-26 corpus, an MCP server launched from an nvm install of Node.js 22.22.3, so configs with a critical finding go from 1,184 (51.4%) to 1,185 (51.5%) and one config moves from grade A to B; nothing else moved. The AAK-MCP-001 measurement's re-derivation of the headline follows.
 
 ## [0.6.27] - 2026-10-27

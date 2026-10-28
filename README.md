@@ -180,7 +180,8 @@ and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit
 ## CVE response
 
 Newly disclosed MCP CVEs are triaged and turned into rules as they land,
-surfaced by an NVD watcher and logged in
+surfaced by a watcher that reads NVD for MCP-related CVEs and OSV for every
+package the pin tables name, malicious releases included, and logged in
 [CHANGELOG.cves.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md). The measured disclosure-to-rule
 latency is published in [docs/cve-latency.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cve-latency.md) and
 regenerated from the ledger, not asserted.
@@ -196,7 +197,7 @@ Two of them read what an install leaves behind, not only what the repository dec
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
 
-<!-- test-count:total -->4,850<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->4,862<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->433<!-- /rule-count --> rules

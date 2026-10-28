@@ -6,9 +6,9 @@ This file is the audit trail of what shipped and when.
 
 Format: one line per CVE, `CVE-YYYY-NNNNN` → `AAK-XXX-NNN` with the
 shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
-diffs NVD's MCP keyword feed against this file and opens a `cve-response`
-issue for anything new; the release gate blocks a tag while any such issue is
-open.
+diffs NVD's MCP keyword feed, and OSV for every package the pin tables name,
+against this file and opens a `cve-response` issue for anything new; the release
+gate blocks a tag while any such issue is open.
 
 > **On the "48h" figures below:** AgentAuditKit does not commit to a 48-hour (or
 > any fixed) CVE-response SLA — that public commitment was retired in PR #432.
