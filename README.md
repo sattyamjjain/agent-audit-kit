@@ -180,7 +180,8 @@ and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit
 ## CVE response
 
 Newly disclosed MCP CVEs are triaged and turned into rules as they land,
-surfaced by an NVD watcher and logged in
+surfaced by a watcher that reads NVD for MCP-related CVEs and OSV for every
+package the pin tables name, malicious releases included, and logged in
 [CHANGELOG.cves.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md). The measured disclosure-to-rule
 latency is published in [docs/cve-latency.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cve-latency.md) and
 regenerated from the ledger, not asserted.
