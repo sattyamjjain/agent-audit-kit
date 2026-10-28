@@ -290,10 +290,11 @@ module — see CHANGELOG.cves.md.
 from __future__ import annotations
 
 import bisect
+import itertools
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import AbstractSet, Callable, Iterable, Iterator
 
 try:
     import tomllib
@@ -2309,7 +2310,10 @@ def _lockfile_findings(path: Path, rel: str, text: str) -> list[Finding]:
 # one, and compared whole: a window of fixed length reached into the next entry,
 # and a substring test read 1.0.1 inside 1.0.10. Every pattern is bounded.
 _NPM_LOCK_KEY_RE = re.compile(r'node_modules/((?:@[^"/\\\n]{1,214}/)?[^"/\\\n]{1,214})"[ \t]*:[ \t]*\{')
-_JSON_OBJECT_KEY_RE = re.compile(r'"((?:[^"\\\n]|\\.){1,214})"[ \t]*:[ \t]*\{')
+# A JSON string's body, read in one match: plain runs, each escape with the run after it.
+_JSON_STRING_BODY_RE = re.compile(r'[^"\\\n]*(?:\\[^\n][^"\\\n]*)*')
+_JSON_ESCAPE_RE = re.compile(r'\\[^\n]')
+_JSON_KEY_TAIL_RE = re.compile(r'[ \t]*:[ \t]*\{')
 _JSON_VERSION_RE = re.compile(r'"version"[ \t]*:[ \t]*"([^"\\\n]{0,64})"')
 _YARN_HEADER_RE = re.compile(r'^(?![ \t#\r\n])"?((?:@[^@"\s/]{1,214}/)?[^@"\s/,:]{1,214})@', re.MULTILINE)
 _YARN_VERSION_RE = re.compile(r'^[ \t]+version:?[ \t]+"?([0-9][\w.\-]{0,64})', re.MULTILINE)
@@ -2318,19 +2322,55 @@ _TOML_NAME_RE = re.compile(r'^name[ \t]*=[ \t]*"([^"\n]{1,214})"', re.MULTILINE)
 _TOML_VERSION_RE = re.compile(r'^version[ \t]*=[ \t]*"([0-9][^"\n]{0,64})"', re.MULTILINE)
 
 
+def _json_object_heads(text: str) -> Iterator[tuple[int, int, str]]:
+    """(start, end, key) for each JSON string of 1 to 214 characters, an escape
+    counting as one, that is followed by `:` and `{`, the key decoded only when it
+    holds an escape.
+
+    Each string is read once, its body in one match, from its opening quote to its
+    closing one. A regular expression tried every quote as an opening one and read
+    up to 214 escaped characters past each before giving up: 2.3 s a megabyte on a
+    Pipfile.lock of escaped quotes, 73 s at the 32 MiB lockfile cap. A newline, or a
+    backslash before one, ends a string unclosed, and reading resumes after it.
+    """
+    i, n = 0, len(text)
+    while True:
+        quote = text.find('"', i)
+        if quote < 0:
+            return
+        end = _JSON_STRING_BODY_RE.match(text, quote + 1).end()  # type: ignore[union-attr]
+        if end >= n:
+            return
+        if text[end] != '"':  # a newline, or a backslash before one: unclosed on this line
+            i = end + 1
+            continue
+        tail = _JSON_KEY_TAIL_RE.match(text, end + 1)
+        if tail is not None and end - quote <= 429:  # 214 escapes are 428 characters
+            key = text[quote + 1:end]
+            if 1 <= len(key) - len(_JSON_ESCAPE_RE.findall(key)) <= 214:
+                yield quote, tail.end(), (_json_key('"' + key + '"') if "\\" in key else key)
+        i = end + 1
+
+
 def _entry_versions(
-    text: str, filename: str, heads: list[tuple[int, int, str]],
-    version_re: re.Pattern[str], wanted: set[str],
+    text: str, filename: str, heads: Iterable[tuple[int, int, str]],
+    version_re: re.Pattern[str], wanted: AbstractSet[str],
 ) -> list[tuple[int, str, str]]:
     """(offset, name, version) for each entry head of a wanted package, its
-    version read between the head and the next head."""
+    version read between the head and the next head. The heads are read as they
+    come, one ahead, so a lockfile of millions holds none of them in memory."""
     out: list[tuple[int, str, str]] = []
-    for i, (start, end, name) in enumerate(heads):
-        if _lockfile_canon(name, filename) not in wanted:
-            continue
-        stop = heads[i + 1][0] if i + 1 < len(heads) else len(text)
-        m = version_re.search(text, end, stop)
-        out.append((start, name, m.group(1) if m else ""))
+    pending: tuple[int, int, str] | None = None
+    for head in heads:
+        if pending is not None:
+            m = version_re.search(text, pending[1], head[0])
+            out.append((pending[0], pending[2], m.group(1) if m else ""))
+            pending = None
+        if _lockfile_canon(head[2], filename) in wanted:
+            pending = head
+    if pending is not None:
+        m = version_re.search(text, pending[1], len(text))
+        out.append((pending[0], pending[2], m.group(1) if m else ""))
     return out
 
 
@@ -2343,18 +2383,35 @@ def _lockfile_entries(
     One pass over the file, for every reported package at once: the line of a
     finding used to be searched for from the top of the file for each finding.
     """
+    return {
+        name: [(line, _semver3(version)) for line, version in rows]
+        for name, rows in _lockfile_raw_entries(text, filename, wanted).items()
+    }
+
+
+def _lockfile_raw_entries(
+    text: str, filename: str, wanted: AbstractSet[str]
+) -> dict[str, list[tuple[int, str]]]:
+    """`_lockfile_entries` with each version as the lockfile writes it.
+
+    `malicious_releases` compares versions whole (1.107.0rc1 is not 1.107.0),
+    which the first three numbers cannot do.
+    """
     found: list[tuple[int, str, str]] = []
     if filename in ("package-lock.json", "pipfile.lock"):
-        heads = [] if filename == "pipfile.lock" else [
-            (m.start(), m.end(), m.group(1)) for m in _NPM_LOCK_KEY_RE.finditer(text)]
+        heads: Iterable[tuple[int, int, str]] = ()
+        if filename == "package-lock.json":
+            npm = ((m.start(), m.end(), m.group(1)) for m in _NPM_LOCK_KEY_RE.finditer(text))
+            first = next(npm, None)
+            if first is not None:
+                heads = itertools.chain((first,), npm)
         if not heads:
-            heads = [(m.start(), m.end(), _json_key('"' + m.group(1) + '"'))
-                     for m in _JSON_OBJECT_KEY_RE.finditer(text)]
+            heads = _json_object_heads(text)
         found = [(offset, name, version.lstrip("=")) for offset, name, version
                  in _entry_versions(text, filename, heads, _JSON_VERSION_RE, wanted)]
     elif filename == "yarn.lock":
-        heads = [(m.start(), m.end(), m.group(1)) for m in _YARN_HEADER_RE.finditer(text)]
-        found = _entry_versions(text, filename, heads, _YARN_VERSION_RE, wanted)
+        yarn = ((m.start(), m.end(), m.group(1)) for m in _YARN_HEADER_RE.finditer(text))
+        found = _entry_versions(text, filename, yarn, _YARN_VERSION_RE, wanted)
     elif filename == "pnpm-lock.yaml":
         # pnpm states the version in the entry itself.
         found = [(m.start(), m.group(1), m.group(2)) for m in _PNPM_ENTRY_RE.finditer(text)
@@ -2368,12 +2425,12 @@ def _lockfile_entries(
             version_m = _TOML_VERSION_RE.search(text, start, stop)
             if version_m is not None:
                 found.append((name_m.start(), name_m.group(1), version_m.group(1)))
-    entries: dict[str, list[tuple[int, _Ver | None]]] = {}
+    entries: dict[str, list[tuple[int, str]]] = {}
     line, last = 1, 0
     for offset, name, version in found:  # in file order
         line += text.count("\n", last, offset)
         last = offset
-        entries.setdefault(_lockfile_canon(name, filename), []).append((line, _semver3(version)))
+        entries.setdefault(_lockfile_canon(name, filename), []).append((line, version))
     return entries
 
 

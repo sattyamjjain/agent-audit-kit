@@ -1,0 +1,37 @@
+{
+  "about": "Python startup files AAK-STARTUP-HOOK-PTH-001 and AAK-STARTUP-HOOK-SITECUSTOMIZE-001 do not report. An entry matches a file only by its name and the sha256 of its normalised content together, never by name alone: a malicious .pth can call itself distutils-precedence.pth. Every entry was built in a clean environment on the date below; source says which tool wrote it.",
+  "normalisation": "Decode as UTF-8 (a leading BOM dropped, undecodable bytes replaced), split with str.splitlines(), strip each line, drop blank lines and lines starting with #, join with a newline, encode as UTF-8, sha256.",
+  "read_at": "2026-10-28",
+  "entries": [
+    {
+      "name": "distutils-precedence.pth",
+      "sha256": "2f70c2fa9227e9db9348215d9c7b246d2786aac7516f86d71a5952c7c225aa16",
+      "source": "setuptools 84.2.1 (pip install setuptools on CPython 3.12.12 and 3.15.2), 82.0.1 (seeded by virtualenv 21.15.1 on CPython 3.9.25) and 79.0.1 (ensurepip on CPython 3.9.25); identical in all three",
+      "runs": "Imports _distutils_hack and installs its shim when SETUPTOOLS_USE_DISTUTILS is unset or 'local'."
+    },
+    {
+      "name": "_virtualenv.pth",
+      "sha256": "69ac3d8f27e679c81b94ab30b3b56e9cd138219b1ba94a1fa3606d5a76a1433d",
+      "source": "virtualenv 21.15.1 creating a CPython 3.9.25 environment (it writes none for 3.12.12 or 3.15.2), and uv 0.9.18 `uv venv` on CPython 3.9.25, 3.12.12 and 3.15.2; identical",
+      "runs": "import _virtualenv, the patch module virtualenv and uv place beside it."
+    },
+    {
+      "name": "__editable__.aak_allowlist_probe-0.0.0.pth",
+      "sha256": "a4abf0882eedce4f6b309b937dd30c7076c200810a5b81bc3c5cee07068340c4",
+      "source": "setuptools 84.2.1 editable install (pip install -e, PEP 660) of a placeholder project named aak-allowlist-probe 0.0.0 on CPython 3.12.12",
+      "runs": "Imports the finder setuptools writes for that project and calls its install(). The file is named after the project, so it matches only that project's editable install."
+    },
+    {
+      "name": "a1_coverage.pth",
+      "sha256": "2cbb286eeaf39b2cd7d68cb09c1bc3cfb0cc8d27da949004d0c22698f127f270",
+      "source": "coverage 7.13.5, 7.14.0, 7.15.0, 7.16.0 and 7.17.0 wheels (7.17.0 installed by pytest-cov 7.1.0 into a CPython 3.12.12 environment with this project's dev extras); identical",
+      "runs": "Starts coverage measurement only when COVERAGE_PROCESS_START or COVERAGE_PROCESS_CONFIG is set."
+    },
+    {
+      "name": "a1_coverage.pth",
+      "sha256": "c3b8d29a0e339d512307ed96990c65f1a8d157b35f698902fb9172e5ebab42ca",
+      "source": "coverage 7.13.0 wheel (coverage first ships the file in 7.13.0; 7.10.7, 7.11.0, 7.11.3 and 7.12.0 do not)",
+      "runs": "Starts coverage measurement only when COVERAGE_PROCESS_START or COVERAGE_PROCESS_CONFIG is set."
+    }
+  ]
+}

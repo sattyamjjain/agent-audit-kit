@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New scanner `startup_hooks`: flags executable .pth lines, sitecustomize/usercustomize in site-packages, Dockerfiles that add them, and npm install scripts in MCP projects. litellm 1.107.0 (21 Oct 2026) used this route.
+- New rule AAK-MALICIOUS-RELEASE-001 with an offline feed seeded from OSV MAL-2026-2144; `aak update` refreshes it. Scans stay offline.
+
+### Changed
+
+- `aak update` now also rebuilds the malicious-release feed from OSV's PyPI and npm exports (about 260 MB), adds GitHub's malware advisories with `--github-malware` and a token, and exits 2 when either update fails, where it used to exit 0; a failed rebuild keeps the cached feed as it was.
+
 ## [0.6.27] - 2026-10-27
 
 ### Added

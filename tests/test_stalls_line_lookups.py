@@ -40,7 +40,9 @@ from agent_audit_kit.scanners import (
     ide_task_rce,
     india_pii,
     langchain_prompt_loader,
+    malicious_releases,
     mcp_config,
+    mcp_cve_pins_2026_07,
     mcp_destination_guard,
     mcp_server_card,
     mcp_stdio_launcher,
@@ -49,6 +51,7 @@ from agent_audit_kit.scanners import (
     secret_exposure,
     shared_resource_authz,
     ssrf_toctou,
+    startup_hooks,
     supply_chain,
     tool_poisoning,
     transport_security,
@@ -75,6 +78,10 @@ def _workflow(k: int) -> dict[str, str]:
     )
     return {".github/workflows/ci.yml": "on: [pull_request_target]\njobs:\n  b:\n    runs-on: ubuntu-latest\n"
             "    steps:\n" + steps}
+
+
+# The litellm image digest the bundled malicious-release feed lists (LITELLM-2026-10-21).
+_LISTED_DIGEST = "sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e"
 
 
 def _npx_servers(k: int) -> dict[str, str]:
@@ -336,6 +343,38 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "shared-launcher-source": (mcp_stdio_params.scan, lambda k: _shared_split(lambda i: f"n{i % 10}", 15, k), 100,
                                False),
     "shared-static-source": (mcp_stdio_params.scan, lambda k: _shared_split(lambda i: "'a'", 80, k), 100, False),
+    # startup_hooks, before it was released (the 2026-10-28 review): shlex grew a RUN word
+    # one character at a time (900,000 characters, 5.4 s); leading VAR=value words were
+    # sliced off one at a time (245,000, 71 s); each ENV PYTHONSTARTUP re-read every step
+    # (49,000, 67 s); each Dockerfile listed its directory again for MCP manifests (10,000
+    # in one directory, 43 s); and each PYTHONPATH entry was matched against every COPY
+    # (10,000 x 10,000, 11 s), resolving both sides on a match (1,000 x 1,000, 81 s) and
+    # listing a directory again for each entry naming it (3,000 x 3,000 files, 8.5 s).
+    "startup-long-run-word": (startup_hooks.scan, lambda k: {"Dockerfile": "FROM python:3.12\nRUN " + "a" * k + "\n"},
+                              90_000, False),
+    "startup-run-assignments": (startup_hooks.scan,
+                                lambda k: {"Dockerfile": "FROM python:3.12\nRUN " + "a=1 " * k + "\n"}, 24_000, False),
+    "startup-env-startup": (startup_hooks.scan,
+                            lambda k: {"Dockerfile": "FROM python:3.12\n" + "ENV PYTHONSTARTUP=x\n" * k}, 4_900, False),
+    "startup-many-dockerfiles": (startup_hooks.scan,
+                                 lambda k: {f"Dockerfile.{i}": "ENV PYTHONSTARTUP=x\n" for i in range(k)}, 600, False),
+    "startup-pythonpath-copies": (startup_hooks.scan, lambda k: {
+        "Dockerfile": "FROM python:3.12\nENV PYTHONPATH=" + ":".join(["/a"] * k) + "\n" + "COPY d /b\n" * k},
+        1_000, False),
+    "startup-pythonpath-copy-match": (startup_hooks.scan, lambda k: {
+        "Dockerfile": "FROM python:3.12\nENV PYTHONPATH=" + ":".join(["/app"] * k) + "\n" + "COPY d /app\n" * k,
+        "d/x.txt": "x"}, 100, False),
+    "startup-pythonpath-relist": (startup_hooks.scan, lambda k: {
+        **{f"d/f{i}.txt": "x" for i in range(k)},
+        "Dockerfile": "FROM python:3.12\nENV PYTHONPATH=" + ":".join(["/d"] * k) + "\n"}, 300, False),
+    # malicious_releases, before it was released: each listed image digest looked back to
+    # the start of its line and of the file (4,000 on one line, 292 KB, about 11 s; 27,000
+    # ran past two minutes), and quoted everything before it on the line (1,500 with
+    # nothing between them, 108 KB, 15 s and 82 MB of evidence).
+    "malicious-digests-on-one-line": (malicious_releases.scan, lambda k: {
+        "compose.yaml": "image: " + ("@" + _LISTED_DIGEST + " ") * k + "\n"}, 400, True),
+    "malicious-digests-unseparated": (malicious_releases.scan, lambda k: {
+        "compose.yaml": "image: x" + ("@" + _LISTED_DIGEST) * k + "\n"}, 150, True),
 }
 
 
@@ -1555,3 +1594,18 @@ def test_many_quoted_server_names_are_read_in_linear_time() -> None:
     seconds, total = result.stdout.split()
     assert total == "0", result.stderr[-500:]
     assert float(seconds) < 5.0
+
+
+
+def test_a_lockfile_of_escaped_quotes_reads_its_keys_in_linear_time() -> None:
+    """The JSON lockfile reader `malicious_releases` and `runtime_advisories` run on every
+    Pipfile.lock found its keys with a regular expression that tried every quote as an
+    opening one and read up to 214 escaped characters past each: 2.3 s a megabyte, so
+    4 MB of escaped quotes took 9 s and the 32 MiB lockfile cap 73 s. Below the 1 MB file
+    rows' size it stayed under their bound, so the reader is timed here directly."""
+    small, large = '"' + '\\"' * 200_000, '"' + '\\"' * 2_000_000
+    def read(text: str) -> object:
+        return mcp_cve_pins_2026_07._lockfile_raw_entries(text, "pipfile.lock", {"a"})
+    t_small, t_large = _seconds(lambda: read(small)), _seconds(lambda: read(large))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)

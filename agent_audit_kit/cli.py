@@ -19,6 +19,7 @@ from agent_audit_kit.commands._common import (
 )
 from agent_audit_kit.commands.install_precommit import install_precommit_cmd
 from agent_audit_kit.commands.scan import scan_cmd
+from agent_audit_kit.commands.update import update_cmd
 from agent_audit_kit.engine import run_scan
 
 # Re-exported so `from agent_audit_kit.cli import SEVERITY_MAP` (and the rest)
@@ -29,6 +30,7 @@ __all__ = [
     "main",
     "scan_cmd",
     "install_precommit_cmd",
+    "update_cmd",
     "SEVERITY_MAP",
     "FAIL_ON_CHOICES",
     "EXIT_PASS",
@@ -73,6 +75,7 @@ def cli(ctx: click.Context, emit_coverage: bool, coverage_format: str) -> None:
 # this module, which imports them. See issue #701.
 cli.add_command(scan_cmd)
 cli.add_command(install_precommit_cmd)
+cli.add_command(update_cmd)
 
 
 @cli.command("discover")
@@ -305,19 +308,6 @@ def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> N
             click.echo(f"Badge written to {output_file}")
         else:
             click.echo(svg)
-
-
-@cli.command("update")
-@click.version_option(version=__version__)
-def update_cmd() -> None:
-    """Update the vulnerability database."""
-    from agent_audit_kit.vuln_db import update_database
-
-    count = update_database()
-    if count >= 0:
-        click.echo(f"Vulnerability database updated: {count} entries.")
-    else:
-        click.echo("Update failed. Using bundled database.", err=True)
 
 
 @cli.command("proxy")

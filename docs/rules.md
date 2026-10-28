@@ -6,7 +6,7 @@
 
 | Category | Rules |
 |----------|-------|
-| Supply Chain | 183 |
+| Supply Chain | 188 |
 | MCP Configuration | 67 |
 | Tool Poisoning | 32 |
 | Agent Config | 19 |
@@ -20,7 +20,7 @@
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **424** |
+| **Total** | **429** |
 
 <!-- END rules-summary -->
 

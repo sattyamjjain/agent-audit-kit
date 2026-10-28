@@ -24,6 +24,7 @@ nav:
       - Getting started: getting-started.md
       - CLI reference: cli.md
       - Configuration & rule schema: rule-schema.md
+      - Scan a container image's files: scan-image-rootfs.md
   - Rules & coverage:
       - Per-rule pages: rules/index.md
       - OWASP mapping: owasp-mapping.md

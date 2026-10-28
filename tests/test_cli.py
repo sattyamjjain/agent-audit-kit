@@ -312,12 +312,25 @@ def test_verify_and_watch_once_agree_on_a_file_they_cannot_decode(tmp_path: Path
     assert (verify.exit_code, watch.exit_code) == (1, 1), (verify.output, watch.output)
 
 
-def test_update_command() -> None:
-    """The ``update`` subcommand should exit 0 regardless of network availability."""
+def test_update_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The ``update`` subcommand exits 0 when both updates succeed and 2 when either fails.
+
+    It used to download the published database here and exit 0 whatever happened.
+    It now also rebuilds the malicious-release feed from about 260 MB of OSV
+    exports, and a failed update is no longer silent, so both are stubbed: the
+    feed's own tests (`tests/test_malicious_releases.py`) exercise the rebuild.
+    """
+    from agent_audit_kit import malicious_feed, vuln_db
+
+    done = malicious_feed.Refreshed(Path("feed.json"), "2026-10-28T00:00:00Z", {"OSV PyPI": 1}, "read")
+    monkeypatch.setattr(vuln_db, "update_database", lambda: 1)
+    monkeypatch.setattr(malicious_feed, "refresh", lambda **_: done)
     result = runner.invoke(cli, ["update"])
-    assert result.exit_code == 0, (
-        f"Expected exit 0; got {result.exit_code}, output={result.output}"
-    )
+    assert result.exit_code == 0, result.output
+    monkeypatch.setattr(vuln_db, "update_database", lambda: -1)
+    result = runner.invoke(cli, ["update"])
+    assert result.exit_code == 2, result.output
+    assert "Update failed" in result.output
 
 
 def test_kill_command_no_proxy_running() -> None:

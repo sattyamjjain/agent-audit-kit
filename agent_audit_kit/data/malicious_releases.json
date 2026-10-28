@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-10-28T05:10:31Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 as https://api.osv.dev/v1/vulns/MAL-2026-2144 gave it on 2026-10-28, and the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
+  "entries": [
+    {
+      "id": "MAL-2026-2144",
+      "aliases": ["PYSEC-2026-2"],
+      "ecosystem": "PyPI",
+      "name": "litellm",
+      "versions": ["1.82.7", "1.82.8", "1.107.0"],
+      "modified": "2026-10-21T22:01:01.881791175Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-2144"
+    }
+  ],
+  "oci": [
+    {
+      "id": "LITELLM-2026-10-21",
+      "image": "docker.io/litellm/litellm",
+      "digests": ["sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e"],
+      "tags": ["v1.107.0", "latest", "main-latest", "main-stable"],
+      "url": "https://docs.litellm.ai/blog/security-incident-oct-21-2026",
+      "note": "The post names the Docker Hub tags and this image index digest (compromised from 11:46:56 to 14:20 UTC on 2026-10-21) without the repository; docker.io/litellm/litellm carries those four tags (v1.107.0 removed, the rest repointed), and docker.io/berriai/litellm does not exist (404 on 2026-10-28). The post's GHCR digests are truncated, so none is listed. A digest is matched whatever registry name a reference gives it, since a digest names content; the tags are listed for the record and never matched."
+    }
+  ]
+}

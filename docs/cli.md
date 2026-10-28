@@ -18,7 +18,7 @@ Nothing here was cut; it is the same content with a home of its own.
 | `agent-audit-kit suggest run.sarif --pr` | Markdown remediation body for `gh pr create --body-file -` |
 | `agent-audit-kit suggest run.sarif --auto-pr` | Apply allow-listed mechanical fixes on a branch and open a **draft** PR |
 | `agent-audit-kit score .` | Security grade (A-F) + SVG badge |
-| `agent-audit-kit update` | Update vulnerability database |
+| `agent-audit-kit update` | Update the vulnerability database and rebuild the malicious-release feed from OSV (`--github-malware` adds GitHub's malware advisories; needs a token) |
 | `agent-audit-kit proxy --port 8765 --target URL` | Start MCP interception proxy |
 | `agent-audit-kit kill` | Terminate running proxy |
 | `agent-audit-kit export-rules --out rules.json` | Write deterministic rule bundle + SHA-256 (Sigstore-signable) |

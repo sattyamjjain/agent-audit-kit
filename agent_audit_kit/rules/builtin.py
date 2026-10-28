@@ -372,6 +372,11 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-SIYUAN-CVE-2026-116168-001": ["AIS-07", "DSP-17", "STA-08"],
     "AAK-MCP-TOOLBOX-CVE-2026-93328-001": ["AIS-07", "IAM-01", "STA-08"],
     "AAK-MCP-CLOUDRUN-CVE-2026-85297-001": ["AIS-07", "STA-08"],
+    "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
+    "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
+    "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
+    "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
+    "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -17249,6 +17254,239 @@ _r(
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-28: startup hooks and known malicious releases. litellm 1.107.0
+# (21 Oct 2026, OSV MAL-2026-2144) ran a credential stealer from cook.pth and
+# sitecustomize.py at every Python start and passed every rule on 0.6.27.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-STARTUP-HOOK-PTH-001",
+    "Startup code in a site-packages .pth or .start file",
+    "A `.pth` file at the top of a site-packages or dist-packages directory has a "
+    "line that starts with `import`, or a PEP 829 `.start` file names an entry "
+    "point. Python runs that line, or calls that entry point, at every interpreter "
+    "start, before any script and without the package being imported, so `pip`, a "
+    "test run and an MCP server started from that environment all run it. litellm "
+    "1.107.0 (21 Oct 2026, OSV MAL-2026-2144) shipped `cook.pth` containing `import "
+    "cook` and stole credentials that way. setuptools, virtualenv, uv and coverage "
+    "write such files too; the ones AAK built and read are allowlisted by name and "
+    "content together.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Open the file and the module it imports. If no package you installed on "
+    "purpose wrote it (its dist-info RECORD lists the files a package installed), "
+    "delete it, its module and any `__pycache__` copy, rebuild the environment or "
+    "image from a pinned, known-good lockfile, and rotate every credential the "
+    "environment could reach. If it is a hook you trust, exclude its path with "
+    "`--ignore-paths`.",
+    sarif_name="PythonStartupHookPth",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-05"],
+    incident_references=["BERRIAI-LITELLM-2026-10-21"],
+    limitations=(
+        "Reads the `.pth` and `.start` files at the top of each directory named "
+        "`site-packages` or `dist-packages` up to 12 directories below the scan root, "
+        "the root itself included, and looks inside `.venv`, `venv`, `env`, `.tox` and "
+        "`vendor` to find them; it follows no symlinked directory and skips "
+        "`node_modules`, `.git` and the other build and cache directories AAK skips. A "
+        "`.pth` line is reported when it starts with `import ` or `import<TAB>` after "
+        "optional whitespace: Python 3.15 strips the line first, while 3.9 to 3.14 test "
+        "it as written, so an indented line runs only on 3.15 and later. Lines are split "
+        "as `str.splitlines()` splits them and a leading BOM is dropped. A line that only "
+        "names a directory is not reported, although Python puts that directory on "
+        "`sys.path`. Every line of a `.start` file that is not blank or a comment is "
+        "reported as an entry point. A file named in `data/startup_hook_allowlist.json` "
+        "with the same normalised content is not reported: setuptools' "
+        "`distutils-precedence.pth`, the `_virtualenv.pth` that virtualenv and uv write, "
+        "coverage's `a1_coverage.pth` (7.13.0 to 7.17.0) and the finder of one "
+        "placeholder editable install, so a setuptools editable install of any other "
+        "project is reported. The module a reported line imports is not read. An image "
+        "is read only as an unpacked root filesystem given as the scan path, never from "
+        "a registry. A startup file that is a symlink is read where the image reads it: "
+        "an absolute target is taken under the scan root, and a link that still leads "
+        "outside the root is not read. A startup file over 1 MB is refused, which marks "
+        "the scan incomplete, and a FIFO or a device in its place is skipped."
+    ),
+)
+
+_r(
+    "AAK-STARTUP-HOOK-SITECUSTOMIZE-001",
+    "sitecustomize or usercustomize module where Python imports it at every start",
+    "A `sitecustomize` or `usercustomize` module sits in a site-packages or "
+    "dist-packages directory, or in a directory a Dockerfile puts on `PYTHONPATH`. "
+    "Python's `site` module imports both at every interpreter start, before any "
+    "script runs, so whatever the module does runs in every Python process of that "
+    "environment or image. litellm 1.107.0 (21 Oct 2026, OSV MAL-2026-2144) "
+    "installed a `sitecustomize.py` that started a daemon fetching and running "
+    "remote code every hour.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Read the module. If no package you installed on purpose, and no file of your "
+    "own, put it there, delete it and any `__pycache__` copy, rebuild the "
+    "environment or image from a pinned, known-good lockfile, and rotate every "
+    "credential it could reach. A hook of your own belongs in your application's "
+    "start-up code, where it is visible and tested; if you keep this one, exclude "
+    "its path with `--ignore-paths`.",
+    sarif_name="PythonSitecustomizeHook",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-05"],
+    incident_references=["BERRIAI-LITELLM-2026-10-21"],
+    limitations=(
+        "Reports `sitecustomize` and `usercustomize` as a `.py` or a sourceless `.pyc`, an "
+        "extension module (`.so`, `.pyd`), a package with an `__init__.py` or "
+        "`__init__.pyc`, or a compiled copy in `__pycache__` (which Python loads only "
+        "beside its source, so it shows the module was there), at the top of a "
+        "site-packages or dist-packages directory that AAK-STARTUP-HOOK-PTH-001's walk "
+        "reaches, or in a directory a Dockerfile's `ENV PYTHONPATH` names, read as a "
+        "path under the scan root (an unpacked image) or as a build-context directory "
+        "that a COPY or ADD puts at that path, the context taken to be the Dockerfile's "
+        "own directory. A `PYTHONPATH` set anywhere else (an image's config, a compose "
+        "file, a CI job, a shell) is not read, and neither is the standard library "
+        "directory, where Debian and Ubuntu ship a `sitecustomize.py` of their own. A "
+        "file named in `data/startup_hook_allowlist.json` with the same normalised "
+        "content is not reported; none is listed today. A `PYTHONPATH` directory is read "
+        "only where it resolves inside the scan root, so a path with `..` past the root, "
+        "or through a symlink out of it, is not read, and a module that is a symlink is "
+        "read as AAK-STARTUP-HOOK-PTH-001 reads a startup file. A file over 1 MB is "
+        "refused, which marks the scan incomplete, and a FIFO or a device in its place is "
+        "skipped."
+    ),
+)
+
+_r(
+    "AAK-STARTUP-HOOK-DOCKERFILE-001",
+    "Dockerfile adds a Python startup hook, or sets PYTHONSTARTUP in an MCP server image",
+    "A Dockerfile or Containerfile copies a `.pth`, `sitecustomize.py` or "
+    "`usercustomize.py` into the image, writes one in a RUN step, or sets "
+    "`ENV PYTHONSTARTUP` in an image that runs an MCP server. A `.pth` or a "
+    "`sitecustomize` in the image's site-packages runs at every Python start in every "
+    "container started from it, and `PYTHONSTARTUP` runs a file at the start of every "
+    "interactive Python session in it. A build step that places one is either a "
+    "deliberate hook, which belongs in the application's own start-up code, or how a "
+    "compromised build slips code into every process.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Remove the step, or move what the hook does into the application's entry point "
+    "where it is visible and tested. If the image must carry the hook, keep its "
+    "source in the repository, pin its content and review changes to it like code.",
+    sarif_name="DockerfilePythonStartupHook",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-05"],
+    incident_references=["BERRIAI-LITELLM-2026-10-21"],
+    limitations=(
+        "Reads every file named `Dockerfile`, `Containerfile`, `Dockerfile.*`, "
+        "`Containerfile.*` or `*.dockerfile` outside AAK's skip directories, joining "
+        "continuation lines and skipping heredoc bodies; a parser directive that changes "
+        "the escape character is not read. Reports a COPY or ADD whose source or "
+        "destination names a `.pth`, `sitecustomize.py` or `usercustomize.py` (or a "
+        "`.pyc` of either), or a `.start` file under a site-packages or dist-packages "
+        "path; a RUN that writes one through a redirect, `tee`, `cp`, `mv`, `install` or "
+        "`ln`; and `ENV PYTHONSTARTUP` when the image looks like it runs an MCP server: "
+        "an `mcp` word, `fastmcp` or `modelcontextprotocol` in a CMD, ENTRYPOINT, RUN or "
+        "LABEL, an MCP SDK declared in a manifest beside the Dockerfile, or an "
+        "`.mcp.json` there. `PYTHONSTARTUP` takes effect only in interactive sessions. A "
+        "package that `pip install` or `npm install` installs with such a file, a "
+        "directory copy that contains one (unless the directory is on `PYTHONPATH`, see "
+        "AAK-STARTUP-HOOK-SITECUSTOMIZE-001), a file written by a script the RUN calls, "
+        "and a path built from `ARG` or `$VAR` are not seen. A Dockerfile over 1 MB is "
+        "not read."
+    ),
+)
+
+_r(
+    "AAK-STARTUP-HOOK-NPM-INSTALL-001",
+    "npm lockfile entry with an install script in an MCP project",
+    "A package-lock.json or npm-shrinkwrap.json entry is marked "
+    "`hasInstallScript: true` in a project that runs an MCP server. `npm install` "
+    "and `npm ci` run that package's preinstall, install or postinstall script on "
+    "the machine that installs it, with the installing user's access, before any "
+    "code of the server runs. That is the npm counterpart of a Python startup hook "
+    "and the usual way a malicious npm release runs.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Check that each listed package needs its install script (native builds such as "
+    "esbuild and sharp do). Install with `npm ci --ignore-scripts`, or set "
+    "`ignore-scripts=true` in the project's `.npmrc`, and run the scripts you need "
+    "explicitly (`npm rebuild <pkg>`), so a new dependency cannot run code on "
+    "install unseen.",
+    sarif_name="NpmInstallScriptInMcpProject",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-05"],
+    limitations=(
+        "Reads `package-lock.json` and `npm-shrinkwrap.json` of lockfileVersion 2 or 3 "
+        "outside AAK's skip directories, and reports each `packages` entry marked "
+        "`hasInstallScript: true`, the project's own root entry excepted, when the "
+        "project runs an MCP server: the lockfile resolves `@modelcontextprotocol/sdk`, "
+        "`@anthropic-ai/mcp` or `@anthropic-ai/claude-agent-sdk`, a manifest beside it "
+        "declares an MCP SDK, or an `.mcp.json` beside it declares a server. A lockfile "
+        "whose directory has an `.npmrc` setting `ignore-scripts=true` is not reported. "
+        "It reads the flag, not the script, so what a script does is not judged, and an "
+        "`--ignore-scripts` passed on a command line, or an `.npmrc` elsewhere, is not "
+        "seen. lockfileVersion 1, yarn.lock and pnpm-lock.yaml record no install "
+        "scripts and are not read; `node_modules` is never walked and npm is never run. "
+        "A lockfile over 32 MiB is not read."
+    ),
+)
+
+_r(
+    "AAK-MALICIOUS-RELEASE-001",
+    "A declared, locked, installed or deployed release is listed as malware",
+    "A manifest pins, a lockfile resolves, a site-packages directory has installed, "
+    "or an image reference by digest runs a release that the offline malicious-release "
+    "feed lists: OSV's OpenSSF Malicious Packages (`MAL-`) records for PyPI and npm, "
+    "GitHub's malware advisories when `aak update` could read them, and image "
+    "digests from vendor incident reports. Such a release is malware rather than a "
+    "flaw below a fix, so no version pin catches it: litellm 1.107.0 (21 Oct 2026, "
+    "OSV MAL-2026-2144) sat above every pinned floor and ran a credential stealer at "
+    "every Python start. A scan reads the feed `aak update` caches at "
+    "`~/.agent-audit-kit/malicious_releases.json`, else the copy bundled with AAK, "
+    "and never touches the network; the SARIF run and the console summary name the "
+    "copy and when it was generated.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Remove the release: pin a version the feed does not list (for litellm, 1.106.2, "
+    "the version LiteLLM named), re-lock, and rebuild the environment or image from "
+    "scratch rather than upgrading in place. Treat every environment, host or "
+    "cluster that installed or ran it as compromised: rotate each credential it could "
+    "reach and review its outbound traffic. Run `aak update` to refresh the feed.",
+    sarif_name="KnownMaliciousRelease",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    incident_references=["BERRIAI-LITELLM-2026-10-21"],
+    limitations=(
+        "Reads, anywhere outside AAK's skip directories, requirements*.txt, "
+        "pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP "
+        "configs (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, "
+        "`*.mcp.yaml`, `*.mcp.yml`) for a declaration that pins one version; the lockfiles uv.lock, poetry.lock, "
+        "Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and "
+        "yarn.lock (v1) for resolved versions; `<name>-<version>.dist-info` directories "
+        "in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's "
+        "walk reaches; and `@sha256:` image references in Dockerfiles, YAML files and "
+        "MCP configs. A version matches exactly, PEP 440 normalised for PyPI and as "
+        "written for npm, so a pre-release beside a malicious release (litellm "
+        "1.107.0rc1) is not reported, and npm's `0.0.1-security` placeholder never "
+        "matches. A range, or a declaration without a version, matches only an entry "
+        "that lists every release of the package, since a range does not say which "
+        "release was installed. An image tag never matches, only a digest, and a digest "
+        "matches whatever registry name the reference gives it. A program an MCP config "
+        "runs by name names no registry and is not read, nor are `.egg-info` installs, "
+        "`node_modules`, conda metadata or an image's registry layers. The bundled feed "
+        "lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0) and one image "
+        "index digest, so without `aak update` nothing else is known. A lockfile that "
+        "resolves one release more than once is reported once, at its first entry, and "
+        "an image reference is quoted from at most 256 characters before its digest. A "
+        "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
+        "is not read."
     ),
 )
 
