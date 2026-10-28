@@ -3457,6 +3457,34 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-115413"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001",
+      "severity": "high",
+      "title": "AWS API MCP Server 1.3.0 to 1.5.x: OAuth mode accepts tokens issued to other applications"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-16584"
       ],
       "eu_ai_act": [
@@ -4397,6 +4425,38 @@
       "rule_id": "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
       "severity": "high",
       "title": "fast-mcp-telegram below 0.30.1 fetches attachment URLs its SSRF guard never resolved"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-117568"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-FFMPEG-CVE-2026-117568-001",
+      "severity": "high",
+      "title": "mcp-ffmpeg from 1.0.3: video paths reach a shell command string"
     },
     {
       "category": "tool-poisoning",
@@ -7134,6 +7194,9 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-116684",
+        "CVE-2026-116685",
+        "CVE-2026-116686",
         "CVE-2026-59951"
       ],
       "eu_ai_act": [
@@ -7142,21 +7205,25 @@
       ],
       "nsa_mcp_csi": [
         "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
         "Sign and verify MCP messages (p.12)",
         "Instrument for logging and detection (p.13)",
         "Track and patch MCP related vulnerabilities (p.13)",
         "Scan local network for open or vulnerable MCP servers (p.14)"
       ],
       "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
         "ASI04 Agentic Supply Chain Vulnerabilities",
         "ASI08 Cascading Failures"
       ],
       "owasp_mcp": [
-        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+        "MCP01:2025 Token Mismanagement & Secret Exposure",
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
       ],
       "rule_id": "AAK-MCP-SDK-CVE-2026-59951-001",
       "severity": "medium",
-      "title": "MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: stateful Streamable HTTP sessions never expire"
+      "title": "MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: unbounded sessions, credentials sent across redirects, audience-blind bearer auth and fetched schema $refs"
     },
     {
       "category": "supply-chain",
@@ -10769,36 +10836,36 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 19,
-      "supply-chain": 191,
+      "supply-chain": 193,
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 222,
+      "Art. 10 - Data Governance": 224,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 326,
-      "Art. 9 - Risk Management": 221
+      "Art. 15 - Robustness & Security": 328,
+      "Art. 9 - Risk Management": 222
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 222,
-      "Constrain and sandbox tool execution (p.11)": 204,
-      "Design for boundaries (p.10)": 313,
-      "Filter and monitor output pipelines and chained execution (p.12)": 122,
+      "Choose supported MCP projects when possible (p.10)": 224,
+      "Constrain and sandbox tool execution (p.11)": 205,
+      "Design for boundaries (p.10)": 316,
+      "Filter and monitor output pipelines and chained execution (p.12)": 123,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 282,
-      "Sign and verify MCP messages (p.12)": 292,
-      "Track and patch MCP related vulnerabilities (p.13)": 227,
-      "Validate parameters (p.11)": 208
+      "Scan local network for open or vulnerable MCP servers (p.14)": 284,
+      "Sign and verify MCP messages (p.12)": 294,
+      "Track and patch MCP related vulnerabilities (p.13)": 229,
+      "Validate parameters (p.11)": 209
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
-      "ASI03": 114,
-      "ASI04": 220,
-      "ASI05": 102,
+      "ASI03": 116,
+      "ASI04": 222,
+      "ASI05": 103,
       "ASI06": 5,
       "ASI07": 24,
       "ASI08": 9,
@@ -10806,26 +10873,26 @@
       "ASI10": 5
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 35,
+      "MCP01:2025": 36,
       "MCP02:2025": 16,
       "MCP03:2025": 13,
-      "MCP04:2025": 168,
-      "MCP05:2025": 116,
+      "MCP04:2025": 170,
+      "MCP05:2025": 117,
       "MCP06:2025": 4,
-      "MCP07:2025": 88,
+      "MCP07:2025": 90,
       "MCP08:2025": 1,
       "MCP09:2025": 5,
       "MCP10:2025": 15
     },
     "by_severity": {
       "critical": 98,
-      "high": 185,
+      "high": 187,
       "info": 5,
       "low": 19,
       "medium": 126
     },
-    "total_cves_covered": 367,
-    "total_rules": 433
+    "total_cves_covered": 372,
+    "total_rules": 435
   },
   "tool": "agent-audit-kit"
 }
