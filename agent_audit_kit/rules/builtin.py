@@ -17308,8 +17308,10 @@ _r(
         "placeholder editable install, so a setuptools editable install of any other "
         "project is reported. The module a reported line imports is not read. An image "
         "is read only as an unpacked root filesystem given as the scan path, never from "
-        "a registry. A startup file over 1 MB is refused, which marks the scan "
-        "incomplete, and a FIFO or a device in its place is skipped."
+        "a registry. A startup file that is a symlink is read where the image reads it: "
+        "an absolute target is taken under the scan root, and a link that still leads "
+        "outside the root is not read. A startup file over 1 MB is refused, which marks "
+        "the scan incomplete, and a FIFO or a device in its place is skipped."
     ),
 )
 
@@ -17349,8 +17351,12 @@ _r(
         "file, a CI job, a shell) is not read, and neither is the standard library "
         "directory, where Debian and Ubuntu ship a `sitecustomize.py` of their own. A "
         "file named in `data/startup_hook_allowlist.json` with the same normalised "
-        "content is not reported; none is listed today. A file over 1 MB is refused, "
-        "which marks the scan incomplete, and a FIFO or a device in its place is skipped."
+        "content is not reported; none is listed today. A `PYTHONPATH` directory is read "
+        "only where it resolves inside the scan root, so a path with `..` past the root, "
+        "or through a symlink out of it, is not read, and a module that is a symlink is "
+        "read as AAK-STARTUP-HOOK-PTH-001 reads a startup file. A file over 1 MB is "
+        "refused, which marks the scan incomplete, and a FIFO or a device in its place is "
+        "skipped."
     ),
 )
 
@@ -17476,8 +17482,11 @@ _r(
         "runs by name names no registry and is not read, nor are `.egg-info` installs, "
         "`node_modules`, conda metadata or an image's registry layers. The bundled feed "
         "lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0) and one image "
-        "index digest, so without `aak update` nothing else is known. A manifest over "
-        "2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB is not read."
+        "index digest, so without `aak update` nothing else is known. A lockfile that "
+        "resolves one release more than once is reported once, at its first entry, and "
+        "an image reference is quoted from at most 256 characters before its digest. A "
+        "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
+        "is not read."
     ),
 )
 

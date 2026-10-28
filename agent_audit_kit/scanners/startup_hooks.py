@@ -59,8 +59,7 @@ import errno
 import hashlib
 import os
 import re
-import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Iterator
@@ -81,6 +80,7 @@ from ._helpers import (
     read_text_capped,
     refuse,
 )
+from ._launchers import shell_words
 from ._manifest_deps import MAX_LOCKFILE_BYTES, _json_positions
 from ._site_packages import site_entries, site_package_dirs
 
@@ -130,14 +130,39 @@ def _allowlisted(name: str, raw: bytes) -> bool:
 # ---- reading -------------------------------------------------------------------
 
 
-def _read(path: Path) -> bytes | None:
-    """A startup file's bytes, or None when it is not a regular file.
+def _link_target(path: Path, root: Path) -> Path | None:
+    """Where a symlinked startup file leads, read as the image reads it, or None.
+
+    An absolute target is taken under the scan root, as in an unpacked image root
+    filesystem, where Debian links `sitecustomize.py` to `/etc/python3.X/`;
+    followed on the host, the same link named the host's own file. A link that
+    still leads outside the root is not read.
+    """
+    try:
+        link = os.readlink(path)
+    except OSError:
+        return None
+    target = root.joinpath(link.lstrip("/")) if link.startswith("/") else path.parent / link
+    try:
+        resolved = target.resolve()
+        resolved.relative_to(root)
+    except (OSError, ValueError, RuntimeError):
+        return None
+    return resolved
+
+
+def _read(path: Path, root: Path) -> bytes | None:
+    """A startup file's bytes, or None when it is not a regular file inside the
+    scan root (`root`, resolved).
 
     A file over CONFIG_MAX_BYTES is refused: Python reads every line of one, so
     skipping it in silence would pass whatever it holds.
     """
+    target = _link_target(path, root) if path.is_symlink() else path
+    if target is None:
+        return None
     try:
-        return read_bytes_capped(path, CONFIG_MAX_BYTES)
+        return read_bytes_capped(target, CONFIG_MAX_BYTES)
     except FileNotRead as exc:
         if exc.errno == errno.EFBIG:
             refuse(path, f"startup file larger than {CONFIG_MAX_BYTES:,} bytes, not read")
@@ -236,19 +261,50 @@ def _customize_modules(directory: Path) -> Iterator[tuple[Path, str]]:
                     yield Path(cached.path), "compiled copy"
 
 
-def _customize_findings(
-    directory: Path, project_root: Path, where: str, seen: set[Path], scanned: set[str]
-) -> list[Finding]:
+@dataclass
+class _ScanState:
+    """What one scan shares across files: the startup files already reported, the
+    directories already listed, and each directory's MCP-SDK verdict."""
+
+    project_root: Path
+    root: Path = field(init=False)  # project_root, resolved
+    seen: set[Path] = field(default_factory=set)
+    scanned: set[str] = field(default_factory=set)
+    listed: set[Path] = field(default_factory=set)
+    sdk: dict[Path, tuple[bool, list[str]]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.root = self.project_root.resolve()
+
+    def inside(self, path: Path) -> Path | None:
+        """`path` as a directory under the scan root, symlinks resolved, or None when
+        it is not a directory or resolves outside the root."""
+        try:
+            resolved = path.resolve()
+            relative = resolved.relative_to(self.root)
+        except (OSError, ValueError, RuntimeError):
+            return None
+        return self.project_root.joinpath(relative) if resolved.is_dir() else None
+
+    def customize_findings(self, directory: Path, where: str) -> list[Finding]:
+        """The customize modules of a directory `inside` returned, listed once a scan."""
+        if directory in self.listed:
+            return []
+        self.listed.add(directory)
+        return _customize_findings(directory, self, where)
+
+
+def _customize_findings(directory: Path, state: _ScanState, where: str) -> list[Finding]:
     findings: list[Finding] = []
     for path, form in _customize_modules(directory):
-        if path in seen:
+        if path in state.seen:
             continue
-        seen.add(path)
-        raw = _read(path)
+        state.seen.add(path)
+        raw = _read(path, state.root)
         if raw is None:
             continue
-        rel = _rel(path, project_root)
-        scanned.add(rel)
+        rel = _rel(path, state.project_root)
+        state.scanned.add(rel)
         if _allowlisted(path.name, raw):
             continue
         stem = path.name.split(".", 1)[0] if form != "package" else path.parent.name
@@ -269,23 +325,24 @@ def _customize_findings(
     return findings
 
 
-def _site_dir_findings(
-    site_dir: Path, project_root: Path, seen: set[Path], scanned: set[str]
-) -> list[Finding]:
+def _site_dir_findings(site_dir: Path, state: _ScanState) -> list[Finding]:
+    project_root = state.project_root
     findings: list[Finding] = []
     site_rel = _rel(site_dir, project_root) if site_dir != project_root else "."
     for entry in site_entries(site_dir):
         if not entry.name.lower().endswith((".pth", ".start")):
             continue
         path = Path(entry.path)
-        raw = _read(path)
+        raw = _read(path, state.root)
         if raw is None:
             continue
-        scanned.add(_rel(path, project_root))
+        state.scanned.add(_rel(path, project_root))
         finding = _startup_file_finding(path, raw, project_root, site_rel)
         if finding is not None:
             findings.append(finding)
-    findings.extend(_customize_findings(site_dir, project_root, f"in `{site_rel}`", seen, scanned))
+    listed = state.inside(site_dir)
+    if listed is not None:
+        findings.extend(state.customize_findings(listed, f"in `{site_rel}`"))
     return findings
 
 
@@ -349,6 +406,16 @@ def instructions(text: str) -> list[_Instruction]:
     return out
 
 
+def split_words(text: str) -> list[str]:
+    """`shlex.split(text)`, falling back to `text.split()` where shlex raises.
+
+    shlex grows each word one character at a time on an attribute, so one RUN
+    word of 900,000 characters took 5.4 s; `_launchers.shell_words` reads the
+    same grammar in runs.
+    """
+    return shell_words(text, punctuation="", whitespace=" \t\r\n", commenters="")
+
+
 def _words(args: str, path: Path) -> list[str]:
     """An instruction's arguments as the shell form splits them, or its JSON array."""
     if args.startswith("["):
@@ -358,10 +425,7 @@ def _words(args: str, path: Path) -> list[str]:
             value = None
         if isinstance(value, list) and all(isinstance(v, str) for v in value):
             return list(value)
-    try:
-        return shlex.split(args, posix=True)
-    except ValueError:
-        return args.split()
+    return split_words(args)
 
 
 def _env_pairs(args: str, path: Path) -> list[tuple[str, str]]:
@@ -396,14 +460,15 @@ def _run_writes_hook(args: str) -> str | None:
         if _is_hook_name(m.group(1)):
             return m.group(1)
     for command in _COMMAND_SPLIT_RE.split(args):
-        try:
-            argv = shlex.split(command, posix=True)
-        except ValueError:
-            argv = command.split()
-        while argv and "=" in argv[0] and not argv[0].startswith(("-", "/")):
-            argv = argv[1:]  # leading VAR=value assignments
-        if argv and argv[0] == "sudo":
-            argv = argv[1:]
+        argv = split_words(command)
+        # Past leading VAR=value assignments and `sudo`, found by index: slicing the
+        # list once per assignment cost 70 s for 245,000 of them.
+        k = 0
+        while k < len(argv) and "=" in argv[k] and not argv[k].startswith(("-", "/")):
+            k += 1
+        if k < len(argv) and argv[k] == "sudo":
+            k += 1
+        argv = argv[k:]
         if not argv or PurePosixPath(argv[0]).name not in _WRITERS:
             continue
         operands = [a for a in argv[1:] if not a.startswith("-")]
@@ -421,7 +486,18 @@ def _run_writes_hook(args: str) -> str | None:
 _MCP_WORD_RE = re.compile(r"(?<![A-Za-z0-9])mcp(?![A-Za-z0-9])|fastmcp|modelcontextprotocol", re.I)
 
 
-def _runs_mcp_server(steps: list[_Instruction], context: Path) -> str | None:
+def _declares_sdk(directory: Path, cache: dict[Path, tuple[bool, list[str]]]) -> tuple[bool, list[str]]:
+    """`declares_mcp_sdk(directory)`, once per directory per scan. It lists the
+    directory and parses the manifests there, so 10,000 Dockerfiles in one
+    directory, each asking again, took 43 s."""
+    if directory not in cache:
+        cache[directory] = declares_mcp_sdk(directory)
+    return cache[directory]
+
+
+def _runs_mcp_server(
+    steps: list[_Instruction], context: Path, sdk: dict[Path, tuple[bool, list[str]]]
+) -> str | None:
     """Why the image is taken to run an MCP server, or None.
 
     An `mcp` word (`mcp-server-git`, `python -m mcp`, `@scope/mcp`), `fastmcp`
@@ -431,7 +507,7 @@ def _runs_mcp_server(steps: list[_Instruction], context: Path) -> str | None:
     for step in steps:
         if step.keyword in ("CMD", "ENTRYPOINT", "RUN", "LABEL") and _MCP_WORD_RE.search(step.args):
             return f"line {step.line}: `{step.keyword} {_snippet(step.args)}`"
-    declared, manifests = declares_mcp_sdk(context)
+    declared, manifests = _declares_sdk(context, sdk)
     if declared:
         return f"`{manifests[0]}` beside it declares an MCP SDK"
     if (context / ".mcp.json").is_file():
@@ -445,18 +521,28 @@ def _dest(workdir: PurePosixPath, dest: str) -> PurePosixPath:
 
 
 def _dockerfile_findings(
-    path: Path, text: str, project_root: Path, seen: set[Path], scanned: set[str]
+    path: Path, text: str, project_root: Path, state: _ScanState
 ) -> list[Finding]:
     """AAK-STARTUP-HOOK-DOCKERFILE-001, and SITECUSTOMIZE-001 for a directory the
     Dockerfile puts on PYTHONPATH (the root read as an unpacked image, or a
-    directory of the build context copied there)."""
+    directory of the build context copied there).
+
+    Each part is read once: whether the image runs an MCP server is decided once,
+    not per `ENV PYTHONSTARTUP` (49,000 of them took 66 s), each PYTHONPATH
+    directory is matched once against the copies indexed by destination (10,000
+    entries against 10,000 copies took 11 s), and a directory's customize modules
+    are listed once per scan. A directory is read only inside the scanned root,
+    resolved: `ENV PYTHONPATH=/../../usr/lib/python3.12`, or a path through a
+    symlinked directory, named the host's own files.
+    """
     rel = _rel(path, project_root)
     context = path.parent
     steps = instructions(text)
     findings: list[Finding] = []
-    pythonpath: list[tuple[PurePosixPath, int]] = []
-    copies: list[tuple[list[str], PurePosixPath, int]] = []
+    pythonpath: dict[PurePosixPath, int] = {}  # directory -> the first line naming it
+    copies: dict[PurePosixPath, list[tuple[list[str], int]]] = {}
     workdir = PurePosixPath("/")
+    mcp_why: list[str | None] = []  # decided at the first `ENV PYTHONSTARTUP`, then kept
     for step in steps:
         if step.keyword == "FROM":
             workdir = PurePosixPath("/")
@@ -481,7 +567,7 @@ def _dockerfile_findings(
                     step.line,
                 ))
             elif not from_stage and "$" not in dest:
-                copies.append((sources, _dest(workdir, dest), step.line))
+                copies.setdefault(_dest(workdir, dest), []).append((sources, step.line))
         elif step.keyword == "RUN":
             written = _run_writes_hook(step.args)
             if written is not None:
@@ -496,9 +582,11 @@ def _dockerfile_findings(
                 if key == "PYTHONPATH":
                     for part in value.split(":"):
                         if part.startswith("/") and "$" not in part:
-                            pythonpath.append((PurePosixPath(part), step.line))
+                            pythonpath.setdefault(PurePosixPath(part), step.line)
                 elif key == "PYTHONSTARTUP" and value:
-                    why = _runs_mcp_server(steps, context)
+                    if not mcp_why:
+                        mcp_why.append(_runs_mcp_server(steps, context, state.sdk))
+                    why = mcp_why[0]
                     if why is not None:
                         findings.append(make_finding(
                             _DOCKERFILE, rel,
@@ -507,27 +595,20 @@ def _dockerfile_findings(
                             "image (`python` with no script, or `python -i`) runs that file first.",
                             step.line,
                         ))
-    for directory, line in pythonpath:
+    for directory, line in pythonpath.items():
         where = f"on the PYTHONPATH `{rel}` sets (line {line})"
-        in_root = project_root.joinpath(*directory.parts[1:])
-        if in_root.is_dir() and not in_root.is_symlink():
-            findings.extend(_customize_findings(in_root, project_root, where, seen, scanned))
-        for sources, copied_to, copy_line in copies:
-            if copied_to != directory:
-                continue
+        in_root = state.inside(project_root.joinpath(*directory.parts[1:]))
+        if in_root is not None:
+            findings.extend(state.customize_findings(in_root, where))
+        for sources, copy_line in copies.get(directory, ()):
             for source in sources:
                 if any(c in source for c in "*?[") or source.startswith(("http://", "https://")):
                     continue
-                local = (context / source).resolve()
-                try:
-                    local.relative_to(project_root.resolve())
-                except ValueError:
-                    continue
-                if local.is_dir():
-                    findings.extend(_customize_findings(
-                        local, project_root,
+                local = state.inside(context / source)
+                if local is not None:
+                    findings.extend(state.customize_findings(
+                        local,
                         f"in a directory `{rel}` copies onto its PYTHONPATH (lines {copy_line} and {line})",
-                        seen, scanned,
                     ))
     return findings
 
@@ -535,11 +616,11 @@ def _dockerfile_findings(
 # ---- npm lockfiles --------------------------------------------------------------
 
 
-def _mcp_project(lock_dir: Path, packages: dict) -> str | None:
+def _mcp_project(lock_dir: Path, packages: dict, sdk: dict[Path, tuple[bool, list[str]]]) -> str | None:
     for name in MCP_TS_SDK_NAMES:
         if f"node_modules/{name}" in packages:
             return f"the lockfile resolves `{name}`"
-    declared, manifests = declares_mcp_sdk(lock_dir)
+    declared, manifests = _declares_sdk(lock_dir, sdk)
     if declared:
         return f"`{manifests[0]}` declares an MCP SDK"
     config = lock_dir / ".mcp.json"
@@ -565,13 +646,13 @@ def _ignores_scripts(lock_dir: Path) -> bool:
     return _IGNORE_SCRIPTS_RE.search(text) is not None
 
 
-def _lockfile_findings(path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
+def _lockfile_findings(path: Path, state: _ScanState) -> list[Finding]:
     try:
         text = read_text_capped(path, MAX_LOCKFILE_BYTES, errors="replace")
     except OSError:
         return []
-    rel = _rel(path, project_root)
-    scanned.add(rel)
+    rel = _rel(path, state.project_root)
+    state.scanned.add(rel)
     try:
         data = loads_json(text, path)
     except ValueError:
@@ -587,7 +668,7 @@ def _lockfile_findings(path: Path, project_root: Path, scanned: set[str]) -> lis
     ]
     if not marked or _ignores_scripts(path.parent):
         return []
-    why = _mcp_project(path.parent, packages)
+    why = _mcp_project(path.parent, packages, state.sdk)
     if why is None:
         return []
     positions = _json_positions(text)
@@ -629,18 +710,17 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         A tuple of (list of findings, set of scanned file relative paths).
     """
     findings: list[Finding] = []
-    scanned: set[str] = set()
-    seen: set[Path] = set()
+    state = _ScanState(project_root)
     for site_dir in site_package_dirs(project_root):
-        findings.extend(_site_dir_findings(site_dir, project_root, seen, scanned))
+        findings.extend(_site_dir_findings(site_dir, state))
     for path in _project_files(project_root):
         if path.name in _LOCKFILE_NAMES:
-            findings.extend(_lockfile_findings(path, project_root, scanned))
+            findings.extend(_lockfile_findings(path, state))
             continue
         try:
             text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
-        scanned.add(_rel(path, project_root))
-        findings.extend(_dockerfile_findings(path, text, project_root, seen, scanned))
-    return findings, scanned
+        state.scanned.add(_rel(path, project_root))
+        findings.extend(_dockerfile_findings(path, text, project_root, state))
+    return findings, state.scanned

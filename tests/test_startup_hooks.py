@@ -357,3 +357,45 @@ def test_node_modules_lockfiles_are_never_read(tmp_path: Path) -> None:
     sdk = {"node_modules/@modelcontextprotocol/sdk": {"version": "1.0.0"}}
     _lockfile(tmp_path / "node_modules" / "dep", {**_SCRIPTED, **sdk})
     assert _found(tmp_path) == set()
+
+
+# ---- what lies outside the scanned root -------------------------------------------------
+
+
+def test_a_pythonpath_outside_the_scan_root_is_not_read(tmp_path: Path) -> None:
+    """`ENV PYTHONPATH=/../outside`, or a path through a symlinked directory, named
+    the host's own files; the scan read them and then crashed placing the finding."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "sitecustomize.py").write_text("import os\n")
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "link").symlink_to(outside, target_is_directory=True)
+    (root / "Dockerfile").write_text("FROM python:3.12\nENV PYTHONPATH=/../outside:/link:/link/../link\n")
+    findings, scanned = scan(root)
+    assert findings == []
+    assert scanned == {"Dockerfile"}
+
+
+def test_a_symlinked_startup_file_is_read_where_the_image_reads_it(tmp_path: Path) -> None:
+    """Debian links `sitecustomize.py` to `/etc/python3.X/`, an absolute target that
+    names the image's own file when the tree is an unpacked image; followed on the host
+    it named the host's. A link that still leads out of the root is not read."""
+    root = tmp_path / "rootfs"
+    site = root / "usr" / "lib" / "python3" / "dist-packages"
+    site.mkdir(parents=True)
+    (root / "etc" / "python3").mkdir(parents=True)
+    (root / "etc" / "python3" / "sitecustomize.py").write_text("import os\n")
+    (site / "sitecustomize.py").symlink_to("/etc/python3/sitecustomize.py")
+    host = tmp_path / "host.pth"
+    host.write_text("import host_module\n")
+    (site / "absolute-out.pth").symlink_to(host)
+    (site / "relative-out.pth").symlink_to(Path("..", "..", "..", "..", "..", "host.pth"))
+    (root / "etc" / "python3" / "inside.pth").write_text("import inside_module\n")
+    (site / "relative-in.pth").symlink_to(Path("..", "..", "..", "..", "etc", "python3", "inside.pth"))
+    findings, _ = scan(root)
+    assert sorted((f.rule_id, f.file_path) for f in findings) == [
+        ("AAK-STARTUP-HOOK-PTH-001", "usr/lib/python3/dist-packages/relative-in.pth"),
+        ("AAK-STARTUP-HOOK-SITECUSTOMIZE-001", "usr/lib/python3/dist-packages/sitecustomize.py"),
+    ]
+

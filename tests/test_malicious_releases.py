@@ -357,3 +357,11 @@ def test_a_token_alone_does_not_page_github(monkeypatch: pytest.MonkeyPatch) -> 
     assert seen == {"github_token": None}
     assert CliRunner().invoke(cli, ["update", "--github-malware"]).exit_code == 0
     assert seen == {"github_token": "test-token"}
+
+
+def test_a_lockfile_repeating_one_release_reports_it_once(tmp_path: Path) -> None:
+    """One finding per release a lockfile resolves, at its first entry: 300,000 copies of
+    one entry made 300,000 findings."""
+    (tmp_path / "uv.lock").write_text('[[package]]\nname = "litellm"\nversion = "1.107.0"\n' * 3)
+    findings = [f for f in scan(tmp_path)[0] if f.rule_id == RULE]
+    assert [(f.file_path, f.line_number) for f in findings] == [("uv.lock", 2)]

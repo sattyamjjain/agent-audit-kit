@@ -72,6 +72,10 @@ _LOCKFILES = {
 _REGISTRY = {"py": "PyPI", "js": "npm"}
 _IMAGE_FILE_BYTES = 2_000_000
 _DIGEST_RE = re.compile(r"@(sha256:[0-9a-f]{64})(?![0-9a-f])", re.I)
+# `_COMMENT_RE` with `^` at every line start, so a search begun at one finds a `#` there.
+_LINE_COMMENT_RE = re.compile(_COMMENT_RE.pattern, re.M)
+# How far before a digest the reference it ends is looked for, and quoted from.
+_REF_WINDOW = 256
 _OPERATOR_RE = re.compile(r"^\s*(?:===|==|=)?\s*")
 
 
@@ -170,7 +174,13 @@ def _lockfile_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
         return []
     findings: list[Finding] = []
     for name, rows in sorted(_lockfile_raw_entries(text, reader_name, wanted).items()):
+        reported: set[str] = set()
         for line, version in rows:
+            # One finding per release the lockfile resolves, at its first entry: a
+            # lockfile repeating one entry 300,000 times made 300,000 findings.
+            if version in reported:
+                continue
+            reported.add(version)
             for release in feed.match(ecosystem, name, version or None):
                 findings.append(make_finding(
                     _RULE, rel,
@@ -234,23 +244,40 @@ def _image_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
         except ValueError:
             return []
     findings: list[Finding] = []
+    # One pass: the line, its start and its first comment marker are carried from one
+    # listed digest to the next. Each used to look back to the start of its line and of
+    # the file and quote everything before it on the line: 27,000 of them on one 2 MB
+    # line ran past two minutes, and 108 KB of them made 82 MB of evidence.
+    line, last, line_start = 1, 0, 0
+    comment_for, comment_at = -1, -1  # the line start the marker was read for, and where it ends
     for m in _DIGEST_RE.finditer(text):
         image = feed.image(m.group(1))
         if image is None:
             continue
-        line_start = text.rfind("\n", 0, m.start()) + 1
-        prefix = text[line_start:m.start()]
-        if not is_json and _COMMENT_RE.search(prefix):
-            continue
-        ref_start = max(prefix.rfind(c) for c in " \t\"'=") + 1
-        shown = prefix[ref_start:] + m.group(0)
+        start = m.start()
+        newlines = text.count("\n", last, start)
+        if newlines:
+            line += newlines
+            line_start = text.rfind("\n", last, start) + 1
+        last = start
+        if not is_json:
+            if comment_for != line_start:
+                line_end = text.find("\n", line_start)
+                marker = _LINE_COMMENT_RE.search(text, line_start, len(text) if line_end < 0 else line_end)
+                comment_for, comment_at = line_start, -1 if marker is None else marker.end()
+            if 0 <= comment_at <= start:
+                continue
+        lo = max(line_start, start - _REF_WINDOW)
+        stop = max(text.rfind(c, lo, start) for c in " \t\"'=")
+        ref_start = lo if stop < 0 else stop + 1
+        shown = ("…" if stop < 0 and lo > line_start else "") + text[ref_start:start] + m.group(0)
         findings.append(make_finding(
             _RULE, rel,
             f"`{shown}` runs image {m.group(1)}, which {image.id} lists as a malicious "
             f"{image.image} build (tags it was published under: {', '.join(image.tags)})"
             f"{f' ({image.url})' if image.url else ''}. Feed: the {feed.origin} copy generated "
             f"{feed.generated_at}. Treat a host or cluster that ran it as compromised.",
-            text.count("\n", 0, m.start()) + 1,
+            line,
         ))
     return findings
 

@@ -194,7 +194,7 @@ Two of them read what an install leaves behind, not only what the repository dec
 - `startup_hooks` flags Python startup hooks (`.pth` lines that run code, `.start` entry points, `sitecustomize`) in site-packages, inside virtualenvs and [unpacked image root filesystems](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/scan-image-rootfs.md) included, Dockerfiles that add them, and npm install scripts in MCP projects.
 - `malicious_releases` checks declared, locked and installed versions and image digests against an offline feed of published malware (OSV `MAL-` records), which `aak update` refreshes; scans stay offline.
 
-<!-- test-count:total -->4,813<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->4,817<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->429<!-- /rule-count --> rules
