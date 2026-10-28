@@ -82,8 +82,8 @@ docker build -t agent-audit-kit .    # container image
 
 ```
 agent_audit_kit/
-  cli.py               # Click entry point (27 commands): flat @cli.command entries, the @cli.group entries (corpus, pipelock, rule), and `scan` + `install-precommit` attached via add_command
-  commands/            # Command bodies split out of cli.py (issue #701): _common.py (SEVERITY_MAP, FAIL_ON_CHOICES, EXIT_* 0 pass / 1 findings / 2 error, config helpers, all re-exported by cli), scan.py (`scan` + `_run_scan`), install_precommit.py (`install-precommit`, writing through fix.py's inside-project writer, #1044); imports flow one way, cli → commands, never back
+  cli.py               # Click entry point (27 commands): flat @cli.command entries, the @cli.group entries (corpus, pipelock, rule), and `scan`, `install-precommit` and `update` attached via add_command
+  commands/            # Command bodies split out of cli.py (issue #701): _common.py (SEVERITY_MAP, FAIL_ON_CHOICES, EXIT_* 0 pass / 1 findings / 2 error, config helpers, all re-exported by cli), scan.py (`scan` + `_run_scan`), install_precommit.py (`install-precommit`, writing through fix.py's inside-project writer, #1044), update.py (`update`: the vuln DB, then the malicious-release feed rebuild, exit 2 on either failure); imports flow one way, cli → commands, never back
   rule_lint.py         # Rule-registry hygiene checks behind `aak rule lint`
   engine.py            # Scanner registry (`_OPTIONAL_SCANNERS` table) + orchestrator (run_scan)
   models.py            # Finding (rule_id, severity, category, evidence, remediation + OWASP MCP/Agentic/AST, CVE, Adversa, incident, AICM refs) and ScanResult dataclasses; Severity, Category enums; redaction.py masks credential values in evidence and related-location messages through `Finding.__setattr__`, so no output carries one (#980)
@@ -95,7 +95,7 @@ agent_audit_kit/
   autopr.py            # Draft-PR delivery for mechanical fixes via the `gh` CLI (never handles tokens)
   diff.py              # `scan --diff REF`: drops findings outside git-changed files (`aak diff` is sarif/diff.py)
   llm_scan.py          # Opt-in LLM analysis of tool descriptions (`scan --llm-scan`: Anthropic/OpenAI/Gemini APIs or local Ollama)
-  vuln_db.py, advisories.py, feeds/, watch.py   # CVE DB (`update`); private GHSAs for CRITICAL findings (`scan --advisories`); the `watch-cve` poller (only `nvd` is live, behind `--online`); the `watch` pin-drift daemon
+  vuln_db.py, malicious_feed.py, advisories.py, feeds/, watch.py   # CVE DB (`update`); the offline malicious-release feed AAK-MALICIOUS-RELEASE-001 reads (cached by `update` at ~/.agent-audit-kit/malicious_releases.json, else bundled; scans never fetch); private GHSAs for CRITICAL findings (`scan --advisories`); the `watch-cve` poller (only `nvd` is live, behind `--online`); the `watch` pin-drift daemon
   coverage.py, bundle.py         # OX CVE manifest behind `aak coverage --source ox` (prisma-airs is translators/prisma_airs.py); rule-bundle export + optional sigstore verify
   rules/builtin.py     # 424 RuleDefinition entries (rule registry); `get_rule(rule_id)` is the lookup, `RETIRED_RULE_IDS` the ids that left it (#1024)
   scanners/            # 103 registered scanners (105 .py files on disk besides `__init__` and the `_`-prefixed helpers — the registry is authoritative; the surplus is the two back-compat shims rust_scan/typescript_scan). Has its own CLAUDE.md, which covers the layout.

@@ -16,6 +16,7 @@ scanners/
   _ssrf_reach.py         # SSRF call-site reachability (does the URL argument derive from caller input?); used only by ssrf_patterns.py
   _ts_stdio_taint.py     # TS/JS STDIO data-flow helper for mcp_stdio_params (AAK-MCP-STDIO-CMD-INJ-002); the only tree-sitter import, optional
   _dependency_pins.py, _manifest_deps.py, _versions.py   # Version pins outside the CVE pin table: manifest declarations (requirements, PEP 621/Poetry tables, package.json), version-range spans, and the table's own deciding policy; `aak fix` raises pins through `raise_to_fix` here
+  _site_packages.py      # the site-packages walk startup_hooks and malicious_releases share: it enters .venv/venv/env/.tox/vendor (WALK_SKIP_DIRS), 12 levels, no symlinked dirs, never below a site-packages dir
   _launchers.py, _http_routes.py   # npx/uvx launch grammar (`launch_subject` also keys the engine's AAK-MCP-007/AAK-SUPPLY-001 dedup); route and middleware registrations out of Go, TS/JS and Python source (AAK-MCP-016/-020, AAK-MCPWN-001)
   rust_scan.py, typescript_scan.py   # Back-compat shims for the *_pattern_scan modules; unregistered, no detection of their own (each warns, then calls the real scan())
   <topic>.py             # One scanner per module: mcp_*, ssrf_*, skill_*, hook_*, oauth_*, taint_analysis, composition, per-CVE/wave

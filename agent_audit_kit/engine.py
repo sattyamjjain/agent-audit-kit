@@ -125,6 +125,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_apps_ui", "MCP Apps UI iframe sandbox / sanitization (SEP-1865)", []),
     ("mcp_cve_pins_2026_07", "MCP/agent CVE version-pins — 2026-07 disclosure wave", []),
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
+    ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
+    ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
 ]
 
 
@@ -332,10 +334,26 @@ def run_scan(
     )
 
     result.files_scanned = len(all_scanned_files)
+    result.data_feeds = _data_feeds()
     result.scan_duration_ms = (time.monotonic() - start) * 1000
     _log(f"Scan complete: {result.files_scanned} files, {len(result.findings)} findings in {result.scan_duration_ms:.0f}ms")
 
     return result
+
+
+def _data_feeds() -> dict[str, dict[str, str]]:
+    """Which copy of each offline data feed the scan read, and when it was built.
+
+    A scan's verdict on a known-malicious release depends on the feed's age as
+    much as on the project, so every report says which feed it used. A feed
+    that cannot be read is reported as such rather than failing the scan.
+    """
+    from agent_audit_kit import malicious_feed
+
+    try:
+        return {"maliciousReleases": malicious_feed.feed_summary()}
+    except (OSError, ValueError) as exc:
+        return {"maliciousReleases": {"error": f"{type(exc).__name__}: {exc}"}}
 
 
 def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]:

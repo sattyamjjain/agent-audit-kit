@@ -146,6 +146,9 @@ class ScanResult:
     scan_duration_ms: float = 0.0
     score: int | None = None
     grade: str | None = None
+    # Which offline data feed each feed-reading rule used, and when it was built
+    # (`engine._data_feeds`): {"maliciousReleases": {"generatedAt", "source", "origin"}}.
+    data_feeds: dict[str, dict[str, str]] = field(default_factory=dict)
 
     @property
     def critical_count(self) -> int:

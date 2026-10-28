@@ -1,0 +1,12 @@
+version = 1
+requires-python = ">=3.12"
+
+[[package]]
+name = "litellm"
+version = "1.107.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "aak-placeholder"
+version = "0.0.0"
+source = { editable = "." }

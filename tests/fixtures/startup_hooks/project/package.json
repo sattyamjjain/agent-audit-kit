@@ -1,0 +1,10 @@
+{
+  "name": "aak-startup-hooks-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.0.0",
+    "aak-placeholder-native": "1.0.0",
+    "aak-placeholder-plain": "1.0.0"
+  }
+}

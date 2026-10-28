@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import LLM_INCOMPLETE_RULE_ID, Finding, ScanResult, Severity
@@ -308,7 +309,7 @@ def format_results(
     sarif_rules = [_rule_to_sarif(rule_id, idx) for idx, rule_id in enumerate(seen_rules)]
     rule_index_map = {rule_id: idx for idx, rule_id in enumerate(seen_rules)}
 
-    sarif_doc = {
+    sarif_doc: dict[str, Any] = {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
         "runs": [
@@ -349,6 +350,11 @@ def format_results(
             }
         ],
     }
+    if result.data_feeds:
+        # SARIF 2.1.0 §3.8: a run's property bag. Which copy of each offline feed
+        # the scan read, and when it was generated, so a clean result on a
+        # known-malicious release can be told apart from a stale feed.
+        sarif_doc["runs"][0]["properties"] = {"dataFeeds": result.data_feeds}
 
     return json.dumps(sarif_doc, indent=2)
 

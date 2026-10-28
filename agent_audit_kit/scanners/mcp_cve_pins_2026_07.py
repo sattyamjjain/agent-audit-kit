@@ -293,7 +293,7 @@ import bisect
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import AbstractSet, Callable
 
 try:
     import tomllib
@@ -2320,7 +2320,7 @@ _TOML_VERSION_RE = re.compile(r'^version[ \t]*=[ \t]*"([0-9][^"\n]{0,64})"', re.
 
 def _entry_versions(
     text: str, filename: str, heads: list[tuple[int, int, str]],
-    version_re: re.Pattern[str], wanted: set[str],
+    version_re: re.Pattern[str], wanted: AbstractSet[str],
 ) -> list[tuple[int, str, str]]:
     """(offset, name, version) for each entry head of a wanted package, its
     version read between the head and the next head."""
@@ -2342,6 +2342,20 @@ def _lockfile_entries(
 
     One pass over the file, for every reported package at once: the line of a
     finding used to be searched for from the top of the file for each finding.
+    """
+    return {
+        name: [(line, _semver3(version)) for line, version in rows]
+        for name, rows in _lockfile_raw_entries(text, filename, wanted).items()
+    }
+
+
+def _lockfile_raw_entries(
+    text: str, filename: str, wanted: AbstractSet[str]
+) -> dict[str, list[tuple[int, str]]]:
+    """`_lockfile_entries` with each version as the lockfile writes it.
+
+    `malicious_releases` compares versions whole (1.107.0rc1 is not 1.107.0),
+    which the first three numbers cannot do.
     """
     found: list[tuple[int, str, str]] = []
     if filename in ("package-lock.json", "pipfile.lock"):
@@ -2368,12 +2382,12 @@ def _lockfile_entries(
             version_m = _TOML_VERSION_RE.search(text, start, stop)
             if version_m is not None:
                 found.append((name_m.start(), name_m.group(1), version_m.group(1)))
-    entries: dict[str, list[tuple[int, _Ver | None]]] = {}
+    entries: dict[str, list[tuple[int, str]]] = {}
     line, last = 1, 0
     for offset, name, version in found:  # in file order
         line += text.count("\n", last, offset)
         last = offset
-        entries.setdefault(_lockfile_canon(name, filename), []).append((line, _semver3(version)))
+        entries.setdefault(_lockfile_canon(name, filename), []).append((line, version))
     return entries
 
 

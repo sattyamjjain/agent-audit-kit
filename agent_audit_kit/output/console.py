@@ -160,6 +160,13 @@ def format_results(
 
     lines.append(f"\n{DIM}Files scanned: {result.files_scanned}{RESET}")
     lines.append(f"{DIM}Rules evaluated: {result.rules_evaluated}{RESET}")
+    feed = result.data_feeds.get("maliciousReleases")
+    if feed:
+        shown = (
+            f"{feed.get('origin', '?')} copy, generated {feed.get('generatedAt') or 'at an unknown time'}"
+            if "error" not in feed else f"not read ({feed['error']})"
+        )
+        lines.append(f"{DIM}Malicious-release feed: {shown}{RESET}")
     lines.append(f"{DIM}Time: {result.scan_duration_ms:.0f}ms{RESET}")
     lines.append(f"\n{DIM}\U0001f4a1 GitHub Action: uses: sattyamjjain/agent-audit-kit@v1{RESET}\n{DIM}\U0001f4a1 CI mode: agent-audit-kit scan . --ci{RESET}\n")
     return "\n".join(lines)
