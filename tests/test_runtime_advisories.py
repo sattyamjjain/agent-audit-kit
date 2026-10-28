@@ -10,6 +10,7 @@ tags that cannot be judged, and what the scanner leaves alone.
 from __future__ import annotations
 
 import json
+import tracemalloc
 from pathlib import Path
 
 import pytest
@@ -237,3 +238,35 @@ def test_reports_name_the_advisory_file_and_its_age() -> None:
     result = run_scan(project_root=FIXTURES / "node-24-22-1")
     feed = result.data_feeds["runtimeAdvisories"]
     assert feed["origin"] == "bundled" and feed["generatedAt"]
+
+
+# ---- crafted input -------------------------------------------------------------------------
+
+
+def test_a_repeated_value_or_lockfile_row_is_reported_once(tmp_path: Path) -> None:
+    """One finding per release a line or a lockfile names, at its first mention: a
+    `.tool-versions` repeating one value 140,000 times made 140,000 findings."""
+    (tmp_path / ".tool-versions").write_text("nodejs 22.0.0 22.0.0 22.0.0\n")
+    (tmp_path / "uv.lock").write_text('[[package]]\nname = "brotli"\nversion = "1.0.9"\n' * 3)
+    findings, _ = ra.scan(tmp_path)
+    assert sorted((f.rule_id, f.file_path, f.line_number) for f in findings) == [
+        (ADV_001, ".tool-versions", 1), (ADV_003, "uv.lock", 2)]
+
+
+def test_an_arg_expansion_past_any_image_reference_is_not_read(tmp_path: Path) -> None:
+    """`FROM ${X}${X}...` of an ARG as long expanded to the square of the file: 100 KB
+    took 800 MB. No image reference runs past 1,024 characters, so the expansion stops
+    there and the FROM is not judged."""
+    k = 6_000
+    (tmp_path / "Dockerfile").write_text('ARG ["X=' + "a" * k + '"]\nFROM ["' + "${X}" * k + '"]\n')
+    tracemalloc.start()
+    try:
+        findings, scanned = ra.scan(tmp_path)
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert findings == [] and scanned == {"Dockerfile"}
+    assert peak < 16_000_000, peak
+    (tmp_path / "Dockerfile").write_text("ARG V=22.0.0\nFROM node:${V}\n")  # an ordinary ARG still expands
+    assert [f.rule_id for f in ra.scan(tmp_path)[0]] == [ADV_001]
+

@@ -54,6 +54,7 @@ from ._helpers import (
     CONFIG_MAX_BYTES,
     SKIP_DIRS,
     find_line_number,
+    find_line_numbers,
     iter_mcp_servers,
     load_yaml,
     loads_json,
@@ -331,6 +332,30 @@ _OFFICIAL_PREFIXES = (
     "public.ecr.aws/docker/library/",
 )
 _ARG_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+# Past this an expansion is no image reference (a repository name is at most 255
+# characters, a tag 128): `FROM ${X}${X}...` of an ARG as long, in a 100 KB file, took
+# 800 MB and would have reached tens of gigabytes at the 1 MB cap.
+_MAX_REFERENCE = 1024
+
+
+def _expand(word: str, args: dict[str, str]) -> str | None:
+    """`word` with the global ARG defaults filled in, or None when one is unset or
+    the result runs past `_MAX_REFERENCE` characters."""
+    pieces: list[str] = []
+    size = last = 0
+    for m in _ARG_RE.finditer(word):
+        value = args.get(m.group(1) or m.group(2))
+        if value is None:
+            return None
+        size += m.start() - last + len(value)
+        if size > _MAX_REFERENCE:
+            return None
+        pieces += (word[last:m.start()], value)
+        last = m.end()
+    if size + len(word) - last > _MAX_REFERENCE:
+        return None
+    pieces.append(word[last:])
+    return "".join(pieces)
 _TAG_RE = re.compile(r"^v?(\d{1,6})(?:\.(\d{1,6}))?(?:\.(\d{1,6}))?(?![\d])")
 
 
@@ -385,11 +410,11 @@ def _dockerfile_declared(path: Path, text: str) -> list[Declared]:
         words = [w for w in _words(step.args, path) if not w.startswith("--")]
         if not words:
             continue
-        reference = _ARG_RE.sub(lambda m: args.get(m.group(1) or m.group(2), "\0"), words[0])
+        reference = _expand(words[0], args)
         if len(words) >= 3 and words[1].upper() == "AS":
             stages.add(words[2].lower())
-        if "\0" in reference or reference.lower() in stages:
-            continue  # an unresolved ARG, or an earlier stage
+        if reference is None or "\0" in reference or reference.lower() in stages:
+            continue  # an unresolved ARG, an expansion past any reference, or an earlier stage
         repository, tag, digest = split_image(reference)
         subject = _official(repository)
         if subject is None:
@@ -422,7 +447,7 @@ def _version_file_declared(name: str, text: str) -> list[Declared]:
             if len(words) < 2 or words[0] not in _TOOL_NAMES:
                 continue
             subject = _TOOL_NAMES[words[0]]
-            for value in words[1:]:
+            for value in dict.fromkeys(words[1:]):
                 out.append(_value_declared(subject, value, f".tool-versions ({words[0]})", number))
     return [d for d in out if d is not None]
 
@@ -495,15 +520,11 @@ def _runtime_key_declared(path: Path, text: str) -> list[Declared]:
         if isinstance(functions, dict):
             values.extend(f["runtime"] for f in functions.values()
                           if isinstance(f, dict) and isinstance(f.get("runtime"), str))
-    out: list[Declared] = []
-    for value in dict.fromkeys(values):
-        found = _managed_runtime(value)
-        if found is None:
-            continue
-        subject, line = found
-        out.append(Declared(subject, f"runtime: {value}", f"{path.name} runtime", find_line_number(text, value),
-                            line=line, managed=True))
-    return out
+    managed = [(value, found) for value in dict.fromkeys(values) if (found := _managed_runtime(value))]
+    # Every value's line in one pass: a search of the file per value cost 6.4 s for 30,000.
+    lines = find_line_numbers(text, (value for value, _ in managed))
+    return [Declared(subject, f"runtime: {value}", f"{path.name} runtime", lines.get(value), line=line, managed=True)
+            for value, (subject, line) in managed]
 
 
 # A runtime under a versioned install path, as an MCP config's `command` names it.
@@ -533,7 +554,7 @@ def _mcp_declared(path: Path, text: str) -> list[Declared]:
         data = loads_jsonc(text, path)
     except ValueError:
         return []
-    out: list[Declared] = []
+    hits: list[tuple[str, str, str, re.Match[str]]] = []
     for name, server in iter_mcp_servers(data):
         args = server.get("args")
         words = [server.get("command"), *(args if isinstance(args, list) else ())]
@@ -544,10 +565,10 @@ def _mcp_declared(path: Path, text: str) -> list[Declared]:
             None,
         )
         if hit is not None:  # one runtime per server: the first versioned path it names
-            word, subject, m = hit
-            out.append(Declared(subject, word, f"MCP server `{name}`", find_line_number(text, word),
-                                version=parse_version(m.group(1))))
-    return out
+            hits.append((name, *hit))
+    lines = find_line_numbers(text, (word for _, word, _, _ in hits))  # one pass, not one search a server
+    return [Declared(subject, word, f"MCP server `{name}`", lines.get(word), version=parse_version(m.group(1)))
+            for name, word, subject, m in hits]
 
 
 # ---- libraries that bundle a codec ------------------------------------------------------
@@ -581,7 +602,11 @@ def _library_findings(path: Path, rel: str, advisories: Advisories) -> list[Find
         if text is None:
             return []
         for name, rows in sorted(_lockfile_raw_entries(text, reader, wanted[registry]).items()):
+            seen_raw: set[str] = set()
             for line, raw in rows:
+                if raw in seen_raw:  # one finding per release the lockfile resolves, at its first entry
+                    continue
+                seen_raw.add(raw)
                 version = parse_version(raw)
                 if version is not None:
                     hits.append((_library_subject(registry, name), name, version, line, f"{path.name} resolves {name} {raw}"))

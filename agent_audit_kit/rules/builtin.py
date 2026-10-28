@@ -17547,7 +17547,9 @@ _r(
         "MCP server's `command` or argument under an nvm, asdf, mise, Volta, fnm, n, pyenv "
         "or Homebrew Cellar path that carries a version. Reports one finding per "
         "declaration, at the most severe advisory's severity (CRITICAL for a KEV entry). "
-        "A file over 1 MB is not read."
+        "A `FROM` reference that runs past 1,024 characters with its `ARG`s filled in is "
+        "not judged, and a value repeated on one line is judged once. A file over 1 MB is "
+        "not read."
     ),
 )
 
@@ -17606,7 +17608,8 @@ _r(
         "(affected from 1.0.3, fixed 1.2.1) and brotlicffi (from 1.0.3, fixed 1.2.1.0). A "
         "range is not reported, since it does not say which release is installed, and "
         "neither is a copy of the decoder vendored in other code or a system library. A "
-        "manifest over 2 MB or a lockfile over 32 MiB is not read."
+        "lockfile that resolves one release more than once is reported once, at its first "
+        "entry. A manifest over 2 MB or a lockfile over 32 MiB is not read."
     ),
 )
 
