@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-KNOWN-VULN-001: every locked, pinned or installed PyPI and npm package is checked against OSV advisories at scan time, offline, from the feed `aak update` builds. The vLLM and MLflow advisories of 26-27 Oct passed 0.6.28; OSV had no record for the OpenHands SDK one on 29 Oct, so the rule reports it only once OSV publishes one and `aak update` reads it.
+
+### Changed
+
+- `aak update` builds the advisory feed from the same OSV exports as the malicious-release feed, in one pass, so each is still downloaded once, and exits 2 when either feed fails to build.
+
 ## [0.6.28] - 2026-10-28
 
 ### Added

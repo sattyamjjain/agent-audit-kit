@@ -13,7 +13,10 @@ bundled `data/malicious_releases.json`. A scan never touches the network.
 * OSV's per-ecosystem exports for PyPI and npm (`<ECOSYSTEM>/all.zip`, the
   location https://google.github.io/osv.dev/data/ gives), keeping only `MAL-`
   records, the OpenSSF Malicious Packages data. On 2026-10-28 the PyPI export was
-  37 MB with 11,960 such records and the npm export 219 MB with 222,857.
+  37 MB with 11,960 such records and the npm export 219 MB with 222,857. The
+  same walk over each export (`export_records`) hands every other record to
+  the advisory feed (`agent_audit_kit.advisory_feed`), so `aak update`
+  downloads and reads each export once for both.
 * GitHub's global advisories of type `malware` for npm and pip, with
   `aak update --github-malware` and a token (`GITHUB_TOKEN` or `GH_TOKEN`). On
   2026-10-28 GitHub listed 109,402 for npm and 11,915 for pip, 1,215 pages of
@@ -49,8 +52,9 @@ import urllib.request
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import cached_property
 from pathlib import Path
-from typing import AbstractSet, Any, Callable, Iterable
+from typing import AbstractSet, Any, Callable, Iterable, Iterator
 
 BUNDLED_FEED: Path = Path(__file__).parent / "data" / "malicious_releases.json"
 FEED_FILE_NAME = "malicious_releases.json"
@@ -123,11 +127,56 @@ def pep440_key(version: str) -> str:
     return out
 
 
+_PRE_RANK = {"a": 0, "b": 1, "rc": 2}
+
+
+def pep440_order(version: str) -> tuple[Any, ...] | None:
+    """A PyPI version as a tuple that orders as PEP 440 orders versions, or None
+    for text that is not a PEP 440 version.
+
+    The release compares without its trailing zeros (`3.12` is `3.12.0`); a
+    development release of a final release sorts before its pre-releases
+    (`1.0.dev1` < `1.0a1`), a pre-release before the release (`3.12.0rc0` <
+    `3.12.0`), a post-release after it, and a local label after the public
+    version. An advisory range such as MLflow's `>=3.12.0rc0, <3.17.0` needs
+    this: `pep440_key` only says whether two versions are equal.
+    """
+    m = _PEP440_RE.match(version.strip().lower())
+    if m is None:
+        return None
+    release = [int(part) for part in m.group("release").split(".")]
+    while len(release) > 1 and release[-1] == 0:
+        release.pop()
+    pre_text, post_text, dev_text = m.group("pre"), m.group("post"), m.group("dev")
+    if pre_text:
+        letters = re.sub(r"[^a-z]", "", pre_text)
+        pre = (_PRE_RANK[_PRE_NAMES.get(letters, letters)], _digits(pre_text))
+    elif dev_text and not post_text:
+        pre = (-1, 0)  # `1.0.dev1` sorts before `1.0a1`
+    else:
+        pre = (3, 0)   # a release sorts after its pre-releases
+    post = _digits(post_text) if post_text else -1
+    dev = (0, _digits(dev_text)) if dev_text else (1, 0)
+    local = m.group("local")
+    local_key = tuple(
+        (1, int(part), "") if part.isdigit() else (0, 0, part) for part in re.split(r"[-_.]", local)
+    ) if local else ()
+    return int(m.group("epoch") or 0), tuple(release), pre, post, dev, local_key
+
+
 def version_key(ecosystem: str, version: str) -> str:
     """A version as the feed compares it for this registry."""
     if ecosystem == "PyPI":
         return pep440_key(version)
     return version.strip().lstrip("=v").strip().lower()
+
+
+def version_order(ecosystem: str, version: str) -> tuple[Any, ...] | None:
+    """A version as a tuple that orders as its registry orders versions: PEP 440
+    for PyPI, semver 2.0 for npm. None when the text is not such a version."""
+    if ecosystem == "PyPI":
+        return pep440_order(version)
+    return _semver(version_key(ecosystem, version))
 
 
 def _semver(version: str) -> tuple[Any, ...] | None:
@@ -150,30 +199,40 @@ def _semver(version: str) -> tuple[Any, ...] | None:
 
 @dataclass(frozen=True)
 class Range:
-    """One semver interval of an npm entry: from `introduced` (inclusive; "0" is
-    the first release) to `fixed` (exclusive) or `last_affected` (inclusive)."""
+    """One interval of an entry: from `introduced` (inclusive; "0" is the first
+    release) to `fixed` (exclusive) or `last_affected` (inclusive), compared as
+    the entry's registry orders versions (`version_order`): semver for npm, the
+    malicious feed's only ranges, and PEP 440 for the advisory feed's PyPI ones."""
 
     introduced: str
     fixed: str | None = None
     last_affected: str | None = None
+    ecosystem: str = "npm"
+
+    @cached_property
+    def bounds(self) -> tuple[tuple[Any, ...] | None, tuple[Any, ...] | None, tuple[Any, ...] | None] | None:
+        """(introduced, fixed, last_affected) as `version_order` keys, None for an
+        end that is open; None altogether when a bound is not a version of this
+        registry, since such a range cannot be evaluated. Read once per range."""
+        keys: list[tuple[Any, ...] | None] = []
+        for value in (None if self.introduced == "0" else self.introduced, self.fixed, self.last_affected):
+            key = None if value is None else version_order(self.ecosystem, value)
+            if value is not None and key is None:
+                return None
+            keys.append(key)
+        return keys[0], keys[1], keys[2]
+
+    def admits_key(self, v: tuple[Any, ...]) -> bool:
+        """Does the range admit a version, given as its `version_order` key?"""
+        bounds = self.bounds
+        if bounds is None:
+            return False
+        low, fixed, last = bounds
+        return (low is None or v >= low) and (fixed is None or v < fixed) and (last is None or v <= last)
 
     def admits(self, version: str) -> bool:
-        v = _semver(version)
-        if v is None:
-            return False
-        if self.introduced != "0":
-            low = _semver(self.introduced)
-            if low is None or v < low:
-                return False
-        if self.fixed is not None:
-            high = _semver(self.fixed)
-            if high is None or v >= high:
-                return False
-        if self.last_affected is not None:
-            last = _semver(self.last_affected)
-            if last is None or v > last:
-                return False
-        return True
+        v = version_order(self.ecosystem, version)
+        return v is not None and self.admits_key(v)
 
 
 @dataclass(frozen=True)
@@ -486,15 +545,30 @@ def _download(url: str, directory: Path, opener: Opener, timeout: float) -> Path
     return path
 
 
-def _archive_entries(archive: Path, ecosystem: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+def _is_malicious_record(file_name: str) -> bool:
+    return file_name.startswith("MAL-")
+
+
+def export_records(archive: Path, want: Callable[[str], bool] | None = None) -> Iterator[dict[str, Any]]:
+    """Every OSV record in one per-ecosystem export, parsed, in archive order.
+
+    The one walk over an export: the malicious-release feed takes its `MAL-`
+    records from it and the advisory feed every other one, so `aak update`
+    reads each export once for both. `want` is given a record's file name
+    (`MAL-2026-2144.json`) and says whether to parse it at all; a record over
+    `_MAX_RECORD_BYTES`, or one that is not a JSON object, is skipped. A record
+    that is not JSON raises, and fails the rebuild, as it always has.
+    """
     with zipfile.ZipFile(archive) as bundle:
         for info in bundle.infolist():
             base = info.filename.rsplit("/", 1)[-1]
-            if not (base.startswith("MAL-") and base.endswith(".json")) or info.file_size > _MAX_RECORD_BYTES:
+            if not base.endswith(".json") or info.file_size > _MAX_RECORD_BYTES:
                 continue
-            rows.extend(osv_entries(json.loads(bundle.read(info)), ecosystem))
-    return rows
+            if want is not None and not want(base):
+                continue
+            record = json.loads(bundle.read(info))
+            if isinstance(record, dict):
+                yield record
 
 
 def _github_interval(spec: str) -> tuple[bool, list[str], dict[str, str] | None]:
@@ -609,6 +683,7 @@ def refresh(
     opener: Opener | None = None,
     timeout: float = 300.0,
     now: datetime | None = None,
+    on_record: Callable[[str, dict[str, Any]], None] | None = None,
 ) -> Refreshed:
     """Rebuild the cached feed. Network; called by `aak update`, never by a scan.
 
@@ -618,13 +693,17 @@ def refresh(
         opener: Opens a request; `urllib.request.urlopen`, looked up at call time, by default.
         timeout: Seconds per request.
         now: The time recorded as `generated_at` (tests pin it).
+        on_record: Called with (ecosystem, record) for every record of every
+            export, `MAL-` or not, as the export is read: `aak update` builds the
+            advisory feed this way from the same downloads. None reads only the
+            `MAL-` records.
 
     Returns:
         What was written.
 
     Raises:
-        FeedUpdateError: Any download, parse or write failed. Nothing was
-            written; the cached feed, if any, is as it was.
+        FeedUpdateError: Any download, parse or write failed, `on_record`'s
+            included. Nothing was written; the cached feed, if any, is as it was.
     """
     opener = opener or urllib.request.urlopen
     target = cache_path()
@@ -636,7 +715,11 @@ def refresh(
         for ecosystem in ECOSYSTEMS:
             archive = _download(OSV_EXPORT.format(ecosystem=ecosystem), target.parent, opener, timeout)
             downloads.append(archive)
-            rows = _archive_entries(archive, ecosystem)
+            rows: list[dict[str, Any]] = []
+            for record in export_records(archive, None if on_record else _is_malicious_record):
+                rows.extend(osv_entries(record, ecosystem))
+                if on_record is not None:
+                    on_record(ecosystem, record)
             counts[f"OSV {ecosystem}"] = len(rows)
             entries.extend(rows)
         known = {e["id"] for e in entries} | {alias for e in entries for alias in e["aliases"]}

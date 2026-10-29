@@ -65,12 +65,18 @@ SEVERITY_OVERRIDE_MODULES = {
         "AAK-GHA-SECRET-DUMP-001 escalates HIGH -> CRITICAL when the workflow "
         "carries a published Gheist campaign marker"
     ),
+    "known_vulns.py": (
+        "AAK-KNOWN-VULN-001 takes the severity of the advisory that decided it "
+        "(CRITICAL, the registry's level, from CVSS 9.0), and INFO for a range "
+        "that admits affected and unaffected releases"
+    ),
 }
 SEVERITY_OVERRIDE_RULES = {
     "AAK-IDE-TASK-001": {Severity.CRITICAL},
     "AAK-RUNTIME-ADV-001": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
     "AAK-RUNTIME-ADV-003": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
     "AAK-GHA-SECRET-DUMP-001": {Severity.CRITICAL},
+    "AAK-KNOWN-VULN-001": {Severity.HIGH, Severity.MEDIUM, Severity.INFO},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the

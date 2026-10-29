@@ -7,7 +7,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-435-blue.svg" alt="Rules: 435"></a>
+  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-436-blue.svg" alt="Rules: 436"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.2-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.2"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
@@ -62,12 +62,12 @@ to land findings in the GitHub Security tab. Full
 
 ## What it finds
 
-<!-- rule-count:total -->435<!-- /rule-count --> rules across 14 security categories:
+<!-- rule-count:total -->436<!-- /rule-count --> rules across 14 security categories:
 
 | Category | Rules | What it detects |
 |----------|:-----:|-----------------|
 | **MCP Configuration** | <!-- category-count:MCP_CONFIG -->67<!-- /category-count --> | Missing auth, wildcard CORS, `0.0.0.0` binds, SSRF, OAuth 2.1 and RFC 9728 gaps |
-| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->193<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
+| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->194<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
 | **Tool Poisoning** | <!-- category-count:TOOL_POISONING -->32<!-- /category-count --> | Invisible Unicode, prompt injection in tool and parameter descriptions, rug pulls |
 | **Secret Exposure** | <!-- category-count:SECRET_EXPOSURE -->19<!-- /category-count --> | Provider keys, tokens in configs and env files, credentials in logs |
 | **Agent Config** | <!-- category-count:AGENT_CONFIG -->19<!-- /category-count --> | Permission escalation, auto-approve, headless trust in CI |
@@ -136,7 +136,7 @@ agent-audit-kit vex  . -o vex.openvex.json
 ```
 
 Every control row cites a real clause, and a row the scanner cannot evidence
-says so instead of printing a tick. Full list of the <!-- rule-count:total -->435<!-- /rule-count -->
+says so instead of printing a tick. Full list of the <!-- rule-count:total -->436<!-- /rule-count -->
 rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/owasp-mapping.md).
 
 ### OWASP Agentic Top 10 coverage
@@ -151,7 +151,7 @@ it detects the risk, or the absence of a control the entry prescribes for it.
 | **ASI01** | Agent Goal Hijack | 17 |
 | **ASI02** | Tool Misuse and Exploitation | 104 |
 | **ASI03** | Identity and Privilege Abuse | 116 |
-| **ASI04** | Agentic Supply Chain Vulnerabilities | 222 |
+| **ASI04** | Agentic Supply Chain Vulnerabilities | 223 |
 | **ASI05** | Unexpected Code Execution (RCE) | 103 |
 | **ASI06** | Memory & Context Poisoning | 5 |
 | **ASI07** | Insecure Inter-Agent Communication | 24 |
@@ -188,19 +188,20 @@ regenerated from the ledger, not asserted.
 
 ## Under the hood
 
-<!-- scanner-count:total -->106<!-- /scanner-count --> scanner modules: AST-based taint analysis for
+<!-- scanner-count:total -->107<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-Two of them read what an install leaves behind, not only what the repository declares:
+Three of them read what an install leaves behind, not only what the repository declares:
 
 - `startup_hooks` flags Python startup hooks (`.pth` lines that run code, `.start` entry points, `sitecustomize`) in site-packages, inside virtualenvs and [unpacked image root filesystems](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/scan-image-rootfs.md) included, Dockerfiles that add them, and npm install scripts in MCP projects.
 - `malicious_releases` checks declared, locked and installed versions and image digests against an offline feed of published malware (OSV `MAL-` records), which `aak update` refreshes; scans stay offline.
+- `known_vulns` checks the same locked, pinned and installed PyPI and npm releases against OSV's advisories, kept by `aak update` from the same downloads, so a release with a published advisory is reported without anyone writing a pin for it ([AAK-KNOWN-VULN-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-KNOWN-VULN-001.md)).
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
 
-<!-- test-count:total -->4,869<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->4,900<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
-Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->435<!-- /rule-count --> rules
+Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->436<!-- /rule-count --> rules
 (<!-- fix-recipe-coverage:pct -->2.5<!-- /fix-recipe-coverage -->%), applied by `agent-audit-kit fix`. That is a scope
 decision, not a coverage gap: a recipe ships only where the remediation is
 **deterministic and one-line** — exactly one correct edit, confirmable from the

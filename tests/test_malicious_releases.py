@@ -354,9 +354,10 @@ def test_a_token_alone_does_not_page_github(monkeypatch: pytest.MonkeyPatch) -> 
         Path("feed.json"), "t", {}, "skipped"))
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     assert CliRunner().invoke(cli, ["update"]).exit_code == 0
-    assert seen == {"github_token": None}
+    assert seen["github_token"] is None
     assert CliRunner().invoke(cli, ["update", "--github-malware"]).exit_code == 0
-    assert seen == {"github_token": "test-token"}
+    assert seen["github_token"] == "test-token"
+    assert set(seen) == {"github_token", "on_record"}  # the advisory feed reads the same downloads
 
 
 def test_a_lockfile_repeating_one_release_reports_it_once(tmp_path: Path) -> None:

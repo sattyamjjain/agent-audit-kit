@@ -379,6 +379,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
+    "AAK-KNOWN-VULN-001": ["STA-08"],
     "AAK-RUNTIME-ADV-001": ["STA-08", "IVS-04"],
     "AAK-RUNTIME-ADV-002": ["STA-08"],
     "AAK-RUNTIME-ADV-003": ["STA-08"],
@@ -17594,6 +17595,62 @@ _r(
         "an image reference is quoted from at most 256 characters before its digest. A "
         "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
         "is not read."
+    ),
+)
+
+_r(
+    "AAK-KNOWN-VULN-001",
+    "A locked, pinned or installed release is affected by a published advisory",
+    "A lockfile resolves, a manifest pins, or a site-packages directory has installed "
+    "a PyPI or npm release that an OSV advisory lists as affected. vLLM 0.31.1 and "
+    "MLflow 3.16.0 locked in a project passed every rule on 0.6.28 (28 Oct 2026), "
+    "although CVEs against both were published on 26 and 27 Oct, because AAK knew a "
+    "vulnerable release only through a hand-written pin. The rule reads the offline "
+    "advisory feed `aak update` builds from the OSV exports it already downloads for the "
+    "malicious-release feed: every PyPI and npm record that is not `MAL-` or withdrawn "
+    "and has a range or a version list. A scan reads the copy cached at "
+    "`~/.agent-audit-kit/advisories.json`, else the records bundled with AAK, and never "
+    "touches the network. The finding carries the advisory's severity: CRITICAL from "
+    "a CVSS 3.x base score of 9.0, HIGH from 7.0, MEDIUM below that or unscored, and "
+    "INFO for a manifest range that admits affected and unaffected releases.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to the release the finding names as fixed on that line, re-lock, and "
+    "rebuild the environment or image; for a manifest range, raise its lower bound past "
+    "the fix. Where the advisory lists no fixed release, remove or replace the package, "
+    "or keep the component the advisory names unreachable until one ships. Run `aak "
+    "update` so the scan reads the current advisories rather than the bundled few.",
+    sarif_name="KnownVulnerableRelease",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads what AAK-MALICIOUS-RELEASE-001 reads, anywhere outside AAK's skip "
+        "directories: the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, "
+        "npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1); declarations in "
+        "requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and "
+        "the launches in MCP configs; and `<name>-<version>.dist-info` directories in the "
+        "site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk "
+        "reaches. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside "
+        "`>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the "
+        "record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed "
+        "versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package "
+        "are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label "
+        "is reported MEDIUM. A declaration without a version is not judged, and a range "
+        "is read on release triples, as the pin table reads ranges, so a pre-release "
+        "bound counts as its release. A range that admits affected and unaffected "
+        "releases is one INFO finding naming at most five advisories, and none when a "
+        "lockfile in the same directory resolves the package. A PYSEC record and its "
+        "GHSA twin are one advisory, reported under the better-scored id. Where another "
+        "rule reports every CVE id of the advisory in the same file at or above this "
+        "finding's severity, as most version pins do, only that rule's finding is kept; "
+        "an advisory without a CVE id is always reported. A lockfile is read for its "
+        "first 64 distinct releases of a package. The bundled records are the two OSV "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow, so without `aak "
+        "update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
+        "records and says so. `.egg-info` installs, `node_modules`, conda metadata and "
+        "image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is "
+        "not read."
     ),
 )
 

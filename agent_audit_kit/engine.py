@@ -127,6 +127,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
+    ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
     ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
 ]
 
@@ -331,7 +332,9 @@ def run_scan(
         kept.append(finding)
 
     result.findings.extend(
-        _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+        _drop_known_vulns_a_rule_reports(
+            _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+        )
     )
 
     result.files_scanned = len(all_scanned_files)
@@ -349,12 +352,13 @@ def _data_feeds() -> dict[str, dict[str, str]]:
     much as on the project, so every report says which feed it used. A feed
     that cannot be read is reported as such rather than failing the scan.
     """
-    from agent_audit_kit import malicious_feed
+    from agent_audit_kit import advisory_feed, malicious_feed
     from agent_audit_kit.scanners import runtime_advisories
 
     feeds: dict[str, dict[str, str]] = {}
     for name, summary in (
         ("maliciousReleases", malicious_feed.feed_summary),
+        ("knownVulnerabilities", advisory_feed.feed_summary),
         ("runtimeAdvisories", runtime_advisories.advisories_summary),
     ):
         try:
@@ -420,6 +424,56 @@ def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]
         f for f in findings
         if f.category is not Category.COMPOSITION or not _is_covered(f)
     ]
+
+
+def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
+    """Stand AAK-KNOWN-VULN-001 down where another rule reports its advisory's CVEs.
+
+    The advisory feed and the hand-written version pins overlap: on 2026-10-29,
+    82 of the 134 pin-table rows named a CVE that OSV also lists for the pinned
+    package, and so did seven of the pins kept beside a code check (langchain-core,
+    mcp, @modelcontextprotocol/sdk and others). A pin is a judgement someone read
+    the advisory for, so where one reports the flaw, its finding stands.
+
+    Which files a pin reads differs by pin: the pin table reads the root's
+    manifests and lockfiles plus requirements files anywhere, other pins search
+    the tree, and none reads a site-packages directory. A list of the CVEs the
+    pins carry, built at import, would also drop the findings no pin makes (a
+    lockfile below the root, an installed dist-info), so this compares findings:
+    an AAK-KNOWN-VULN-001 finding is dropped when every CVE id it names
+    (`known_vulns.evidence_cves`) is in another rule's finding for the same file,
+    at or above its own severity, which as in the passes above keeps a
+    `--severity` floor from hiding the flaw. It runs after the `--rules`,
+    `--exclude-rules` and `ignore_paths` filter, so it stands down only for a
+    finding that is going to be reported. An advisory without a CVE id, a range
+    that names several advisories of which only some are pinned, and a range that
+    counts advisories it does not name, are kept.
+    The scanner's module is imported here under the registry's rule: when it does
+    not load, it reported nothing, and every scan goes on.
+    """
+    try:
+        from agent_audit_kit.scanners.known_vulns import RULE, evidence_cves
+    except ImportError:
+        return findings
+
+    reported: dict[tuple[str, str], int] = {}
+    for f in findings:
+        if f.rule_id == RULE:
+            continue
+        for cve in f.cve_references:
+            key = (f.file_path, cve)
+            reported[key] = max(reported.get(key, 0), f.severity.numeric())
+    if not reported:
+        return findings
+    kept: list[Finding] = []
+    for f in findings:
+        if f.rule_id == RULE:
+            cves = evidence_cves(f.evidence)
+            level = f.severity.numeric()
+            if cves and all(reported.get((f.file_path, cve), 0) >= level for cve in cves):
+                continue
+        kept.append(f)
+    return kept
 
 
 def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding]:
