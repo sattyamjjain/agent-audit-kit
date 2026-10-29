@@ -70,6 +70,10 @@ SEVERITY_OVERRIDE_MODULES = {
         "(CRITICAL, the registry's level, from CVSS 9.0), and INFO for a range "
         "that admits affected and unaffected releases"
     ),
+    "agent_server_noauth.py": (
+        "AAK-AGENT-SERVER-NOAUTH-001 is MEDIUM for a Docker launch on 1.52.0 or a "
+        "release it cannot read, whose port is published on loopback only"
+    ),
 }
 SEVERITY_OVERRIDE_RULES = {
     "AAK-IDE-TASK-001": {Severity.CRITICAL},
@@ -77,6 +81,7 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-RUNTIME-ADV-003": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
     "AAK-GHA-SECRET-DUMP-001": {Severity.CRITICAL},
     "AAK-KNOWN-VULN-001": {Severity.HIGH, Severity.MEDIUM, Severity.INFO},
+    "AAK-AGENT-SERVER-NOAUTH-001": {Severity.MEDIUM},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the

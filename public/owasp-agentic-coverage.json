@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-29T05:19:11Z",
+  "last_updated": "2026-10-29T05:48:40Z",
   "aak_version": "0.6.28",
-  "rule_count": 436,
+  "rule_count": 437,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1211,7 +1211,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 116,
+      "rule_density": 117,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1274,6 +1274,17 @@
           "severity": "medium",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENT-SERVER-NOAUTH-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-112346"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04"
+          ]
         },
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -4844,7 +4855,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 103,
+      "rule_density": 104,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -4852,6 +4863,17 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-SERVER-NOAUTH-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-112346"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04"
           ]
         },
         {

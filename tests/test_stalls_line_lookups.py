@@ -33,6 +33,7 @@ import pytest
 from agent_audit_kit.scanners import (
     _helpers,
     a2a_protocol,
+    agent_server_noauth,
     agent_config,
     composition,
     gha_hardening,
@@ -424,6 +425,18 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         f"vllm==0.31.{i}\n" for i in range(k))}, 1_000, True),
     "known-vulns-ranges": (known_vulns.scan, lambda k: {"requirements.txt": "".join(
         f"vllm>=0.{i}\n" for i in range(k))}, 1_000, False),
+    # agent_server_noauth, before it was released: rows that keep its cost to one pass
+    # over the file for many `\`-continued script lines, many launcher calls in one
+    # module and many compose services.
+    "agent-server-script-continuations": (agent_server_noauth.scan, lambda k: {
+        "start.sh": "docker run ghcr.io/openhands/agent-server \\\n" + "  -e X=1 \\\n" * k + "  -p 8000:8000\n"},
+        5_000, False),
+    "agent-server-launchers": (agent_server_noauth.scan, lambda k: {
+        "agent.py": "from openhands.workspace import DockerWorkspace\n" + "DockerWorkspace(server_image='x')\n" * k},
+        500, True),
+    "agent-server-compose-services": (agent_server_noauth.scan, lambda k: {"compose.yaml": "services:\n" + "".join(
+        f"  s{i}:\n    image: ghcr.io/openhands/agent-server\n    ports: ['{10000 + i}:8000']\n" for i in range(k))},
+        300, True),
 }
 
 
