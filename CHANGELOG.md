@@ -7,14 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.29] - 2026-10-29
+
 ### Added
 
-- New rule AAK-KNOWN-VULN-001: every locked, pinned or installed PyPI and npm package is checked against OSV advisories at scan time, offline, from the feed `aak update` builds. The vLLM and MLflow advisories of 26-27 Oct passed 0.6.28; OSV had no record for the OpenHands SDK one on 29 Oct, so the rule reports it only once OSV publishes one and `aak update` reads it.
-- New rule AAK-AGENT-SERVER-NOAUTH-001: sandbox agent servers launched on all interfaces without session keys (CVE-2026-112346), in OpenHands' `DockerWorkspace` and `ApptainerWorkspace` launches, compose services and `docker run`. 1.52.0 moved only the Docker launcher's port to loopback; the Apptainer one still binds every interface.
+- New rule AAK-KNOWN-VULN-001: every locked, pinned or installed PyPI and npm package is checked against OSV advisories at scan time, offline, from the feed `aak update` builds (#1136). The vLLM and MLflow advisories of 26-27 Oct passed 0.6.28; OSV had no record for the OpenHands SDK one on 29 Oct, so the rule reports it only once OSV publishes one and `aak update` reads it.
+- New rule AAK-AGENT-SERVER-NOAUTH-001: sandbox agent servers launched on all interfaces without session keys (CVE-2026-112346), in OpenHands' `DockerWorkspace` and `ApptainerWorkspace` launches, compose services and `docker run` (#1137). 1.52.0 moved only the Docker launcher's port to loopback; the Apptainer one still binds every interface.
 
 ### Changed
 
-- `aak update` builds the advisory feed from the same OSV exports as the malicious-release feed, in one pass, so each is still downloaded once, and exits 2 when either feed fails to build.
+- `aak update` builds the advisory feed from the same OSV exports as the malicious-release feed, in one pass, so each is still downloaded once, and exits 2 when either feed fails to build (#1136).
 
 ## [0.6.28] - 2026-10-28
 
