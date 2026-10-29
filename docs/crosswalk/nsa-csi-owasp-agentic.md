@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (436 total; 398 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (437 total; 399 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -38,6 +38,7 @@ Every AgentAuditKit rule (436 total; 398 mapped) against two agentic-security st
 | `AAK-AGENT-COMPOSE-001` | high | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-AGENT-COMPOSE-002` | medium | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-AGENT-HARNESS-SHARED-STATE-001` | medium | a2a-protocol | Instrument for logging and detection | ASI06 Memory & Context Poisoning; ASI08 Cascading Failures |
+| `AAK-AGENT-SERVER-NOAUTH-001` | high | agent-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-AGENT-SHARED-RES-AUTHZ-001` | high | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-AGENT-TRUST-001` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE); ASI09 Human-Agent Trust Exploitation |
 | `AAK-AGENT-TRUST-002` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI05 Unexpected Code Execution (RCE) |

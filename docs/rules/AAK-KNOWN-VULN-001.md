@@ -123,7 +123,7 @@ the feed holds.
 |---|---|---|---|
 | vLLM below 0.32.0 | CVE-2026-115915 | GHSA-h3rc-j82p-2c3h (CVSS 3.x 8.1) | yes |
 | MLflow 3.12.0rc0 up to 3.17.0 | CVE-2026-116692 | GHSA-26p8-2jq9-3vq9 (CVSS 3.x 9.8) | yes |
-| OpenHands Software Agent SDK below 1.52.0 | CVE-2026-112346 | none yet | no |
+| OpenHands Software Agent SDK below 1.52.0 | CVE-2026-112346 | none yet | no; [AAK-AGENT-SERVER-NOAUTH-001](AAK-AGENT-SERVER-NOAUTH-001.md) reads its launchers |
 | NVIDIA NeMo Agent Toolkit | CVE-2026-65145 | none yet | no |
 
 A finding on the vLLM one reads:

@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 107,
+  "count": 108,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -17,6 +17,10 @@
     {
       "module": "agent_harness_shared_state",
       "name": "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)"
+    },
+    {
+      "module": "agent_server_noauth",
+      "name": "OpenHands sandbox agent server without a session key (CVE-2026-112346)"
     },
     {
       "module": "agent_trust_surface",

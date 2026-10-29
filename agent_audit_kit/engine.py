@@ -128,6 +128,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
     ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
+    ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),
     ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
 ]
 
