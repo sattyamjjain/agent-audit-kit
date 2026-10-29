@@ -1,0 +1,7 @@
+[[package]]
+name = "openhands-sdk"
+version = "1.51.0"
+
+[[package]]
+name = "vllm"
+version = "0.31.1"

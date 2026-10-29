@@ -167,6 +167,14 @@ def format_results(
             if "error" not in feed else f"not read ({feed['error']})"
         )
         lines.append(f"{DIM}Malicious-release feed: {shown}{RESET}")
+    known = result.data_feeds.get("knownVulnerabilities")
+    if known:
+        shown = (
+            f"{known.get('origin', '?')} copy, generated {known.get('generatedAt') or 'at an unknown time'}"
+            + (f", {known['severityFloor']} and CRITICAL advisories only" if known.get("severityFloor") else "")
+            if "error" not in known else f"not read ({known['error']})"
+        )
+        lines.append(f"{DIM}Advisory feed: {shown}{RESET}")
     advisories = result.data_feeds.get("runtimeAdvisories")
     if advisories and "error" not in advisories:
         lines.append(

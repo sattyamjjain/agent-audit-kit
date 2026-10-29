@@ -39,6 +39,7 @@ from agent_audit_kit.scanners import (
     hook_rce,
     ide_task_rce,
     india_pii,
+    known_vulns,
     langchain_prompt_loader,
     malicious_releases,
     mcp_config,
@@ -414,6 +415,15 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
                                90_000, False),
     "runtime-repeated-tool-versions": (runtime_advisories.scan,
                                        lambda k: {".tool-versions": "nodejs " + "22.0.0 " * k + "\n"}, 14_000, False),
+    # known_vulns, before it was released: rows that keep its cost to one pass over the
+    # file. A lockfile resolving one package at thousands of releases is read for 64 of
+    # them per advisory, and every pinned or ranged declaration is judged once.
+    "known-vulns-lockfile-releases": (known_vulns.scan, lambda k: {"uv.lock": "".join(
+        f'[[package]]\nname = "vllm"\nversion = "0.{i}.0"\n' for i in range(k))}, 1_500, False),
+    "known-vulns-pinned-declarations": (known_vulns.scan, lambda k: {"requirements.txt": "".join(
+        f"vllm==0.31.{i}\n" for i in range(k))}, 1_000, True),
+    "known-vulns-ranges": (known_vulns.scan, lambda k: {"requirements.txt": "".join(
+        f"vllm>=0.{i}\n" for i in range(k))}, 1_000, False),
 }
 
 
