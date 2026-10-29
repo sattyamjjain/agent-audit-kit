@@ -45,10 +45,13 @@ as OSV returned them (`records`), read through the same conversion.
 One flaw, several ids
 ---------------------
 A PYSEC record and its GHSA twin describe one flaw, and both are in the PyPI
-export: about half of the 16,500 flaws there on 2026-10-29. On lookup the
-entries for a package are grouped by any shared id or alias, and the group is
-reported once, as its best-scored member (a CVSS vector before a label, a GHSA
-id before others), with the ids of the whole group.
+export. On lookup a record that is not GHSA is dropped when a GHSA record for
+the same package names it, is named by it or shares a CVE id with it, and its id
+joins that GHSA record's aliases. A GHSA record is never merged into another:
+grouping every record that shares any id, transitively, folded distinct GitHub
+advisories together through a PYSEC record that named two of them (21 groups on
+2026-10-29; python-jose's GHSA-6c5p-j8vq-pqhj was reported only as
+GHSA-3qf3-8w2g-rqmx, so its own range was never read).
 """
 
 from __future__ import annotations
@@ -337,35 +340,23 @@ class Advisory:
         return f"{self.id} ({', '.join(ids + [rated])})"
 
 
-def _preference(row: Advisory) -> tuple[int, int, str]:
-    return ({"cvss3": 0, "github": 1}.get(row.scored_by, 2), 0 if row.id.startswith("GHSA-") else 1, row.id)
-
-
 def _grouped(rows: list[Advisory]) -> tuple[Advisory, ...]:
-    """One advisory per flaw: rows that share an id or an alias are one group,
-    reported as its preferred member with every id of the group as aliases."""
-    parent = list(range(len(rows)))
-
-    def root(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    owner: dict[str, int] = {}
-    for i, row in enumerate(rows):
-        for ident in sorted(row.ids):
-            j = owner.setdefault(ident, i)
-            if j != i:
-                parent[root(i)] = root(j)
-    groups: dict[int, list[Advisory]] = {}
-    for i, row in enumerate(rows):
-        groups.setdefault(root(i), []).append(row)
+    """One report per flaw, never two GitHub advisories as one (see the module's
+    "One flaw, several ids"): a record that is not GHSA and twins a GHSA record
+    adds its id to that record's aliases and is not reported itself."""
+    ghsa = [row for row in rows if row.id.startswith("GHSA-")]
+    twins: dict[str, set[str]] = {row.id: set() for row in ghsa}
     out: list[Advisory] = []
-    for members in groups.values():
-        best = min(members, key=_preference)
-        ids = frozenset().union(*(m.ids for m in members)) - {best.id}
-        out.append(replace(best, aliases=tuple(sorted(ids))))
+    for row in rows:
+        if row.id.startswith("GHSA-"):
+            continue
+        cves = set(row.cves)
+        matched = [g for g in ghsa if row.id in g.ids or g.id in row.ids or cves & set(g.cves)]
+        for g in matched:
+            twins[g.id].add(row.id)
+        if not matched:
+            out.append(row)
+    out.extend(replace(g, aliases=tuple(sorted(set(g.aliases) | twins[g.id]))) for g in ghsa)
     return tuple(sorted(out, key=lambda a: a.id))
 
 

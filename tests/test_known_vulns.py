@@ -460,3 +460,35 @@ def test_an_info_finding_that_counts_unnamed_advisories_is_never_dropped(tmp_pat
     (finding,) = scan(tmp_path)[0]
     assert finding.severity is Severity.INFO and "; and 2 more. " in finding.evidence
     assert evidence_cves(finding.evidence) == frozenset()
+
+
+def test_two_ghsa_records_a_pysec_record_names_are_never_merged() -> None:
+    """A PYSEC record naming two GitHub advisories used to join them into one group,
+    reported with one of their ranges (python-jose's GHSA-6c5p-j8vq-pqhj was read only
+    as GHSA-3qf3-8w2g-rqmx on 2026-10-29); each now stands for itself."""
+    package = {"ecosystem": "PyPI", "name": "aak-twins"}
+    records = [
+        {"id": "GHSA-aaaa-1111-0001", "aliases": ["CVE-2026-90011"], "affected": [
+            {"package": package, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.0.0"}]}]}]},
+        {"id": "GHSA-aaaa-1111-0002", "aliases": ["CVE-2026-90012"], "affected": [
+            {"package": package, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "2.0.0"}, {"fixed": "3.0.0"}]}]}]},
+        {"id": "PYSEC-2026-90013", "aliases": ["CVE-2026-90011", "GHSA-aaaa-1111-0001", "GHSA-aaaa-1111-0002"],
+         "affected": [{"package": package, "versions": ["1.0.0"]}]},
+    ]
+    path = advisory_feed.cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"generated_at": "t", "source": "test", "records": records}))
+    feed = advisory_feed.load_feed()
+    assert [a.id for a in feed.advisories("PyPI", "aak-twins")] == ["GHSA-aaaa-1111-0001", "GHSA-aaaa-1111-0002"]
+    assert [a.id for a in feed.match("PyPI", "aak-twins", "2.5.0")] == ["GHSA-aaaa-1111-0002"]
+    assert all("PYSEC-2026-90013" in a.aliases for a in feed.advisories("PyPI", "aak-twins"))
+
+
+def test_a_rule_citing_the_cve_on_another_line_does_not_drop_the_finding() -> None:
+    """A configuration check that cites the CVE elsewhere in the file says nothing about
+    the version the entry on line 2 resolves."""
+    known = _known("uv.lock", Severity.HIGH, "CVE-2026-59822")
+    elsewhere = dataclasses.replace(_pin("uv.lock", Severity.CRITICAL), line_number=9)
+    assert known in _drop_known_vulns_a_rule_reports([elsewhere, known])  # type: ignore[list-item]
+    unplaced = dataclasses.replace(_pin("uv.lock", Severity.CRITICAL), line_number=None)
+    assert known in _drop_known_vulns_a_rule_reports([unplaced, known])  # type: ignore[list-item]

@@ -441,13 +441,16 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
     pins carry, built at import, would also drop the findings no pin makes (a
     lockfile below the root, an installed dist-info), so this compares findings:
     an AAK-KNOWN-VULN-001 finding is dropped when every CVE id it names
-    (`known_vulns.evidence_cves`) is in another rule's finding for the same file,
+    (`known_vulns.evidence_cves`) is in another rule's finding on the same line of
+    the same file, the declaration or lockfile entry a version pin points at too,
     at or above its own severity, which as in the passes above keeps a
     `--severity` floor from hiding the flaw. It runs after the `--rules`,
     `--exclude-rules` and `ignore_paths` filter, so it stands down only for a
     finding that is going to be reported. An advisory without a CVE id, a range
-    that names several advisories of which only some are pinned, and a range that
-    counts advisories it does not name, are kept.
+    that names several advisories of which only some are pinned, a range that
+    counts advisories it does not name, and a finding whose CVE a rule cites for a
+    finding on another line (a configuration check says nothing about the version
+    a lockfile resolves) are kept.
     The scanner's module is imported here under the registry's rule: when it does
     not load, it reported nothing, and every scan goes on.
     """
@@ -456,21 +459,21 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
     except ImportError:
         return findings
 
-    reported: dict[tuple[str, str], int] = {}
+    reported: dict[tuple[str, int, str], int] = {}
     for f in findings:
-        if f.rule_id == RULE:
+        if f.rule_id == RULE or f.line_number is None:
             continue
         for cve in f.cve_references:
-            key = (f.file_path, cve)
+            key = (f.file_path, f.line_number, cve)
             reported[key] = max(reported.get(key, 0), f.severity.numeric())
     if not reported:
         return findings
     kept: list[Finding] = []
     for f in findings:
-        if f.rule_id == RULE:
+        if f.rule_id == RULE and f.line_number is not None:
             cves = evidence_cves(f.evidence)
             level = f.severity.numeric()
-            if cves and all(reported.get((f.file_path, cve), 0) >= level for cve in cves):
+            if cves and all(reported.get((f.file_path, f.line_number, cve), 0) >= level for cve in cves):
                 continue
         kept.append(f)
     return kept

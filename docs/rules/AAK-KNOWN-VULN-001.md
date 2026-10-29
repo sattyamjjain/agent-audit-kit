@@ -75,7 +75,8 @@ which copy was read and when it was generated.
   evaluates them, and its listed versions. A git range, which names commits, is
   not read.
 - A PYSEC record and its GHSA twin are one advisory, reported once under the
-  better-scored id with both ids named.
+  GHSA id with both ids named. Two GHSA records are never merged, even when a
+  PYSEC record names both.
 - One finding per file, package and advisory, at the first entry that resolves
   an affected release. A lockfile is read for its first 64 distinct releases of a
   package.
@@ -95,11 +96,13 @@ The score is the record's own. vLLM's record carries GitHub's vector
 ## Version pins
 
 A hand-written pin is a judgement someone read the advisory for. Where another
-rule reports every CVE id of the advisory in the same file at or above this
-finding's severity, only that rule's finding is kept: on 2026-10-29, 82 of the
-134 pin-table rows named a CVE that OSV also lists. Elsewhere this rule still
+rule reports every CVE id of the advisory on the same line of the same file (the
+declaration or lockfile entry both point at) at or above this finding's
+severity, only that rule's finding is kept: on 2026-10-29, 82 of the 134
+pin-table rows named a CVE that OSV also lists. Elsewhere this rule still
 reports, for instance in a lockfile below the root, which the pin table does not
-read, or in an installed `dist-info`, which no pin reads.
+read, in an installed `dist-info`, which no pin reads, or where a configuration
+rule cites the CVE on another line of the file.
 
 ## How to fix
 

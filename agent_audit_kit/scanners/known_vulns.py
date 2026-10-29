@@ -37,8 +37,9 @@ CRITICAL from CVSS 9.0, HIGH from 7.0, MEDIUM otherwise (see
 `advisory_feed.record_severity`), INFO for a range. One finding per file,
 package and advisory, at the first entry that resolves an affected release.
 
-Where a version-pin rule reports one of the advisory's CVEs in the same file at
-or above this finding's severity, that finding stands and this one is dropped
+Where a version-pin rule reports the advisory's CVEs on the same line of the same
+file (the declaration or lockfile entry both point at) at or above this
+finding's severity, that finding stands and this one is dropped
 (`engine._drop_known_vulns_a_rule_reports`): 82 of the 134 pin-table rows name
 a CVE OSV also lists for the package. The comparison needs the assembled
 finding list, so it runs in the engine, and it reads this rule's CVE ids back

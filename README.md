@@ -198,7 +198,7 @@ Three of them read what an install leaves behind, not only what the repository d
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
 
-<!-- test-count:total -->4,900<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->4,902<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->436<!-- /rule-count --> rules
