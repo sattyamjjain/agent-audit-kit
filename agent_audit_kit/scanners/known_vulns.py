@@ -61,7 +61,7 @@ from ._dependency_pins import read_text
 from ._helpers import SKIP_DIRS, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES, Declaration
 from ._site_packages import site_entries, site_package_dirs
-from ._versions import TOP, ZERO, Spans, intersect, next_patch, parse_range, parse_version, union
+from ._versions import Spans, intersect, interval_spans, parse_range
 from .malicious_releases import _LOCKFILES, _REGISTRY, _declared, _is_manifest, _version_line, exact_pin
 from .mcp_cve_pins_2026_07 import _lockfile_raw_entries
 
@@ -108,7 +108,12 @@ def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
 
 def _fix(advisory: Advisory, version: str) -> str:
     fixed = advisory.fix_for(version)
-    return f"; it is fixed in {fixed}" if fixed else "; the advisory lists no fixed release"
+    if fixed:
+        return f"; it is fixed in {fixed}"
+    last = advisory.last_affected_for(version)
+    if last:  # a CNA's `lessThanOrEqual`: IBM's Langflow records end at 1.12.8 and name no fix
+        return f"; the advisory lists no fixed release, and {last} as the last affected one"
+    return "; the advisory lists no fixed release"
 
 
 def _feed_note(feed: AdvisoryFeed, advisory: Advisory) -> str:
@@ -158,29 +163,15 @@ def _lockfile_findings(
 def _affected_spans(advisory: Advisory) -> Spans:
     """The releases an advisory lists, on release triples (`_versions`), the
     form a declaration's range is read in."""
-    pieces: list[tuple[tuple[int, int, int], tuple[int, int, int]]] = []
-    for row in advisory.ranges:
-        low = ZERO if row.introduced == "0" else parse_version(row.introduced)
-        if low is None:
-            continue
-        if row.fixed is not None:
-            high = parse_version(row.fixed)
-        elif row.last_affected is not None:
-            last = parse_version(row.last_affected)
-            high = None if last is None else next_patch(last)
-        else:
-            high = TOP
-        if high is not None and low < high:
-            pieces.append((low, high))
-    for listed in advisory.versions:
-        exact = parse_version(listed)
-        if exact is not None:
-            pieces.append((exact, next_patch(exact)))
-    return union(pieces)
+    return interval_spans(((row.introduced, row.fixed, row.last_affected) for row in advisory.ranges),
+                          advisory.versions)
 
 
 def _below(advisory: Advisory) -> str:
-    return f", fixed in {', '.join(advisory.fixed)}" if advisory.fixed else ", no fixed release listed"
+    if advisory.fixed:
+        return f", fixed in {', '.join(advisory.fixed)}"
+    last = sorted({row.last_affected for row in advisory.ranges if row.last_affected is not None})
+    return f", no fixed release listed, last affected {', '.join(last)}" if last else ", no fixed release listed"
 
 
 def _manifest_findings(

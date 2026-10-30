@@ -6,15 +6,79 @@ This file is the audit trail of what shipped and when.
 
 Format: one line per CVE, `CVE-YYYY-NNNNN` → `AAK-XXX-NNN` with the
 shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
-diffs NVD's MCP keyword feed, and OSV for every package the pin tables name,
-against this file and opens a `cve-response` issue for anything new; the release
-gate blocks a tag while any such issue is open.
+diffs NVD's MCP keyword feed, OSV for every package the pin tables name, and
+NVD's records whose CNA data names one of those packages against this file and
+opens a `cve-response` issue for anything new, titled "pin floor stale" when a
+record's range runs past what the pins report; the release gate blocks a tag
+while any such issue is open.
 
 > **On the "48h" figures below:** AgentAuditKit does not commit to a 48-hour (or
 > any fixed) CVE-response SLA — that public commitment was retired in PR #432.
 > The `sla-48h` label is likewise retired and should be removed from any open
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
+
+## 2026-10-30 (unreleased): seven IBM Langflow records read from NVD, the langflow floor raised to 1.13.0, one advisory-feed entry
+
+The watcher filed none of IBM's Langflow OSS records of 29 Oct. Their text names neither
+MCP nor LangChain, so the keyword feed dropped them, and OSV had no package record of them,
+so the OSV source had nothing to return. NVD's record of each carried IBM's own affected
+range, and the range ran past the langflow pin's 1.12.0 floor, so AAK reported nothing for
+langflow 1.12.0 to 1.12.8. The watcher now also reads NVD's records for the packages the pin
+tables carry and titles one "pin floor stale" when its range runs past what the pins report,
+and `aak update` reads the same CNA data into the advisory feed AAK-KNOWN-VULN-001 reads.
+Ranges come from the NVD API records and fixed releases from IBM's security bulletins, both
+read on 2026-10-30; four of the records are saved unedited under tests/fixtures/nvd_cna.
+
+### CVE-2026-110186, CVE-2026-93680, CVE-2026-110193, CVE-2026-110192, CVE-2026-104339, CVE-2026-107327 and CVE-2026-107329: floor raised 2026-10-30
+
+**`AAK-MCP-LANGFLOW-CVE-2026-12940-001` reports `langflow` below 1.13.0, up from 1.12.0.**
+NVD: "IBM Langflow OSS 1.0.0 through 1.12.8 could allow a remote attacker to execute
+arbitrary code due to improper control of code generation" (CVE-2026-110186). IBM's
+bulletin 7294467 (28 Oct, updated 29 Oct) names 1.0.0 through 1.12.8 and the fix, 1.13.0,
+for CVE-2026-110186, CVE-2026-93680 (improper authentication), CVE-2026-110193 (a
+low-privileged user has the Agentic Assistant generate or submit component code that runs)
+and CVE-2026-110192 (API credentials exposed to an authenticated user). Bulletin 7293015
+(19 Oct) names 1.0.0 through 1.12.3, fixed in 1.12.4, for CVE-2026-104339 (OS command
+injection), and bulletin 7293016 (19 Oct) 1.0.0 through 1.12.4, fixed in 1.12.5, for
+CVE-2026-107327 and CVE-2026-107329 (code execution by an authenticated user). NVD published
+all seven on 29 Oct, and IBM's CNA records name the same ranges and no fixed release. Each
+range runs past 1.12.0, so the floor moves for all seven. Bulletin 7294467 also lists three
+CVEs against npm `hono`, GitHub's records of 1 Sep for a library Langflow ships, not
+Langflow's own: they have no row. No bulletin or CNA record names `langflow-base` or `lfx`,
+so their rows stay at 1.12.0. Measured with the scanner: a uv.lock resolving langflow 1.12.8
+fires and one resolving 1.13.0 does not (tests/fixtures/cves/cve-2026-110186-langflow).
+
+### CVE-2026-119025 (#1140): advisory feed 2026-10-30
+
+**`AAK-KNOWN-VULN-001` reports it from the bundled advisory feed, HIGH; no pin.** NVD: "open
+7.2.0 before 11.0.0 contains an OS command injection vulnerability that allows attackers to
+execute PowerShell code by supplying crafted URLs on Windows and WSL." VulnCheck's CNA record
+names each package by packageURL: npm `open` 7.2.0 up to 11.0.0,
+`@modelcontextprotocol/inspector` 2.0.0 up to 2.12.0 and `opencode-ai` 1.0.137 up to
+1.18.33, and the bundled feed holds those three entries as `nvd_feed` converts them. No pin
+table names any of the three. Measured with the scanner: a package-lock.json resolving open
+10.1.0 fires at HIGH, and 11.0.0 and 7.1.0 do not (tests/test_nvd_feed.py).
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-110186 | 9.8 | `langflow` (PyPI) | **Floor raised** on `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: 1.12.0 to 1.13.0. 1.0.0 through 1.12.8, fixed in 1.13.0. | not filed |
+| CVE-2026-93680 | 9.8 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.8, fixed in 1.13.0. | not filed |
+| CVE-2026-110193 | 8.8 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.8, fixed in 1.13.0. | not filed |
+| CVE-2026-110192 | 6.5 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.8, fixed in 1.13.0. | not filed |
+| CVE-2026-104339 | 9.8 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-107327 | 9.9 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-107329 | 9.9 | `langflow` (PyPI) | The same floor raise: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-119025 | 7.5 | `open`, `@modelcontextprotocol/inspector`, `opencode-ai` (npm) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports the three ranges from the bundled NVD entries, HIGH. No pin. | #1140 |
+
+IBM has 58 Langflow OSS records in NVD whose ranges run past the old 1.12.0 floor,
+published between 7 and 29 Oct. The new floor reports every release they name, but only
+these seven have a row and are in the rule's references. Of the other 51, the 26 NVD
+published on 29 Oct stay inside the watcher's seven-day window until 5 Nov and are filed
+once the queue drains; the 25 published on 7 and 20 Oct are outside it. CVSS is each record's
+CVSS 3.1 score: IBM's for the seven, VulnCheck's for CVE-2026-119025.
+
+Dispositioned at 2026-10-30T10:18:49Z.
 
 ## 2026-10-28 (v0.6.28): ten disclosures, two new pins, three CVEs on the MCP SDK rule, two out of scope, three deferred
 

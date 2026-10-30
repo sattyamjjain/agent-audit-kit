@@ -82,6 +82,24 @@ def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest
     return home
 
 
+@pytest.fixture(autouse=True)
+def _no_nvd_reads(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep `aak update` from paging NVD in a test.
+
+    `aak update` reads NVD's CNA records (`nvd_feed.fetch`, about 20 minutes and
+    200 MB for its default 120 days) unless it is given `--nvd-days 0`. A test
+    that reaches NVD without passing its own opener fails here instead, and the
+    pause NVD asks for between requests is skipped.
+    """
+    from agent_audit_kit import nvd_feed
+
+    def refuse(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("a test read NVD without passing an opener: give `aak update` --nvd-days 0")
+
+    monkeypatch.setattr(nvd_feed, "_default_opener", lambda: refuse)
+    monkeypatch.setattr(nvd_feed, "_default_sleep", lambda _seconds: None)
+
+
 @pytest.fixture
 def full_disk(monkeypatch: pytest.MonkeyPatch) -> None:
     """Make `os.write` write 10 bytes, then fail with ENOSPC, as a full disk does.

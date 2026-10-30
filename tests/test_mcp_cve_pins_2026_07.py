@@ -1018,12 +1018,13 @@ def test_langflow_patched_passes(tmp_path: Path) -> None:
     # 1.0.0-1.11.2), then 1.11.3 -> 1.11.6 on 2026-09-12 for CVE-2026-85025,
     # CVE-2026-78575 and CVE-2026-81941 (all scoped 1.0.0-1.11.5), then 1.11.6 ->
     # 1.12.0 on 2026-10-05 for CVE-2026-101861 (eval() on Tool-Mode input options,
-    # 1.0.16-1.11.6). The version in this assertion moves each time rather than the
-    # test being deleted, because "the patched release does not fire" is still the
-    # property worth holding. The versions the old floors called patched are
+    # 1.0.16-1.11.6), then 1.12.0 -> 1.13.0 on 2026-10-30 for IBM's CVE-2026-110186
+    # batch (1.0.0-1.12.8). The version in this assertion moves each time rather than
+    # the test being deleted, because "the patched release does not fire" is still
+    # the property worth holding. The versions the old floors called patched are
     # asserted to fire in tests/test_cve_deferral_queue_2026_09_08.py.
     assert "AAK-MCP-LANGFLOW-CVE-2026-12940-001" not in _ids(
-        tmp_path, "requirements.txt", "langflow==1.12.0\n"
+        tmp_path, "requirements.txt", "langflow==1.13.0\n"
     )
 
 
@@ -2325,7 +2326,7 @@ def test_claudecode_is_its_own_low_rule_beside_the_high_pin() -> None:
 
 def test_langflow_floor_moves_to_1_12_0_for_cve_2026_101861(tmp_path: Path) -> None:
     pin = next(p for p in _PINS if p.rule_id == _LANGFLOW)
-    assert pin.floor == (1, 12, 0)
+    assert pin.floor is not None and pin.floor >= (1, 12, 0)  # 1.13.0 since 2026-10-30
     assert "CVE-2026-101861" in RULES[_LANGFLOW].cve_references
     assert _LANGFLOW in _ids(tmp_path, "requirements.txt", "langflow==1.11.6\n")
 
@@ -2366,12 +2367,15 @@ _LANGFLOW_CVES_2026_10_06 = (
 
 def test_langflow_rule_carries_the_october_cves_at_the_same_floor() -> None:
     """#903-#905 and #908: fixed in 1.10.3, 1.9.0, 1.10.3 and 1.9.1, all under the
-    1.12.0 floor, so they join the rule and no floor moves. One rule, three pins."""
+    1.12.0 floor, so they join the rule and no floor moves. One rule, three pins.
+    IBM's records of 29 Oct moved the `langflow` row alone to 1.13.0: none names
+    `langflow-base` or `lfx`."""
     for cve in _LANGFLOW_CVES_2026_10_06:
         assert cve in RULES[_LANGFLOW].cve_references
     pins = [p for p in _PINS if p.rule_id == _LANGFLOW]
     assert sorted(p.display for p in pins) == ["langflow", "langflow-base", "lfx"]
-    assert {p.floor for p in pins} == {(1, 12, 0)}
+    assert {p.display: p.floor for p in pins} == {
+        "langflow": (1, 13, 0), "langflow-base": (1, 12, 0), "lfx": (1, 12, 0)}
     assert {p.ecosystem for p in pins} == {"py"}
 
 
@@ -2410,6 +2414,43 @@ def test_langflow_base_is_no_longer_read_as_an_unpinned_langflow(tmp_path: Path)
 ])
 def test_langflow_lookalikes_are_quiet(tmp_path: Path, name: str, content: str) -> None:
     assert _LANGFLOW not in _ids(tmp_path, name, content)
+
+
+# --- 2026-10-30: IBM's Langflow OSS records of 29 Oct, read from NVD's CNA data ---
+_LANGFLOW_CVES_2026_10_30 = (
+    "CVE-2026-110186", "CVE-2026-93680", "CVE-2026-110193", "CVE-2026-110192",
+    "CVE-2026-104339", "CVE-2026-107327", "CVE-2026-107329",
+)
+
+
+def test_langflow_2026_10_30_fixtures_positive_and_negative() -> None:
+    """A uv.lock resolving 1.12.8, the last release IBM's records name, fires; one
+    resolving 1.13.0, the release bulletin 7294467 names as fixed, does not."""
+    root = _CVE_FIXTURES / "cve-2026-110186-langflow"
+    assert _LANGFLOW in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _LANGFLOW not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("langflow==1.12.0\n", True),       # the floor until 2026-10-30
+    ("langflow==1.12.3\n", True),       # CVE-2026-104339's last affected release
+    ("langflow==1.12.4\n", True),       # CVE-2026-107327 and -107329's
+    ("langflow==1.12.8\n", True),       # CVE-2026-110186, -93680, -110193 and -110192's
+    ("langflow==1.13.0\n", False),
+    ("langflow-base==1.12.0\n", False),  # no October record names it
+    ("lfx==1.12.0\n", False),
+])
+def test_langflow_floor_is_1_13_0_for_ibm_s_october_records(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_LANGFLOW in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_langflow_rule_names_ibm_s_october_records() -> None:
+    pin = next(p for p in _PINS if p.rule_id == _LANGFLOW and p.display == "langflow")
+    assert pin.fix_label.startswith("1.13.0 ")
+    for cve in _LANGFLOW_CVES_2026_10_30:
+        assert cve in RULES[_LANGFLOW].cve_references
+        assert cve in RULES[_LANGFLOW].description
+        assert cve in pin.fix_label
 
 
 def _write_and_root(tmp_path: Path, name: str, content: str) -> Path:

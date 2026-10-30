@@ -8,7 +8,7 @@
 | Category | `SUPPLY_CHAIN` |
 | Shipped | v0.6.29 |
 | Scanner | `agent_audit_kit/scanners/known_vulns.py` |
-| Feed | `agent_audit_kit/advisory_feed.py` |
+| Feed | `agent_audit_kit/advisory_feed.py`, NVD's CNA records through `agent_audit_kit/nvd_feed.py` |
 | OWASP MCP | MCP04:2025 (Software Supply Chain Attacks & Dependency Tampering) |
 | OWASP Agentic | ASI04 (Agentic Supply Chain Vulnerabilities) |
 
@@ -22,6 +22,13 @@ a hand-written pin. Meanwhile `aak update` was already downloading OSV's complet
 PyPI and npm exports for the malicious-release feed, and discarding every record
 that was not `MAL-`. This rule keeps those advisory records and checks every
 release a scan resolves against them.
+
+Two days later, on 28 and 29 Oct, IBM published CVEs against Langflow OSS 1.0.0
+through 1.12.8, scored 9.8. OSV had no package record of them, so the feed knew
+nothing, and a project that locked langflow 1.12.8 passed every rule on 0.6.29.
+The one machine-readable range was IBM's own, in NVD's record of each CVE. The
+feed now also reads those CNA records, for the CVEs OSV has no package record of
+(see [Sources](#sources)).
 
 ## What it catches
 
@@ -64,7 +71,67 @@ which copy was read and when it was generated.
   2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
-  Without `aak update`, nothing else is known.
+  It also holds the six entries `nvd_feed` converts from NVD's records of four
+  CVEs as NVD served them on 2026-10-30 (saved unedited under
+  `tests/fixtures/nvd_cna`, and listed under
+  [Related advisories](#related-advisories)): three against langflow, one against
+  the npm packages open, @modelcontextprotocol/inspector and opencode-ai. Every
+  one of the four maps to a package, so none was left out. Without
+  `aak update`, nothing else is known.
+
+## Sources
+
+The feed has two sources, and a finding says which one it came from.
+
+**OSV**, read as above: every PyPI and npm advisory record in OSV's exports.
+
+**NVD's records of CNA version data**, for the CVEs OSV has no package record
+of. A CVE's CNA (IBM for Langflow, VulnCheck, GitHub) writes which product
+versions are affected in its CVE record, and NVD's CVE API 2.0 carries that
+data at `vulnerabilities[].cve.affected[].affectedData[]`: a vendor, a product,
+sometimes a `packageURL` or a `repo`, and `versions[]` of `version`,
+`lessThan` or `lessThanOrEqual`, `versionType` and `status`. NVD's own CPE
+`configurations`, added once NVD has analysed a record, are not read: a CPE names
+a vendor and product, not a package.
+
+- **What `aak update` reads.** Every NVD record modified in the last 120 days,
+  NVD's longest window (`aak update --nvd-days N` reads fewer; `--nvd-days 0`
+  reads none), 2,000 a page, pausing between requests as NVD asks: six seconds
+  without an API key, less with `NVD_API_KEY` in the environment, which is sent
+  as a header and never printed. On 2026-10-30 a 120-day window held 100,047
+  records, 51 pages of about 4 MB at about 20 seconds each: plan for 20 minutes
+  and 200 MB. The entries read replace the NVD entries read before, so the feed
+  holds the NVD records modified in that window.
+- **Which package a record names**, in this order and never from a name alone:
+  the CNA's `packageURL` when it is `pkg:pypi/...` or `pkg:npm/...` (a
+  packageURL of another registry is not overridden); else a row of the reviewed
+  map, `agent_audit_kit/data/cna_package_map.json`, whose repository is the
+  CNA's `repo`, or whose vendor and product are the CNA's. A row is added only
+  after checking that the package's own page on pypi.org or npmjs.com names the
+  same repository. On 2026-10-30 the map has three rows: IBM's "Langflow OSS" is
+  PyPI `langflow`, and the repositories sindresorhus/open and
+  modelcontextprotocol/inspector are npm `open` and
+  `@modelcontextprotocol/inspector`. A record that maps to no package is
+  counted and dropped, and `aak update` prints how many.
+- **Which versions.** Only `status: affected` entries, read on the registry's
+  order whatever `versionType` says of `semver`, `custom` or `python` (a git
+  commit is not read): `version` with `lessThan` is affected up to, not
+  including, that release; with `lessThanOrEqual`, up to and including it, which
+  is how IBM wrote "1.0.0 through 1.12.8". `changes` split a range where the
+  status moves. `defaultStatus: affected` makes every release affected but those
+  the entries exclude, read only when each exclusion is a range ending before a
+  release or open-ended; a record whose exclusions no interval can state is not
+  read rather than reported wider than the CNA wrote it.
+- **Severity.** The record's CVSS 3.x base score, computed from its vector, NVD's
+  own (Primary) metric before the CNA's; without one, the CVSS 4.0 metric's
+  label; without either, MEDIUM. The finding says "NVD CNA record" and links the
+  record on nvd.nist.gov.
+- **OSV wins.** An NVD entry is dropped when an OSV entry for the same package
+  names its CVE, as its id or an alias, so a CVE is reported once, with OSV's
+  ranges, as soon as OSV has a record of it.
+- **When NVD cannot be read**, `aak update` rebuilds the OSV half, keeps the NVD
+  entries scans read before (the cached feed's, else the bundled ones), says so,
+  and exits non-zero. A scan never reads NVD.
 
 ## How a release matches
 
@@ -87,7 +154,8 @@ The severity is the advisory's, not the rule's: CRITICAL from a CVSS 3.x base
 score of 9.0, HIGH from 7.0, MEDIUM below that. The score is computed from the
 record's CVSS 3.x vector. Without one, GitHub's label decides (CRITICAL and HIGH
 as they are, MODERATE and LOW as MEDIUM), and a record with neither is MEDIUM.
-A CVSS 4.0 vector is not scored.
+A CVSS 4.0 vector is not scored. An NVD entry is scored as [Sources](#sources)
+says: its CVSS 3.x vector, else its CVSS 4.0 label, else MEDIUM.
 
 The score is the record's own. vLLM's record carries GitHub's vector
 (`AV:N/AC:H/...`, 8.1), so vLLM 0.31.1 is HIGH, although NVD scored the same flaw
@@ -111,13 +179,13 @@ rebuild the environment or image. For a manifest range, raise its lower bound
 past the fix. Where the advisory lists no fixed release, remove or replace the
 package, or keep the component the advisory names unreachable until one ships.
 Run `aak update` so the scan reads the current advisories rather than the
-bundled two.
+bundled few.
 
 ## Related advisories
 
-The advisories that showed the gap, as NVD and OSV listed them on 2026-10-29.
-They are context, not this rule's references: the rule reports whatever advisory
-the feed holds.
+The advisories that showed the gap, as NVD and OSV listed them on 2026-10-29
+(the first four) and 2026-10-30 (the rest). They are context, not this rule's
+references: the rule reports whatever advisory the feed holds.
 
 | Product | CVE | OSV record | In the bundled feed |
 |---|---|---|---|
@@ -125,10 +193,22 @@ the feed holds.
 | MLflow 3.12.0rc0 up to 3.17.0 | CVE-2026-116692 | GHSA-26p8-2jq9-3vq9 (CVSS 3.x 9.8) | yes |
 | OpenHands Software Agent SDK below 1.52.0 | CVE-2026-112346 | none yet | no; [AAK-AGENT-SERVER-NOAUTH-001](AAK-AGENT-SERVER-NOAUTH-001.md) reads its launchers |
 | NVIDIA NeMo Agent Toolkit | CVE-2026-65145 | none yet | no |
+| Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-110186 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
+| Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-93680 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
+| Langflow OSS 1.0.0 through 1.12.3 | CVE-2026-104339 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
+| npm open 7.2.0 up to 11.0.0, @modelcontextprotocol/inspector 2.0.0 up to 2.12.0, opencode-ai 1.0.137 up to 1.18.33 | CVE-2026-119025 | none | yes, from VulnCheck's record in NVD, which names each package by packageURL (CVSS 3.x 7.5) |
 
 A finding on the vLLM one reads:
 
 ```text
 uv.lock resolves vllm 0.31.1, which GHSA-h3rc-j82p-2c3h (CVE-2026-115915, CVSS 3.x 8.1)
 lists as affected; it is fixed in 0.32.0 (https://osv.dev/vulnerability/GHSA-h3rc-j82p-2c3h).
+```
+
+and one on a Langflow record NVD carries:
+
+```text
+uv.lock resolves langflow 1.12.8, which CVE-2026-110186 (NVD CNA record, CVSS 3.x 9.8)
+lists as affected; the advisory lists no fixed release, and 1.12.8 as the last affected
+one (https://nvd.nist.gov/vuln/detail/CVE-2026-110186).
 ```

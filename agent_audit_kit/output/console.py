@@ -172,6 +172,7 @@ def format_results(
         shown = (
             f"{known.get('origin', '?')} copy, generated {known.get('generatedAt') or 'at an unknown time'}"
             + (f", {known['severityFloor']} and CRITICAL advisories only" if known.get("severityFloor") else "")
+            + (f", NVD CNA records modified {known['nvdWindow']}" if known.get("nvdWindow") else "")
             if "error" not in known else f"not read ({known['error']})"
         )
         lines.append(f"{DIM}Advisory feed: {shown}{RESET}")

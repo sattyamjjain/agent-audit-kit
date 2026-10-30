@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-KNOWN-VULN-001 also reads NVD's records of CNA version data, for the CVEs OSV has no package record of. langflow 1.12.8 locked in a project passed 0.6.29: IBM's CVE-2026-110186 (CVSS 9.8) of 29 Oct names Langflow OSS 1.0.0 through 1.12.8, and OSV had no record of it. `aak update` reads every NVD record modified in the last 120 days (`--nvd-days`, with `NVD_API_KEY` when set; about 20 minutes and 200 MB), maps a record to a PyPI or npm package only by its CNA's packageURL or a reviewed row of `data/cna_package_map.json`, counts and drops the rest, and drops an NVD entry once OSV lists its CVE for the package. The bundled feed holds the six entries from four such records (langflow, and npm's open, @modelcontextprotocol/inspector and opencode-ai). When NVD cannot be read, `aak update` rebuilds the OSV half, keeps the NVD entries scans read before and exits 2.
+- The CVE watcher reads a third source: every NVD record published in its window whose CNA data names an npm or PyPI package the pin tables carry, mapped the same way, whatever its text says. When the record's range admits a release at or above a pin's floor that no pin reports, the issue is titled `pin floor stale: <rule>, <CVE>` and its body names the floor, the range's end and the fixed release; it still holds the release. `tests/test_pin_floors_vs_advisories.py` fails the same way offline, for every bundled advisory a pin names.
+
+### Changed
+
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` reports `langflow` below 1.13.0, up from 1.12.0, for IBM's Langflow OSS records of 29 Oct: CVE-2026-110186, CVE-2026-93680, CVE-2026-110193 and CVE-2026-110192 (1.0.0 through 1.12.8, fixed in 1.13.0), CVE-2026-104339 (through 1.12.3, fixed in 1.12.4) and CVE-2026-107327 and CVE-2026-107329 (through 1.12.4, fixed in 1.12.5). `langflow-base` and `lfx` stay at 1.12.0: no IBM bulletin or CNA record names them.
+
 ## [0.6.29] - 2026-10-29
 
 ### Added

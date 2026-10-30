@@ -318,7 +318,7 @@ def test_aak_update_exits_non_zero_when_the_feed_fails(monkeypatch: pytest.Monke
     monkeypatch.setattr(vuln_db, "update_database", lambda: 7)
     monkeypatch.setattr(malicious_feed, "refresh", lambda **_: (_ for _ in ()).throw(
         malicious_feed.FeedUpdateError("URLError: offline")))
-    result = CliRunner().invoke(cli, ["update"])
+    result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 2
     assert "feed update failed: URLError: offline" in result.output
     assert "bundled feed" in result.output
@@ -331,7 +331,7 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(malicious_feed.urllib.request, "urlopen", _opener())
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GH_TOKEN", raising=False)
-    result = CliRunner().invoke(cli, ["update"])
+    result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
     assert "Malicious-release feed updated: 4 entries" in result.output
     assert "GitHub: skipped" in result.output
@@ -341,7 +341,7 @@ def test_github_malware_needs_a_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GH_TOKEN", raising=False)
     monkeypatch.setattr(malicious_feed, "refresh", lambda **_: pytest.fail("refreshed without a token"))
-    result = CliRunner().invoke(cli, ["update", "--github-malware"])
+    result = CliRunner().invoke(cli, ["update", "--github-malware", "--nvd-days", "0"])
     assert result.exit_code == 2 and "needs GITHUB_TOKEN or GH_TOKEN" in result.output
 
 
@@ -353,9 +353,9 @@ def test_a_token_alone_does_not_page_github(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(malicious_feed, "refresh", lambda **kw: seen.update(kw) or malicious_feed.Refreshed(
         Path("feed.json"), "t", {}, "skipped"))
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
-    assert CliRunner().invoke(cli, ["update"]).exit_code == 0
+    assert CliRunner().invoke(cli, ["update", "--nvd-days", "0"]).exit_code == 0
     assert seen["github_token"] is None
-    assert CliRunner().invoke(cli, ["update", "--github-malware"]).exit_code == 0
+    assert CliRunner().invoke(cli, ["update", "--github-malware", "--nvd-days", "0"]).exit_code == 0
     assert seen["github_token"] == "test-token"
     assert set(seen) == {"github_token", "on_record"}  # the advisory feed reads the same downloads
 

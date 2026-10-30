@@ -12238,7 +12238,7 @@ _r(
 
 _r(
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
-    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.12.0)",
+    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.13.0)",
     "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to "
     "unauthenticated remote code execution through its MCP stdio launcher: the "
     "`DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, "
@@ -12282,14 +12282,26 @@ _r(
     "`X-Forwarded-For` on the MCP-config install endpoint from 1.5.0 (fixed in "
     "1.10.3). So does CVE-2026-105699 (CVSS 4.0 7.1): from 1.6.8, a project-scoped "
     "MCP connection's `resources/read` returned another user's flow files without "
-    "checking that the flow belonged to the caller (fixed in 1.9.1). The same code "
-    "ships as `langflow-base` and `lfx`, which reach 1.12.0 "
-    "in the same release, so both are read at the same floor. Pre-1.0.0 releases "
-    "of `langflow` predate the MCP stdio launcher and are not in the affected range.",
+    "checking that the flow belonged to the caller (fixed in 1.9.1). IBM's records "
+    "of 29 Oct 2026 then moved the `langflow` floor to 1.13.0: CVE-2026-110186 "
+    "(CVSS 9.8, arbitrary code through improper control of code generation), "
+    "CVE-2026-93680 (CVSS 9.8, a security-restriction bypass through improper "
+    "authentication), CVE-2026-110193 (CVSS 8.8, a low-privileged user has the "
+    "Agentic Assistant generate or submit component code that runs) and "
+    "CVE-2026-110192 (CVSS 6.5, API credentials exposed to an authenticated user) "
+    "affect 1.0.0 through 1.12.8 and are fixed in 1.13.0; CVE-2026-104339 (CVSS "
+    "9.8, OS command injection) affects 1.0.0 through 1.12.3, fixed in 1.12.4, and "
+    "CVE-2026-107327 and CVE-2026-107329 (CVSS 9.9 each, code execution by an "
+    "authenticated user) 1.0.0 through 1.12.4, fixed in 1.12.5. Treat `langflow` < "
+    "1.13.0 (and unpinned) as exposed. The same code ships as `langflow-base` and "
+    "`lfx`, which reached 1.12.0 in the same release as `langflow`, so both are "
+    "read at that floor; no IBM bulletin or CNA record names either package for "
+    "the October records, so their floors stay at 1.12.0. Pre-1.0.0 releases of "
+    "`langflow` predate the MCP stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `langflow` (or `langflow-base` / `lfx`, where those are installed "
-    "directly) to >= 1.12.0 and pin it. Do not pass an attacker-influenced "
+    "Upgrade `langflow` to >= 1.13.0 (or `langflow-base` / `lfx`, where those are "
+    "installed directly, to >= 1.12.0) and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
     "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. "
     "Derive the client address from the socket, not from a caller-supplied "
@@ -12300,6 +12312,8 @@ _r(
         "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
         "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
         "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
+        "CVE-2026-110186", "CVE-2026-93680", "CVE-2026-110193", "CVE-2026-110192",
+        "CVE-2026-104339", "CVE-2026-107327", "CVE-2026-107329",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI04", "ASI05"],
@@ -17609,9 +17623,12 @@ _r(
     "vulnerable release only through a hand-written pin. The rule reads the offline "
     "advisory feed `aak update` builds from the OSV exports it already downloads for the "
     "malicious-release feed: every PyPI and npm record that is not `MAL-` or withdrawn "
-    "and has a range or a version list. A scan reads the copy cached at "
-    "`~/.agent-audit-kit/advisories.json`, else the records bundled with AAK, and never "
-    "touches the network. The finding carries the advisory's severity: CRITICAL from "
+    "and has a range or a version list. OSV can lag a CNA by days: IBM's Langflow OSS "
+    "CVEs of 29 Oct 2026, CVSS 9.8, had no OSV package record while NVD carried IBM's "
+    "affected range, so the feed also holds entries converted from NVD's records of CNA "
+    "version data, for the CVEs OSV has no package record of. A scan reads the copy "
+    "cached at `~/.agent-audit-kit/advisories.json`, else the records bundled with AAK, "
+    "and never touches the network. The finding carries the advisory's severity: CRITICAL from "
     "a CVSS 3.x base score of 9.0, HIGH from 7.0, MEDIUM below that or unscored, and "
     "INFO for a manifest range that admits affected and unaffected releases.",
     Severity.CRITICAL,
@@ -17619,8 +17636,10 @@ _r(
     "Upgrade to the release the finding names as fixed on that line, re-lock, and "
     "rebuild the environment or image; for a manifest range, raise its lower bound past "
     "the fix. Where the advisory lists no fixed release, remove or replace the package, "
-    "or keep the component the advisory names unreachable until one ships. Run `aak "
-    "update` so the scan reads the current advisories rather than the bundled few.",
+    "or keep the component the advisory names unreachable until one ships; where an NVD "
+    "entry names only the last affected release, upgrade past it to the release the "
+    "vendor's advisory names as fixed. Run `aak update` so the scan reads the current "
+    "advisories rather than the bundled few.",
     sarif_name="KnownVulnerableRelease",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -17647,9 +17666,21 @@ _r(
         "line of the same file at or above this finding's severity, as most version pins "
         "do, only that rule's finding is kept; an advisory without a CVE id is always "
         "reported. A lockfile is read for its "
-        "first 64 distinct releases of a package. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow, so without `aak "
-        "update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
+        "first 64 distinct releases of a package. NVD's records are read by `aak update` "
+        "for the last 120 days of modifications (`--nvd-days`), and each run's entries "
+        "replace the last run's, so a record last modified before that window leaves the "
+        "feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` "
+        "packageURL or a row of the reviewed `data/cna_package_map.json` matching its "
+        "repository or its vendor and product (three rows on 30 Oct 2026), never through a "
+        "name alone; one that maps to neither is dropped and counted. NVD's CPE data, a "
+        "version type other than semver, custom or python, and a `defaultStatus: affected` "
+        "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
+        "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
+        "the package names is dropped for OSV's. The bundled records are the two OSV "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and six entries from "
+        "NVD's records of four CVEs of 29 Oct 2026 against langflow, open, "
+        "@modelcontextprotocol/inspector and opencode-ai, so without `aak update` nothing "
+        "else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
         "records and says so. `.egg-info` installs, `node_modules`, conda metadata and "
         "image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is "
         "not read."

@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import re
 import sys
+from typing import Iterable
 
 Ver = tuple[int, int, int]
 Span = tuple[Ver, Ver]
@@ -245,6 +246,43 @@ def exact_version(spans: Spans) -> Ver | None:
     if len(spans) == 1 and spans[0][1] == next_patch(spans[0][0]):
         return spans[0][0]
     return None
+
+
+def subtract(a: Spans, b: Spans) -> Spans:
+    """The versions `a` admits and `b` does not."""
+    return intersect(a, _complement(b))
+
+
+def interval_spans(intervals: Iterable[tuple[str, str | None, str | None]], listed: Iterable[str] = ()) -> Spans:
+    """The releases an advisory lists, on release triples.
+
+    Each interval is `(introduced, fixed, last_affected)`, as the advisory feed
+    stores one: an introduced of "0" is the first release, a fixed end is
+    exclusive, a last affected one is included (up to its next patch), and with
+    neither the interval is open. Each listed version is itself. A bound that is
+    not a version leaves its interval out. AAK-KNOWN-VULN-001 reads a manifest
+    range against these spans, and the CVE watcher and
+    tests/test_pin_floors_vs_advisories.py read a pin's floor against them.
+    """
+    pieces: list[Span] = []
+    for introduced, fixed, last_affected in intervals:
+        low = ZERO if introduced == "0" else parse_version(introduced)
+        if low is None:
+            continue
+        if fixed is not None:
+            high = parse_version(fixed)
+        elif last_affected is not None:
+            last = parse_version(last_affected)
+            high = None if last is None else next_patch(last)
+        else:
+            high = TOP
+        if high is not None and low < high:
+            pieces.append((low, high))
+    for version in listed:
+        exact = parse_version(version)
+        if exact is not None:
+            pieces.append((exact, next_patch(exact)))
+    return union(pieces)
 
 
 def _caret(parts: list[int]) -> Spans:

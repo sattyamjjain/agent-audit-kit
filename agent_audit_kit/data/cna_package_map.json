@@ -1,0 +1,29 @@
+{
+  "description": "Reviewed mappings from a CNA's (vendor, product) pair or repository to the PyPI or npm package it publishes. agent_audit_kit/nvd_feed.py reads a row only for an NVD record whose CNA data carries no packageURL. Add a row only after checking that the package's own page on pypi.org or npmjs.com names the same project (its repository), never from a name alone, and set `reviewed` to that date.",
+  "rows": [
+    {
+      "vendor": "IBM",
+      "product": "Langflow OSS",
+      "repo": "https://github.com/langflow-ai/langflow",
+      "ecosystem": "PyPI",
+      "name": "langflow",
+      "reviewed": "2026-10-30"
+    },
+    {
+      "vendor": "sindresorhus",
+      "product": "open",
+      "repo": "https://github.com/sindresorhus/open",
+      "ecosystem": "npm",
+      "name": "open",
+      "reviewed": "2026-10-30"
+    },
+    {
+      "vendor": "modelcontextprotocol",
+      "product": "inspector",
+      "repo": "https://github.com/modelcontextprotocol/inspector",
+      "ecosystem": "npm",
+      "name": "@modelcontextprotocol/inspector",
+      "reviewed": "2026-10-30"
+    }
+  ]
+}

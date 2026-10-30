@@ -91,12 +91,15 @@ available) before shipping:
     but CVE-2026-88938 is scoped "through 0.33.0" and its advisory names no
     patched version; npm's 0.34.0 and 0.34.1 are not confirmed fixed, so there
     is no floor to pin to)
-  - langflow                        >= 1.12.0  (CVE-2026-9186 raised the 1.11.0
+  - langflow                        >= 1.13.0  (CVE-2026-9186 raised the 1.11.0
     floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
     all scoped 1.0.0–1.11.5, then raised it again, and CVE-2026-101861, eval() on
     Tool-Mode input options up to 1.11.6, raised it to 1.12.0 — same package, same rule.
-    CVE-2026-105697 / -105740 / -105741 sit under that floor. The same rule reads
-    `langflow-base` and `lfx` at 1.12.0, the release all three reached together)
+    CVE-2026-105697 / -105740 / -105741 sit under that floor. IBM's CVE-2026-110186,
+    -93680, -110193 and -110192, 1.0.0 through 1.12.8 and fixed in 1.13.0, raised
+    it to 1.13.0, with CVE-2026-104339 (fixed 1.12.4) and CVE-2026-107327 / -107329
+    (fixed 1.12.5) under it. The same rule reads `langflow-base` and `lfx` at
+    1.12.0, the release all three reached together; no record names them since)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787 + CVE-2026-87911;
     the second is OS command injection through a crafted COPY-to-PROGRAM
     statement, CRITICAL 9.6, and the floor was already correct — only the rule's
@@ -597,9 +600,21 @@ _PINS: tuple[_Pin, ...] = (
     # GHSA-33p4-w7j3-33mw scopes both below 1.12.0, the version all three reached
     # together on 2026-09-01. So the rule reads them at 1.12.0 as well: one rule,
     # three pins, the @agenticmail shape.
+    # Floor raised 1.12.0 -> 1.13.0 (2026-10-30) for IBM's Langflow OSS records of
+    # 29 Oct, whose CNA ranges NVD carried while OSV had no record of them:
+    # CVE-2026-110186 (code generation, 9.8), CVE-2026-93680 (improper
+    # authentication, 9.8), CVE-2026-110193 (Agentic Assistant component code, 8.8)
+    # and CVE-2026-110192 (API credentials, 6.5), 1.0.0 through 1.12.8 and fixed in
+    # 1.13.0 (IBM bulletin 7294467); CVE-2026-104339 (OS command, 9.8), through
+    # 1.12.3 and fixed in 1.12.4 (bulletin 7293015); CVE-2026-107327 and
+    # CVE-2026-107329 (code execution, 9.9), through 1.12.4 and fixed in 1.12.5
+    # (bulletin 7293016). The three Hono CVEs bulletin 7294467 also lists are npm
+    # `hono`'s records, not Langflow's. No bulletin or CNA record names
+    # `langflow-base` or `lfx`, so their rows stay at 1.12.0.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
-         (1, 12, 0), introduced=(1, 0, 0),
-         fix_label="1.12.0 (affected 1.0.0–1.11.6)",
+         (1, 13, 0), introduced=(1, 0, 0),
+         fix_label="1.13.0 (affected 1.0.0–1.12.8: CVE-2026-110186, CVE-2026-93680, CVE-2026-110193, "
+                   "CVE-2026-110192, CVE-2026-104339, CVE-2026-107327, CVE-2026-107329)",
          ecosystem="py"),
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow-base", ("langflow-base",),
          (1, 12, 0), fix_label="1.12.0 (its 0.x line, up to 0.11.6, is affected)",
