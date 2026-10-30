@@ -10,11 +10,15 @@ same pass, so each is downloaded once.
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 import click
 
 from agent_audit_kit import __version__
 from agent_audit_kit.commands._common import EXIT_ERROR
+
+if TYPE_CHECKING:
+    from agent_audit_kit.advisory_feed import Collector
 
 __all__ = ["update_cmd"]
 
@@ -30,6 +34,60 @@ def _github_token() -> str | None:
     return None
 
 
+def _nvd_api_key() -> str | None:
+    """NVD_API_KEY, which raises NVD's rate limit; None reads without one."""
+    import os
+
+    return os.environ.get("NVD_API_KEY") or None
+
+
+def _kept(collector: Collector) -> str:
+    """Keep the NVD entries scans read now, and say which."""
+    count, origin = collector.keep_cached_nvd()
+    if not origin:
+        return "no NVD entries, as neither the cached nor the bundled feed lists any"
+    return f"the {count:,} NVD entries of the {origin} feed"
+
+
+def _read_nvd(collector: Collector, nvd_days: int) -> bool:
+    """Read NVD's CNA records into `collector`; False when the read failed.
+
+    A failed or skipped read keeps the NVD entries scans read now
+    (`Collector.keep_cached_nvd`), so it costs neither the OSV half nor them.
+    """
+    from agent_audit_kit import nvd_feed
+
+    if nvd_days == 0:
+        click.echo(f"NVD not read (--nvd-days 0): the advisory feed keeps {_kept(collector)}.")
+        return True
+    api_key = _nvd_api_key()
+    click.echo(
+        f"Reading NVD's records modified in the last {nvd_days} days for CNA version data "
+        f"(2,000 a page{', with NVD_API_KEY' if api_key else '; set NVD_API_KEY to raise its rate limit'})..."
+    )
+
+    def progress(done: int, expected: int) -> None:
+        if done % 10 == 0 or done == expected:
+            click.echo(f"  NVD: page {done:,} of {expected:,}")
+
+    try:
+        fetched = nvd_feed.fetch(nvd_days, api_key=api_key, progress=progress)
+    except nvd_feed.NvdUpdateError as exc:
+        click.echo(f"NVD read failed: {exc}. The advisory feed is rebuilt from OSV and keeps "
+                   f"{_kept(collector)}.", err=True)
+        return False
+    collector.add_nvd(fetched.entries, fetched.window)
+    tally = fetched.tally
+    click.echo(
+        f"NVD: {tally.records:,} records modified {fetched.window['start'][:10]} to {fetched.window['end'][:10]}. "
+        f"{tally.with_cna:,} carry CNA version data: {tally.mapped:,} name a PyPI or npm package "
+        f"({len(fetched.entries):,} entries), {tally.unmapped:,} name none that maps and are dropped, "
+        f"{tally.no_range:,} map but state no version range that can be read. {tally.no_cna:,} carry none "
+        f"(NVD's CPE data alone is not read), and {tally.rejected:,} are rejected."
+    )
+    return True
+
+
 @click.command("update")
 @click.version_option(version=__version__)
 @click.option(
@@ -38,14 +96,26 @@ def _github_token() -> str | None:
     help="Also add GitHub's malware advisories for npm and pip to the feed. Needs "
          "GITHUB_TOKEN or GH_TOKEN, and takes about 1,200 API requests.",
 )
-def update_cmd(github_malware: bool) -> None:
+@click.option(
+    "--nvd-days",
+    type=click.IntRange(0, 120),
+    default=120,
+    show_default=True,
+    help="Also read the CNA version data of NVD records modified in the last N days into the "
+         "advisory feed, for CVEs OSV has no package record of (at most 120, NVD's window; about "
+         "20 minutes and 200 MB for 120 days). 0 keeps the NVD entries cached before. Uses "
+         "NVD_API_KEY when it is set.",
+)
+def update_cmd(github_malware: bool, nvd_days: int) -> None:
     """Update the vulnerability database, the malicious-release feed and the advisory feed.
 
     Both feeds are rebuilt from OSV's exports for PyPI and npm (about 260 MB,
     downloaded once): the malicious-package records, plus GitHub's malware
-    advisories with --github-malware, and every other advisory record. Scans
-    never fetch them; they read the copies this writes, else the bundled ones.
-    Any failure keeps what was cached before and exits non-zero.
+    advisories with --github-malware, and every other advisory record. The
+    advisory feed also takes NVD's records of CNA version data for CVEs OSV
+    has no package record of (--nvd-days). Scans never fetch them; they read
+    the copies this writes, else the bundled ones. Any failure keeps what was
+    cached before and exits non-zero.
     """
     from agent_audit_kit import advisory_feed, malicious_feed
     from agent_audit_kit.vuln_db import update_database
@@ -78,6 +148,8 @@ def update_cmd(github_malware: bool) -> None:
         f"Malicious-release feed updated: {sum(done.counts.values()):,} entries ({counts}), "
         f"generated {done.generated_at}, written to {done.path}. GitHub: {done.github}."
     )
+    if not _read_nvd(collector, nvd_days):
+        failed = True
     try:
         written = collector.write()
     except (OSError, ValueError) as exc:
@@ -89,7 +161,8 @@ def update_cmd(github_malware: bool) -> None:
         click.echo(
             f"Advisory feed updated: {sum(written.counts.values()):,} entries for {written.packages:,} "
             f"packages ({per_registry}), {written.size / 1e6:.1f} MB, generated {written.generated_at}, "
-            f"written to {written.path}."
+            f"written to {written.path}. NVD CNA records: {written.nvd:,} entries, "
+            f"{written.nvd_twins:,} more dropped because OSV already lists their CVE."
         )
         if written.severity_floor:
             click.echo(

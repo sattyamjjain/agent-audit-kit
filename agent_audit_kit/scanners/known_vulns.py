@@ -108,7 +108,12 @@ def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
 
 def _fix(advisory: Advisory, version: str) -> str:
     fixed = advisory.fix_for(version)
-    return f"; it is fixed in {fixed}" if fixed else "; the advisory lists no fixed release"
+    if fixed:
+        return f"; it is fixed in {fixed}"
+    last = advisory.last_affected_for(version)
+    if last:  # a CNA's `lessThanOrEqual`: IBM's Langflow records end at 1.12.8 and name no fix
+        return f"; the advisory lists no fixed release, and {last} as the last affected one"
+    return "; the advisory lists no fixed release"
 
 
 def _feed_note(feed: AdvisoryFeed, advisory: Advisory) -> str:
@@ -180,7 +185,10 @@ def _affected_spans(advisory: Advisory) -> Spans:
 
 
 def _below(advisory: Advisory) -> str:
-    return f", fixed in {', '.join(advisory.fixed)}" if advisory.fixed else ", no fixed release listed"
+    if advisory.fixed:
+        return f", fixed in {', '.join(advisory.fixed)}"
+    last = sorted({row.last_affected for row in advisory.ranges if row.last_affected is not None})
+    return f", no fixed release listed, last affected {', '.join(last)}" if last else ", no fixed release listed"
 
 
 def _manifest_findings(

@@ -325,10 +325,10 @@ def test_update_command(monkeypatch: pytest.MonkeyPatch) -> None:
     done = malicious_feed.Refreshed(Path("feed.json"), "2026-10-28T00:00:00Z", {"OSV PyPI": 1}, "read")
     monkeypatch.setattr(vuln_db, "update_database", lambda: 1)
     monkeypatch.setattr(malicious_feed, "refresh", lambda **_: done)
-    result = runner.invoke(cli, ["update"])
+    result = runner.invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
     monkeypatch.setattr(vuln_db, "update_database", lambda: -1)
-    result = runner.invoke(cli, ["update"])
+    result = runner.invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 2, result.output
     assert "Update failed" in result.output
 

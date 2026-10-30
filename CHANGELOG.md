@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-KNOWN-VULN-001 also reads NVD's records of CNA version data, for the CVEs OSV has no package record of. langflow 1.12.8 locked in a project passed 0.6.29: IBM's CVE-2026-110186 (CVSS 9.8) of 29 Oct names Langflow OSS 1.0.0 through 1.12.8, and OSV had no record of it. `aak update` reads every NVD record modified in the last 120 days (`--nvd-days`, with `NVD_API_KEY` when set; about 20 minutes and 200 MB), maps a record to a PyPI or npm package only by its CNA's packageURL or a reviewed row of `data/cna_package_map.json`, counts and drops the rest, and drops an NVD entry once OSV lists its CVE for the package. The bundled feed holds the six entries from four such records (langflow, and npm's open, @modelcontextprotocol/inspector and opencode-ai). When NVD cannot be read, `aak update` rebuilds the OSV half, keeps the NVD entries scans read before and exits 2.
+
 ## [0.6.29] - 2026-10-29
 
 ### Added
