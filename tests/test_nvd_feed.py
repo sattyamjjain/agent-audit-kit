@@ -164,13 +164,17 @@ def test_a_range_admitting_releases_on_both_sides_of_the_last_affected_one_is_in
         finding.evidence)
 
 
-def test_a_scan_of_the_bundled_feed_reports_through_the_engine(tmp_path: Path) -> None:
-    """Nothing else in 0.6.29 reported langflow 1.12.8; through the engine it is CRITICAL."""
+def test_through_the_engine_the_langflow_pin_reports_it_and_this_rule_stands_down(tmp_path: Path) -> None:
+    """Nothing in 0.6.29 reported langflow 1.12.8. The langflow pin's floor is 1.13.0
+    now and its rule names IBM's CVEs, so through the engine the pin's CRITICAL
+    finding stands on that line and this rule's, which names the same CVEs, drops
+    (`engine._drop_known_vulns_a_rule_reports`); `scan()` above still reports them."""
     _uv_lock(tmp_path, "1.12.8")
     result = run_scan(project_root=tmp_path)
-    named = {cve for f in result.findings for cve in LANGFLOW_CVES if cve in f.evidence}
-    assert named == {"CVE-2026-110186", "CVE-2026-93680"}
-    assert {f.severity for f in result.findings if "CVE-2026-110186" in f.evidence} == {Severity.CRITICAL}
+    (pin,) = [f for f in result.findings if f.rule_id == "AAK-MCP-LANGFLOW-CVE-2026-12940-001"]
+    assert pin.severity is Severity.CRITICAL and pin.line_number == 2
+    assert {"CVE-2026-110186", "CVE-2026-93680"} <= set(pin.cve_references)
+    assert not [f for f in result.findings if f.rule_id == RULE]
 
 
 # ---- which package a record names ---------------------------------------------------------------------

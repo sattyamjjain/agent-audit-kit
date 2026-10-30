@@ -1,12 +1,15 @@
-"""Poll NVD for MCP-related CVEs, and OSV for every pinned package, disclosed in the last 7 days.
+"""Poll NVD for MCP-related CVEs, and OSV and NVD for every pinned package, disclosed in the last 7 days.
 
-Two sources. NVD's keyword feed, filtered to records whose text names the
-ecosystem (`is_relevant`), as before. And OSV, queried by package for every
-npm, PyPI and Maven name the pin tables already name (`pinned_packages`, read
-from the scanner sources with `ast`), which returns the advisories and the
-`MAL-` malicious-package records for those names whatever their text says. A
-record from either joins one list and the same dedup and caps; each carries
-its source, which the workflow writes into the issue body.
+Three sources. NVD's keyword feed, filtered to records whose text names the
+ecosystem (`is_relevant`), as before. OSV, queried by package for every npm,
+PyPI and Maven name the pin tables already name (`pinned_packages`, read from
+the scanner sources with `ast`), which returns the advisories and the `MAL-`
+malicious-package records for those names whatever their text says. And every
+NVD record published in the window whose CNA data names one of those npm or
+PyPI packages (`nvd_package_records`), titled "pin floor stale" when its range
+runs past what the package's pins report. A record from any of them joins one
+list and the same dedup and caps; each carries its source, which the workflow
+writes into the issue body.
 
 Writes a JSON list of records to stdout that are NOT already tracked in
 CHANGELOG.cves.md, already recorded in the persistent watcher state file,
@@ -42,12 +45,29 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Callable, Iterable, Iterator, NamedTuple
 
 # The band word in a filed title comes from the ageing gate's own table, so the
 # word, the `sev/` label the workflow reads back out of the title's number, and the
 # budget the gate enforces on that number cannot disagree.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_cve_ageing import band_for_score  # noqa: E402
+
+# The checkout's own package, for the NVD package source: this job installs
+# nothing, and the modules read below import only the standard library.
+sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
+from agent_audit_kit import nvd_feed  # noqa: E402
+from agent_audit_kit.malicious_feed import canonical_name  # noqa: E402
+from agent_audit_kit.scanners._versions import (  # noqa: E402
+    TOP,
+    ZERO,
+    Span,
+    Spans,
+    intersect,
+    interval_spans,
+    subtract,
+    union,
+)
 
 NVD_SEARCH = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 KEYWORDS = (
@@ -477,9 +497,8 @@ def _names(value: object) -> tuple[str, ...]:
     return tuple(v for v in value if isinstance(v, str)) if isinstance(value, (tuple, list)) else ()
 
 
-def pinned_packages(scanners: Path = SCANNERS) -> list[tuple[str, str]]:
-    """(OSV ecosystem, package name) for every package a pin table names, sorted."""
-    found: set[tuple[str, str]] = set()
+def _scanner_calls(scanners: Path) -> Iterator[tuple[Path, dict[str, object], ast.Call]]:
+    """Every call in the scanner sources, with its module's literal constants."""
     for path in sorted(scanners.glob("*.py")):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -492,23 +511,29 @@ def pinned_packages(scanners: Path = SCANNERS) -> list[tuple[str, str]]:
                 if isinstance(value, (str, tuple)):
                     constants[stmt.targets[0].id] = value
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            kind = _call_name(node)
-            if kind in ("_Pin", "DependencyPin"):
-                names = _names(_literal(_argument(node, 2 if kind == "_Pin" else 0, "names"), constants))
-                ecosystem = _literal(_argument(node, 7 if kind == "_Pin" else 2, "ecosystem"), constants)
-                for registry in _ECOSYSTEMS.get(ecosystem if isinstance(ecosystem, str) else None, ()):
-                    found.update((registry, n) for n in names)
-            elif kind == "_JvmPin":
-                artifacts = _names(_literal(_argument(node, 1, "artifacts"), constants))
-                group = _literal(_argument(node, 4, "group"), constants) or constants.get("_GROUP")
-                if isinstance(group, str):
-                    found.update(("Maven", f"{group}:{a}") for a in artifacts)
-            elif kind == "_affected_pin" and path.name == "supply_chain.py":
-                for n in _names(_literal(_argument(node, 2, "names"), constants)):
-                    registry = _LEGACY_REGISTRY.get(n)
-                    found.update((r, n) for r in ((registry,) if registry else ("PyPI", "npm")))
+            if isinstance(node, ast.Call):
+                yield path, constants, node
+
+
+def pinned_packages(scanners: Path = SCANNERS) -> list[tuple[str, str]]:
+    """(OSV ecosystem, package name) for every package a pin table names, sorted."""
+    found: set[tuple[str, str]] = set()
+    for path, constants, node in _scanner_calls(scanners):
+        kind = _call_name(node)
+        if kind in ("_Pin", "DependencyPin"):
+            names = _names(_literal(_argument(node, 2 if kind == "_Pin" else 0, "names"), constants))
+            ecosystem = _literal(_argument(node, 7 if kind == "_Pin" else 2, "ecosystem"), constants)
+            for registry in _ECOSYSTEMS.get(ecosystem if isinstance(ecosystem, str) else None, ()):
+                found.update((registry, n) for n in names)
+        elif kind == "_JvmPin":
+            artifacts = _names(_literal(_argument(node, 1, "artifacts"), constants))
+            group = _literal(_argument(node, 4, "group"), constants) or constants.get("_GROUP")
+            if isinstance(group, str):
+                found.update(("Maven", f"{group}:{a}") for a in artifacts)
+        elif kind == "_affected_pin" and path.name == "supply_chain.py":
+            for n in _names(_literal(_argument(node, 2, "names"), constants)):
+                registry = _LEGACY_REGISTRY.get(n)
+                found.update((r, n) for r in ((registry,) if registry else ("PyPI", "npm")))
     found.update(_LEGACY_EXTRA)
     return sorted(n for n in found if n[1])
 
@@ -689,6 +714,239 @@ def osv_records(
     return out
 
 
+# ---------------------------------------------------------------------------
+# The NVD package source (2026-10-30).
+#
+# IBM's Langflow OSS CVEs of 28 and 29 Oct 2026 reached neither source above.
+# Their text names neither MCP nor LangChain, so `is_relevant` dropped them, and
+# OSV had no package record of them, so OSV had nothing to return. NVD's record
+# of each carried IBM's own affected range, 1.0.0 through 1.12.8, past the
+# langflow pin's 1.12.0 floor: AAK reported nothing for langflow 1.12.0 to
+# 1.12.8, and nothing told anyone.
+#
+# So the watcher also reads every NVD record published in the window and keeps
+# the ones whose CNA data names an npm or PyPI package the pin tables carry,
+# mapped as `aak update` maps it (`agent_audit_kit.nvd_feed`: the CNA's
+# packageURL, else a row of the reviewed data/cna_package_map.json, never a name
+# alone). The text filter does not apply: the pinned package is the relevance.
+# When the CNA's range admits a release at or above the floor of a `_Pin` row
+# naming the package that none of those rows reports (their `introduced` bounds
+# and `also` ranges counted, as `_fires` counts them), the issue is titled "pin
+# floor stale: <rule id>, <CVE> (...)", and its body names that floor, the
+# range's upper bound and the fixed release the record names. It is still a
+# `cve-response` issue, so it holds the release like any other. A record the
+# keyword feed or OSV found too is filed once, under the stale title when it
+# has one.
+#
+# The `_Pin` rows are read with `ast`, as `pinned_packages` reads their names.
+# Versions compare on release triples, as the pin table compares them
+# (`scanners._versions`).
+# ---------------------------------------------------------------------------
+
+_PIN_REGISTRY = {"py": "PyPI", "js": "npm"}
+
+
+def _triple(value: object) -> tuple[int, int, int] | None:
+    if (isinstance(value, tuple) and len(value) == 3
+            and all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in value)):
+        return value[0], value[1], value[2]
+    return None
+
+
+class PinRow(NamedTuple):
+    """One `_Pin(...)` row of the pin table, as its source declares it. (A
+    NamedTuple, not a dataclass: the tests load this script by path, without
+    registering it as a module, which a dataclass needs.)"""
+
+    rule_id: str
+    names: tuple[str, ...]
+    floor: tuple[int, int, int] | None     # None: presence-only, every release reported
+    introduced: tuple[int, int, int] | None
+    also: tuple[Span, ...]
+    ecosystem: str | None                   # "py", "js", or None for both registries
+    fix_label: str
+
+    def names_package(self, registry: str, name: str) -> bool:
+        if self.ecosystem is not None and _PIN_REGISTRY.get(self.ecosystem) != registry:
+            return False
+        key = canonical_name(registry, name)
+        return any(canonical_name(registry, n) == key for n in self.names)
+
+    def reports(self) -> Spans:
+        """The releases this row reports (`_fires`, for a stated version)."""
+        low = self.introduced or ZERO
+        high = TOP if self.floor is None else self.floor
+        return union(([(low, high)] if low < high else []) + list(self.also))
+
+
+def pin_rows(scanners: Path = SCANNERS) -> list[PinRow]:
+    """Every `_Pin(...)` row whose rule id, names and floor are literals.
+
+    A floor written `None` is a presence-only pin; a floor that is not a literal
+    triple cannot be compared, so its row is left out.
+    """
+    rows: list[PinRow] = []
+    for _path, constants, node in _scanner_calls(scanners):
+        if _call_name(node) != "_Pin":
+            continue
+        rule_id = _literal(_argument(node, 0, "rule_id"), constants)
+        names = _names(_literal(_argument(node, 2, "names"), constants))
+        floor_node = _argument(node, 3, "floor")
+        presence_only = isinstance(floor_node, ast.Constant) and floor_node.value is None
+        floor = None if presence_only else _triple(_literal(floor_node, constants))
+        if not isinstance(rule_id, str) or not rule_id or not names or (floor is None and not presence_only):
+            continue
+        also_value = _literal(_argument(node, 8, "also"), constants)
+        also: list[Span] = []
+        for span in also_value if isinstance(also_value, tuple) else ():
+            low, high = (_triple(span[0]), _triple(span[1])) if isinstance(span, tuple) and len(span) == 2 else (None, None)
+            if low is not None and high is not None and low < high:
+                also.append((low, high))
+        ecosystem = _literal(_argument(node, 7, "ecosystem"), constants)
+        fix_label = _literal(_argument(node, 5, "fix_label"), constants)
+        rows.append(PinRow(
+            rule_id=rule_id,
+            names=names,
+            floor=floor,
+            introduced=_triple(_literal(_argument(node, 4, "introduced"), constants)),
+            also=tuple(also),
+            ecosystem=ecosystem if ecosystem in _PIN_REGISTRY else None,
+            fix_label=fix_label if isinstance(fix_label, str) else "",
+        ))
+    return rows
+
+
+def _dotted(version: tuple[int, int, int]) -> str:
+    return ".".join(str(part) for part in version)
+
+
+def _range_text(row: dict) -> str:
+    """One CNA range as the ledger words one: "1.0.0 through 1.12.8", "7.2.0 up to 11.0.0"."""
+    start = "the first release" if row.get("introduced") == "0" else str(row.get("introduced"))
+    if row.get("last_affected"):
+        return f"{start} through {row['last_affected']}"
+    if row.get("fixed"):
+        return f"{start} up to {row['fixed']}"
+    return f"{start} onward, with no end"
+
+
+def stale_pin(entry: dict, pins: list[PinRow]) -> tuple[PinRow, str] | None:
+    """(the pin to raise, the note the issue body carries) when the CNA range of one
+    package admits a release at or above a pin's floor that no pin naming the
+    package reports; None when the pins report every release it admits, or none
+    of them has a floor.
+
+    The pin named is the one with the highest floor at or below the lowest such
+    release: the floor the range runs past.
+    """
+    named = [pin for pin in pins if pin.names_package(entry["ecosystem"], entry["name"])]
+    floors = [pin.floor for pin in named if pin.floor is not None]
+    if not floors:
+        return None
+    affected = interval_spans(
+        ((r.get("introduced"), r.get("fixed"), r.get("last_affected")) for r in entry.get("ranges") or ()),
+        entry.get("versions") or (),
+    )
+    reported = union([span for pin in named for span in pin.reports()])
+    missed = intersect(subtract(affected, reported), ((min(floors), TOP),))
+    if not missed:
+        return None
+    lowest = missed[0][0]
+    pin = max((p for p in named if p.floor is not None and p.floor <= lowest), key=lambda p: (p.floor, p.rule_id))
+    assert pin.floor is not None
+    fixed = ", ".join(entry.get("fixed") or ()) or "none named in the record"
+    note = (
+        f"`{pin.rule_id}` reports {entry['ecosystem']} `{entry['name']}` "
+        + (f"from {_dotted(pin.introduced)} " if pin.introduced else "")
+        + f"below {_dotted(pin.floor)}, its floor. This record's affected range, as its CNA wrote it: "
+        + "; ".join(_range_text(r) for r in entry.get("ranges") or ()) + f". Fixed release: {fixed}. "
+        + f"AAK reports no release of it from {_dotted(lowest)} up to the range's end: raise the floor "
+          "to the release the vendor names as fixed, or add a pin."
+    )
+    return pin, note
+
+
+def nvd_package_records(
+    suppressed: set[str],
+    *,
+    packages: list[tuple[str, str]] | None = None,
+    pins: list[PinRow] | None = None,
+    rows: Iterable[nvd_feed.MapRow] | None = None,
+    window_hours: int = 168,
+    pages: Callable[[dict[str, str]], Iterable[dict]] | None = None,
+    now: datetime | None = None,
+) -> list[dict]:
+    """NVD records published inside the window whose CNA data names a pinned package.
+
+    A record already tracked, filed or in an issue (`suppressed`) is skipped, and
+    so is a rejected one. An NVD failure costs this source, not the run.
+
+    Args:
+        suppressed: Ids not to file again.
+        packages: (registry, name) pairs; `pinned_packages()` by default.
+        pins: The `_Pin` rows; `pin_rows()` by default.
+        rows: The reviewed map; `nvd_feed.load_package_map()` by default.
+        window_hours: How far back `pubStartDate` reaches.
+        pages: Reads one NVD query page by page; `nvd_feed.iter_pages` by default.
+        now: The end of the window (tests pin it).
+    """
+    end = now or datetime.now(timezone.utc)
+    query = {"pubStartDate": nvd_feed.stamp(end - timedelta(hours=window_hours)), "pubEndDate": nvd_feed.stamp(end)}
+    read = pages or (lambda params: nvd_feed.iter_pages(params, api_key=os.environ.get("NVD_API_KEY") or None))
+    pinned = {(registry, canonical_name(registry, name))
+              for registry, name in (packages if packages is not None else pinned_packages())
+              if registry in ("PyPI", "npm")}
+    pin_list = pins if pins is not None else pin_rows()
+    map_rows = nvd_feed.load_package_map() if rows is None else tuple(rows)
+    out: list[dict] = []
+    try:
+        for page in read(query):
+            for vuln in page.get("vulnerabilities") or ():
+                cve = vuln.get("cve") if isinstance(vuln, dict) else None
+                ident = cve.get("id") if isinstance(cve, dict) else None
+                if not isinstance(ident, str) or not ident.startswith("CVE-") or ident in suppressed:
+                    continue
+                named = [p for p in nvd_feed.record_packages(vuln, map_rows)
+                         if (p[0], canonical_name(p[0], p[1])) in pinned]
+                if named:
+                    out.append(_package_entry(vuln, ident, named, map_rows, pin_list))
+    except Exception as exc:  # noqa: BLE001
+        sys.stderr.write(f"cve-watcher: NVD package read failed ({exc}); this source files nothing this run\n")
+        return []
+    return out
+
+
+def _package_entry(vuln: dict, ident: str, named: list[tuple[str, str, str]],
+                   map_rows: tuple, pins: list[PinRow]) -> dict:
+    """A watcher record for one NVD record naming a pinned package."""
+    entry = _extract(vuln)
+    cna = str(vuln["cve"].get("sourceIdentifier") or "an unnamed CNA")
+    keys = {(registry, canonical_name(registry, name)) for registry, name, _ in named}
+    read = [e for e in nvd_feed.record_entries(vuln, map_rows)
+            if (e["ecosystem"], canonical_name(e["ecosystem"], e["name"])) in keys]
+    entry.update(
+        source=(f"NVD CNA record from {cna} naming "
+                + ", ".join(f"{registry} `{name}` (by its {'packageURL' if how == 'packageURL' else 'reviewed map row'})"
+                            for registry, name, how in named)
+                + ", a package AAK's pin tables name"),
+        url=f"https://nvd.nist.gov/vuln/detail/{ident}",
+        aliases=[],
+    )
+    if len(read) < len(named):
+        unread = sorted({name for _, name, _ in named} - {e["name"] for e in read})
+        entry["source"] += f"; its versions for {', '.join(unread)} could not be read"
+    for package in read:
+        found = stale_pin(package, pins)
+        if found is None:
+            continue
+        pin, note = found
+        score = f"{entry['cvss']:g}" if entry.get("cvss") is not None else "n/a"
+        entry["title"] = f"pin floor stale: {pin.rule_id}, {ident} ({entry.get('severity') or 'unknown'} CVSS {score})"
+        entry["pin_note"] = note
+        break
+    return entry
+
+
 def collect_new_cves(
     *,
     changelog_path: Path = CHANGELOG_PATH,
@@ -697,13 +955,16 @@ def collect_new_cves(
     owner_repo: str | None = None,
     fetcher=_fetch,
     osv_source=None,
+    nvd_source=None,
 ) -> tuple[list[dict], dict]:
     """Pure function that collects new CVEs with layered dedup.
 
     Returns ``(new_cve_entries, updated_state)``. The caller is responsible
     for persisting the updated state file (so dry-run tests stay clean).
     ``osv_source`` (``osv_records`` in ``main``) adds the OSV records for the
-    pinned packages; without it only NVD is read, as before.
+    pinned packages, and ``nvd_source`` (``nvd_package_records``) the NVD records
+    whose CNA data names one; without them only the keyword feed is read, as
+    before.
     """
 
     # Rebind module-level paths so overrides take effect.
@@ -746,6 +1007,23 @@ def collect_new_cves(
             seen.update(ids)
             results.append(entry)
 
+    if nvd_source is not None:
+        by_id = {e["id"]: e for e in results}
+        for entry in nvd_source(suppressed):
+            if entry["id"] in suppressed:
+                continue
+            if entry["id"] in by_id:
+                # The keyword feed or OSV found it too: one issue, under the stale
+                # title when the pins fall short of the CNA's range.
+                if entry.get("title"):
+                    by_id[entry["id"]].update(title=entry["title"], pin_note=entry["pin_note"])
+                continue
+            # A keyword hit whose text named nothing is in `seen` but was not
+            # filed; naming a pinned package is relevance enough.
+            seen.add(entry["id"])
+            by_id[entry["id"]] = entry
+            results.append(entry)
+
     # --- back-pressure ------------------------------------------------------
     # Applied HERE, not in the workflow's issue-creating step, because
     # `filed_cves` below records everything this function returns. A cap applied
@@ -786,6 +1064,7 @@ def main() -> int:
         github_token=token,
         owner_repo=owner_repo,
         osv_source=osv_records,
+        nvd_source=nvd_package_records,
     )
     sys.stdout.write(json.dumps(results, indent=2))
     # Only write state if we are about to file something. The workflow

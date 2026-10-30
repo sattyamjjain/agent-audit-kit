@@ -5438,10 +5438,16 @@
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-101861",
+        "CVE-2026-104339",
         "CVE-2026-105697",
         "CVE-2026-105699",
         "CVE-2026-105740",
         "CVE-2026-105741",
+        "CVE-2026-107327",
+        "CVE-2026-107329",
+        "CVE-2026-110186",
+        "CVE-2026-110192",
+        "CVE-2026-110193",
         "CVE-2026-12940",
         "CVE-2026-17623",
         "CVE-2026-17626",
@@ -5451,7 +5457,8 @@
         "CVE-2026-8446",
         "CVE-2026-85025",
         "CVE-2026-9077",
-        "CVE-2026-9186"
+        "CVE-2026-9186",
+        "CVE-2026-93680"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -5478,7 +5485,7 @@
       ],
       "rule_id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
       "severity": "critical",
-      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.12.0)"
+      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.13.0)"
     },
     {
       "category": "supply-chain",
@@ -10940,7 +10947,7 @@
       "low": 19,
       "medium": 126
     },
-    "total_cves_covered": 373,
+    "total_cves_covered": 380,
     "total_rules": 437
   },
   "tool": "agent-audit-kit"

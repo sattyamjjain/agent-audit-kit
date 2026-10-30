@@ -424,6 +424,23 @@ def _cna_data(cve: dict[str, Any]) -> list[dict[str, Any]]:
     return [data for block in (own or blocks) for data in _dicts(block.get("affectedData"))]
 
 
+def record_packages(vuln: dict[str, Any], rows: Iterable[MapRow]) -> list[tuple[str, str, str]]:
+    """(registry, name, how it was mapped) for each package one NVD record's CNA
+    data names, sorted, whether or not its versions can be read; nothing for a
+    rejected record. scripts/cve_watcher.py files a record on its package."""
+    inner = vuln.get("cve")
+    cve: dict[str, Any] = inner if isinstance(inner, dict) else vuln
+    if str(cve.get("vulnStatus") or "").strip().lower() == "rejected":
+        return []
+    rows = tuple(rows)
+    found: dict[tuple[str, str], tuple[str, str, str]] = {}
+    for affected in _cna_data(cve):
+        mapped = map_package(affected, rows)
+        if mapped is not None:
+            found.setdefault((mapped[0], canonical_name(mapped[0], mapped[1])), mapped)
+    return [found[key] for key in sorted(found)]
+
+
 def record_entries(vuln: dict[str, Any], rows: Iterable[MapRow], tally: Tally | None = None) -> list[dict[str, Any]]:
     """Feed entries, one per package, for one NVD record (a `vulnerabilities[]`
     item, or its `cve` object), counted into `tally`."""
@@ -654,5 +671,6 @@ __all__ = [
     "nvd_severity",
     "purl_package",
     "record_entries",
+    "record_packages",
     "stamp",
 ]

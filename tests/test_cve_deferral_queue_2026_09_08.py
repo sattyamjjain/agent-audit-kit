@@ -291,9 +291,10 @@ def test_langflow_versions_the_old_floor_called_patched(tmp_path: Path, version:
     # 1.11.3 was the floor until 2026-09-11. CVE-2026-85025 / CVE-2026-78575 /
     # CVE-2026-81941 are all scoped 1.0.0-1.11.5, which made 1.11.6 the release
     # that cleared the rule until 2026-10-05, when CVE-2026-101861 (1.0.16-1.11.6)
-    # moved the floor to 1.12.0.
+    # moved the floor to 1.12.0, and on 2026-10-30 IBM's CVE-2026-110186 and its
+    # batch (1.0.0-1.12.8) moved it to 1.13.0.
     ("1.10.1", True), ("1.11.3", True), ("1.11.5", True),
-    ("1.11.6", True), ("1.12.0", False), ("0.9.9", False),
+    ("1.11.6", True), ("1.12.0", True), ("1.12.8", True), ("1.13.0", False), ("0.9.9", False),
 ])
 def test_langflow_floor_bounds(tmp_path: Path, version: str, fires: bool) -> None:
     assert (LANGFLOW in _pypi(tmp_path, f"langflow=={version}")) is fires
@@ -312,7 +313,7 @@ def test_no_wave_rule_fires_on_a_patched_project(tmp_path: Path) -> None:
         "tooluniverse==1.4.1\n"
         "mcp-contextforge-gateway==1.0.10\n"
         "awslabs.postgres-mcp-server==1.2.0\n"
-        "langflow==1.12.0\n"
+        "langflow==1.13.0\n"
         "awslabs.security-agent-mcp-server==0.2.1\n",
         encoding="utf-8",
     )

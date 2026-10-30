@@ -12238,7 +12238,7 @@ _r(
 
 _r(
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
-    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.12.0)",
+    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.13.0)",
     "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to "
     "unauthenticated remote code execution through its MCP stdio launcher: the "
     "`DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, "
@@ -12282,14 +12282,26 @@ _r(
     "`X-Forwarded-For` on the MCP-config install endpoint from 1.5.0 (fixed in "
     "1.10.3). So does CVE-2026-105699 (CVSS 4.0 7.1): from 1.6.8, a project-scoped "
     "MCP connection's `resources/read` returned another user's flow files without "
-    "checking that the flow belonged to the caller (fixed in 1.9.1). The same code "
-    "ships as `langflow-base` and `lfx`, which reach 1.12.0 "
-    "in the same release, so both are read at the same floor. Pre-1.0.0 releases "
-    "of `langflow` predate the MCP stdio launcher and are not in the affected range.",
+    "checking that the flow belonged to the caller (fixed in 1.9.1). IBM's records "
+    "of 29 Oct 2026 then moved the `langflow` floor to 1.13.0: CVE-2026-110186 "
+    "(CVSS 9.8, arbitrary code through improper control of code generation), "
+    "CVE-2026-93680 (CVSS 9.8, a security-restriction bypass through improper "
+    "authentication), CVE-2026-110193 (CVSS 8.8, a low-privileged user has the "
+    "Agentic Assistant generate or submit component code that runs) and "
+    "CVE-2026-110192 (CVSS 6.5, API credentials exposed to an authenticated user) "
+    "affect 1.0.0 through 1.12.8 and are fixed in 1.13.0; CVE-2026-104339 (CVSS "
+    "9.8, OS command injection) affects 1.0.0 through 1.12.3, fixed in 1.12.4, and "
+    "CVE-2026-107327 and CVE-2026-107329 (CVSS 9.9 each, code execution by an "
+    "authenticated user) 1.0.0 through 1.12.4, fixed in 1.12.5. Treat `langflow` < "
+    "1.13.0 (and unpinned) as exposed. The same code ships as `langflow-base` and "
+    "`lfx`, which reached 1.12.0 in the same release as `langflow`, so both are "
+    "read at that floor; no IBM bulletin or CNA record names either package for "
+    "the October records, so their floors stay at 1.12.0. Pre-1.0.0 releases of "
+    "`langflow` predate the MCP stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `langflow` (or `langflow-base` / `lfx`, where those are installed "
-    "directly) to >= 1.12.0 and pin it. Do not pass an attacker-influenced "
+    "Upgrade `langflow` to >= 1.13.0 (or `langflow-base` / `lfx`, where those are "
+    "installed directly, to >= 1.12.0) and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
     "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. "
     "Derive the client address from the socket, not from a caller-supplied "
@@ -12300,6 +12312,8 @@ _r(
         "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
         "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
         "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
+        "CVE-2026-110186", "CVE-2026-93680", "CVE-2026-110193", "CVE-2026-110192",
+        "CVE-2026-104339", "CVE-2026-107327", "CVE-2026-107329",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI04", "ASI05"],
