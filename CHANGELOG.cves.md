@@ -18,6 +18,33 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-31 (unreleased): lmdeploy's NVD record in the bundled advisory feed
+
+NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the
+package by packageURL (`pkg:pypi/lmdeploy`), so `aak update` maps it with no map row, but the
+bundled feed held only the records of 29 Oct, and OSV holds the CVE only as a git commit
+range on github.com/internlm/lmdeploy, with no record for PyPI `lmdeploy`. A project that
+locked lmdeploy 0.18.0 and never ran `aak update` passed every rule. No tracker issue was
+filed for it. NVD text is quoted from the API record, read on 2026-10-31 and saved unedited
+under tests/fixtures/nvd_cna.
+
+### CVE-2026-119706 (lmdeploy): advisory feed 2026-10-31
+
+**`AAK-KNOWN-VULN-001` reports `lmdeploy` 0.9.0 through 0.18.0, CRITICAL.** NVD: LMDeploy
+"contains an unauthenticated remote code execution vulnerability" reached through pickled
+data sent to the `/update_weights` endpoint. VulnCheck's CNA data is one interval, 0.9.0 to
+`lessThanOrEqual` 0.18.0 with `defaultStatus: unaffected`, and names no fixed release, so the
+bundled entry is that interval with no fix. It is the record as `nvd_feed` converts it; no
+hand pin was added. Measured with the scanner: a `uv.lock` resolving lmdeploy 0.18.0 fires
+CRITICAL and says the advisory lists no fixed release and 0.18.0 as the last affected one;
+0.8.0 does not fire.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-119706 | 9.8 | `lmdeploy` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 0.9.0 through 0.18.0 from the bundled NVD entry, CRITICAL. No fixed release; no pin. | not filed |
+
+CVSS is the record's CVSS 3.1 score, VulnCheck's.
+
 ## 2026-10-31 (unreleased): MoLing and TAKO matched to what a project launches
 
 NVD published two critical records on 30 Oct 2026 for an MCP server and an agent app that

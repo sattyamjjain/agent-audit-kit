@@ -5,8 +5,8 @@ bulletin of 28 Oct 2026 names Langflow OSS 1.0.0 through 1.12.8 (CVE-2026-110186
 CVSS 9.8), OSV had no record of it, and the feed read only OSV. The one
 machine-readable range was IBM's, in NVD's record of the CVE. These tests pin
 how `nvd_feed` reads those records (which package, which versions, which
-severity), the bundled entries converted from the four records saved unedited
-under tests/fixtures/nvd_cna on 2026-10-30, the OSV entry that wins over an NVD
+severity), the bundled entries converted from the five records saved unedited
+under tests/fixtures/nvd_cna on 2026-10-30 and 2026-10-31, the OSV entry that wins over an NVD
 entry for the same CVE, and `aak update`, which keeps the NVD entries scans read
 before when NVD cannot be read. Nothing is fetched: every NVD answer here is a
 fixture or written in the test.
@@ -37,6 +37,7 @@ from agent_audit_kit.scanners.known_vulns import RULE, scan
 FIXTURES = Path(__file__).parent / "fixtures" / "nvd_cna"
 LANGFLOW_CVES = ("CVE-2026-110186", "CVE-2026-93680", "CVE-2026-104339")
 OPEN_CVE = "CVE-2026-119025"
+LMDEPLOY_CVE = "CVE-2026-119706"
 NOW = datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc)
 
 
@@ -49,8 +50,8 @@ def _record(cve: str) -> dict[str, Any]:
     return vuln
 
 
-def _uv_lock(root: Path, version: str) -> None:
-    (root / "uv.lock").write_text(f'[[package]]\nname = "langflow"\nversion = "{version}"\n')
+def _uv_lock(root: Path, version: str, name: str = "langflow") -> None:
+    (root / "uv.lock").write_text(f'[[package]]\nname = "{name}"\nversion = "{version}"\n')
 
 
 def _package_lock(root: Path, version: str) -> None:
@@ -70,10 +71,10 @@ def _cves(root: Path) -> list[tuple[Severity, str, int | None]]:
 
 def test_the_fixtures_are_nvd_api_answers_with_the_cna_data_at_cve_affected() -> None:
     """The CNA's version data is at `vulnerabilities[].cve.affected[].affectedData[]`;
-    only CVE-2026-119025's CNA (VulnCheck) wrote packageURLs, IBM's records carry a
-    vendor and product alone."""
+    only VulnCheck's records (CVE-2026-119025 and CVE-2026-119706) carry packageURLs,
+    IBM's carry a vendor and product alone."""
     purls: dict[str, list[str]] = {}
-    for cve in LANGFLOW_CVES + (OPEN_CVE,):
+    for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE):
         page = _fixture(cve)
         assert page["format"] == "NVD_CVE" and page["version"] == "2.0" and page["totalResults"] == 1
         record = page["vulnerabilities"][0]["cve"]
@@ -84,28 +85,31 @@ def test_the_fixtures_are_nvd_api_answers_with_the_cna_data_at_cve_affected() ->
     assert purls == {
         "CVE-2026-110186": [], "CVE-2026-93680": [], "CVE-2026-104339": [],
         OPEN_CVE: ["pkg:npm/open", "pkg:npm/%40modelcontextprotocol/inspector", "pkg:npm/opencode-ai"],
+        LMDEPLOY_CVE: ["pkg:pypi/lmdeploy"],
     }
 
 
 def test_the_bundled_nvd_entries_are_the_fixtures_as_converted() -> None:
-    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the four
-    records, with the reviewed map shipped beside it; every one of the four maps."""
+    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the five
+    records, with the reviewed map shipped beside it; every one of the five maps.
+    CVE-2026-119706 (lmdeploy) maps by its packageURL, so it needed no map row."""
     rows = nvd_feed.load_package_map()
     tally = nvd_feed.Tally()
-    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE,)
+    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE)
                                 for entry in nvd_feed.record_entries(_record(cve), rows, tally))
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert bundled["nvd"] == converted
-    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (4, 4, 0, 6)
+    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (5, 5, 0, 7)
     assert [(e["name"], e["id"], e["ranges"]) for e in converted] == [
         ("langflow", "CVE-2026-104339", [{"introduced": "1.0.0", "last_affected": "1.12.3"}]),
         ("langflow", "CVE-2026-110186", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
         ("langflow", "CVE-2026-93680", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
+        ("lmdeploy", LMDEPLOY_CVE, [{"introduced": "0.9.0", "last_affected": "0.18.0"}]),
         ("@modelcontextprotocol/inspector", OPEN_CVE, [{"introduced": "2.0.0", "fixed": "2.12.0"}]),
         ("open", OPEN_CVE, [{"introduced": "7.2.0", "fixed": "11.0.0"}]),
         ("opencode-ai", OPEN_CVE, [{"introduced": "1.0.137", "fixed": "1.18.33"}]),
     ]
-    assert {e["severity"] for e in converted if e["name"] == "langflow"} == {"CRITICAL"}
+    assert {e["severity"] for e in converted if e["name"] in ("langflow", "lmdeploy")} == {"CRITICAL"}
     assert {(e["severity"], e["score"], e["scored_by"]) for e in converted if e["id"] == OPEN_CVE} == {
         ("HIGH", 7.5, "nvd-cvss3")}
 
@@ -153,6 +157,33 @@ def test_an_open_lockfile_is_judged_by_vulncheck_s_packageurl_ranges(tmp_path: P
     if fires:
         (finding,) = scan(tmp_path)[0]
         assert "; it is fixed in 11.0.0 (https://nvd.nist.gov/vuln/detail/CVE-2026-119025)" in finding.evidence
+
+
+@pytest.mark.parametrize("version, fires", [("0.18.0", True), ("0.9.0", True), ("0.18.1", False), ("0.8.0", False)])
+def test_an_lmdeploy_lockfile_is_judged_by_vulncheck_s_range(tmp_path: Path, version: str, fires: bool) -> None:
+    """VulnCheck's record names lmdeploy 0.9.0 through 0.18.0 and no fixed release; the
+    bundled entry is that record as converted, with no hand pin beside it."""
+    _uv_lock(tmp_path, version, "lmdeploy")
+    findings, _ = scan(tmp_path)
+    assert [(f.severity, f.line_number) for f in findings if LMDEPLOY_CVE in f.evidence] == (
+        [(Severity.CRITICAL, 2)] if fires else [])
+
+
+def test_the_lmdeploy_finding_names_no_fixed_release_and_the_last_affected_one(tmp_path: Path) -> None:
+    _uv_lock(tmp_path, "0.18.0", "lmdeploy")
+    (finding,) = scan(tmp_path)[0]
+    assert finding.severity is Severity.CRITICAL
+    assert finding.evidence.startswith(
+        "uv.lock resolves lmdeploy 0.18.0, which CVE-2026-119706 (NVD CNA record, CVSS 3.x 9.8) lists as "
+        "affected; the advisory lists no fixed release, and 0.18.0 as the last affected one "
+        "(https://nvd.nist.gov/vuln/detail/CVE-2026-119706). Feed: the bundled copy generated ")
+
+
+def test_through_the_engine_lmdeploy_0_18_0_is_this_rule_s_alone(tmp_path: Path) -> None:
+    """No other rule pins lmdeploy's version, so nothing stands this finding down."""
+    _uv_lock(tmp_path, "0.18.0", "lmdeploy")
+    result = run_scan(tmp_path)
+    assert [(f.rule_id, f.severity) for f in result.findings] == [(RULE, Severity.CRITICAL)]
 
 
 def test_a_range_admitting_releases_on_both_sides_of_the_last_affected_one_is_info(tmp_path: Path) -> None:
@@ -484,7 +515,7 @@ def test_the_rebuild_drops_an_nvd_entry_osv_already_lists() -> None:
                       {"field": "lastModified", "start": "2026-07-02T09:00:00Z", "end": "2026-10-30T09:00:00Z",
                        "days": 120})
     written = collector.write(now=NOW)
-    assert (written.nvd, written.nvd_twins) == (5, 1)
+    assert (written.nvd, written.nvd_twins) == (6, 1)
     data = json.loads(written.path.read_text())
     assert "CVE-2026-110186" not in {e["id"] for e in data["nvd"]}
     assert data["source"].endswith("; NVD's records of CNA version data modified 2026-07-02 to 2026-10-30, "
@@ -689,7 +720,7 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
     the file it writes is the one scans read from then on."""
     monkeypatch.setattr(nvd_feed, "_default_opener", lambda: _Opener(_http_error(404)))
     result = CliRunner().invoke(cli, ["update"])
-    assert result.exit_code == 2 and "keeps the 6 NVD and 3 launch entries of the bundled feed." in result.output
+    assert result.exit_code == 2 and "keeps the 7 NVD and 3 launch entries of the bundled feed." in result.output
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert (_cached()["nvd"], _cached()["launch"]) == (bundled["nvd"], bundled["launch"])
     _uv_lock(tmp_path, "1.12.8")
@@ -699,9 +730,9 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
 def test_nvd_days_0_reads_nothing_and_keeps_what_scans_read(offline_osv: None) -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 6 NVD and 3 launch entries of the bundled "
+    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 7 NVD and 3 launch entries of the bundled "
             "feed.") in result.output
-    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (6, 3)
+    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (7, 3)
 
 
 # ---- launch rows: software a project starts ----------------------------------------------------------

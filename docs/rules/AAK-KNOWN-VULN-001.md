@@ -71,13 +71,13 @@ which copy was read and when it was generated.
   2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
-  It also holds the six entries `nvd_feed` converts from NVD's records of four
-  CVEs as NVD served them on 2026-10-30 (saved unedited under
-  `tests/fixtures/nvd_cna`, and listed under
+  It also holds the seven entries `nvd_feed` converts from NVD's records of five
+  CVEs as NVD served them on 2026-10-30 and, for lmdeploy, 2026-10-31 (saved
+  unedited under `tests/fixtures/nvd_cna`, and listed under
   [Related advisories](#related-advisories)): three against langflow, one against
-  the npm packages open, @modelcontextprotocol/inspector and opencode-ai. Every
-  one of the four maps to a package, so none was left out. Without
-  `aak update`, nothing else is known.
+  lmdeploy, and one against the npm packages open,
+  @modelcontextprotocol/inspector and opencode-ai. Every one of the five maps to a
+  package, so none was left out. Without `aak update`, nothing else is known.
 
 ## Sources
 
@@ -195,7 +195,8 @@ bundled few.
 ## Related advisories
 
 The advisories that showed the gap, as NVD and OSV listed them on 2026-10-29
-(the first four) and 2026-10-30 (the rest). They are context, not this rule's
+(the first four), 2026-10-30 (the Langflow and open records) and 2026-10-31
+(lmdeploy). They are context, not this rule's
 references: the rule reports whatever advisory the feed holds.
 
 | Product | CVE | OSV record | In the bundled feed |
@@ -208,6 +209,7 @@ references: the rule reports whatever advisory the feed holds.
 | Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-93680 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | Langflow OSS 1.0.0 through 1.12.3 | CVE-2026-104339 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | npm open 7.2.0 up to 11.0.0, @modelcontextprotocol/inspector 2.0.0 up to 2.12.0, opencode-ai 1.0.137 up to 1.18.33 | CVE-2026-119025 | none | yes, from VulnCheck's record in NVD, which names each package by packageURL (CVSS 3.x 7.5) |
+| InternLM LMDeploy 0.9.0 through 0.18.0, no fixed release | CVE-2026-119706 | a git commit-range record only, none for PyPI `lmdeploy` | yes, from VulnCheck's record in NVD, which names the package by packageURL (CVSS 3.x 9.8) |
 
 A finding on the vLLM one reads:
 
