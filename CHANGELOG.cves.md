@@ -18,7 +18,7 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-31 (unreleased): lmdeploy's NVD record in the bundled advisory feed
+## 2026-10-31 (v0.6.30): lmdeploy's NVD record in the bundled advisory feed
 
 NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the
 package by packageURL (`pkg:pypi/lmdeploy`), so `aak update` maps it with no map row, but the
@@ -45,7 +45,7 @@ CRITICAL and says the advisory lists no fixed release and 0.18.0 as the last aff
 
 CVSS is the record's CVSS 3.1 score, VulnCheck's.
 
-## 2026-10-31 (unreleased): MoLing and TAKO matched to what a project launches
+## 2026-10-31 (v0.6.30): MoLing and TAKO matched to what a project launches
 
 NVD published two critical records on 30 Oct 2026 for an MCP server and an agent app that
 are on neither PyPI nor npm, and neither reached a finding. Each CNA record names a vendor
@@ -91,7 +91,7 @@ file running `:3.0.0-beta` fires both, `:3.0.1-beta` neither.
 
 CVSS is each record's CVSS 3.1 score, GitHub's for all three.
 
-## 2026-10-30 (unreleased): seven IBM Langflow records read from NVD, the langflow floor raised to 1.13.0, one advisory-feed entry
+## 2026-10-30 (v0.6.30): seven IBM Langflow records read from NVD, the langflow floor raised to 1.13.0, one advisory-feed entry
 
 The watcher filed none of IBM's Langflow OSS records of 29 Oct. Their text names neither
 MCP nor LangChain, so the keyword feed dropped them, and OSV had no package record of them,
