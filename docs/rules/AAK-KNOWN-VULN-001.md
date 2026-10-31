@@ -117,7 +117,15 @@ a vendor and product, not a package.
   order whatever `versionType` says of `semver`, `custom` or `python` (a git
   commit is not read): `version` with `lessThan` is affected up to, not
   including, that release; with `lessThanOrEqual`, up to and including it, which
-  is how IBM wrote "1.0.0 through 1.12.8". `changes` split a range where the
+  is how IBM wrote "1.0.0 through 1.12.8". A `version` with neither is one
+  release when it is one, and otherwise read as GitHub's advisory grammar, the
+  only way GitHub's CNA writes a range: `< 0.5.0` is affected below 0.5.0,
+  `>= 2.2.0, < 3.0.1` from 2.2.0 below 3.0.1, `<= 1.2` up to and including 1.2,
+  `>= 1.0.0` from 1.0.0 on, and `= 1.4.2` that release alone. `> x` starts at the
+  first version after x, which semver has (3.0.1-0 after 3.0.0) and PEP 440 does
+  not, so on a PyPI package it is not read. Other text (`1.0 to 1.8.0`, two
+  clauses with no comma) is not read, and a record left with no range is
+  counted. `changes` split a range where the
   status moves. `defaultStatus: affected` makes every release affected but those
   the entries exclude, read only when each exclusion is a range ending before a
   release or open-ended; a record whose exclusions no interval can state is not

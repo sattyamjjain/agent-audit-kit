@@ -43,8 +43,16 @@ of `semver`, `custom` or `python`; another type (a git commit) is not read:
   `[version, lessThanOrEqual]`; a `version` of "0" or "*" starts at the first
   release, and an end of "*" is open. `changes` split the range where the
   status moves.
-* `version` alone is one listed release, when it is one (`"< 4.13.5"` and
-  `"1.0 to 1.8.0"` are text, not versions, and are not read).
+* `version` alone is one listed release when it is one. Otherwise it is read as
+  GitHub's advisory grammar, the only way GitHub's CNA writes a range: one or
+  more of `< x`, `<= x`, `> x`, `>= x` and `= x`, comma-separated, each x a
+  version of the registry (`"< 0.5.0"`, `">= 2.2.0, < 3.0.1"`). Of the 5,650
+  records GitHub's CNA published in the 120 days to 2026-10-31, none carried a
+  `lessThan`, 4,270 versions read `< x` and 3,621 `>= x, < x`. One lower and one
+  upper bound at most, or `= x` alone. `> x` starts at the first version after
+  x, which semver has (3.0.1-0 after 3.0.0) and PEP 440 does not, so on PyPI it
+  is not read (5 of the 8,210 versions used it). Other text (`"1.0 to 1.8.0"`,
+  `">= 12.0.0 < 15.5.21"` with no comma) is not read.
 * `defaultStatus: affected` makes every release affected but the ones the
   entries exclude. That is read when each exclusion is a range ending before a
   version (`lessThan`) or open-ended, since a feed interval starts inclusively;
@@ -72,6 +80,7 @@ from __future__ import annotations
 import http.client
 import json
 import math
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -82,7 +91,14 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
 from agent_audit_kit.advisory_feed import _dicts, _interval, bucket, cvss3_base_score
-from agent_audit_kit.malicious_feed import ECOSYSTEMS, Range, canonical_name, version_order
+from agent_audit_kit.malicious_feed import (
+    _SEMVER_RE,
+    ECOSYSTEMS,
+    Range,
+    canonical_name,
+    version_key,
+    version_order,
+)
 
 NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 PACKAGE_MAP: Path = Path(__file__).parent / "data" / "cna_package_map.json"
@@ -265,6 +281,77 @@ def _end(entry: dict[str, Any], ecosystem: str) -> tuple[str, str] | None:
     return None
 
 
+#: One clause of GitHub's advisory grammar: an operator, then a version.
+_CLAUSE_RE = re.compile(r"\s*(<=|>=|<|>|=)\s*(\S+)\s*")
+
+
+def _after(version: str, ecosystem: str) -> str | None:
+    """The first version after `version`, where `> version` starts.
+
+    Semver 2.0 has one: a release's pre-releases sort below it and a longer
+    pre-release above its prefix, so 3.0.1-0 follows 3.0.0, and
+    4.0.0-canary.0.0 follows 4.0.0-canary.0. PEP 440 has none: below any local
+    version of 1.0 sorts another (1.0+0a below 1.0+a, 1.0+00a below 1.0+0a), so
+    on PyPI this is None and `> x` is not read.
+    """
+    if ecosystem == "PyPI":
+        return None
+    m = _SEMVER_RE.match(version_key(ecosystem, version))
+    if m is None:
+        return None
+    major, minor, patch, pre = m.group(1), m.group(2), m.group(3), m.group(4)
+    return f"{major}.{minor}.{patch}-{pre}.0" if pre else f"{major}.{minor}.{int(patch) + 1}-0"
+
+
+def comparator_ranges(text: object, ecosystem: str) -> tuple[list[Range], list[str]] | None:
+    """(intervals, listed releases) for a version written in GitHub's advisory
+    grammar (see the module's "Which versions"), read on `ecosystem`'s order; None
+    for text that is not that grammar, or names no release.
+
+    `< 0.5.0` is [first release, 0.5.0), `>= 2.2.0, < 3.0.1` is [2.2.0, 3.0.1),
+    `<= 1.2` includes 1.2, `>= 1.0.0` has no end and `= 1.4.2` is one release.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return None
+    lower: tuple[str, str] | None = None
+    upper: tuple[str, str] | None = None
+    exact: str | None = None
+    for clause in text.split(","):
+        m = _CLAUSE_RE.fullmatch(clause)
+        if m is None or version_order(ecosystem, m.group(2)) is None:
+            return None
+        op, version = m.group(1), m.group(2)
+        if op == "=":
+            if exact is not None:
+                return None
+            exact = version
+        elif op in (">", ">="):
+            if lower is not None:
+                return None
+            lower = (op, version)
+        elif upper is not None:
+            return None
+        else:
+            upper = (op, version)
+    if exact is not None:
+        return ([], [exact]) if lower is None and upper is None else None
+    introduced: str | None = _START
+    if lower is not None:
+        introduced = lower[1] if lower[0] == ">=" else _after(lower[1], ecosystem)
+    if introduced is None:
+        return None
+    fixed = upper[1] if upper is not None and upper[0] == "<" else None
+    last = upper[1] if upper is not None and upper[0] == "<=" else None
+    row = Range(introduced, fixed, last, ecosystem)
+    bounds = row.bounds
+    if bounds is None:
+        return None
+    low, end, last_key = bounds
+    if low is not None and ((end is not None and low >= end) or (last_key is not None and low > last_key)):
+        return None  # `>= 2.0, < 1.0` admits nothing
+    return [row], []
+
+
 def _affected_segments(entry: dict[str, Any], ecosystem: str) -> list[Range] | None:
     """The affected intervals of one range entry, its `changes` applied; None when
     a bound or a change cannot be placed in the registry's order."""
@@ -360,6 +447,11 @@ def cna_ranges(affected: dict[str, Any], ecosystem: str) -> tuple[list[Range], l
                 text = entry.get("version")
                 if isinstance(text, str) and version_order(ecosystem, text.strip()) is not None:
                     listed.append(text.strip())
+                else:
+                    read = comparator_ranges(text, ecosystem)
+                    if read is not None:
+                        ranges.extend(read[0])
+                        listed.extend(read[1])
         elif default == "affected":
             span = _excluded(entry, ecosystem)
             if span is None:
@@ -663,6 +755,7 @@ __all__ = [
     "PACKAGE_MAP",
     "Tally",
     "cna_ranges",
+    "comparator_ranges",
     "fetch",
     "iter_pages",
     "load_package_map",

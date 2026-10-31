@@ -307,7 +307,9 @@ def _ranges(versions: list[dict[str, Any]], ecosystem: str = "PyPI", default: st
      ([{"introduced": "1.0.0"}], [])),
     ([{"version": "1.4.2", "status": "affected"}, {"version": "1.5.0", "status": "unaffected"}],
      ([], ["1.4.2"])),
-    ([{"version": "< 4.13.5", "status": "affected"}, {"version": "1.0 to 1.8.0", "status": "affected"}], ([], [])),
+    # GitHub's advisory grammar is read (see test_github_s_comparator_text below); other text is not.
+    ([{"version": "< 4.13.5", "status": "affected"}, {"version": "1.0 to 1.8.0", "status": "affected"}],
+     ([{"introduced": "0", "fixed": "4.13.5"}], [])),
     ([{"version": "abc123", "lessThan": "def456", "versionType": "git", "status": "affected"}], ([], [])),
     ([{"version": "1.0.0", "lessThan": "2.0.0", "versionType": "semver", "status": "unaffected"}], ([], [])),
     ([{"version": "1.0.0", "lessThan": "2.0.0", "versionType": "semver", "status": "affected",
@@ -340,6 +342,92 @@ def test_versions_are_read_on_the_registry_s_own_order() -> None:
     (row,), _ = nvd_feed.cna_ranges({"versions": [
         {"version": "1.0.0", "lessThan": "1.13.0", "versionType": "semver", "status": "affected"}]}, "PyPI")
     assert row.admits("1.13.0rc1") and not row.admits("1.13.0")  # PEP 440: a pre-release sorts below its release
+
+
+# ---- GitHub's comparator text ------------------------------------------------------------------------
+# GitHub's CNA writes every range as text in `version` ("< 0.5.0"), never with
+# `lessThan`: none of the 5,650 records it published in the 120 days to 2026-10-31.
+
+
+@pytest.mark.parametrize("text, ecosystem, expected", [
+    ("< 0.5.0", "npm", ([{"introduced": "0", "fixed": "0.5.0"}], [])),
+    ("<0.5.0", "npm", ([{"introduced": "0", "fixed": "0.5.0"}], [])),
+    (">= 2.2.0, < 3.0.1", "npm", ([{"introduced": "2.2.0", "fixed": "3.0.1"}], [])),
+    ("<= 1.2", "PyPI", ([{"introduced": "0", "last_affected": "1.2"}], [])),
+    (">= 1.0.0, <= 1.15.0", "npm", ([{"introduced": "1.0.0", "last_affected": "1.15.0"}], [])),
+    (">= 3.0.0", "npm", ([{"introduced": "3.0.0"}], [])),
+    ("= 1.4.2", "npm", ([], ["1.4.2"])),
+    ("< 3.0.1-beta", "npm", ([{"introduced": "0", "fixed": "3.0.1-beta"}], [])),
+    # `> x` starts at the first version after x, which semver has and PEP 440 does not.
+    ("> 3.0.0, < 3.90.0", "npm", ([{"introduced": "3.0.1-0", "fixed": "3.90.0"}], [])),
+    ("> 4.0.0-canary.0, < 4.0.0-canary.34", "npm",
+     ([{"introduced": "4.0.0-canary.0.0", "fixed": "4.0.0-canary.34"}], [])),
+    ("> 1.0", "PyPI", None),
+    # Not the grammar, or no release: unread.
+    ("1.0 to 1.8.0", "npm", None),
+    ("< banana", "npm", None),
+    (">= 12.0.0 < 15.5.21", "npm", None),       # no comma, as GitHub wrote it on a few records
+    ("> = 1.19.10, < 2.1.3", "npm", None),
+    ("< 1.0.0, < 2.0.0", "npm", None),           # two upper bounds
+    (">= 2.0.0, < 1.0.0", "npm", None),          # admits nothing
+    ("= 1.0.0, < 2.0.0", "npm", None),
+    ("<= 1.2", "npm", None),                     # 1.2 is not a semver version
+    ("", "npm", None),
+    (None, "npm", None),
+])
+def test_github_s_comparator_text(text: str | None, ecosystem: str, expected: object) -> None:
+    read = nvd_feed.comparator_ranges(text, ecosystem)
+    got = None if read is None else ([advisory_feed._interval(row) for row in read[0]], read[1])
+    assert got == expected
+
+
+@pytest.mark.parametrize("text, ecosystem, admitted, refused", [
+    ("< 0.5.0", "npm", ["0.0.1", "0.4.9", "0.5.0-rc.1"], ["0.5.0", "1.0.0"]),
+    ("<= 1.2", "PyPI", ["1.0", "1.2", "1.2.0"], ["1.2.1", "1.3"]),
+    ("> 3.0.0, < 3.90.0", "npm", ["3.0.1-0", "3.0.1-alpha", "3.0.1", "3.89.9"], ["3.0.0", "3.0.0+build", "3.90.0"]),
+    ("> 4.0.0-canary.0, < 4.0.0-canary.34", "npm",
+     ["4.0.0-canary.0.0", "4.0.0-canary.1", "4.0.0-canary.33"], ["4.0.0-canary.0", "4.0.0-canary.34", "4.0.0"]),
+])
+def test_a_comparator_range_admits_what_its_text_says(text: str, ecosystem: str, admitted: list[str],
+                                                      refused: list[str]) -> None:
+    (row,), _ = nvd_feed.comparator_ranges(text, ecosystem)  # type: ignore[misc]
+    assert [v for v in admitted + refused if row.admits(v)] == admitted
+
+
+@pytest.mark.parametrize("text", ["1.0 to 1.8.0", "< banana"])
+def test_a_mapped_record_whose_text_is_not_the_grammar_is_counted_with_no_range(text: str) -> None:
+    tally = nvd_feed.Tally()
+    record = _cna(_affected([{"version": text, "status": "affected"}]))
+    assert nvd_feed.record_entries(record, nvd_feed.load_package_map(), tally) == []
+    assert (tally.mapped, tally.unmapped, tally.no_range) == (0, 0, 1)
+
+
+def test_github_s_pdf_reader_record_reads_once_a_row_maps_it() -> None:
+    """CVE-2026-62264 as NVD served it on 2026-10-31: GitHub's CNA names vendor SylphxAI,
+    product pdf-reader-mcp and `>= 2.2.0, < 3.0.1`, no packageURL. The shipped map has
+    no row for it, so it is counted unmapped; a row would give [2.2.0, 3.0.1)."""
+    tally = nvd_feed.Tally()
+    assert nvd_feed.record_entries(_record("CVE-2026-62264"), nvd_feed.load_package_map(), tally) == []
+    assert (tally.with_cna, tally.unmapped) == (1, 1)
+    row = nvd_feed.MapRow("SylphxAI", "pdf-reader-mcp", "", "npm", "@sylphx/pdf-reader-mcp", "test")
+    (entry,) = nvd_feed.record_entries(_record("CVE-2026-62264"), [row])
+    assert (entry["name"], entry["ranges"], entry["fixed"], entry["severity"], entry["score"]) == (
+        "@sylphx/pdf-reader-mcp", [{"introduced": "2.2.0", "fixed": "3.0.1"}], ["3.0.1"], "HIGH", 7.5)
+
+
+def test_the_four_records_of_1149_convert_as_they_did() -> None:
+    """Reading comparator text changes nothing for records that carry `lessThan`."""
+    rows = nvd_feed.load_package_map()
+    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE,)
+                                for entry in nvd_feed.record_entries(_record(cve), rows))
+    assert [(e["name"], e["id"], e["ranges"], e["versions"]) for e in converted] == [
+        ("langflow", "CVE-2026-104339", [{"introduced": "1.0.0", "last_affected": "1.12.3"}], []),
+        ("langflow", "CVE-2026-110186", [{"introduced": "1.0.0", "last_affected": "1.12.8"}], []),
+        ("langflow", "CVE-2026-93680", [{"introduced": "1.0.0", "last_affected": "1.12.8"}], []),
+        ("@modelcontextprotocol/inspector", OPEN_CVE, [{"introduced": "2.0.0", "fixed": "2.12.0"}], []),
+        ("open", OPEN_CVE, [{"introduced": "7.2.0", "fixed": "11.0.0"}], []),
+        ("opencode-ai", OPEN_CVE, [{"introduced": "1.0.137", "fixed": "1.18.33"}], []),
+    ]
 
 
 # ---- severity ---------------------------------------------------------------------------------------
