@@ -10,6 +10,7 @@ same pass, so each is downloaded once.
 from __future__ import annotations
 
 import sys
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import click
@@ -43,10 +44,26 @@ def _nvd_api_key() -> str | None:
 
 def _kept(collector: Collector) -> str:
     """Keep the NVD entries scans read now, and say which."""
-    count, origin = collector.keep_cached_nvd()
-    if not origin:
+    kept = collector.keep_cached_nvd()
+    lists = [(kind, count, origin) for kind, count, origin in (("NVD", kept.nvd, kept.nvd_origin),
+                                                                 ("launch", kept.launch, kept.launch_origin)) if origin]
+    if not lists:
         return "no NVD entries, as neither the cached nor the bundled feed lists any"
-    return f"the {count:,} NVD entries of the {origin} feed"
+    if len(lists) == 2 and lists[0][2] == lists[1][2]:
+        return f"the {kept.nvd:,} NVD and {kept.launch:,} launch entries of the {kept.nvd_origin} feed"
+    return " and ".join(f"the {count:,} {kind} entries of the {origin} feed" for kind, count, origin in lists)
+
+
+#: How many of the CNA (vendor, product) pairs that mapped to nothing `aak update` prints.
+_UNMAPPED_SHOWN = 10
+
+
+def _unmapped_line(pairs: Counter[tuple[str, str]]) -> str:
+    """The most frequent CNA (vendor, product) pairs no row mapped, so the map can
+    grow from what NVD actually carries."""
+    top = sorted(pairs.items(), key=lambda item: (-item[1], item[0]))[:_UNMAPPED_SHOWN]
+    shown = "; ".join(f"{vendor or '?'} / {product or '?'} ({count:,})" for (vendor, product), count in top)
+    return f"The CNA (vendor, product) pairs most often mapped to nothing: {shown}."
 
 
 def _read_nvd(collector: Collector, nvd_days: int) -> bool:
@@ -78,13 +95,17 @@ def _read_nvd(collector: Collector, nvd_days: int) -> bool:
         return False
     collector.add_nvd(fetched.entries, fetched.window)
     tally = fetched.tally
+    launch = sum(1 for entry in fetched.entries if "match" in entry)
     click.echo(
         f"NVD: {tally.records:,} records modified {fetched.window['start'][:10]} to {fetched.window['end'][:10]}. "
-        f"{tally.with_cna:,} carry CNA version data: {tally.mapped:,} name a PyPI or npm package "
-        f"({len(fetched.entries):,} entries), {tally.unmapped:,} name none that maps and are dropped, "
+        f"{tally.with_cna:,} carry CNA version data: {tally.mapped:,} name a PyPI or npm package or software a "
+        f"launch row lists ({len(fetched.entries) - launch:,} package and {launch:,} launch entries), "
+        f"{tally.unmapped:,} name none that maps and are dropped, "
         f"{tally.no_range:,} map but state no version range that can be read. {tally.no_cna:,} carry none "
         f"(NVD's CPE data alone is not read), and {tally.rejected:,} are rejected."
     )
+    if tally.unmapped_pairs:
+        click.echo(_unmapped_line(tally.unmapped_pairs))
     return True
 
 
@@ -161,7 +182,8 @@ def update_cmd(github_malware: bool, nvd_days: int) -> None:
         click.echo(
             f"Advisory feed updated: {sum(written.counts.values()):,} entries for {written.packages:,} "
             f"packages ({per_registry}), {written.size / 1e6:.1f} MB, generated {written.generated_at}, "
-            f"written to {written.path}. NVD CNA records: {written.nvd:,} entries, "
+            f"written to {written.path}. NVD CNA records: {written.nvd:,} package and {written.launch:,} launch "
+            f"entries, "
             f"{written.nvd_twins:,} more dropped because OSV already lists their CVE."
         )
         if written.severity_floor:

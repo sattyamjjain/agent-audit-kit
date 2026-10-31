@@ -18,6 +18,79 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-31 (unreleased): lmdeploy's NVD record in the bundled advisory feed
+
+NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the
+package by packageURL (`pkg:pypi/lmdeploy`), so `aak update` maps it with no map row, but the
+bundled feed held only the records of 29 Oct, and OSV holds the CVE only as a git commit
+range on github.com/internlm/lmdeploy, with no record for PyPI `lmdeploy`. A project that
+locked lmdeploy 0.18.0 and never ran `aak update` passed every rule. No tracker issue was
+filed for it. NVD text is quoted from the API record, read on 2026-10-31 and saved unedited
+under tests/fixtures/nvd_cna.
+
+### CVE-2026-119706 (lmdeploy): advisory feed 2026-10-31
+
+**`AAK-KNOWN-VULN-001` reports `lmdeploy` 0.9.0 through 0.18.0, CRITICAL.** NVD: LMDeploy
+"contains an unauthenticated remote code execution vulnerability" reached through pickled
+data sent to the `/update_weights` endpoint. VulnCheck's CNA data is one interval, 0.9.0 to
+`lessThanOrEqual` 0.18.0 with `defaultStatus: unaffected`, and names no fixed release, so the
+bundled entry is that interval with no fix. It is the record as `nvd_feed` converts it; no
+hand pin was added. Measured with the scanner: a `uv.lock` resolving lmdeploy 0.18.0 fires
+CRITICAL and says the advisory lists no fixed release and 0.18.0 as the last affected one;
+0.8.0 does not fire.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-119706 | 9.8 | `lmdeploy` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 0.9.0 through 0.18.0 from the bundled NVD entry, CRITICAL. No fixed release; no pin. | not filed |
+
+CVSS is the record's CVSS 3.1 score, VulnCheck's.
+
+## 2026-10-31 (unreleased): MoLing and TAKO matched to what a project launches
+
+NVD published two critical records on 30 Oct 2026 for an MCP server and an agent app that
+are on neither PyPI nor npm, and neither reached a finding. Each CNA record names a vendor
+and a product and no package, so no package row of the advisory feed could map it, and
+GitHub's CNA writes the range as text (`< 0.5.0`), which the feed read as no version. The
+watcher filed neither: it holds new records while ten untriaged issues are open. Both are
+now launch rows: reviewed names, taken from each project's own repository, for how a project
+starts the software, which AAK-KNOWN-VULN-002 matches. NVD text is quoted from the API
+records, read on 2026-10-31 and saved unedited under tests/fixtures/nvd_cna.
+
+### CVE-2026-62863 (MoLing): launch row 2026-10-31
+
+**`AAK-KNOWN-VULN-002` reports MoLing below 0.5.0, CRITICAL.** NVD: "Prior to 0.5.0, when
+MoLing runs in SSE mode using `-l`, its `/sse` and `/message` HTTP endpoints do not
+authenticate requests". GitHub's CNA (GHSA-qpgh-hp5g-4vwp) names vendor `gojue`, product
+`moling` and `< 0.5.0`; v0.5.0 carries the fix (gojue/moling#48). MoLing is a Go binary: its
+README puts `/usr/local/bin/moling` in an MCP config, its go.mod declares
+`github.com/gojue/moling` at v0.4.0 and v0.5.0, and it names no image, so the row lists the
+`moling` command and that module. Measured with the scanner (tests/fixtures/launch): an
+`.mcp.json` running `go run github.com/gojue/moling@v0.4.0` fires CRITICAL, the same at
+`@v0.5.0` does not, and `/usr/local/bin/moling` with no version is MEDIUM. The flaw is in
+SSE mode; the rule reports the release whatever mode the config starts.
+
+### CVE-2026-63377 and CVE-2026-63378 (TAKO): launch row 2026-10-31
+
+**`AAK-KNOWN-VULN-002` reports TAKO's image below 3.0.1-beta: CRITICAL for 63377, HIGH for
+63378.** NVD: before 3.0.1-beta, "`POST /api/auth/setup` in `src/api/routers/auth.py` allows an
+unauthenticated network attacker to create the first administrator account" (63377), and any
+signed-in user can submit Python that runs as the application user (63378). GitHub's CNA
+names vendor `fctr-id`, product `okta-ai-agent` and `< 3.0.1-beta`; the fix is commit
+3b5ccaff, released as v3.0.1-beta. TAKO is a self-hosted web app: its docker-compose.yml runs
+`fctrid/ai-agent-for-okta` and its README names no MCP config or binary, so the row lists that
+image. Docker Hub's tag `3.0.1-alpha`, which the compose file at v3.0.1-beta itself runs, was
+pushed at 14:16Z on 15 Jun 2026, an hour before the fix commit, and reads below `3.0.1-beta`
+on semver, so it is reported; `3.0.1-beta` (30 Jun) and later are not. Measured: a compose
+file running `:3.0.0-beta` fires both, `:3.0.1-beta` neither.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-62863 | 9.6 | MoLing (binary `moling`, Go module `github.com/gojue/moling`) | **Launch row** for `AAK-KNOWN-VULN-002` (CRITICAL): below 0.5.0, fixed in 0.5.0. | not filed |
+| CVE-2026-63377 | 9.8 | TAKO (image `fctrid/ai-agent-for-okta`) | **Launch row** for `AAK-KNOWN-VULN-002` (CRITICAL): below 3.0.1-beta, fixed in 3.0.1-beta. | not filed |
+| CVE-2026-63378 | 8.8 | TAKO (image `fctrid/ai-agent-for-okta`) | The same launch row, HIGH. | not filed |
+
+CVSS is each record's CVSS 3.1 score, GitHub's for all three.
+
 ## 2026-10-30 (unreleased): seven IBM Langflow records read from NVD, the langflow floor raised to 1.13.0, one advisory-feed entry
 
 The watcher filed none of IBM's Langflow OSS records of 29 Oct. Their text names neither

@@ -380,6 +380,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-KNOWN-VULN-001": ["STA-08"],
+    "AAK-KNOWN-VULN-002": ["STA-08"],
     "AAK-AGENT-SERVER-NOAUTH-001": ["IAM-01", "IVS-04"],
     "AAK-RUNTIME-ADV-001": ["STA-08", "IVS-04"],
     "AAK-RUNTIME-ADV-002": ["STA-08"],
@@ -17672,18 +17673,79 @@ _r(
         "feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` "
         "packageURL or a row of the reviewed `data/cna_package_map.json` matching its "
         "repository or its vendor and product (three rows on 30 Oct 2026), never through a "
-        "name alone; one that maps to neither is dropped and counted. NVD's CPE data, a "
+        "name alone; one that maps to neither is dropped and counted. A CNA version written "
+        "as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one "
+        "lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where "
+        "semver has a first version after x. NVD's CPE data, other text, a "
         "version type other than semver, custom or python, and a `defaultStatus: affected` "
         "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
         "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
         "the package names is dropped for OSV's. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and six entries from "
-        "NVD's records of four CVEs of 29 Oct 2026 against langflow, open, "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and seven entries from "
+        "NVD's records of five CVEs of 29 and 30 Oct 2026 against langflow, lmdeploy, open, "
         "@modelcontextprotocol/inspector and opencode-ai, so without `aak update` nothing "
         "else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
         "records and says so. `.egg-info` installs, `node_modules`, conda metadata and "
         "image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is "
         "not read."
+    ),
+)
+
+_r(
+    "AAK-KNOWN-VULN-002",
+    "A launched MCP server, binary or image is a release a published advisory lists as affected",
+    "An MCP client config starts, or a compose file, Kubernetes manifest, Helm values "
+    "file or Dockerfile runs, a release of software that an NVD record's CNA data lists "
+    "as affected, where the software is on neither PyPI nor npm: a binary an MCP config "
+    "names as its `command`, a Go module it starts with `go run`, an image it starts "
+    "with `docker run` or a deployment file pins, or its GitHub repository given as an "
+    "argument. On 0.6.29 a project whose `.mcp.json` ran MoLing 0.4.0, a Go MCP server "
+    "whose SSE endpoints took no authentication before 0.5.0 (CVSS 9.6), passed every "
+    "rule: NVD's record named no package for AAK-KNOWN-VULN-001 to map, only a vendor "
+    "and a product. The advisory feed now maps such records through reviewed launch "
+    "rows, each naming how the project's own repository says to start the software, "
+    "and this rule matches them against what a project starts. The finding carries the "
+    "record's severity for a launch that names a release in its range, and is MEDIUM for "
+    "one whose release could not be read.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Pin the launch to a release outside the advisory's range (the fix the finding "
+    "names, or later): `go run module@vX.Y.Z`, an image tag naming the release, or the "
+    "binary's release, then restart the server or redeploy. For a launch AAK could not "
+    "read, check which release it runs and pin it. Where the advisory lists no fixed "
+    "release, stop running it or keep the flawed component unreachable. Run `aak update` "
+    "so the scan reads the current NVD records rather than the bundled few.",
+    sarif_name="KnownVulnerableLaunch",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Matches only software a reviewed launch row of `data/cna_package_map.json` names "
+        "(MoLing and TAKO on 31 Oct 2026), and maps an NVD record to a row only by the "
+        "CNA's repository or its vendor and product, never by a name alone; a record no "
+        "row maps is counted by `aak update` and dropped. Reads, outside AAK's skip "
+        "directories, the JSON MCP client configs `container_image_pins` reads "
+        "(`*mcp*.json`, `claude_desktop_config.json`), parsed as JSONC: a server's "
+        "`command` by its file name, `go run <module>@<version>`, a `docker`, `podman` or "
+        "`nerdctl` `run`, an argument that is itself a `github.com/<owner>/<repo>` URL "
+        "(a link into the repository is not a launch), and a command line behind `sh -c`, "
+        "`bash -c`, `cmd /c` or `-Command`, two levels deep. In YAML files and Dockerfiles "
+        "it reads image references only, where an image goes (an `image:` value, a "
+        "`FROM` line, a quoted string, a Helm `repository` and `tag`), so a YAML MCP "
+        "config's `command`, a shell script, a Makefile and a systemd unit are not read. "
+        "A release is read as semver 2.0 with a leading `v` dropped, so an image tag's "
+        "suffix is a pre-release: `1.2.3-alpine` sorts below 1.2.3, and a variant tag of "
+        "the first fixed release reads affected. A two-part tag (`3.1`) is reported at "
+        "the record's severity only when every release on its line is affected. A launch "
+        "that names no release (a bare command, `latest`, an untagged or digest-only "
+        "image, a branch, a commit) is MEDIUM. The rule reports the release, not whether "
+        "the launch uses the flawed feature: MoLing's flaw is in its SSE mode, and a "
+        "stdio launch of 0.4.0 is reported too. One finding per file and advisory; where "
+        "another rule reports every CVE id of the advisory on the same line of the same "
+        "file at or above this finding's severity, only that rule's finding is kept. The "
+        "bundled launch entries are NVD's three records of 30 Oct 2026 against MoLing "
+        "and TAKO, so without `aak update` nothing else is known. A file over 2 MB is not "
+        "read."
     ),
 )
 

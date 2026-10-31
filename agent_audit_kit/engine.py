@@ -128,6 +128,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
     ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
+    ("known_vulns_launch", "Launched MCP servers, binaries and images against NVD advisories (offline feed)", []),
     ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),
     ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
 ]
@@ -428,7 +429,7 @@ def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]
 
 
 def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
-    """Stand AAK-KNOWN-VULN-001 down where another rule reports its advisory's CVEs.
+    """Stand AAK-KNOWN-VULN-001 and -002 down where another rule reports their advisory's CVEs.
 
     The advisory feed and the hand-written version pins overlap: on 2026-10-29,
     82 of the 134 pin-table rows named a CVE that OSV also lists for the pinned
@@ -454,15 +455,21 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
     a lockfile resolves) are kept.
     The scanner's module is imported here under the registry's rule: when it does
     not load, it reported nothing, and every scan goes on.
+
+    AAK-KNOWN-VULN-002, the same feed's records matched to what a project
+    launches, names its advisory's CVE ids the same way and stands down the same
+    way. Neither feed rule counts as the other rule here: two findings that only
+    the feed made would stand each other down, and the flaw would go unreported.
     """
     try:
         from agent_audit_kit.scanners.known_vulns import RULE, evidence_cves
     except ImportError:
         return findings
+    feed_rules = {RULE, "AAK-KNOWN-VULN-002"}
 
     reported: dict[tuple[str, int, str], int] = {}
     for f in findings:
-        if f.rule_id == RULE or f.line_number is None:
+        if f.rule_id in feed_rules or f.line_number is None:
             continue
         for cve in f.cve_references:
             key = (f.file_path, f.line_number, cve)
@@ -471,7 +478,7 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
         return findings
     kept: list[Finding] = []
     for f in findings:
-        if f.rule_id == RULE and f.line_number is not None:
+        if f.rule_id in feed_rules and f.line_number is not None:
             cves = evidence_cves(f.evidence)
             level = f.severity.numeric()
             if cves and all(reported.get((f.file_path, f.line_number, cve), 0) >= level for cve in cves):

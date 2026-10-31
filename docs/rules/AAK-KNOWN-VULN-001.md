@@ -71,13 +71,13 @@ which copy was read and when it was generated.
   2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
-  It also holds the six entries `nvd_feed` converts from NVD's records of four
-  CVEs as NVD served them on 2026-10-30 (saved unedited under
-  `tests/fixtures/nvd_cna`, and listed under
+  It also holds the seven entries `nvd_feed` converts from NVD's records of five
+  CVEs as NVD served them on 2026-10-30 and, for lmdeploy, 2026-10-31 (saved
+  unedited under `tests/fixtures/nvd_cna`, and listed under
   [Related advisories](#related-advisories)): three against langflow, one against
-  the npm packages open, @modelcontextprotocol/inspector and opencode-ai. Every
-  one of the four maps to a package, so none was left out. Without
-  `aak update`, nothing else is known.
+  lmdeploy, and one against the npm packages open,
+  @modelcontextprotocol/inspector and opencode-ai. Every one of the five maps to a
+  package, so none was left out. Without `aak update`, nothing else is known.
 
 ## Sources
 
@@ -112,12 +112,23 @@ a vendor and product, not a package.
   PyPI `langflow`, and the repositories sindresorhus/open and
   modelcontextprotocol/inspector are npm `open` and
   `@modelcontextprotocol/inspector`. A record that maps to no package is
-  counted and dropped, and `aak update` prints how many.
+  counted and dropped, and `aak update` prints how many and the ten
+  (vendor, product) pairs that most often mapped to nothing. A record for
+  software on neither registry can map to a launch row of the same map instead,
+  which [AAK-KNOWN-VULN-002](AAK-KNOWN-VULN-002.md) reads.
 - **Which versions.** Only `status: affected` entries, read on the registry's
   order whatever `versionType` says of `semver`, `custom` or `python` (a git
   commit is not read): `version` with `lessThan` is affected up to, not
   including, that release; with `lessThanOrEqual`, up to and including it, which
-  is how IBM wrote "1.0.0 through 1.12.8". `changes` split a range where the
+  is how IBM wrote "1.0.0 through 1.12.8". A `version` with neither is one
+  release when it is one, and otherwise read as GitHub's advisory grammar, the
+  only way GitHub's CNA writes a range: `< 0.5.0` is affected below 0.5.0,
+  `>= 2.2.0, < 3.0.1` from 2.2.0 below 3.0.1, `<= 1.2` up to and including 1.2,
+  `>= 1.0.0` from 1.0.0 on, and `= 1.4.2` that release alone. `> x` starts at the
+  first version after x, which semver has (3.0.1-0 after 3.0.0) and PEP 440 does
+  not, so on a PyPI package it is not read. Other text (`1.0 to 1.8.0`, two
+  clauses with no comma) is not read, and a record left with no range is
+  counted. `changes` split a range where the
   status moves. `defaultStatus: affected` makes every release affected but those
   the entries exclude, read only when each exclusion is a range ending before a
   release or open-ended; a record whose exclusions no interval can state is not
@@ -184,7 +195,8 @@ bundled few.
 ## Related advisories
 
 The advisories that showed the gap, as NVD and OSV listed them on 2026-10-29
-(the first four) and 2026-10-30 (the rest). They are context, not this rule's
+(the first four), 2026-10-30 (the Langflow and open records) and 2026-10-31
+(lmdeploy). They are context, not this rule's
 references: the rule reports whatever advisory the feed holds.
 
 | Product | CVE | OSV record | In the bundled feed |
@@ -197,6 +209,7 @@ references: the rule reports whatever advisory the feed holds.
 | Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-93680 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | Langflow OSS 1.0.0 through 1.12.3 | CVE-2026-104339 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | npm open 7.2.0 up to 11.0.0, @modelcontextprotocol/inspector 2.0.0 up to 2.12.0, opencode-ai 1.0.137 up to 1.18.33 | CVE-2026-119025 | none | yes, from VulnCheck's record in NVD, which names each package by packageURL (CVSS 3.x 7.5) |
+| InternLM LMDeploy 0.9.0 through 0.18.0, no fixed release | CVE-2026-119706 | a git commit-range record only, none for PyPI `lmdeploy` | yes, from VulnCheck's record in NVD, which names the package by packageURL (CVSS 3.x 9.8) |
 
 A finding on the vLLM one reads:
 

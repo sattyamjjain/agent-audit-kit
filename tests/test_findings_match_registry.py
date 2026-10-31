@@ -70,6 +70,11 @@ SEVERITY_OVERRIDE_MODULES = {
         "(CRITICAL, the registry's level, from CVSS 9.0), and INFO for a range "
         "that admits affected and unaffected releases"
     ),
+    "known_vulns_launch.py": (
+        "AAK-KNOWN-VULN-002 takes the severity of the advisory that decided it "
+        "(CRITICAL, the registry's level, from CVSS 9.0), and MEDIUM for a launch "
+        "whose release could not be read"
+    ),
     "agent_server_noauth.py": (
         "AAK-AGENT-SERVER-NOAUTH-001 is MEDIUM for a Docker launch on 1.52.0 or a "
         "release it cannot read, whose port is published on loopback only"
@@ -81,6 +86,7 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-RUNTIME-ADV-003": {Severity.HIGH, Severity.MEDIUM, Severity.LOW},
     "AAK-GHA-SECRET-DUMP-001": {Severity.CRITICAL},
     "AAK-KNOWN-VULN-001": {Severity.HIGH, Severity.MEDIUM, Severity.INFO},
+    "AAK-KNOWN-VULN-002": {Severity.HIGH, Severity.MEDIUM},
     "AAK-AGENT-SERVER-NOAUTH-001": {Severity.MEDIUM},
 }
 

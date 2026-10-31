@@ -41,6 +41,7 @@ from agent_audit_kit.scanners import (
     ide_task_rce,
     india_pii,
     known_vulns,
+    known_vulns_launch,
     langchain_prompt_loader,
     malicious_releases,
     mcp_config,
@@ -437,6 +438,31 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "agent-server-compose-services": (agent_server_noauth.scan, lambda k: {"compose.yaml": "services:\n" + "".join(
         f"  s{i}:\n    image: ghcr.io/openhands/agent-server\n    ports: ['{10000 + i}:8000']\n" for i in range(k))},
         300, True),
+    # known_vulns_launch, before it was released: reading each reference where
+    # container_image_pins reads one, by slicing its line's prefix and searching it
+    # again, took 96 s of CPU for 20,000 references on one 620 KB line (load average
+    # 7, 2026-10-31; one pass, 0.03 s). Each line's bounds, first comment and FROM
+    # image are now found once, and a key is read back over its own whitespace.
+    "launch-image-refs-on-one-line": (known_vulns_launch.scan, lambda k: {
+        "compose.yaml": "image: " + "fctrid/ai-agent-for-okta:3.1.1 " * k + "\n"}, 2_000, False),
+    "launch-quoted-refs-on-one-line": (known_vulns_launch.scan, lambda k: {
+        "compose.yaml": "x: [" + '"fctrid/ai-agent-for-okta", ' * k + "]\n"}, 2_000, False),
+    "launch-image-key-whitespace": (known_vulns_launch.scan, lambda k: {
+        "compose.yaml": "".join("image:" + " " * 40 + "fctrid/ai-agent-for-okta " for _ in range(k)) + "\n"},
+        1_000, False),
+    "launch-mcp-servers": (known_vulns_launch.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "go", "args": ["run", f"github.com/gojue/moling@v0.5.{i}"]} for i in range(k)}})},
+        500, False),
+    "launch-docker-args": (known_vulns_launch.scan, lambda k: {".mcp.json": _js({"mcpServers": {"s": {
+        "command": "docker", "args": ["run"] + [f"fctrid/ai-agent-for-okta:3.1.{i}" for i in range(k)]}}})},
+        1_000, False),
+    "launch-repo-url-args": (known_vulns_launch.scan, lambda k: {".mcp.json": _js({"mcpServers": {"s": {
+        "command": "uvx", "args": ["https://github.com/gojue/moling/blob/x"] * k}}})}, 1_000, False),
+    "launch-shell-line": (known_vulns_launch.scan, lambda k: {".mcp.json": _js({"mcpServers": {"s": {
+        "command": "bash", "args": ["-c", "moling" + " -x" * k]}}})}, 3_000, False),
+    "launch-many-configs": (known_vulns_launch.scan, lambda k: {
+        f"p{i}/.mcp.json": _js({"mcpServers": {"s": {"command": "go", "args": ["run", "github.com/gojue/moling@v0.4.0"]}}})
+        for i in range(k)}, 60, True),
 }
 
 

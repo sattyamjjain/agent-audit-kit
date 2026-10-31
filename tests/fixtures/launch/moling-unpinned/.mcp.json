@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "MoLing": {
+      "command": "/usr/local/bin/moling",
+      "args": []
+    }
+  }
+}
