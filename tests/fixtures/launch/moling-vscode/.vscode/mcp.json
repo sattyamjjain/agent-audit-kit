@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "MoLing": {
+      "type": "stdio",
+      "command": "go",
+      "args": ["run", "github.com/gojue/moling@v0.4.0"]
+    }
+  }
+}

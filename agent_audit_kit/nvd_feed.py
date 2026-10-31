@@ -31,7 +31,25 @@ In this order, never from a name alone:
    without case or surrounding space). A row is added only after checking that
    the package's own page on pypi.org or npmjs.com names the same project.
 
-An entry that maps to neither is dropped, and the record counted unmapped.
+An entry that maps to neither, and to no launch row (below), is dropped, and the
+record counted unmapped; `Tally.unmapped_pairs` counts the (vendor, product)
+pairs such records name, which `aak update` prints so the map grows from them.
+
+What a project launches
+-----------------------
+A record can name software that is on neither registry: MoLing, a Go MCP server
+shipped as a binary (CVE-2026-62863, CVSS 9.6), or TAKO, an agent app shipped as
+the image `fctrid/ai-agent-for-okta` (CVE-2026-63377, 9.8), both of 30 Oct 2026
+and both left unmapped. A launch row of the same map (`launch`) names the ways a
+project starts such software, as the project's own repository shows them: the
+`commands` an MCP config runs, the Go `go_modules` it starts with `go run`, and
+the `images` a compose file or `docker run` names. It maps a record as a package
+row does, by `repo`, else by vendor and product, and never by a name alone. Such
+an entry goes to a third list of the feed, `launch`, in the package entries'
+shape plus `repo` and `match` (`commands`, `go_modules`, `images`); its versions
+are read on semver 2.0 with a leading `v` dropped (`LAUNCH`): a Go module
+version is semver, a Go pseudo-version a semver pre-release, and GitHub writes
+their ranges in it. AAK-KNOWN-VULN-002 matches it against what a project launches.
 
 Which versions
 --------------
@@ -85,12 +103,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
-from agent_audit_kit.advisory_feed import _dicts, _interval, bucket, cvss3_base_score
+from agent_audit_kit.advisory_feed import LAUNCH, _dicts, _interval, bucket, cvss3_base_score
 from agent_audit_kit.malicious_feed import (
     _SEMVER_RE,
     ECOSYSTEMS,
@@ -121,6 +140,8 @@ _PURL_REGISTRIES = {"pypi": "PyPI", "npm": "npm"}
 _READ_VERSION_TYPES = frozenset({"", "semver", "custom", "python"})
 _LABELS = {"CRITICAL": "CRITICAL", "HIGH": "HIGH", "MEDIUM": "MEDIUM", "LOW": "MEDIUM", "NONE": "MEDIUM"}
 _START = "0"
+#: (vendor, product) pairs that say nothing, left out of `Tally.unmapped_pairs`.
+_NAMELESS = frozenset({"", "n/a", "na", "unknown", "-"})
 
 Opener = Callable[..., Any]
 
@@ -194,6 +215,69 @@ def load_package_map(path: Path = PACKAGE_MAP) -> tuple[MapRow, ...]:
             reviewed=str(values["reviewed"]).strip(),
         ))
     return tuple(rows)
+
+
+@dataclass(frozen=True)
+class LaunchRow:
+    """One reviewed launch row: what a project runs to start a piece of software
+    that is on neither registry."""
+
+    vendor: str
+    product: str
+    repo: str                    # normalised (`_repo_key`); "" when the row names none
+    commands: tuple[str, ...]    # file names an MCP config's `command` runs, lower case
+    go_modules: tuple[str, ...]  # Go module paths, lower case
+    images: tuple[str, ...]      # image names as the project's docs write them, lower case
+    reviewed: str
+
+
+def _names(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(dict.fromkeys(v.strip().lower() for v in value if isinstance(v, str) and v.strip()))
+
+
+def load_launch_map(path: Path = PACKAGE_MAP) -> tuple[LaunchRow, ...]:
+    """The reviewed launch rows. A row without a vendor, a product and a review
+    date, or naming nothing to match, is skipped, so one bad row costs only itself."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    rows: list[LaunchRow] = []
+    for raw in _dicts(data.get("launch") if isinstance(data, dict) else None):
+        values = {key: raw.get(key) for key in ("vendor", "product", "reviewed")}
+        if not all(isinstance(v, str) and v.strip() for v in values.values()):
+            continue
+        row = LaunchRow(
+            vendor=str(values["vendor"]).strip(),
+            product=str(values["product"]).strip(),
+            repo=_repo_key(raw.get("repo")),
+            commands=_names(raw.get("commands")),
+            go_modules=_names(raw.get("go_modules")),
+            images=_names(raw.get("images")),
+            reviewed=str(values["reviewed"]).strip(),
+        )
+        if row.repo or row.commands or row.go_modules or row.images:
+            rows.append(row)
+    return tuple(rows)
+
+
+def map_launch(affected: dict[str, Any], rows: Iterable[LaunchRow]) -> LaunchRow | None:
+    """The launch row one CNA affected entry names, by its `repo`, else by its
+    vendor and product, as `map_package` reads a package row; None for none."""
+    rows = tuple(rows)
+    repo = _repo_key(affected.get("repo"))
+    if repo:
+        for row in rows:
+            if row.repo and row.repo == repo:
+                return row
+    vendor, product = _fold(affected.get("vendor")), _fold(affected.get("product"))
+    if vendor and product:
+        for row in rows:
+            if _fold(row.vendor) == vendor and _fold(row.product) == product:
+                return row
+    return None
 
 
 def purl_package(purl: object) -> tuple[str, str] | None:
@@ -504,9 +588,12 @@ class Tally:
     no_cna: int = 0       # no CNA affected data: CPE configurations only, or nothing
     with_cna: int = 0
     mapped: int = 0       # records that gave the feed at least one entry
-    unmapped: int = 0     # records whose CNA data named no PyPI or npm package that maps
+    unmapped: int = 0     # records whose CNA data named nothing a row maps
     no_range: int = 0     # records that mapped, but whose versions could not be read
-    entries: int = 0
+    entries: int = 0      # entries of either kind
+    launch: int = 0       # of them, launch entries
+    #: (vendor, product) as the CNA wrote them, per unmapped record naming them.
+    unmapped_pairs: Counter[tuple[str, str]] = field(default_factory=Counter)
 
 
 def _cna_data(cve: dict[str, Any]) -> list[dict[str, Any]]:
@@ -533,9 +620,43 @@ def record_packages(vuln: dict[str, Any], rows: Iterable[MapRow]) -> list[tuple[
     return [found[key] for key in sorted(found)]
 
 
-def record_entries(vuln: dict[str, Any], rows: Iterable[MapRow], tally: Tally | None = None) -> list[dict[str, Any]]:
-    """Feed entries, one per package, for one NVD record (a `vulnerabilities[]`
-    item, or its `cve` object), counted into `tally`."""
+def _count_unmapped(data: list[dict[str, Any]], tally: Tally) -> None:
+    pairs = set()
+    for affected in data:
+        vendor, product = affected.get("vendor"), affected.get("product")
+        pair = (vendor.strip() if isinstance(vendor, str) else "", product.strip() if isinstance(product, str) else "")
+        if not (pair[0].lower() in _NAMELESS and pair[1].lower() in _NAMELESS):
+            pairs.add(pair)
+    tally.unmapped_pairs.update(pairs)
+
+
+def _launch_entries(launched: dict[tuple[str, str], tuple[LaunchRow, list[Range], list[str]]],
+                    common: dict[str, Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for _, (row, found, listed) in sorted(launched.items()):
+        unique = list(dict.fromkeys(found))
+        out.append({
+            "id": common["id"],
+            "aliases": [],
+            "ecosystem": LAUNCH,
+            "name": f"{row.vendor}/{row.product}",
+            "ranges": [_interval(r) for r in unique],
+            "versions": sorted(set(listed)),
+            "fixed": [r.fixed for r in unique if r.fixed is not None],
+            **{key: common[key] for key in ("severity", "score", "scored_by", "modified", "url", "source", "cna")},
+            "mapped_by": "map",
+            "repo": row.repo,
+            "match": {"commands": list(row.commands), "go_modules": list(row.go_modules), "images": list(row.images)},
+        })
+    return out
+
+
+def record_entries(vuln: dict[str, Any], rows: Iterable[MapRow], tally: Tally | None = None,
+                   launch_rows: Iterable[LaunchRow] = ()) -> list[dict[str, Any]]:
+    """Feed entries for one NVD record (a `vulnerabilities[]` item, or its `cve`
+    object), counted into `tally`: one per package a package row or packageURL
+    names, and one per launch row (`launch_rows`) the record names, which carries
+    `match`."""
     tally = tally if tally is not None else Tally()
     inner = vuln.get("cve")
     cve: dict[str, Any] = inner if isinstance(inner, dict) else vuln
@@ -552,28 +673,49 @@ def record_entries(vuln: dict[str, Any], rows: Iterable[MapRow], tally: Tally | 
         return []
     tally.with_cna += 1
     rows = tuple(rows)
+    launch_rows = tuple(launch_rows)
     packages: dict[tuple[str, str], tuple[str, str, list[Range], list[str]]] = {}
+    launched: dict[tuple[str, str], tuple[LaunchRow, list[Range], list[str]]] = {}
     any_mapped = False
     for affected in data:
         mapped = map_package(affected, rows)
-        if mapped is None:
-            continue
-        any_mapped = True
-        ecosystem, name, how = mapped
-        read = cna_ranges(affected, ecosystem)
-        if read is None or not (read[0] or read[1]):
-            continue
-        key = (ecosystem, canonical_name(ecosystem, name))
-        _, _, found, listed = packages.setdefault(key, (name, how, [], []))
-        found.extend(read[0])
-        listed.extend(read[1])
-    if not packages:
+        if mapped is not None:
+            any_mapped = True
+            ecosystem, name, how = mapped
+            read = cna_ranges(affected, ecosystem)
+            if read is not None and (read[0] or read[1]):
+                key = (ecosystem, canonical_name(ecosystem, name))
+                _, _, found, listed = packages.setdefault(key, (name, how, [], []))
+                found.extend(read[0])
+                listed.extend(read[1])
+        launch = map_launch(affected, launch_rows) if launch_rows else None
+        if launch is not None:
+            any_mapped = True
+            read = cna_ranges(affected, LAUNCH)
+            if read is not None and (read[0] or read[1]):
+                _, found_l, listed_l = launched.setdefault((_fold(launch.vendor), _fold(launch.product)),
+                                                           (launch, [], []))
+                found_l.extend(read[0])
+                listed_l.extend(read[1])
+    if not packages and not launched:
         if any_mapped:
             tally.no_range += 1
         else:
             tally.unmapped += 1
+            _count_unmapped(data, tally)
         return []
     severity, score, scored_by = nvd_severity(cve.get("metrics"))
+    common: dict[str, Any] = {
+        "id": ident,
+        "aliases": [],
+        "severity": severity,
+        "score": score,
+        "scored_by": scored_by,
+        "modified": str(cve.get("lastModified") or ""),
+        "url": f"https://nvd.nist.gov/vuln/detail/{ident}",
+        "source": "nvd",
+        "cna": str(cve.get("sourceIdentifier") or ""),
+    }
     out: list[dict[str, Any]] = []
     for (ecosystem, _), (name, how, found, listed) in sorted(packages.items()):
         unique = list(dict.fromkeys(found))
@@ -588,15 +730,17 @@ def record_entries(vuln: dict[str, Any], rows: Iterable[MapRow], tally: Tally | 
             "severity": severity,
             "score": score,
             "scored_by": scored_by,
-            "modified": str(cve.get("lastModified") or ""),
-            "url": f"https://nvd.nist.gov/vuln/detail/{ident}",
+            "modified": common["modified"],
+            "url": common["url"],
             "source": "nvd",
-            "cna": str(cve.get("sourceIdentifier") or ""),
+            "cna": common["cna"],
             "mapped_by": how,
         })
+    launch_out = _launch_entries(launched, common)
     tally.mapped += 1
-    tally.entries += len(out)
-    return out
+    tally.entries += len(out) + len(launch_out)
+    tally.launch += len(launch_out)
+    return out + launch_out
 
 
 def merged(entries: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -703,6 +847,7 @@ def fetch(
     rows: Iterable[MapRow] | None = None,
     progress: Callable[[int, int], None] | None = None,
     page_size: int = PAGE_SIZE,
+    launch_rows: Iterable[LaunchRow] | None = None,
 ) -> Fetched:
     """Read every NVD record modified in the last `days` days into feed entries.
 
@@ -717,6 +862,7 @@ def fetch(
         rows: The reviewed map; `load_package_map()` by default.
         progress: Called with (pages read, pages expected) after each page.
         page_size: Records a page.
+        launch_rows: The reviewed launch rows; `load_launch_map()` by default.
 
     Raises:
         ValueError: `days` is outside the API's window.
@@ -727,6 +873,7 @@ def fetch(
     end = now or datetime.now(timezone.utc)
     begin = end - timedelta(days=days)
     rows = load_package_map() if rows is None else tuple(rows)
+    launch_rows = load_launch_map() if launch_rows is None else tuple(launch_rows)
     tally = Tally()
     entries: list[dict[str, Any]] = []
     pages = 0
@@ -734,7 +881,7 @@ def fetch(
     for page in iter_pages(params, api_key=api_key, opener=opener, sleep=sleep, page_size=page_size):
         pages += 1
         for vuln in _dicts(page.get("vulnerabilities")):
-            entries.extend(record_entries(vuln, rows, tally))
+            entries.extend(record_entries(vuln, rows, tally, launch_rows))
         if progress is not None:
             progress(pages, max(1, math.ceil(int(page.get("totalResults") or 0) / page_size)))
     window = {
@@ -749,6 +896,8 @@ def fetch(
 __all__ = [
     "DEFAULT_DAYS",
     "Fetched",
+    "LAUNCH",
+    "LaunchRow",
     "MAX_WINDOW_DAYS",
     "MapRow",
     "NvdUpdateError",
@@ -758,7 +907,9 @@ __all__ = [
     "comparator_ranges",
     "fetch",
     "iter_pages",
+    "load_launch_map",
     "load_package_map",
+    "map_launch",
     "map_package",
     "merged",
     "nvd_severity",

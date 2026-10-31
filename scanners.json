@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 108,
+  "count": 109,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -113,6 +113,10 @@
     {
       "module": "known_vulns",
       "name": "Locked, pinned and installed packages against OSV advisories (offline feed)"
+    },
+    {
+      "module": "known_vulns_launch",
+      "name": "Launched MCP servers, binaries and images against NVD advisories (offline feed)"
     },
     {
       "module": "langchain_prompt_loader",

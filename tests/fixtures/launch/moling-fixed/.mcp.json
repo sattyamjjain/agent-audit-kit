@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "MoLing": {
+      "command": "go",
+      "args": ["run", "github.com/gojue/moling@v0.5.0"]
+    }
+  }
+}

@@ -112,7 +112,10 @@ a vendor and product, not a package.
   PyPI `langflow`, and the repositories sindresorhus/open and
   modelcontextprotocol/inspector are npm `open` and
   `@modelcontextprotocol/inspector`. A record that maps to no package is
-  counted and dropped, and `aak update` prints how many.
+  counted and dropped, and `aak update` prints how many and the ten
+  (vendor, product) pairs that most often mapped to nothing. A record for
+  software on neither registry can map to a launch row of the same map instead,
+  which [AAK-KNOWN-VULN-002](AAK-KNOWN-VULN-002.md) reads.
 - **Which versions.** Only `status: affected` entries, read on the registry's
   order whatever `versionType` says of `semver`, `custom` or `python` (a git
   commit is not read): `version` with `lessThan` is affected up to, not

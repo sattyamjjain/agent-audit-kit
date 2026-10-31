@@ -1,0 +1,6 @@
+services:
+  okta-ai-agent:
+    image: fctrid/ai-agent-for-okta:3.0.0-beta
+    container_name: okta-ai-agent
+    ports:
+      - "127.0.0.1:8001:8001"

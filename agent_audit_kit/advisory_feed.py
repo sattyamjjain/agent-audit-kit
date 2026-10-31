@@ -54,6 +54,14 @@ entry for the same package already names its CVE, by id or alias
 when that read fails or is skipped (`--nvd-days 0`), it keeps the list scans read
 before: the cached feed's, else the bundled one (`Collector.keep_cached_nvd`).
 
+A third list, `launch`, holds the NVD entries that a reviewed launch row maps to
+software a project starts rather than installs from a registry (`nvd_feed`'s
+"What a project launches"): the same shape plus `repo` and `match`, read into
+`AdvisoryFeed.launch` for AAK-KNOWN-VULN-002, and kept and cut as `nvd` is. A
+cached feed written before AAK read a list (0.6.29 wrote neither `nvd` nor
+`launch`) has no key for it, and the bundled list stands in for that one until
+`aak update` writes it (`AdvisoryFeed.bundled_lists`).
+
 One flaw, several ids
 ---------------------
 A PYSEC record and its GHSA twin describe one flaw, and both are in the PyPI
@@ -97,6 +105,10 @@ MAX_FEED_BYTES = 60_000_000
 SEVERITIES = ("MEDIUM", "HIGH", "CRITICAL")
 _GITHUB_LABELS = {"CRITICAL": "CRITICAL", "HIGH": "HIGH", "MODERATE": "MEDIUM", "MEDIUM": "MEDIUM", "LOW": "MEDIUM"}
 _RANGE_TYPES = ("ECOSYSTEM", "SEMVER")
+#: The `ecosystem` of a launch entry, and the order its versions are read in:
+#: semver 2.0 after a leading `v` is dropped, which `malicious_feed.version_order`
+#: gives every scheme but PyPI.
+LAUNCH = "launch"
 
 
 def cache_path() -> Path:
@@ -412,6 +424,38 @@ def _advisory(ecosystem: str, raw: dict[str, Any]) -> Advisory:
     )
 
 
+@dataclass(frozen=True)
+class LaunchAdvisory:
+    """One NVD record's flaw in software a project launches, and how it is launched."""
+
+    advisory: Advisory                # its versions read on semver (`nvd_feed.LAUNCH`)
+    repo: str                         # `github.com/owner/repo`, "" when the row names none
+    commands: tuple[str, ...]         # file names an MCP config's `command` runs, lower case
+    go_modules: tuple[str, ...]       # Go module paths, lower case
+    images: tuple[str, ...]           # image names, lower case
+
+
+def _launch_advisory(raw: dict[str, Any]) -> LaunchAdvisory | None:
+    """A launch entry as parsed; None for one with no id, name or `match`."""
+    match = raw.get("match")
+    if not isinstance(raw.get("id"), str) or not raw["id"] or not isinstance(raw.get("name"), str):
+        return None
+    if not isinstance(match, dict):
+        return None
+
+    def names(key: str) -> tuple[str, ...]:
+        return tuple(v.strip().lower() for v in _strings(match.get(key)) if v.strip())
+
+    repo = raw.get("repo")
+    return LaunchAdvisory(
+        advisory=_advisory(LAUNCH, raw),
+        repo=repo.strip().lower() if isinstance(repo, str) else "",
+        commands=names("commands"),
+        go_modules=names("go_modules"),
+        images=names("images"),
+    )
+
+
 def without_osv_twins(
     osv_rows: list[dict[str, Any]], nvd_rows: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], int]:
@@ -460,6 +504,8 @@ class AdvisoryFeed:
     severity_floor: str  # "" for every record, "HIGH" when a large feed was cut
     raw: dict[str, dict[str, list[dict[str, Any]]]] = field(default_factory=dict)
     nvd_window: str = ""  # "2026-07-02 to 2026-10-30" when the NVD entries were read for a window
+    launch: tuple[LaunchAdvisory, ...] = ()
+    bundled_lists: tuple[str, ...] = ()  # lists a cached feed predates, read from the bundled one
     _built: dict[tuple[str, str], tuple[Advisory, ...]] = field(default_factory=dict, compare=False, repr=False)
 
     def names(self, ecosystem: str) -> AbstractSet[str]:
@@ -486,20 +532,30 @@ class AdvisoryFeed:
             out["severityFloor"] = self.severity_floor
         if self.nvd_window:
             out["nvdWindow"] = self.nvd_window
+        if self.bundled_lists:
+            out["bundledLists"] = ", ".join(self.bundled_lists)
         return out
 
 
-def parse_feed(data: object, origin: str, path: Path) -> AdvisoryFeed:
+def parse_feed(data: object, origin: str, path: Path, fallback: dict[str, Any] | None = None) -> AdvisoryFeed:
     """A feed from its parsed JSON; FeedError when it is not one.
 
     A document lists converted `entries` (the cached form) or OSV `records` as
     OSV returned them (the bundled form), and in either form may list `nvd`
-    entries, which are read unless an OSV entry already covers their CVE. An
-    entry for a registry the feed does not cover, or without an id or a name, is
-    skipped, so one bad entry costs only itself.
+    entries, which are read unless an OSV entry already covers their CVE, and
+    `launch` entries. An entry for a registry the feed does not cover, or without
+    an id or a name, is skipped, so one bad entry costs only itself. A list the
+    document has no key for is read from `fallback` (the bundled feed, for a
+    cached one written before AAK read that list).
     """
     if not isinstance(data, dict):
         raise FeedError("not an advisory feed")
+    borrowed: list[str] = []
+    if fallback is not None:
+        for key in ("nvd", "launch"):
+            if key not in data and isinstance(fallback.get(key), list):
+                data = {**data, key: fallback[key]}
+                borrowed.append(key)
     if isinstance(data.get("entries"), list):
         rows = [row for row in data["entries"] if isinstance(row, dict)]
     elif isinstance(data.get("records"), list):
@@ -525,6 +581,8 @@ def parse_feed(data: object, origin: str, path: Path) -> AdvisoryFeed:
         severity_floor=floor if floor in SEVERITIES else "",
         raw=index,
         nvd_window=_window_text(data.get("nvd_window")),
+        launch=tuple(row for row in map(_launch_advisory, _dicts(data.get("launch"))) if row is not None),
+        bundled_lists=tuple(borrowed),
     )
 
 
@@ -538,7 +596,12 @@ def _load(path: Path, origin: str) -> AdvisoryFeed:
     if cached is not None:
         return cached
     with path.open("r", encoding="utf-8") as handle:
-        feed = parse_feed(json.load(handle), origin, path)
+        data = json.load(handle)
+    fallback = None
+    if origin == "cached" and isinstance(data, dict) and not ("nvd" in data and "launch" in data):
+        bundled = json.loads(BUNDLED_FEED.read_text(encoding="utf-8"))
+        fallback = bundled if isinstance(bundled, dict) else None
+    feed = parse_feed(data, origin, path, fallback)
     if len(_LOADED) >= 2:
         _LOADED.clear()
     _LOADED[key] = feed
@@ -581,6 +644,18 @@ class Written:
     severity_floor: str
     nvd: int = 0             # NVD entries written
     nvd_twins: int = 0       # NVD entries dropped because OSV already names their CVE
+    launch: int = 0          # launch entries written
+
+
+@dataclass(frozen=True)
+class Kept:
+    """What `Collector.keep_cached_nvd` carried over: per list, how many entries
+    and from which file ("cached", "bundled", or "" when neither lists any)."""
+
+    nvd: int
+    nvd_origin: str
+    launch: int
+    launch_origin: str
 
 
 class Collector:
@@ -594,6 +669,7 @@ class Collector:
     def __init__(self) -> None:
         self.entries: list[dict[str, Any]] = []
         self.nvd: list[dict[str, Any]] = []
+        self.launch: list[dict[str, Any]] = []
         self.nvd_window: dict[str, Any] | None = None
         self.nvd_note = ""  # where the NVD half came from, as the feed's `source` says it
 
@@ -601,39 +677,43 @@ class Collector:
         self.entries.extend(advisory_entries(record, ecosystem))
 
     def add_nvd(self, entries: list[dict[str, Any]], window: dict[str, Any] | None) -> None:
-        """The NVD half of this rebuild: entries `nvd_feed.fetch` read for `window`."""
-        self.nvd = [entry for entry in entries if isinstance(entry, dict)]
+        """The NVD half of this rebuild: entries `nvd_feed.fetch` read for `window`,
+        a launch entry (one with `match`) to the `launch` list."""
+        self.nvd = [entry for entry in entries if isinstance(entry, dict) and "match" not in entry]
+        self.launch = [entry for entry in entries if isinstance(entry, dict) and "match" in entry]
         self.nvd_window = dict(window) if isinstance(window, dict) else None
         span = _window_text(self.nvd_window)
         self.nvd_note = "NVD's records of CNA version data" + (f" modified {span}" if span else "")
 
-    def keep_cached_nvd(self) -> tuple[int, str]:
+    def keep_cached_nvd(self) -> Kept:
         """Carry the NVD entries scans read now into this rebuild, so an NVD read that
-        failed or was skipped discards nothing: the cached feed's, with their window,
-        else (no cached feed lists any) the bundled ones.
-
-        Returns:
-            (how many, "cached" | "bundled" | "" when neither file lists any).
-        """
+        failed or was skipped discards nothing. Each list, `nvd` and `launch`, comes
+        from the cached feed when it lists it (`nvd` with its window), else from the
+        bundled one, as a scan reads them (`parse_feed`'s `fallback`)."""
+        documents: list[tuple[str, dict[str, Any]]] = []
         for origin, path in (("cached", cache_path()), ("bundled", BUNDLED_FEED)):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            if not isinstance(data, dict) or not isinstance(data.get("nvd"), list):
-                continue
-            window = data.get("nvd_window")
-            self.nvd = _dicts(data["nvd"])
-            self.nvd_window = window if isinstance(window, dict) else None
-            span = _window_text(self.nvd_window)
-            if origin == "bundled":
-                self.nvd_note = "the NVD CNA entries bundled with agent-audit-kit, kept as no NVD read replaced them"
-            else:
-                self.nvd_note = ("NVD's records of CNA version data" + (f" modified {span}" if span else "")
-                                 + ", kept from the previous update")
-            return len(self.nvd), origin
-        self.nvd, self.nvd_window, self.nvd_note = [], None, ""
-        return 0, ""
+            if isinstance(data, dict):
+                documents.append((origin, data))
+        nvd_origin = next((origin for origin, data in documents if isinstance(data.get("nvd"), list)), "")
+        launch_origin = next((origin for origin, data in documents if isinstance(data.get("launch"), list)), "")
+        source = dict(documents)
+        self.nvd = _dicts(source[nvd_origin]["nvd"]) if nvd_origin else []
+        self.launch = _dicts(source[launch_origin]["launch"]) if launch_origin else []
+        window = source[nvd_origin].get("nvd_window") if nvd_origin else None
+        self.nvd_window = window if isinstance(window, dict) else None
+        span = _window_text(self.nvd_window)
+        if nvd_origin == "cached":
+            self.nvd_note = ("NVD's records of CNA version data" + (f" modified {span}" if span else "")
+                             + ", kept from the previous update")
+        elif nvd_origin == "bundled" or launch_origin == "bundled":
+            self.nvd_note = "the NVD CNA entries bundled with agent-audit-kit, kept as no NVD read replaced them"
+        else:
+            self.nvd_note = ""
+        return Kept(len(self.nvd), nvd_origin, len(self.launch), launch_origin)
 
     def write(self, now: datetime | None = None, limit: int = MAX_FEED_BYTES) -> Written:
         """Write the cached feed atomically; the old one stays on any failure.
@@ -652,19 +732,23 @@ class Collector:
         nvd, twins = without_osv_twins(entries, [e for e in self.nvd if e.get("ecosystem") in ECOSYSTEMS
                                                  and isinstance(e.get("name"), str) and isinstance(e.get("id"), str)])
         nvd.sort(key=order)
+        launch = sorted((e for e in self.launch if e.get("ecosystem") == LAUNCH and isinstance(e.get("name"), str)
+                         and isinstance(e.get("id"), str) and isinstance(e.get("match"), dict)), key=order)
         generated = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         source = ("OSV advisory records, every one but MAL- and withdrawn ones ("
                   + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in ECOSYSTEMS) + ")")
         if self.nvd_note:
             source += f"; {self.nvd_note}, where OSV has no record of the CVE"
         document: dict[str, Any] = {"generated_at": generated, "source": source, "severity_floor": "",
-                                    "entries": entries, "nvd": nvd, "nvd_window": self.nvd_window}
+                                    "entries": entries, "nvd": nvd, "launch": launch,
+                                    "nvd_window": self.nvd_window}
         body = json.dumps(document, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         full_size = len(body)
         if full_size > limit:
             kept = [e for e in entries if e["severity"] in ("HIGH", "CRITICAL")]
             kept_nvd = [e for e in nvd if e.get("severity") in ("HIGH", "CRITICAL")]
-            document.update(severity_floor="HIGH", entries=kept, nvd=kept_nvd,
+            kept_launch = [e for e in launch if e.get("severity") in ("HIGH", "CRITICAL")]
+            document.update(severity_floor="HIGH", entries=kept, nvd=kept_nvd, launch=kept_launch,
                             source=source + f"; HIGH and CRITICAL only, the full feed being {full_size:,} bytes")
             body = json.dumps(document, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         target = cache_path()
@@ -685,7 +769,7 @@ class Collector:
         counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ECOSYSTEMS}
         packages = len({(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])) for row in kept_entries})
         return Written(target, generated, counts, packages, len(body), full_size, document["severity_floor"],
-                       nvd=len(document["nvd"]), nvd_twins=twins)
+                       nvd=len(document["nvd"]), nvd_twins=twins, launch=len(document["launch"]))
 
 
 __all__ = [
@@ -693,6 +777,9 @@ __all__ = [
     "AdvisoryFeed",
     "BUNDLED_FEED",
     "Collector",
+    "Kept",
+    "LAUNCH",
+    "LaunchAdvisory",
     "MAX_FEED_BYTES",
     "Written",
     "advisory_entries",

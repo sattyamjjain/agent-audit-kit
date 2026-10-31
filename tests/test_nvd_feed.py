@@ -638,10 +638,12 @@ def test_aak_update_reads_nvd_into_the_feed(offline_osv: None, monkeypatch: pyte
     assert result.exit_code == 0, result.output
     assert "test-nvd-key-0123" not in result.output and opener.requests[0].get_header("Apikey") == "test-nvd-key-0123"
     assert "NVD: 3 records modified " in result.output
-    assert "3 carry CNA version data: 2 name a PyPI or npm package (4 entries), 1 name none that maps and are dropped" in (
-        result.output)
+    assert ("3 carry CNA version data: 2 name a PyPI or npm package or software a launch row lists (4 package and 0 "
+            "launch entries), 1 name none that maps and are dropped") in result.output
+    assert "The CNA (vendor, product) pairs most often mapped to nothing: nobody / nothing (1)." in result.output
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
-    assert "NVD CNA records: 4 entries, 0 more dropped because OSV already lists their CVE." in result.output
+    assert "NVD CNA records: 4 package and 0 launch entries, 0 more dropped because OSV already lists their CVE." in (
+        result.output)
     data = _cached()
     assert sorted((e["name"], e["id"]) for e in data["nvd"]) == [
         ("@modelcontextprotocol/inspector", OPEN_CVE), ("langflow", "CVE-2026-110186"), ("open", OPEN_CVE),
@@ -668,7 +670,7 @@ def test_an_nvd_outage_keeps_the_cached_nvd_entries_and_rebuilds_osv(offline_osv
     result = CliRunner().invoke(cli, ["update"])
     assert result.exit_code == 2, result.output
     assert "NVD read failed: URLError: <urlopen error offline>. The advisory feed is rebuilt from OSV and keeps " \
-           "the 1 NVD entries of the cached feed." in result.output
+           "the 1 NVD entries of the cached feed and the 3 launch entries of the bundled feed." in result.output
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
     data = _cached()
     assert [e["id"] for e in data["entries"]] == ["GHSA-aaaa-bbbb-cccc"]  # the OSV half, rebuilt
@@ -687,8 +689,9 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
     the file it writes is the one scans read from then on."""
     monkeypatch.setattr(nvd_feed, "_default_opener", lambda: _Opener(_http_error(404)))
     result = CliRunner().invoke(cli, ["update"])
-    assert result.exit_code == 2 and "keeps the 6 NVD entries of the bundled feed." in result.output
-    assert _cached()["nvd"] == json.loads(advisory_feed.BUNDLED_FEED.read_text())["nvd"]
+    assert result.exit_code == 2 and "keeps the 6 NVD and 3 launch entries of the bundled feed." in result.output
+    bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
+    assert (_cached()["nvd"], _cached()["launch"]) == (bundled["nvd"], bundled["launch"])
     _uv_lock(tmp_path, "1.12.8")
     assert [cve for _, cve, _ in _cves(tmp_path)] == ["CVE-2026-110186", "CVE-2026-93680"]
 
@@ -696,8 +699,120 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
 def test_nvd_days_0_reads_nothing_and_keeps_what_scans_read(offline_osv: None) -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "NVD not read (--nvd-days 0): the advisory feed keeps the 6 NVD entries of the bundled feed." in result.output
-    assert len(_cached()["nvd"]) == 6
+    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 6 NVD and 3 launch entries of the bundled "
+            "feed.") in result.output
+    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (6, 3)
+
+
+# ---- launch rows: software a project starts ----------------------------------------------------------
+# MoLing (a Go binary) and TAKO (an image) are on neither registry, so no package
+# row could map their records of 30 Oct 2026; launch rows do (AAK-KNOWN-VULN-002).
+
+LAUNCH_CVES = ("CVE-2026-62863", "CVE-2026-63377", "CVE-2026-63378")
+
+
+def test_the_launch_rows_name_what_each_repository_says_to_run() -> None:
+    """MoLing's README puts `/usr/local/bin/moling` in an MCP config and its go.mod
+    declares github.com/gojue/moling; TAKO's docker-compose.yml runs
+    fctrid/ai-agent-for-okta, and neither README names anything else."""
+    assert nvd_feed.load_launch_map() == (
+        nvd_feed.LaunchRow("gojue", "moling", "github.com/gojue/moling", ("moling",), ("github.com/gojue/moling",),
+                           (), "2026-10-31"),
+        nvd_feed.LaunchRow("fctr-id", "okta-ai-agent", "github.com/fctr-id/okta-ai-agent", (), (),
+                           ("fctrid/ai-agent-for-okta",), "2026-10-31"),
+    )
+
+
+def test_the_bundled_launch_entries_are_the_fixtures_as_converted() -> None:
+    """NVD's three records as served on 2026-10-31, converted with the shipped map."""
+    tally = nvd_feed.Tally()
+    converted = nvd_feed.merged(entry for cve in LAUNCH_CVES for entry in nvd_feed.record_entries(
+        _record(cve), nvd_feed.load_package_map(), tally, nvd_feed.load_launch_map()))
+    assert json.loads(advisory_feed.BUNDLED_FEED.read_text())["launch"] == converted
+    assert (tally.records, tally.mapped, tally.unmapped, tally.entries, tally.launch) == (3, 3, 0, 3, 3)
+    assert [(e["name"], e["id"], e["ranges"], e["fixed"], e["severity"], e["match"]) for e in converted] == [
+        ("fctr-id/okta-ai-agent", "CVE-2026-63377", [{"introduced": "0", "fixed": "3.0.1-beta"}], ["3.0.1-beta"],
+         "CRITICAL", {"commands": [], "go_modules": [], "images": ["fctrid/ai-agent-for-okta"]}),
+        ("fctr-id/okta-ai-agent", "CVE-2026-63378", [{"introduced": "0", "fixed": "3.0.1-beta"}], ["3.0.1-beta"],
+         "HIGH", {"commands": [], "go_modules": [], "images": ["fctrid/ai-agent-for-okta"]}),
+        ("gojue/moling", "CVE-2026-62863", [{"introduced": "0", "fixed": "0.5.0"}], ["0.5.0"], "CRITICAL",
+         {"commands": ["moling"], "go_modules": ["github.com/gojue/moling"], "images": []}),
+    ]
+    assert {e["ecosystem"] for e in converted} == {advisory_feed.LAUNCH}
+
+
+def _moling(**fields: Any) -> dict[str, Any]:
+    return {"vendor": "gojue", "product": "moling", "versions": [{"version": "< 0.5.0", "status": "affected"}],
+            **fields}
+
+
+@pytest.mark.parametrize("affected, mapped", [
+    (_moling(), True),
+    (_moling(vendor=" GoJue ", product="MoLing"), True),                 # compared without case or spaces
+    (_moling(vendor="someone", repo="https://github.com/gojue/moling.git"), True),   # the repository decides
+    (_moling(vendor="someone"), False),                                   # never a name alone
+    (_moling(product="moling-desktop"), False),
+])
+def test_a_launch_row_maps_a_record_as_a_package_row_does(affected: dict[str, Any], mapped: bool) -> None:
+    tally = nvd_feed.Tally()
+    found = nvd_feed.record_entries(_cna(affected), nvd_feed.load_package_map(), tally, nvd_feed.load_launch_map())
+    assert [e["name"] for e in found] == (["gojue/moling"] if mapped else [])
+    assert (tally.launch, tally.unmapped) == ((1, 0) if mapped else (0, 1))
+
+
+def test_a_record_naming_both_a_package_and_launched_software_gives_both() -> None:
+    package = {"vendor": "IBM", "product": "Langflow OSS",
+               "versions": [{"version": "1.0.0", "lessThan": "1.13.0", "versionType": "semver", "status": "affected"}]}
+    found = nvd_feed.record_entries(_cna(package, _moling()), nvd_feed.load_package_map(), None,
+                                    nvd_feed.load_launch_map())
+    assert [(e["ecosystem"], e["name"], "match" in e) for e in found] == [
+        ("PyPI", "langflow", False), (advisory_feed.LAUNCH, "gojue/moling", True)]
+
+
+def test_without_launch_rows_a_launch_record_is_unmapped_and_its_pair_counted() -> None:
+    """The watcher and the bundling of `nvd` pass no launch rows; the PDF Reader record
+    maps to no row at all. Pairs that name nothing are not counted."""
+    tally = nvd_feed.Tally()
+    for cve in ("CVE-2026-62863", "CVE-2026-62264"):
+        assert nvd_feed.record_entries(_record(cve), nvd_feed.load_package_map(), tally) == []
+    nameless = {"vendor": "n/a", "product": "n/a", "versions": [{"version": "< 1.0.0", "status": "affected"}]}
+    assert nvd_feed.record_entries(_cna(nameless), nvd_feed.load_package_map(), tally) == []
+    assert tally.unmapped == 3
+    assert tally.unmapped_pairs == {("gojue", "moling"): 1, ("SylphxAI", "pdf-reader-mcp"): 1}
+
+
+def test_the_rebuild_writes_the_launch_list_and_scans_read_it() -> None:
+    entries = [e for cve in LAUNCH_CVES for e in nvd_feed.record_entries(
+        _record(cve), nvd_feed.load_package_map(), None, nvd_feed.load_launch_map())]
+    collector = advisory_feed.Collector()
+    collector.add_nvd(entries, {"field": "lastModified", "start": "2026-07-03T09:00:00Z",
+                                "end": "2026-10-31T09:00:00Z", "days": 120})
+    written = collector.write(now=NOW)
+    assert (written.nvd, written.launch) == (0, 3)
+    assert [e["id"] for e in _cached()["launch"]] == ["CVE-2026-63377", "CVE-2026-63378", "CVE-2026-62863"]
+    feed = advisory_feed.load_feed()
+    assert feed.origin == "cached" and not feed.bundled_lists
+    assert [(row.advisory.id, row.images, row.commands) for row in feed.launch] == [
+        ("CVE-2026-63377", ("fctrid/ai-agent-for-okta",), ()), ("CVE-2026-63378", ("fctrid/ai-agent-for-okta",), ()),
+        ("CVE-2026-62863", (), ("moling",))]
+    (moling,) = [row for row in feed.launch if row.commands]
+    assert moling.advisory.matches("v0.4.0") and moling.advisory.matches("0.4.1-0.20251001000000-abcdef123456")
+    assert not moling.advisory.matches("v0.5.0")
+
+
+@pytest.mark.parametrize("cached, launches, bundled_lists", [
+    ({"entries": []}, 3, ("nvd", "launch")),            # written by 0.6.29: no NVD list yet
+    ({"entries": [], "nvd": []}, 3, ("launch",)),       # written before launch rows existed
+    ({"entries": [], "nvd": [], "launch": []}, 0, ()),  # written by `aak update` now: its lists stand
+])
+def test_a_cached_feed_reads_the_bundled_list_it_has_no_key_for(cached: dict[str, Any], launches: int,
+                                                                bundled_lists: tuple[str, ...]) -> None:
+    path = advisory_feed.cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"generated_at": "t", "source": "test", **cached}))
+    feed = advisory_feed.load_feed()
+    assert (feed.origin, len(feed.launch), feed.bundled_lists) == ("cached", launches, bundled_lists)
+    assert feed.summary().get("bundledLists", "") == ", ".join(bundled_lists)
 
 
 def test_nvd_days_is_bounded_by_nvd_s_window() -> None:

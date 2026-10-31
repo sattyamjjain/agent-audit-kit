@@ -16,7 +16,7 @@ original was drafted.
 | | |
 |---|---|
 | Version | whatever `pyproject.toml` declares (PyPI, GHCR, GitHub Releases, Sigstore-signed bundle) |
-| Rules / scanners | **437 rules** across 14 security categories, 108 scanner modules |
+| Rules / scanners | **438 rules** across 14 security categories, 109 scanner modules |
 | Compliance frameworks | **14** |
 | CVE-to-rule latency | generated in `docs/cve-latency.md`; quote it from there, never from memory |
 | Stars | read the repository page on the day you post |

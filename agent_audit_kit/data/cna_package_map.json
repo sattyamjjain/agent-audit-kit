@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed mappings from a CNA's (vendor, product) pair or repository to the PyPI or npm package it publishes. agent_audit_kit/nvd_feed.py reads a row only for an NVD record whose CNA data carries no packageURL. Add a row only after checking that the package's own page on pypi.org or npmjs.com names the same project (its repository), never from a name alone, and set `reviewed` to that date.",
+  "description": "Reviewed mappings from a CNA's (vendor, product) pair or repository to what AAK can match it against. `rows` name the PyPI or npm package it publishes: agent_audit_kit/nvd_feed.py reads a row only for an NVD record whose CNA data carries no packageURL. Add a row only after checking that the package's own page on pypi.org or npmjs.com names the same project (its repository), never from a name alone, and set `reviewed` to that date. `launch` rows name how a project starts software that is on neither registry, for AAK-KNOWN-VULN-002: the `commands` an MCP config runs (file names), the Go `go_modules` it starts with `go run`, and the `images` a compose file or `docker run` names. Take each name from the project's own repository (the binary its README puts in an MCP config, the module path in its go.mod, the images its README or compose file names), never from a name alone, and set `reviewed` to that date.",
   "rows": [
     {
       "vendor": "IBM",
@@ -24,6 +24,32 @@
       "ecosystem": "npm",
       "name": "@modelcontextprotocol/inspector",
       "reviewed": "2026-10-30"
+    }
+  ],
+  "launch": [
+    {
+      "vendor": "gojue",
+      "product": "moling",
+      "repo": "https://github.com/gojue/moling",
+      "commands": [
+        "moling"
+      ],
+      "go_modules": [
+        "github.com/gojue/moling"
+      ],
+      "images": [],
+      "reviewed": "2026-10-31"
+    },
+    {
+      "vendor": "fctr-id",
+      "product": "okta-ai-agent",
+      "repo": "https://github.com/fctr-id/okta-ai-agent",
+      "commands": [],
+      "go_modules": [],
+      "images": [
+        "fctrid/ai-agent-for-okta"
+      ],
+      "reviewed": "2026-10-31"
     }
   ]
 }
