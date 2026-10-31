@@ -1,0 +1,399 @@
+{
+  "tool": "agent-audit-kit",
+  "corpus": "benchmarks/data",
+  "corpus_sources": {
+    "crawl": 664,
+    "registry": 1639
+  },
+  "corpus_total_candidates": 2389,
+  "distinct_configs_scanned": 2303,
+  "duplicates_removed": 85,
+  "unparseable_removed": 1,
+  "grade_distribution": {
+    "A": 788,
+    "B": 1280,
+    "C": 96,
+    "D": 52,
+    "F": 87
+  },
+  "configs_with_critical": 1185,
+  "configs_with_critical_pct": 51.5,
+  "configs_with_high": 110,
+  "configs_with_high_pct": 4.8,
+  "severity_totals": {
+    "critical": 1293,
+    "high": 208,
+    "medium": 4930,
+    "low": 652
+  },
+  "transport_distribution": {
+    "streamable-http": 1726,
+    "stdio": 1347,
+    "sse": 62,
+    "unknown": 7
+  },
+  "rule_family_distribution": {
+    "AAK-MCP": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "AAK-OAUTH": {
+      "configs": 424,
+      "pct": 18.4
+    },
+    "AAK-SUPPLY": {
+      "configs": 284,
+      "pct": 12.3
+    },
+    "AAK-TRANSPORT": {
+      "configs": 53,
+      "pct": 2.3
+    },
+    "AAK-AIACT50": {
+      "configs": 8,
+      "pct": 0.3
+    },
+    "AAK-SECRET": {
+      "configs": 4,
+      "pct": 0.2
+    },
+    "AAK-COMPOSE": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-RUNTIME": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "category_hit_rate": {
+    "mcp-config": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "supply-chain": {
+      "configs": 288,
+      "pct": 12.5
+    },
+    "transport-security": {
+      "configs": 53,
+      "pct": 2.3
+    },
+    "legal-compliance": {
+      "configs": 8,
+      "pct": 0.3
+    },
+    "secret-exposure": {
+      "configs": 4,
+      "pct": 0.2
+    },
+    "composition": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "tool-poisoning": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "owasp_mcp_hit_rate": {
+    "MCP07:2025": {
+      "configs": 1595,
+      "pct": 69.3
+    },
+    "MCP01:2025": {
+      "configs": 455,
+      "pct": 19.8
+    },
+    "MCP04:2025": {
+      "configs": 453,
+      "pct": 19.7
+    },
+    "MCP05:2025": {
+      "configs": 213,
+      "pct": 9.2
+    },
+    "MCP02:2025": {
+      "configs": 14,
+      "pct": 0.6
+    },
+    "MCP09:2025": {
+      "configs": 3,
+      "pct": 0.1
+    },
+    "MCP10:2025": {
+      "configs": 2,
+      "pct": 0.1
+    },
+    "MCP03:2025": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "auth_profile_2026_07_28": {
+    "no_authentication": {
+      "n": 1166,
+      "denominator": 2303,
+      "pct": 50.6
+    },
+    "rfc9728_prm_discovery": {
+      "n": 0,
+      "denominator": 2303,
+      "pct": 0.0
+    },
+    "remote_configs": {
+      "n": 1648,
+      "denominator": 2303,
+      "pct": 71.6
+    },
+    "remote_auth_static_credential": {
+      "n": 424,
+      "denominator": 424,
+      "pct": 100.0
+    },
+    "sse_transport_stateless_break_proxy": {
+      "n": 47,
+      "denominator": 2303,
+      "pct": 2.0
+    },
+    "removal_clock_features_measured_from_config": {
+      "n": 0,
+      "denominator": 2303,
+      "pct": 0.0
+    }
+  },
+  "top_misconfigurations": [
+    {
+      "rule_id": "AAK-MCP-001",
+      "title": "Remote MCP server without authentication",
+      "severity": "critical",
+      "configs": 1166,
+      "config_pct": 50.6
+    },
+    {
+      "rule_id": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "severity": "medium",
+      "configs": 450,
+      "config_pct": 19.5
+    },
+    {
+      "rule_id": "AAK-OAUTH-008",
+      "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery",
+      "severity": "low",
+      "configs": 424,
+      "config_pct": 18.4
+    },
+    {
+      "rule_id": "AAK-SUPPLY-001",
+      "title": "MCP server package not pinned to exact version",
+      "severity": "medium",
+      "configs": 284,
+      "config_pct": 12.3
+    },
+    {
+      "rule_id": "AAK-MCP-006",
+      "title": "MCP server command uses relative path",
+      "severity": "medium",
+      "configs": 179,
+      "config_pct": 7.8
+    },
+    {
+      "rule_id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+      "title": "MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args",
+      "severity": "high",
+      "configs": 49,
+      "config_pct": 2.1
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-003",
+      "title": "Deprecated SSE transport in use",
+      "severity": "medium",
+      "configs": 47,
+      "config_pct": 2.0
+    },
+    {
+      "rule_id": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "severity": "high",
+      "configs": 30,
+      "config_pct": 1.3
+    },
+    {
+      "rule_id": "AAK-MCP-SERENA-CVE-2026-49471-001",
+      "title": "Serena MCP toolkit < 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)",
+      "severity": "high",
+      "configs": 19,
+      "config_pct": 0.8
+    },
+    {
+      "rule_id": "AAK-MCP-004",
+      "title": "Excessive number of MCP servers declared",
+      "severity": "high",
+      "configs": 12,
+      "config_pct": 0.5
+    }
+  ],
+  "rule_hit_rate": {
+    "AAK-MCP-ATTEST-001": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "AAK-MCP-001": {
+      "configs": 1166,
+      "pct": 50.6
+    },
+    "AAK-MCP-005": {
+      "configs": 450,
+      "pct": 19.5
+    },
+    "AAK-OAUTH-008": {
+      "configs": 424,
+      "pct": 18.4
+    },
+    "AAK-SUPPLY-001": {
+      "configs": 284,
+      "pct": 12.3
+    },
+    "AAK-MCP-006": {
+      "configs": 179,
+      "pct": 7.8
+    },
+    "AAK-MCP-007": {
+      "configs": 109,
+      "pct": 4.7
+    },
+    "AAK-MCP-STDIO-LAUNCHER-INJECT-001": {
+      "configs": 49,
+      "pct": 2.1
+    },
+    "AAK-TRANSPORT-003": {
+      "configs": 47,
+      "pct": 2.0
+    },
+    "AAK-MCP-003": {
+      "configs": 30,
+      "pct": 1.3
+    },
+    "AAK-MCP-SERENA-CVE-2026-49471-001": {
+      "configs": 19,
+      "pct": 0.8
+    },
+    "AAK-MCP-004": {
+      "configs": 12,
+      "pct": 0.5
+    },
+    "AAK-MCP-002": {
+      "configs": 9,
+      "pct": 0.4
+    },
+    "AAK-AIACT50-001": {
+      "configs": 5,
+      "pct": 0.2
+    },
+    "AAK-SECRET-004": {
+      "configs": 4,
+      "pct": 0.2
+    },
+    "AAK-TRANSPORT-004": {
+      "configs": 4,
+      "pct": 0.2
+    },
+    "AAK-AIACT50-002": {
+      "configs": 3,
+      "pct": 0.1
+    },
+    "AAK-MCP-009": {
+      "configs": 3,
+      "pct": 0.1
+    },
+    "AAK-MCP-APIFY-CVE-2026-46341-001": {
+      "configs": 3,
+      "pct": 0.1
+    },
+    "AAK-MCP-K8S-CVE-2026-61459-001": {
+      "configs": 2,
+      "pct": 0.1
+    },
+    "AAK-MCP-N8NMCP-CVE-2026-54052-001": {
+      "configs": 2,
+      "pct": 0.1
+    },
+    "AAK-MCP-REPOMIX-CVE-2026-49988-001": {
+      "configs": 2,
+      "pct": 0.1
+    },
+    "AAK-SECRET-008": {
+      "configs": 2,
+      "pct": 0.1
+    },
+    "AAK-COMPOSE-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-MCP-010": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-MCP-CONFIG-MALFORMED-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-MCP-RUFLO-CVE-2026-59726-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-002": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-003": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-004": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-005": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON-006": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-RUNTIME-ADV-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-TRANSPORT-001": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-TRANSPORT-002": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "excluded_advisory_rules": [
+    "AAK-MCP-007",
+    "AAK-MCP-ATTEST-001"
+  ]
+}
