@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-31T08:33:21Z",
+  "last_updated": "2026-11-01T10:27:30Z",
   "aak_version": "0.6.30",
-  "rule_count": 438,
+  "rule_count": 440,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2427,7 +2427,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 224,
+      "rule_density": 226,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2699,8 +2699,25 @@
           ]
         },
         {
+          "id": "AAK-MALICIOUS-EXTENSION-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MALICIOUS-RELEASE-001",
           "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MALICIOUS-RELEASE-002",
+          "severity": "high",
           "cve_references": [],
           "aicm_references": [
             "STA-08"
@@ -4870,7 +4887,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 104,
+      "rule_density": 105,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5163,6 +5180,15 @@
             "CVE-2026-25879"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MALICIOUS-EXTENSION-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MALICIOUS-RELEASE-001",

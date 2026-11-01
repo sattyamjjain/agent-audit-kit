@@ -25,7 +25,18 @@ A release that a source has published as malware, wherever the project names it:
   project's `.venv` and an unpacked image root filesystem included;
 - an image reference by digest, such as
   `litellm/litellm@sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e`,
-  in a Dockerfile, a compose or Kubernetes file, or an MCP config.
+  in a Dockerfile, a compose or Kubernetes file, or an MCP config;
+- with `aak scan --include-user-config`, a release a launcher fetched onto this
+  host: a package in npm's npx cache
+  (`<npm cache>/_npx/<hash>/node_modules/<name>/package.json`) or a
+  `<name>-<version>.dist-info` in one of uv's tool environments
+  (`<uv cache>/environments-v*/`, where `uvx` runs a tool). The evidence reads
+  `npx cache at <path> holds <name> <version>`. Without the flag a scan reads
+  nothing outside the project.
+
+An MCP config that launches a listed package with no version
+(`npx -y local-commander-agent`) is [AAK-MALICIOUS-RELEASE-002](AAK-MALICIOUS-RELEASE-002.md):
+nothing says which release it installed, so this rule cannot report it.
 
 A version pin cannot catch this. litellm 1.107.0 sat above every pinned floor
 while it ran a credential stealer at every Python start.
@@ -37,8 +48,9 @@ written it, else the copy bundled with AAK, and never touches the network. The
 SARIF run's `properties.dataFeeds` and the console summary say which copy was
 read and when it was generated.
 
-- The bundled copy lists OSV MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0)
-  and the image index digest from LiteLLM's incident post. That post names the
+- The bundled copy lists OSV MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0),
+  OSV MAL-2026-18425 (local-commander-agent 0.3.52, GHSA-7j62-5j84-72fv) and
+  the image index digest from LiteLLM's incident post. That post names the
   Docker Hub tags without the repository; `docker.io/litellm/litellm` carries
   them. Its GHCR digests are truncated, so none is listed.
 - `aak update` rebuilds the cached copy from OSV's exports for PyPI and npm

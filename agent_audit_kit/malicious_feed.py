@@ -24,8 +24,8 @@ bundled `data/malicious_releases.json`. A scan never touches the network.
   environment of most CI jobs, and paging them would add that to every update.
   An advisory OSV already lists under an alias is not added twice.
 
-The bundled entries and the image digests, which neither source carries, are
-kept in every rebuilt copy. A failed rebuild leaves the cached copy as it was and
+The bundled entries, the image digests and the editor-extension entries, which
+neither source carries, are kept in every rebuilt copy. A failed rebuild leaves the cached copy as it was and
 writes nothing: the new file is written beside it and renamed over it only once
 it is complete.
 
@@ -38,6 +38,15 @@ PEP 440 normalisation for PyPI (`1.107` is `1.107.0`; `1.107.0rc1` is not) and a
 written for npm. npm's own `0.0.1-security` placeholder, which replaces a removed
 package, is never matched. An image entry names digests; a tag is listed for the
 record and never matched, because a tag moves and a digest does not.
+
+An extension entry (the optional top-level `extensions` list) names an editor
+extension by its `publisher.name` id, the hosts it was served on (`cursor`,
+`vscode`, ...; `*` for every host), and either the versions that are malicious,
+every version, or the SHA-256 of a file of the malicious build: a tampered build
+can carry the number of a real release (Cursor served a tampered
+anthropic.claude-code 2.1.312 beside Anthropic's own), and only its content
+tells the two apart. Neither OSV nor GitHub lists editor extensions, so these
+entries are bundled, and kept in every rebuilt copy, as the image digests are.
 """
 
 from __future__ import annotations
@@ -248,6 +257,7 @@ class Release:
     ranges: tuple[Range, ...]
     modified: str
     url: str
+    listed: tuple[str, ...] = ()      # the listed versions as the feed writes them
 
     def matches(self, version: str | None) -> bool:
         """Does a declaration of `version` (None: no exact version) install a
@@ -278,6 +288,39 @@ class Image:
     url: str
 
 
+#: The host an entry names to mean every editor.
+ANY_HOST = "*"
+
+
+@dataclass(frozen=True)
+class ExtensionRelease:
+    """One feed extension entry: builds of an editor extension that are malicious.
+
+    `versions` lists versions every build of which is malicious (no legitimate
+    release carries them); `sha256` maps a file of the extension folder
+    (`extension.js`) to the digests of malicious builds of it, whatever version
+    the build claims. An entry matches a host it names, or every host for `*`.
+    """
+
+    id: str
+    extension: str                    # `publisher.name`, lower case
+    versions: frozenset[str]
+    all_versions: bool
+    hosts: frozenset[str]
+    sha256: tuple[tuple[str, frozenset[str]], ...]
+    fixed: str
+    url: str
+    note: str
+
+    def on_host(self, host: str) -> bool:
+        """Does the entry cover extensions installed in this host's folder?"""
+        return ANY_HOST in self.hosts or host.lower() in self.hosts
+
+    def lists_version(self, version: str) -> bool:
+        """Is every build of `version` malicious, by this entry?"""
+        return self.all_versions or version.strip().lower() in self.versions
+
+
 @dataclass(frozen=True)
 class Feed:
     """A loaded feed: where it came from, and its entries indexed by name.
@@ -294,6 +337,7 @@ class Feed:
     path: Path
     raw: dict[str, dict[str, list[dict[str, Any]]]] = field(default_factory=dict)
     images: dict[str, Image] = field(default_factory=dict)
+    extensions: dict[str, tuple[ExtensionRelease, ...]] = field(default_factory=dict)
     _built: dict[tuple[str, str], tuple[Release, ...]] = field(
         default_factory=dict, compare=False, repr=False
     )
@@ -319,6 +363,11 @@ class Feed:
     def image(self, digest: str) -> Image | None:
         """The entry listing an image digest (`sha256:<64 hex>`), if any."""
         return self.images.get(digest.lower())
+
+    def extension(self, extension_id: str) -> tuple[ExtensionRelease, ...]:
+        """Every extension entry for one `publisher.name` id, compared as VS Code
+        compares ids, without regard to case."""
+        return self.extensions.get(extension_id.strip().lower(), ())
 
     def summary(self) -> dict[str, str]:
         """What a report says about the feed a scan read."""
@@ -353,6 +402,7 @@ def _release(ecosystem: str, raw: dict[str, Any]) -> Release:
         ranges=ranges,
         modified=str(raw.get("modified") or ""),
         url=str(raw.get("url") or ""),
+        listed=_strings(raw.get("versions")),
     )
 
 
@@ -389,6 +439,11 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
         )
         for digest in entry.digests:
             images[digest] = entry
+    extensions: dict[str, list[ExtensionRelease]] = {}
+    for raw in data.get("extensions") or ():
+        found = _extension(raw)
+        if found is not None:
+            extensions.setdefault(found.extension, []).append(found)
     return Feed(
         generated_at=str(data.get("generated_at") or ""),
         source=str(data.get("source") or ""),
@@ -396,6 +451,45 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
         path=path,
         raw=index,
         images=images,
+        extensions={key: tuple(rows) for key, rows in extensions.items()},
+    )
+
+
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+# `publisher.name`: VS Code's identifier, a publisher without a dot, then the name.
+_EXTENSION_ID_RE = re.compile(r"[^.\s/\\]+\.[^\s/\\]+")
+
+
+def _extension(raw: object) -> ExtensionRelease | None:
+    """One `extensions` entry, or None when it has no id, no `publisher.name`
+    id, or nothing to match on (no version, no every-version flag, no digest)."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("id"), str):
+        return None
+    extension = raw.get("extension")
+    if not isinstance(extension, str) or not _EXTENSION_ID_RE.fullmatch(extension.strip()):
+        return None
+    digests: list[tuple[str, frozenset[str]]] = []
+    sha256 = raw.get("sha256")
+    for name, values in (sha256.items() if isinstance(sha256, dict) else ()):
+        kept = frozenset(v.lower() for v in _strings(values) if _SHA256_RE.fullmatch(v.lower()))
+        relative = str(name).replace("\\", "/").strip("/")
+        if kept and relative and ".." not in relative.split("/"):
+            digests.append((relative, kept))
+    versions = frozenset(v.strip().lower() for v in _strings(raw.get("versions")) if v.strip())
+    all_versions = raw.get("all_versions") is True
+    if not (versions or all_versions or digests):
+        return None
+    hosts = frozenset(h.strip().lower() for h in _strings(raw.get("hosts")) if h.strip()) or frozenset({ANY_HOST})
+    return ExtensionRelease(
+        id=raw["id"],
+        extension=extension.strip().lower(),
+        versions=versions,
+        all_versions=all_versions,
+        hosts=hosts,
+        sha256=tuple(sorted(digests)),
+        fixed=str(raw.get("fixed") or ""),
+        url=str(raw.get("url") or ""),
+        note=str(raw.get("note") or ""),
     )
 
 
@@ -739,8 +833,11 @@ def refresh(
         source = "OSV MAL- records (" + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in ECOSYSTEMS) + ")"
         if github == "read":
             source += ", GitHub malware advisories (api.github.com/advisories?type=malware)"
-        source += ", and the entries and image digests bundled with agent-audit-kit"
-        document = {"generated_at": generated, "source": source, "entries": entries, "oci": bundled.get("oci", [])}
+        source += ", and the entries, image digests and editor extensions bundled with agent-audit-kit"
+        document = {
+            "generated_at": generated, "source": source, "entries": entries,
+            "oci": bundled.get("oci", []), "extensions": bundled.get("extensions", []),
+        }
         parse_feed(document, "cached", target)  # refuse to write what a scan could not read
         _write_atomically(target, document)
     except FeedUpdateError:

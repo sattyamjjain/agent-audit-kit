@@ -43,6 +43,7 @@ from agent_audit_kit.scanners import (
     known_vulns,
     known_vulns_launch,
     langchain_prompt_loader,
+    malicious_extensions,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -463,6 +464,27 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "launch-many-configs": (known_vulns_launch.scan, lambda k: {
         f"p{i}/.mcp.json": _js({"mcpServers": {"s": {"command": "go", "args": ["run", "github.com/gojue/moling@v0.4.0"]}}})
         for i in range(k)}, 60, True),
+    # malicious_releases' AAK-MALICIOUS-RELEASE-002, before it was released: one finding per
+    # server, each placed and described once, and one launch naming a listed package
+    # thousands of times (`-p` repeated) reported once.
+    "unpinned-malicious-launches": (malicious_releases.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "npx", "args": ["-y", "local-commander-agent"]} for i in range(k)}})}, 300, True),
+    "unpinned-malicious-package-flags": (malicious_releases.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        "s": {"command": "npx", "args": ["-y"] + ["-p", "local-commander-agent@^0.3.0"] * k + ["lc"]}}})},
+        1_000, False),
+    # malicious_extensions, before it was released: an index listing the tampered build
+    # thousands of times is reported once and placed once, an index of unlisted ids is
+    # parsed once, and a workspace recommending many ids is read once.
+    "extension-index-repeats": (malicious_extensions.scan, lambda k: {".cursor/extensions/extensions.json": _js([
+        {"identifier": {"id": "anthropic.claude-code"}, "version": "2.1.313"} for _ in range(k)])}, 1_000, False),
+    "extension-index-unlisted": (malicious_extensions.scan, lambda k: {".vscode/extensions/extensions.json": _js([
+        {"identifier": {"id": f"p{i}.x"}, "version": "1.0.0", "relativeLocation": f"p{i}.x-1.0.0"}
+        for i in range(k)])}, 700, False),
+    "extension-folders": (malicious_extensions.scan, lambda k: {
+        f".cursor/extensions/anthropic.claude-code-2.{i}.0/package.json": '{"version": "x"}' for i in range(k)},
+        300, False),
+    "extension-recommendations": (malicious_extensions.scan, lambda k: {".vscode/extensions.json": _js(
+        {"recommendations": ["anthropic.claude-code"] * k})}, 3_000, False),
 }
 
 

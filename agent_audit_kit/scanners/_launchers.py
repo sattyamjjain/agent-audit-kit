@@ -588,6 +588,11 @@ def pin_problem(launched: Launched) -> str | None:
 _LAUNCH_PROBLEM_RE = re.compile(r" \([^()]*\)\Z")
 
 
+def launch_head(server: str, spec: str) -> str:
+    """The `Server '<name>' arg: <spec>` head that names one launch in evidence."""
+    return f"Server '{server}' arg: {spec}"
+
+
 def launch_evidence(server: str, spec: str, problem: str) -> str:
     """The evidence of a finding on one package spec a server launches.
 
@@ -597,7 +602,19 @@ def launch_evidence(server: str, spec: str, problem: str) -> str:
     (`launch_subject`), so both rules build their evidence here, where the
     format and its reader cannot drift apart.
     """
-    return f"Server '{server}' arg: {spec} ({problem})"
+    return f"{launch_head(server, spec)} ({problem})"
+
+
+def names_launch(evidence: str, subject: str) -> bool:
+    """Does evidence that opens with a `launch_head` name the launch `subject`?
+
+    AAK-MALICIOUS-RELEASE-002 opens its evidence with the head and goes on in
+    prose, so `launch_subject` cannot read it back; the engine asks instead
+    whether it starts with a subject AAK-SUPPLY-001 or AAK-MCP-007 reported. A
+    spec is one shell word, so the space after the head ends it: the subject
+    of `pkg` is not a prefix of the evidence on `pkg-two`.
+    """
+    return evidence.startswith(subject + " ")
 
 
 def launch_subject(evidence: str) -> str | None:

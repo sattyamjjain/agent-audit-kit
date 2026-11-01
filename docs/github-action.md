@@ -10,7 +10,7 @@
 | `fail-on` | `high` | Fail at this severity or above (`none` = never fail) |
 | `format` | `sarif` | Output format: `sarif`, `json`, `console` |
 | `upload-sarif` | `true` | Upload SARIF to GitHub Security tab |
-| `include-user-config` | `false` | Scan user-level agent configs |
+| `include-user-config` | `false` | Also read user-level state outside the project: `~/.claude.json`, `~/.claude/settings.json`, the npx and uv launcher caches, and the editor extension folders |
 | `rules` | | Comma-separated rule IDs to include |
 | `exclude-rules` | | Comma-separated rule IDs to skip |
 | `ignore-paths` | | Comma-separated paths to exclude |

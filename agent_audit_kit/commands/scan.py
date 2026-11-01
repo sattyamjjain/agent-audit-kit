@@ -36,7 +36,11 @@ __all__ = ["scan_cmd"]
 @click.option("--format", "output_format", type=click.Choice(["console", "json", "sarif"]), default="console", help="Output format.")
 @click.option("--severity", "min_severity", type=click.Choice(["critical", "high", "medium", "low", "info"]), default="low", help="Minimum severity to report.")
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None, help="Write report to file.")
-@click.option("--include-user-config", is_flag=True, default=False, help="Also scan user-level configs (~/.claude/).")
+@click.option(
+    "--include-user-config", is_flag=True, default=False,
+    help="Also read this user's state outside the project: ~/.claude.json and ~/.claude/settings.json, "
+         "the npx and uv launcher caches, and the editor extension folders (~/.cursor/extensions, ...).",
+)
 @click.option("--ignore-paths", default=None, help="Comma-separated paths to skip.")
 @click.option("--rules", default=None, help="Comma-separated rule IDs to run (default: all).")
 @click.option("--exclude-rules", default=None, help="Comma-separated rule IDs to skip.")
