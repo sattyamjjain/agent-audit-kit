@@ -128,6 +128,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)",
      ["include_user_config"]),
+    ("malicious_extensions", "Installed editor extensions the malicious-release feed lists (Cursor, VS Code)",
+     ["include_user_config"]),
     ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
     ("known_vulns_launch", "Launched MCP servers, binaries and images against NVD advisories (offline feed)", []),
     ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),

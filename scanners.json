@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 109,
+  "count": 110,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -145,6 +145,10 @@
     {
       "module": "log_token_leak",
       "name": "Token-shaped values in log sinks (CVE-2026-20205)"
+    },
+    {
+      "module": "malicious_extensions",
+      "name": "Installed editor extensions the malicious-release feed lists (Cursor, VS Code)"
     },
     {
       "module": "malicious_releases",

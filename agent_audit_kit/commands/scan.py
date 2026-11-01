@@ -39,7 +39,7 @@ __all__ = ["scan_cmd"]
 @click.option(
     "--include-user-config", is_flag=True, default=False,
     help="Also read this user's state outside the project: ~/.claude.json and ~/.claude/settings.json, "
-         "and the npx and uv launcher caches.",
+         "the npx and uv launcher caches, and the editor extension folders (~/.cursor/extensions, ...).",
 )
 @click.option("--ignore-paths", default=None, help="Comma-separated paths to skip.")
 @click.option("--rules", default=None, help="Comma-separated rule IDs to run (default: all).")

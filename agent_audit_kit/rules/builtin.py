@@ -380,6 +380,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-002": ["STA-08"],
+    "AAK-MALICIOUS-EXTENSION-001": ["STA-08", "IVS-04"],
     "AAK-KNOWN-VULN-001": ["STA-08"],
     "AAK-KNOWN-VULN-002": ["STA-08"],
     "AAK-AGENT-SERVER-NOAUTH-001": ["IAM-01", "IVS-04"],
@@ -17670,6 +17671,56 @@ _r(
         "`servers` map. The bundled feed lists two packages with version-specific entries "
         "(litellm and local-commander-agent), so without `aak update` nothing else is known. "
         "A config over 2 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-MALICIOUS-EXTENSION-001",
+    "An agent host's installed editor extension is a build listed as malware",
+    "An editor that hosts coding agents (Cursor, VS Code and the editors built on it) has "
+    "installed an extension build that the offline malicious-release feed lists: a version "
+    "no legitimate publisher shipped, or a build whose file matches a published SHA-256. On "
+    "29 Oct 2026 Cursor's extension marketplace served tampered builds of Anthropic's Claude "
+    "Code extension, `anthropic.claude-code` 2.1.312 and 2.1.313, under Anthropic's publisher "
+    "id for about eleven hours; their `extension.js` added an SSH key to "
+    "`~/.ssh/authorized_keys` and installed a LaunchAgent, a scheduled task or a crontab line "
+    "(Cursor's notice). AAK read MCP configs under `.vscode/` and no extension folder, so a "
+    "home directory, dev container or image that carried the build scanned clean. The rule "
+    "reads the installed folders and their `extensions.json` index; a tampered build can "
+    "carry the number of a real release, as 2.1.312 did, and is then matched by content.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Remove the extension, then install the publisher's fixed release from a marketplace "
+    "the advisory clears (for anthropic.claude-code, 2.1.314 or later from the VS Code "
+    "Marketplace or Open VSX). Check the machine for the persistence the advisory names, which "
+    "removing the extension does not undo: for the Claude Code builds, an SSH key labelled "
+    "`svc-telemetry` in `~/.ssh/authorized_keys`, `~/.config/.smt` and `.smtk`, the "
+    "LaunchAgent `com.apple.sysmond`, a crontab `@reboot` line and the scheduled task `SysMon`. "
+    "Where any is present, isolate the machine and rotate every credential it could reach.",
+    sarif_name="KnownMaliciousEditorExtension",
+    owasp_agentic_references=["ASI04", "ASI05"],
+    incident_references=["CURSOR-CLAUDE-CODE-2026-10-29"],
+    limitations=(
+        "Reads the folders a VS Code-based editor installs extensions into, "
+        "`<home>/.<editor>/extensions/<publisher>.<name>-<version>[-<platform>]/`, and the "
+        "`extensions.json` index beside them, in the scan root itself, `root/`, and each "
+        "`home/*/` and `Users/*/` below it; with `--include-user-config` also in this user's "
+        "home. An editor is named by its data folder (`.cursor` is `cursor`, `.vscode` is "
+        "`vscode`, a remote server's `.cursor-server` or `.vscode-server` is the editor's own), "
+        "and a feed entry matches only the editors it names, or every one for `*`. A home "
+        "elsewhere (`srv/<user>/`), a folder moved by `--extensions-dir` or "
+        "`VSCODE_EXTENSIONS`, a portable install, a symlinked extension folder and the index of "
+        "a profile other than the default are not read. A version matches exactly as the "
+        "folder name or index writes it; a digest is computed only for the file an entry names, "
+        "inside the folder and up to 64 MiB, so an index entry whose folder is gone is matched "
+        "on its version alone. A workspace's `.vscode/extensions.json` recommendations name no "
+        "version and are reported only for an entry that lists every version. An uninstalled "
+        "`.vsix`, a devcontainer.json `extensions` list and an editor's download cache are not "
+        "read. The rule says a listed build is on disk, not whether it ran or what it left "
+        "behind. The bundled feed lists one extension entry, anthropic.claude-code: 2.1.313 on "
+        "every editor, and any build whose `extension.js` has the SHA-256 Cursor published for "
+        "the tampered 2.1.312 and 2.1.313; `aak update` keeps it and adds none, since neither "
+        "OSV nor GitHub lists editor extensions. An index over 8 MB is not read."
     ),
 )
 

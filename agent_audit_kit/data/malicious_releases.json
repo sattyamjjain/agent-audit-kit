@@ -1,6 +1,6 @@
 {
   "generated_at": "2026-11-01T10:12:39Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 and MAL-2026-18425 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28 and 2026-11-01, and the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 and MAL-2026-18425 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28 and 2026-11-01, the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -29,6 +29,26 @@
       "tags": ["v1.107.0", "latest", "main-latest", "main-stable"],
       "url": "https://docs.litellm.ai/blog/security-incident-oct-21-2026",
       "note": "The post names the Docker Hub tags and this image index digest (compromised from 11:46:56 to 14:20 UTC on 2026-10-21) without the repository; docker.io/litellm/litellm carries those four tags (v1.107.0 removed, the rest repointed), and docker.io/berriai/litellm does not exist (404 on 2026-10-28). The post's GHCR digests are truncated, so none is listed. A digest is matched whatever registry name a reference gives it, since a digest names content; the tags are listed for the record and never matched."
+    }
+  ],
+  "extensions": [
+    {
+      "id": "CURSOR-CLAUDE-CODE-2026-10-29",
+      "extension": "anthropic.claude-code",
+      "versions": [
+        "2.1.313"
+      ],
+      "hosts": [
+        "*"
+      ],
+      "sha256": {
+        "extension.js": [
+          "ecb58cb29078d9646ad1dcdbe51526f2d9cfea06be5fb2ab183e8ecc3ab6bf15"
+        ]
+      },
+      "fixed": "2.1.314",
+      "url": "https://cursor.com/blog/claude-code-extension-security-notice",
+      "note": "Cursor's notice (read 2026-11-01) names 2.1.312 and 2.1.313 for macOS and Windows, served by its marketplace from about 09:27 to 20:35 UTC on 29 Oct 2026, and gives one SHA-256 for their tampered extension.js. Anthropic published 2.1.312 on 27 Oct and no 2.1.313 anywhere (npm @anthropic-ai/claude-code, the VS Code Marketplace and Open VSX went from 2.1.312 to 2.1.314, read 2026-11-01), so 2.1.313 is listed for every editor and 2.1.312 only by that digest. Persistence the notice names: an SSH key labelled svc-telemetry in ~/.ssh/authorized_keys (on Windows also C:\\ProgramData\\ssh\\administrators_authorized_keys), ~/.config/.smt and ~/.config/.smtk, the LaunchAgent ~/Library/LaunchAgents/com.apple.sysmond.plist (macOS), a crontab @reboot line running ~/.config/.smt (Linux), and the scheduled task SysMon or a Startup sysmon.cmd (Windows)."
     }
   ]
 }

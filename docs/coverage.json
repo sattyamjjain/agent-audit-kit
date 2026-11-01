@@ -2383,6 +2383,33 @@
         "ASI04 Agentic Supply Chain Vulnerabilities",
         "ASI05 Unexpected Code Execution (RCE)"
       ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-MALICIOUS-EXTENSION-001",
+      "severity": "critical",
+      "title": "An agent host's installed editor extension is a build listed as malware"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
       "owasp_mcp": [
         "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
       ],
@@ -10938,36 +10965,36 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 19,
-      "supply-chain": 196,
+      "supply-chain": 197,
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 227,
+      "Art. 10 - Data Governance": 228,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 332,
-      "Art. 9 - Risk Management": 223
+      "Art. 15 - Robustness & Security": 333,
+      "Art. 9 - Risk Management": 224
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 227,
-      "Constrain and sandbox tool execution (p.11)": 206,
-      "Design for boundaries (p.10)": 317,
-      "Filter and monitor output pipelines and chained execution (p.12)": 124,
+      "Choose supported MCP projects when possible (p.10)": 228,
+      "Constrain and sandbox tool execution (p.11)": 207,
+      "Design for boundaries (p.10)": 318,
+      "Filter and monitor output pipelines and chained execution (p.12)": 125,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 288,
-      "Sign and verify MCP messages (p.12)": 298,
-      "Track and patch MCP related vulnerabilities (p.13)": 232,
-      "Validate parameters (p.11)": 210
+      "Scan local network for open or vulnerable MCP servers (p.14)": 289,
+      "Sign and verify MCP messages (p.12)": 299,
+      "Track and patch MCP related vulnerabilities (p.13)": 233,
+      "Validate parameters (p.11)": 211
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
       "ASI03": 117,
-      "ASI04": 225,
-      "ASI05": 104,
+      "ASI04": 226,
+      "ASI05": 105,
       "ASI06": 5,
       "ASI07": 24,
       "ASI08": 9,
@@ -10987,14 +11014,14 @@
       "MCP10:2025": 15
     },
     "by_severity": {
-      "critical": 100,
+      "critical": 101,
       "high": 189,
       "info": 5,
       "low": 19,
       "medium": 126
     },
     "total_cves_covered": 380,
-    "total_rules": 439
+    "total_rules": 440
   },
   "tool": "agent-audit-kit"
 }
