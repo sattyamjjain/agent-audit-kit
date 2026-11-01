@@ -127,6 +127,9 @@ class Declaration:
     # `declaration_lines` can find its line without searching the text; () for a
     # requirements line, which carries `line` instead.
     path: tuple[str | int, ...] = ()
+    # For a launch, the package spec as the launcher was given it (`pkg@1.2.3`),
+    # the word AAK-SUPPLY-001 and AAK-MCP-007 quote; "" for any other kind.
+    spec: str = ""
 
 
 _PIPFILE_NON_PACKAGES = frozenset({"source", "requires", "scripts", "pipenv"})
@@ -448,13 +451,13 @@ def _launch_declarations(
             parts = npm_spec(launched.spec)
             if parts.kind == "registry" and parts.name:
                 found.append(Declaration(parts.name, parts.version, "npm", "js", "launch", text,
-                                         argv=line, path=where))
+                                         argv=line, path=where, spec=launched.spec))
         else:
             parts = py_spec(launched.spec)
             if parts.kind != "local" and parts.name:
                 version = "" if parts.kind == "vcs" else parts.version
                 found.append(Declaration(parts.name, version, "pep440", "py", "launch", text,
-                                         argv=line, path=where))
+                                         argv=line, path=where, spec=launched.spec))
     return found
 
 

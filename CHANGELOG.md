@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-MALICIOUS-RELEASE-002 (HIGH): an MCP config launches a package with no version, a tag, or a range that admits a listed release, while the malicious-release feed lists particular releases of that package. GitHub published local-commander-agent 0.3.52, an MCP bridge, as malware on 31 Oct (GHSA-7j62-5j84-72fv, OSV MAL-2026-18425), and `npx -y local-commander-agent` drew only a MEDIUM "no version pin" on 0.6.30, because AAK-MALICIOUS-RELEASE-001 matches a version-specific entry only against an exact pin. Such a launch is now reported whenever the package has any version-specific entry, naming the entries and their releases, and AAK-SUPPLY-001 and AAK-MCP-007 stand down on it, so it is reported once. A package the feed lists in every release stays AAK-MALICIOUS-RELEASE-001's.
+- `aak scan --include-user-config` also reads the launchers' caches on this host: npm's npx cache (`<cache>/_npx/<hash>/node_modules/<name>/package.json`, the cache `npm_config_cache` names, else `~/.npm` or `%LocalAppData%\npm-cache`) and uv's tool environments (`<cache>/environments-v*/`, the cache `UV_CACHE_DIR` names, else `$XDG_CACHE_HOME/uv`, `~/.cache/uv` or `%LOCALAPPDATA%\uv\cache`). A listed release in either is AAK-MALICIOUS-RELEASE-001, and the evidence names the cache path. Without the flag a scan still reads nothing outside the project.
+- The bundled malicious-release feed holds OSV MAL-2026-18425 (local-commander-agent 0.3.52) beside MAL-2026-2144, written as `aak update` reads the OSV record, so a scan without `aak update` reports both.
+
 ## [0.6.30] - 2026-10-31
 
 ### Added

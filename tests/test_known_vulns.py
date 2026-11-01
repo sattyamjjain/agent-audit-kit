@@ -417,7 +417,7 @@ def test_aak_update_reports_both_feeds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 2 entries" in result.output  # MAL-2026-9001 and the bundled one
+    assert "Malicious-release feed updated: 3 entries" in result.output  # MAL-2026-9001 and the two bundled ones
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
     assert len(calls) == 2
 

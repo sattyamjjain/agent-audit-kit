@@ -248,6 +248,7 @@ class Release:
     ranges: tuple[Range, ...]
     modified: str
     url: str
+    listed: tuple[str, ...] = ()      # the listed versions as the feed writes them
 
     def matches(self, version: str | None) -> bool:
         """Does a declaration of `version` (None: no exact version) install a
@@ -353,6 +354,7 @@ def _release(ecosystem: str, raw: dict[str, Any]) -> Release:
         ranges=ranges,
         modified=str(raw.get("modified") or ""),
         url=str(raw.get("url") or ""),
+        listed=_strings(raw.get("versions")),
     )
 
 

@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'AgentAuditKit — MCP Security Scan (438 rules, OWASP Agentic Top 10 + MCP Top 10)'
+description: 'AgentAuditKit — MCP Security Scan (439 rules, OWASP Agentic Top 10 + MCP Top 10)'
 author: 'sattyamjjain'
 
 branding:
@@ -28,7 +28,7 @@ inputs:
     required: false
     default: 'true'
   include-user-config:
-    description: 'Also scan user-level agent configs (~/.claude/)'
+    description: 'Also read user-level state outside the project: ~/.claude.json, ~/.claude/settings.json, and the npx and uv launcher caches'
     required: false
     default: 'false'
   rules:

@@ -126,7 +126,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_cve_pins_2026_07", "MCP/agent CVE version-pins — 2026-07 disclosure wave", []),
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
-    ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)", []),
+    ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)",
+     ["include_user_config"]),
     ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
     ("known_vulns_launch", "Launched MCP servers, binaries and images against NVD advisories (offline feed)", []),
     ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),
@@ -488,7 +489,8 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
 
 
 def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding]:
-    """Stand AAK-MCP-007 down on a launch AAK-SUPPLY-001 reports in the same run.
+    """Stand AAK-MCP-007 down on a launch AAK-SUPPLY-001 reports in the same run,
+    and both down on one AAK-MALICIOUS-RELEASE-002 reports.
 
     Both rules report one fact, a server launch that fetches a package without
     pinning it (`npx -y pkg`, `uvx pkg`). AAK-SUPPLY-001 reads the launcher's
@@ -519,24 +521,46 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     As in the composition pass, it stands down only for a finding at or above
     its own severity, so the `--severity` floor can never hide a launch that
     AAK-MCP-007 alone would have shown.
+
+    AAK-MALICIOUS-RELEASE-002 reports the same unpinned launch once more, when
+    the malicious-release feed lists a release of the package: the fix is the
+    same pin, and the finding says which releases to keep out. Both AAK-MCP-007
+    and AAK-SUPPLY-001 stand down for it, on the same terms. Its evidence opens
+    with the launch's `Server '<name>' arg: <spec>` head and goes on in prose,
+    so a launch is the same when that evidence starts with the subject the
+    other rule's evidence gives (`_launchers.names_launch`). A launch that is
+    not an entry of a top-level server map gets no head, and both findings stay.
     """
-    from agent_audit_kit.scanners._launchers import launch_subject
+    from agent_audit_kit.scanners._launchers import launch_subject, names_launch
+
+    def _file(finding: Finding) -> str:
+        return (finding.file_path or "").replace("\\", "/")
 
     reported: dict[tuple[str, str], int] = {}
+    unpinned: dict[str, list[tuple[str, int]]] = {}
     for f in findings:
-        if f.rule_id != "AAK-SUPPLY-001":
-            continue
-        subject = launch_subject(f.evidence)
-        if subject is not None:
-            key = (f.file_path, subject)
-            reported[key] = max(reported.get(key, 0), f.severity.numeric())
-    if not reported:
+        if f.rule_id == "AAK-MALICIOUS-RELEASE-002":
+            unpinned.setdefault(_file(f), []).append((f.evidence, f.severity.numeric()))
+        elif f.rule_id == "AAK-SUPPLY-001":
+            subject = launch_subject(f.evidence)
+            if subject is not None:
+                key = (_file(f), subject)
+                reported[key] = max(reported.get(key, 0), f.severity.numeric())
+    if not reported and not unpinned:
         return findings
 
     def _reported(finding: Finding) -> bool:
         subject = launch_subject(finding.evidence)
         if subject is None:
             return False
-        return reported.get((finding.file_path, subject), 0) >= finding.severity.numeric()
+        own = finding.severity.numeric()
+        if finding.rule_id == "AAK-MCP-007" and reported.get((_file(finding), subject), 0) >= own:
+            return True
+        return any(rank >= own and names_launch(evidence, subject)
+                   for evidence, rank in unpinned.get(_file(finding), ()))
 
-    return [f for f in findings if f.rule_id != "AAK-MCP-007" or not _reported(f)]
+    return [f for f in findings if f.rule_id not in _LAUNCH_DUPLICATES or not _reported(f)]
+
+
+# The rules `_drop_launches_supply_chain_reports` may stand down.
+_LAUNCH_DUPLICATES = frozenset({"AAK-MCP-007", "AAK-SUPPLY-001"})

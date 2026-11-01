@@ -1,0 +1,7 @@
+{
+  "name": "bridge-launcher",
+  "private": true,
+  "scripts": {
+    "start": "npx -y local-commander-agent"
+  }
+}

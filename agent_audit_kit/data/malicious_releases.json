@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-28T05:10:31Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 as https://api.osv.dev/v1/vulns/MAL-2026-2144 gave it on 2026-10-28, and the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
+  "generated_at": "2026-11-01T10:12:39Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 and MAL-2026-18425 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28 and 2026-11-01, and the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -10,6 +10,15 @@
       "versions": ["1.82.7", "1.82.8", "1.107.0"],
       "modified": "2026-10-21T22:01:01.881791175Z",
       "url": "https://osv.dev/vulnerability/MAL-2026-2144"
+    },
+    {
+      "id": "MAL-2026-18425",
+      "aliases": ["GHSA-7j62-5j84-72fv"],
+      "ecosystem": "npm",
+      "name": "local-commander-agent",
+      "versions": ["0.3.52"],
+      "modified": "2026-10-31T08:30:04.463975866Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-18425"
     }
   ],
   "oci": [

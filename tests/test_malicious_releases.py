@@ -182,10 +182,16 @@ def test_a_digest_matches_under_any_registry_name(tmp_path: Path) -> None:
 
 def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
-    (entry,) = data["entries"]
-    assert (entry["id"], entry["ecosystem"], entry["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
-    assert entry["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
-    assert entry["modified"] == "2026-10-21T22:01:01.881791175Z"
+    litellm, local_commander = data["entries"]
+    assert (litellm["id"], litellm["ecosystem"], litellm["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
+    assert litellm["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
+    assert litellm["modified"] == "2026-10-21T22:01:01.881791175Z"
+    # MAL-2026-18425 is bundled exactly as `aak update` would read the OSV record,
+    # saved unedited from https://api.osv.dev/v1/vulns/MAL-2026-18425 on 2026-11-01.
+    record = json.loads((FIXTURES / "osv" / "MAL-2026-18425.json").read_text())
+    assert malicious_feed.osv_entries(record, "npm") == [local_commander]
+    assert local_commander["versions"] == ["0.3.52"] and local_commander["aliases"] == ["GHSA-7j62-5j84-72fv"]
+    assert "MAL-2026-2144" in data["source"] and "MAL-2026-18425" in data["source"]
     (image,) = data["oci"]
     assert image["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
 
@@ -275,9 +281,11 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
     done = malicious_feed.refresh(opener=_opener(), now=NOW)
     data = json.loads(done.path.read_text())
     assert data["generated_at"] == "2026-10-28T12:00:00Z"
-    assert sorted(e["id"] for e in data["entries"]) == ["MAL-2026-1", "MAL-2026-2144", "MAL-2026-3", "MAL-2026-4"]
+    assert sorted(e["id"] for e in data["entries"]) == [
+        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-2144", "MAL-2026-3", "MAL-2026-4",
+    ]
     assert data["oci"][0]["digests"] == [DIGEST]
-    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "bundled": 1}
+    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "bundled": 2}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
     assert feed.match("npm", "aak-squat", "9.9.9") and feed.match("npm", "aak-ranged", "1.2.5")
@@ -333,7 +341,7 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 4 entries" in result.output
+    assert "Malicious-release feed updated: 5 entries" in result.output
     assert "GitHub: skipped" in result.output
 
 
@@ -366,3 +374,256 @@ def test_a_lockfile_repeating_one_release_reports_it_once(tmp_path: Path) -> Non
     (tmp_path / "uv.lock").write_text('[[package]]\nname = "litellm"\nversion = "1.107.0"\n' * 3)
     findings = [f for f in scan(tmp_path)[0] if f.rule_id == RULE]
     assert [(f.file_path, f.line_number) for f in findings] == [("uv.lock", 2)]
+
+
+# ---- AAK-MALICIOUS-RELEASE-002: an unpinned launch of a package with listed releases ---------
+
+
+UNPINNED = "AAK-MALICIOUS-RELEASE-002"
+LAUNCH_RULES = {RULE, UNPINNED, "AAK-SUPPLY-001", "AAK-MCP-007"}
+
+
+def _launch_findings(root: Path, **kwargs: object) -> list[tuple[str, str, str, int | None]]:
+    result = run_scan(project_root=root, **kwargs)  # type: ignore[arg-type]
+    return sorted(
+        (f.rule_id, f.severity.value, f.file_path, f.line_number)
+        for f in result.findings if f.rule_id in LAUNCH_RULES
+    )
+
+
+def _mcp(tmp_path: Path, *args: str, command: str = "npx", name: str = ".mcp.json",
+         key: str = "mcpServers") -> Path:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({key: {"lc": {"command": command, "args": list(args)}}}, indent=2))
+    return path
+
+
+def test_an_unpinned_launch_of_local_commander_agent_is_one_high_finding() -> None:
+    root = FIXTURES / "unpinned-launch"
+    result = run_scan(project_root=root)
+    launch = [f for f in result.findings if f.rule_id in LAUNCH_RULES]
+    assert [(f.rule_id, f.severity, f.file_path, f.line_number) for f in launch] == [
+        (UNPINNED, Severity.HIGH, ".mcp.json", 5),
+    ]
+    evidence = launch[0].evidence
+    for part in ("Server 'lc' arg: local-commander-agent", "`npx local-commander-agent`",
+                 "MAL-2026-18425", "GHSA-7j62-5j84-72fv", "local-commander-agent 0.3.52",
+                 "Pin a release outside the list", "check the launcher cache",
+                 "`aak scan --include-user-config`", "bundled copy generated"):
+        assert part in evidence, part
+
+
+def test_the_launch_was_supply_001_alone_before_002(tmp_path: Path) -> None:
+    """Without 002 the same launch is AAK-SUPPLY-001 (AAK-MCP-007 already stood down
+    for it): 002 replaces both, it does not add a second report."""
+    _mcp(tmp_path, "-y", "local-commander-agent")
+    excluded = run_scan(project_root=tmp_path, exclude_rules=[UNPINNED])
+    assert [f.rule_id for f in excluded.findings if f.rule_id in LAUNCH_RULES] == ["AAK-SUPPLY-001"]
+    only_007 = run_scan(project_root=tmp_path, rules=["AAK-MCP-007", UNPINNED])
+    assert [f.rule_id for f in only_007.findings] == [UNPINNED]
+
+
+def test_a_launch_pinned_outside_the_list_is_quiet(tmp_path: Path) -> None:
+    _mcp(tmp_path, "-y", "local-commander-agent@0.3.61")
+    assert [r for r in _launch_findings(tmp_path) if r[0] in (RULE, UNPINNED)] == []
+
+
+def test_a_launch_pinned_to_the_listed_release_stays_001(tmp_path: Path) -> None:
+    _mcp(tmp_path, "-y", "local-commander-agent@0.3.52")
+    assert [r for r in _launch_findings(tmp_path) if r[0] in (RULE, UNPINNED)] == [
+        (RULE, "critical", ".mcp.json", 7),
+    ]
+
+
+def test_vs_code_servers_map_reads_the_same(tmp_path: Path) -> None:
+    _mcp(tmp_path, "-y", "local-commander-agent", name=".vscode/mcp.json", key="servers")
+    assert _launch_findings(tmp_path) == [(UNPINNED, "high", ".vscode/mcp.json", 7)]
+
+
+def test_an_unpinned_uvx_launch_of_litellm_names_mal_2026_2144(tmp_path: Path) -> None:
+    _mcp(tmp_path, "litellm", command="uvx")
+    findings = [f for f in run_scan(project_root=tmp_path).findings if f.rule_id in LAUNCH_RULES]
+    assert [(f.rule_id, f.severity) for f in findings] == [(UNPINNED, Severity.HIGH)]
+    assert "MAL-2026-2144" in findings[0].evidence
+    assert "litellm 1.82.7, 1.82.8, 1.107.0" in findings[0].evidence
+
+
+def test_an_every_version_entry_stays_001_and_is_not_002(tmp_path: Path) -> None:
+    _cached_feed([_entry("aak-typosquat", "npm", all_versions=True)])
+    _mcp(tmp_path, "-y", "aak-typosquat")
+    assert [r[0] for r in _launch_findings(tmp_path) if r[0] in (RULE, UNPINNED)] == [RULE]
+
+
+def test_a_name_that_only_starts_with_a_listed_one_is_quiet(tmp_path: Path) -> None:
+    _mcp(tmp_path, "-y", "local-commander-agentx")
+    assert [r for r in _launch_findings(tmp_path) if r[0] in (RULE, UNPINNED)] == []
+
+
+@pytest.mark.parametrize(
+    "spec, fires",
+    [
+        ("local-commander-agent@latest", True),   # a tag is whatever the registry says today
+        ("local-commander-agent@^0.3.0", True),   # admits 0.3.52
+        ("local-commander-agent@~0.3.50", True),
+        ("local-commander-agent@^0.3.53", False),  # starts above the listed release
+        ("local-commander-agent@>=0.4.0", False),
+        ("github:example/local-commander-agent", False),  # not the registry
+    ],
+)
+def test_a_range_is_reported_only_when_it_admits_a_listed_release(tmp_path: Path, spec: str, fires: bool) -> None:
+    _mcp(tmp_path, "-y", spec)
+    assert any(r[0] == UNPINNED for r in _launch_findings(tmp_path)) is fires
+
+
+def test_002_stands_down_only_supply_001_at_or_below_its_severity(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from agent_audit_kit.engine import _drop_launches_supply_chain_reports
+
+    _mcp(tmp_path, "-y", "local-commander-agent")
+    findings = run_scan(project_root=tmp_path, exclude_rules=[UNPINNED]).findings
+    supply = [f for f in findings if f.rule_id == "AAK-SUPPLY-001"]
+    (unpinned,) = [f for f in run_scan(project_root=tmp_path, rules=[UNPINNED]).findings]
+    assert _drop_launches_supply_chain_reports(supply + [unpinned]) == [unpinned]
+    lowered = replace(unpinned, severity=Severity.LOW)
+    assert _drop_launches_supply_chain_reports(supply + [lowered]) == supply + [lowered]
+    elsewhere = replace(unpinned, file_path="other/.mcp.json")
+    assert _drop_launches_supply_chain_reports(supply + [elsewhere]) == supply + [elsewhere]
+
+
+def test_a_launch_key_does_not_match_a_longer_package_name() -> None:
+    from agent_audit_kit.scanners._launchers import launch_head, names_launch
+
+    evidence = launch_head("lc", "pkg-two") + " is launched by `npx pkg-two`"
+    assert names_launch(evidence, launch_head("lc", "pkg-two"))
+    assert not names_launch(evidence, launch_head("lc", "pkg"))
+
+
+# ---- the launchers' caches (--include-user-config) -------------------------------------------
+
+
+def _npx_cache(tmp_path: Path, name: str, version: str) -> Path:
+    cache = tmp_path / "npm-cache"
+    package = cache / "_npx" / "0123456789abcdef" / "node_modules" / name
+    package.mkdir(parents=True)
+    (package / "package.json").write_text(json.dumps({"name": name, "version": version}, indent=2))
+    return cache
+
+
+def test_the_npx_cache_is_read_only_when_asked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    cache = _npx_cache(tmp_path, "local-commander-agent", "0.3.52")
+    monkeypatch.setenv("npm_config_cache", str(cache))
+    assert [f for f in run_scan(project_root=project).findings if f.rule_id == RULE] == []
+    (finding,) = [f for f in run_scan(project_root=project, include_user_config=True).findings
+                  if f.rule_id == RULE]
+    where = cache / "_npx" / "0123456789abcdef" / "node_modules" / "local-commander-agent"
+    assert finding.file_path == (where / "package.json").as_posix() and finding.line_number == 3
+    assert finding.evidence.startswith(f"npx cache at {where.as_posix()} holds local-commander-agent 0.3.52")
+    assert "MAL-2026-18425" in finding.evidence and finding.severity is Severity.CRITICAL
+
+
+def test_the_npx_cache_defaults_to_dot_npm_and_reads_scoped_packages(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    _cached_feed([_entry("@aak/evil", "npm", versions=["1.0.0"])])
+    home = Path(os.environ["HOME"])
+    for key in [k for k in os.environ if k.lower() == "npm_config_cache"]:
+        monkeypatch.delenv(key)
+    _npx_cache(home, "@aak/evil", "1.0.0").rename(home / ".npm")
+    findings = [f for f in run_scan(project_root=tmp_path, include_user_config=True).findings if f.rule_id == RULE]
+    assert [f.file_path for f in findings] == [
+        (home / ".npm" / "_npx" / "0123456789abcdef" / "node_modules" / "@aak" / "evil" / "package.json").as_posix()
+    ]
+
+
+def test_a_cached_release_the_feed_does_not_list_is_quiet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("npm_config_cache", str(_npx_cache(tmp_path, "local-commander-agent", "0.3.61")))
+    project = tmp_path / "project"
+    project.mkdir()
+    assert [f for f in run_scan(project_root=project, include_user_config=True).findings if f.rule_id == RULE] == []
+
+
+def _uv_env(cache: Path, version: str = "1.107.0", linked: bool = True) -> Path:
+    archive = cache / "archive-v0" / "abcdEFGHijkl0123"
+    dist = archive / "lib" / "python3.12" / "site-packages" / f"litellm-{version}.dist-info"
+    dist.mkdir(parents=True)
+    (archive / "pyvenv.cfg").write_text("home = /usr/bin\n")
+    (dist / "METADATA").write_text(f"Metadata-Version: 2.1\nName: litellm\nVersion: {version}\n")
+    entry = cache / "environments-v2" / "253c7120a97b53a1" / "b2ea1928ed61d84d"
+    entry.parent.mkdir(parents=True)
+    if linked:
+        entry.symlink_to(archive, target_is_directory=True)
+    else:
+        archive.rename(entry)
+    return entry
+
+
+@pytest.mark.parametrize("linked", [True, False], ids=["uv-0.9-link", "directory"])
+def test_the_uv_cache_environments_are_read_when_asked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, linked: bool) -> None:
+    cache = tmp_path / "uv-cache"
+    entry = _uv_env(cache, linked=linked)
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    project = tmp_path / "project"
+    project.mkdir()
+    assert [f for f in run_scan(project_root=project).findings if f.rule_id == RULE] == []
+    (finding,) = [f for f in run_scan(project_root=project, include_user_config=True).findings
+                  if f.rule_id == RULE]
+    dist = entry / "lib" / "python3.12" / "site-packages" / "litellm-1.107.0.dist-info"
+    assert finding.file_path == (dist / "METADATA").as_posix() and finding.line_number == 3
+    assert finding.evidence.startswith(f"uvx cache at {dist.as_posix()} holds litellm 1.107.0")
+    assert "MAL-2026-2144" in finding.evidence
+
+
+def test_a_uv_environment_under_the_scan_root_is_reported_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = tmp_path / ".cache" / "uv"
+    _uv_env(cache)
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    findings = [f for f in run_scan(project_root=tmp_path, include_user_config=True).findings if f.rule_id == RULE]
+    assert [f.file_path for f in findings] == [
+        ".cache/uv/archive-v0/abcdEFGHijkl0123/lib/python3.12/site-packages/litellm-1.107.0.dist-info/METADATA"
+    ]
+
+
+def test_the_cache_directories_follow_the_documented_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import os
+
+    from agent_audit_kit.scanners.malicious_releases import npm_cache_dir, uv_cache_dir
+
+    home = Path(os.environ["HOME"])
+    for key in [k for k in os.environ if k.lower() == "npm_config_cache"]:
+        monkeypatch.delenv(key)
+    monkeypatch.delenv("UV_CACHE_DIR")
+    monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+    if os.name != "nt":
+        assert npm_cache_dir() == home / ".npm"
+        assert uv_cache_dir() == home / ".cache" / "uv"
+        monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "xdg"))
+        assert uv_cache_dir() == tmp_path / "xdg" / "uv"
+        monkeypatch.setenv("XDG_CACHE_HOME", "relative/xdg")  # XDG ignores a relative path
+        assert uv_cache_dir() == home / ".cache" / "uv"
+    monkeypatch.setenv("NPM_CONFIG_CACHE", str(tmp_path / "npm"))  # npm reads its variables in any case
+    assert npm_cache_dir() == tmp_path / "npm"
+
+
+def test_aak_scan_include_user_config_reads_the_caches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("npm_config_cache", str(_npx_cache(tmp_path, "local-commander-agent", "0.3.52")))
+    project = tmp_path / "project"
+    project.mkdir()
+    args = ["scan", str(project), "--format", "json", "--severity", "info", "--fail-on", "none"]
+    plain = json.loads(CliRunner().invoke(cli, args).output)
+    asked = json.loads(CliRunner().invoke(cli, args + ["--include-user-config"]).output)
+    assert RULE not in {f["ruleId"] for f in plain["findings"]}
+    assert RULE in {f["ruleId"] for f in asked["findings"]}
+
+
+def test_each_server_launching_the_package_is_its_own_finding(tmp_path: Path) -> None:
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {
+        name: {"command": "npx", "args": ["-y", "local-commander-agent"]} for name in ("a", "b")}}, indent=2))
+    findings = [f for f in run_scan(project_root=tmp_path).findings if f.rule_id in LAUNCH_RULES]
+    assert sorted((f.rule_id, f.evidence.split(" is launched")[0]) for f in findings) == [
+        (UNPINNED, "Server 'a' arg: local-commander-agent"),
+        (UNPINNED, "Server 'b' arg: local-commander-agent"),
+    ]

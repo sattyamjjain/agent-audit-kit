@@ -41,7 +41,7 @@ Nothing here was cut; it is the same content with a home of its own.
 | `--rules` | all | Comma-separated rule IDs to include |
 | `--exclude-rules` | | Comma-separated rule IDs to skip |
 | `--ignore-paths` | | Comma-separated paths to exclude |
-| `--include-user-config` | | Also scan `~/.claude/`, `~/.cursor/`, etc. |
+| `--include-user-config` | | Also read this user's state outside the project: `~/.claude.json`, `~/.claude/settings.json`, and the npx and uv launcher caches ([AAK-MALICIOUS-RELEASE-001](rules/AAK-MALICIOUS-RELEASE-001.md)) |
 | `--score` | | Show security score and grade |
 | `--owasp-report` | | Generate OWASP coverage matrix |
 | `--compliance FRAMEWORK` | | Compliance report: `eu-ai-act`, `soc2`, `iso27001`, `hipaa`, `nist-ai-rmf`, `mcp-2026-roadmap` |

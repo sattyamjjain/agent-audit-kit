@@ -463,6 +463,14 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "launch-many-configs": (known_vulns_launch.scan, lambda k: {
         f"p{i}/.mcp.json": _js({"mcpServers": {"s": {"command": "go", "args": ["run", "github.com/gojue/moling@v0.4.0"]}}})
         for i in range(k)}, 60, True),
+    # malicious_releases' AAK-MALICIOUS-RELEASE-002, before it was released: one finding per
+    # server, each placed and described once, and one launch naming a listed package
+    # thousands of times (`-p` repeated) reported once.
+    "unpinned-malicious-launches": (malicious_releases.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "npx", "args": ["-y", "local-commander-agent"]} for i in range(k)}})}, 300, True),
+    "unpinned-malicious-package-flags": (malicious_releases.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        "s": {"command": "npx", "args": ["-y"] + ["-p", "local-commander-agent@^0.3.0"] * k + ["lc"]}}})},
+        1_000, False),
 }
 
 
