@@ -176,7 +176,7 @@
     },
     {
       "module": "mcp_codeexec_sandbox",
-      "name": "Code-execution tool sandboxes with open runtime permissions (FastMCP GenerativeUI, Deno)"
+      "name": "Code-execution tool sandboxes with open runtime permissions (prefab-ui GenerativeUI, Deno)"
     },
     {
       "module": "mcp_config",
