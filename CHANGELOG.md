@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-KNOWN-VULN-001 reads NVD records whose CNA names a PyPI or npm package by `collectionURL`, with no packageURL and no map row. JFrog's CVE-2026-120338 (CVSS 10.0, prefab-ui 0.14.0 up to 0.21.0, the Generative UI sandbox FastMCP's `generate_prefab_ui` tool runs) names prefab-ui only as `collectionURL` `https://pypi.org/project/prefab-ui/` and `packageName`, and `aak update` dropped it as unmapped, so a lockfile with prefab-ui 0.20.2 scanned clean on 0.6.31. A package's own page (`https://pypi.org/project/<name>/`, `https://www.npmjs.com/package/<name>` or `@scope/<name>`) and the registry root the CVE JSON 5 schema's examples use (`https://pypi.python.org`, `https://registry.npmjs.org`, with the name in `packageName`) now map after a packageURL and before the reviewed rows. A page and a `packageName` that disagree map nothing and count as unmapped, and any other `collectionURL` goes to the rows as before. The CVE watcher's issue body says "by its collectionURL".
+- The bundled advisory feed holds NVD's record of CVE-2026-120338, saved unedited under `tests/fixtures/nvd_cna/`, so a project locking prefab-ui 0.14.0 up to 0.21.0 gets a CRITICAL AAK-KNOWN-VULN-001 finding naming the fix, 0.21.0, without `aak update`.
+
 ## [0.6.31] - 2026-11-01
 
 ### Added
