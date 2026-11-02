@@ -44,6 +44,7 @@ from agent_audit_kit.scanners import (
     known_vulns_launch,
     langchain_prompt_loader,
     malicious_extensions,
+    mcp_codeexec_sandbox,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -485,6 +486,19 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         300, False),
     "extension-recommendations": (malicious_extensions.scan, lambda k: {".vscode/extensions.json": _js(
         {"recommendations": ["anthropic.claude-code"] * k})}, 3_000, False),
+    # mcp_codeexec_sandbox, before it was released: each launch's line counted from the
+    # top of the file, flags read in windows that could overlap, and a revoke call's
+    # names read from a window around each one.
+    "deno-launches": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": "const run = (p, code) => p.runPython(code);\n"
+                                                            + 'spawn("deno", ["run", "-A", s]);\n' * k}, 1_000, True),
+    "deno-launch-no-close": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": "p.runPython(code);\n"
+                                                                  + "deno run -A " * k}, 3_000, False),
+    "deno-handoffs-and-revokes": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": 'spawn("deno", ["run", "-A"]);\n'
+                                                                       + "p.runPython(`${c}`); Deno.permissions.revoke({name: 'net'});\n" * k},
+                                  600, False),
+    "genui-registrations": (mcp_codeexec_sandbox.scan, lambda k: {
+        "server.py": "from fastmcp.apps.generative import GenerativeUI\n" + "mcp.add_provider(GenerativeUI())\n" * k,
+        "uv.lock": '[[package]]\nname = "prefab-ui"\nversion = "0.20.2"\n'}, 1_000, True),
 }
 
 

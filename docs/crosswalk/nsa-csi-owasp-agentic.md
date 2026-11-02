@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (440 total; 402 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -189,6 +189,8 @@ Every AgentAuditKit rule (440 total; 402 mapped) against two agentic-security st
 | `AAK-MCP-CLAUDECODE-CVE-2026-103012-001` | low | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-CLINE-CVE-2026-59723-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-MCP-CLOUDRUN-CVE-2026-85297-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
+| `AAK-MCP-CODEEXEC-SANDBOX-001` | critical | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
+| `AAK-MCP-CODEEXEC-SANDBOX-002` | high | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-MCP-CODEWHALE-CVE-2026-75858-001` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI09 Human-Agent Trust Exploitation |
 | `AAK-MCP-CONDUCTOR-CVE-2026-109402-001` | medium | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-CONFIG-MALFORMED-001` | medium | mcp-config | — | — |

@@ -1,0 +1,12 @@
+version = 1
+requires-python = ">=3.10"
+
+[[package]]
+name = "fastmcp"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "prefab-ui"
+version = "0.20.2"
+source = { registry = "https://pypi.org/simple" }
