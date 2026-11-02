@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed mappings from a CNA's (vendor, product) pair or repository to what AAK can match it against. `rows` name the PyPI or npm package it publishes: agent_audit_kit/nvd_feed.py reads a row only for an NVD record whose CNA data carries no packageURL. Add a row only after checking that the package's own page on pypi.org or npmjs.com names the same project (its repository), never from a name alone, and set `reviewed` to that date. `launch` rows name how a project starts software that is on neither registry, for AAK-KNOWN-VULN-002: the `commands` an MCP config runs (file names), the Go `go_modules` it starts with `go run`, and the `images` a compose file or `docker run` names. Take each name from the project's own repository (the binary its README puts in an MCP config, the module path in its go.mod, the images its README or compose file names), never from a name alone, and set `reviewed` to that date.",
+  "description": "Reviewed mappings from a CNA's (vendor, product) pair or repository to what AAK can match it against. `rows` name the PyPI or npm package it publishes: agent_audit_kit/nvd_feed.py reads a row only for an NVD record whose CNA data carries no packageURL and no PyPI or npm collectionURL, which name the package themselves. Add a row only after checking that the package's own page on pypi.org or npmjs.com names the same project (its repository), never from a name alone, and set `reviewed` to that date. `launch` rows name how a project starts software that is on neither registry, for AAK-KNOWN-VULN-002: the `commands` an MCP config runs (file names), the Go `go_modules` it starts with `go run`, and the `images` a compose file or `docker run` names. Take each name from the project's own repository (the binary its README puts in an MCP config, the module path in its go.mod, the images its README or compose file names), never from a name alone, and set `reviewed` to that date.",
   "rows": [
     {
       "vendor": "IBM",
@@ -24,6 +24,15 @@
       "ecosystem": "npm",
       "name": "@modelcontextprotocol/inspector",
       "reviewed": "2026-10-30"
+    },
+    {
+      "vendor": "samanhappy",
+      "product": "MCPHub",
+      "repo": "https://github.com/samanhappy/mcphub",
+      "ecosystem": "npm",
+      "name": "@samanhappy/mcphub",
+      "reviewed": "2026-11-02",
+      "checked": "npm's registry record for @samanhappy/mcphub, which its npmjs.com page renders (the page answers a script with a bot check), carries no repository field, so the page shows the project only in its README, which links github.com/samanhappy/mcphub; that repository's package.json is named @samanhappy/mcphub and its npm-publish.yml publishes it to registry.npmjs.org."
     }
   ],
   "launch": [

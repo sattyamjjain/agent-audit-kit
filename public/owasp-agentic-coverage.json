@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-01T11:16:53Z",
+  "last_updated": "2026-11-02T08:31:59Z",
   "aak_version": "0.6.31",
-  "rule_count": 440,
+  "rule_count": 442,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1733,6 +1733,7 @@
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-120323",
             "CVE-2026-79743",
             "CVE-2026-79744",
             "CVE-2026-79745",
@@ -2427,7 +2428,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 226,
+      "rule_density": 227,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -3111,6 +3112,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-CODEEXEC-SANDBOX-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-120338"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
           "severity": "high",
           "cve_references": [
@@ -3760,6 +3772,7 @@
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-120323",
             "CVE-2026-79743",
             "CVE-2026-79744",
             "CVE-2026-79745",
@@ -4887,7 +4900,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 105,
+      "rule_density": 107,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5341,6 +5354,28 @@
           "aicm_references": [
             "AIS-07",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CODEEXEC-SANDBOX-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-120338"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CODEEXEC-SANDBOX-002",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-120338"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04"
           ]
         },
         {

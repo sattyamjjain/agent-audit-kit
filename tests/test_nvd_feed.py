@@ -38,6 +38,8 @@ FIXTURES = Path(__file__).parent / "fixtures" / "nvd_cna"
 LANGFLOW_CVES = ("CVE-2026-110186", "CVE-2026-93680", "CVE-2026-104339")
 OPEN_CVE = "CVE-2026-119025"
 LMDEPLOY_CVE = "CVE-2026-119706"
+PREFAB_CVE = "CVE-2026-120338"
+MCPHUB_CVE = "CVE-2026-120323"
 NOW = datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc)
 
 
@@ -90,26 +92,37 @@ def test_the_fixtures_are_nvd_api_answers_with_the_cna_data_at_cve_affected() ->
 
 
 def test_the_bundled_nvd_entries_are_the_fixtures_as_converted() -> None:
-    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the five
-    records, with the reviewed map shipped beside it; every one of the five maps.
-    CVE-2026-119706 (lmdeploy) maps by its packageURL, so it needed no map row."""
+    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the seven
+    records, with the reviewed map shipped beside it; every one of the seven maps.
+    CVE-2026-119706 (lmdeploy) maps by its packageURL and CVE-2026-120338 (prefab-ui)
+    by its collectionURL, so neither needed a map row. JFrog's `lessThan` 0.21.0 is
+    the converter's `fixed`, as every `lessThan` is. VulDB's CVE-2026-120323 (MCPHub)
+    lists releases one by one and maps by its reviewed row."""
     rows = nvd_feed.load_package_map()
     tally = nvd_feed.Tally()
-    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE)
+    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE, PREFAB_CVE, MCPHUB_CVE)
                                 for entry in nvd_feed.record_entries(_record(cve), rows, tally))
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert bundled["nvd"] == converted
-    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (5, 5, 0, 7)
+    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (7, 7, 0, 9)
     assert [(e["name"], e["id"], e["ranges"]) for e in converted] == [
         ("langflow", "CVE-2026-104339", [{"introduced": "1.0.0", "last_affected": "1.12.3"}]),
         ("langflow", "CVE-2026-110186", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
         ("langflow", "CVE-2026-93680", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
         ("lmdeploy", LMDEPLOY_CVE, [{"introduced": "0.9.0", "last_affected": "0.18.0"}]),
+        ("prefab-ui", PREFAB_CVE, [{"introduced": "0.14.0", "fixed": "0.21.0"}]),
         ("@modelcontextprotocol/inspector", OPEN_CVE, [{"introduced": "2.0.0", "fixed": "2.12.0"}]),
+        ("@samanhappy/mcphub", MCPHUB_CVE, []),
         ("open", OPEN_CVE, [{"introduced": "7.2.0", "fixed": "11.0.0"}]),
         ("opencode-ai", OPEN_CVE, [{"introduced": "1.0.137", "fixed": "1.18.33"}]),
     ]
-    assert {e["severity"] for e in converted if e["name"] in ("langflow", "lmdeploy")} == {"CRITICAL"}
+    assert {e["severity"] for e in converted if e["name"] in ("langflow", "lmdeploy", "prefab-ui")} == {"CRITICAL"}
+    (hub,) = [e for e in converted if e["id"] == MCPHUB_CVE]
+    assert (hub["mapped_by"], hub["severity"], hub["fixed"], len(hub["versions"])) == ("map", "MEDIUM", [], 54)
+    assert "1.1.7" in hub["versions"] and "1.1.8" not in hub["versions"]
+    (prefab,) = [e for e in converted if e["name"] == "prefab-ui"]
+    assert (prefab["ecosystem"], prefab["mapped_by"], prefab["score"], prefab["fixed"]) == (
+        "PyPI", "collectionURL", 10.0, ["0.21.0"])
     assert {(e["severity"], e["score"], e["scored_by"]) for e in converted if e["id"] == OPEN_CVE} == {
         ("HIGH", 7.5, "nvd-cvss3")}
 
@@ -121,8 +134,9 @@ def test_the_reviewed_map_names_each_package_s_own_repository() -> None:
         ("sindresorhus", "open"): ("npm", "open", "github.com/sindresorhus/open"),
         ("modelcontextprotocol", "inspector"): (
             "npm", "@modelcontextprotocol/inspector", "github.com/modelcontextprotocol/inspector"),
+        ("samanhappy", "MCPHub"): ("npm", "@samanhappy/mcphub", "github.com/samanhappy/mcphub"),
     }
-    assert all(row.reviewed == "2026-10-30" for row in rows.values())
+    assert {row.reviewed for row in rows.values()} == {"2026-10-30", "2026-11-02"}
 
 
 # ---- the order's cases, on the bundled feed -----------------------------------------------------------
@@ -515,7 +529,7 @@ def test_the_rebuild_drops_an_nvd_entry_osv_already_lists() -> None:
                       {"field": "lastModified", "start": "2026-07-02T09:00:00Z", "end": "2026-10-30T09:00:00Z",
                        "days": 120})
     written = collector.write(now=NOW)
-    assert (written.nvd, written.nvd_twins) == (6, 1)
+    assert (written.nvd, written.nvd_twins) == (8, 1)
     data = json.loads(written.path.read_text())
     assert "CVE-2026-110186" not in {e["id"] for e in data["nvd"]}
     assert data["source"].endswith("; NVD's records of CNA version data modified 2026-07-02 to 2026-10-30, "
@@ -720,7 +734,7 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
     the file it writes is the one scans read from then on."""
     monkeypatch.setattr(nvd_feed, "_default_opener", lambda: _Opener(_http_error(404)))
     result = CliRunner().invoke(cli, ["update"])
-    assert result.exit_code == 2 and "keeps the 7 NVD and 3 launch entries of the bundled feed." in result.output
+    assert result.exit_code == 2 and "keeps the 9 NVD and 3 launch entries of the bundled feed." in result.output
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert (_cached()["nvd"], _cached()["launch"]) == (bundled["nvd"], bundled["launch"])
     _uv_lock(tmp_path, "1.12.8")
@@ -730,9 +744,9 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
 def test_nvd_days_0_reads_nothing_and_keeps_what_scans_read(offline_osv: None) -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 7 NVD and 3 launch entries of the bundled "
+    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 9 NVD and 3 launch entries of the bundled "
             "feed.") in result.output
-    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (7, 3)
+    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (9, 3)
 
 
 # ---- launch rows: software a project starts ----------------------------------------------------------
@@ -849,3 +863,95 @@ def test_a_cached_feed_reads_the_bundled_list_it_has_no_key_for(cached: dict[str
 def test_nvd_days_is_bounded_by_nvd_s_window() -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "121"])
     assert result.exit_code == 2 and "121 is not in the range 0<=x<=120" in result.output
+
+
+# ---- collectionURL: CVE-2026-120338 (prefab-ui) -------------------------------------------------------
+
+
+def test_the_prefab_ui_record_names_its_package_by_collection_url_alone() -> None:
+    """STEP 0, as NVD served JFrog's record on 2026-11-02: no packageURL, the PyPI
+    project page as `collectionURL`, and `packageName`."""
+    page = _fixture(PREFAB_CVE)
+    assert page["format"] == "NVD_CVE" and page["totalResults"] == 1
+    record = page["vulnerabilities"][0]["cve"]
+    assert record["sourceIdentifier"] == "reefs@jfrog.com"
+    (data,) = [d for block in record["affected"] for d in block["affectedData"]]
+    assert "packageURL" not in data
+    assert (data["vendor"], data["product"], data["packageName"], data["collectionURL"], data["repo"]) == (
+        "PrefectHQ", "prefab-ui", "prefab-ui", "https://pypi.org/project/prefab-ui/", "git://github.com/PrefectHQ/prefab")
+    assert data["defaultStatus"] == "unaffected"
+    assert data["versions"] == [{"version": "0.14.0", "lessThan": "0.21.0", "versionType": "semver", "status": "affected"}]
+    assert nvd_feed.record_packages(_record(PREFAB_CVE), ()) == [("PyPI", "prefab-ui", "collectionURL")]
+
+
+_SEMVER_1_2 = [{"version": "1.0.0", "lessThan": "2.0.0", "versionType": "semver", "status": "affected"}]
+
+
+@pytest.mark.parametrize("fields, expected", [
+    ({"collectionURL": "https://pypi.org/project/prefab-ui/", "packageName": "prefab-ui"},
+     ("PyPI", "prefab-ui", "collectionURL")),
+    ({"collectionURL": "https://pypi.org/project/prefab-ui/"}, ("PyPI", "prefab-ui", "collectionURL")),
+    ({"collectionURL": "https://pypi.org/project/prefab-ui"}, ("PyPI", "prefab-ui", "collectionURL")),
+    ({"collectionURL": "https://pypi.org/project/Prefab_UI/", "packageName": "prefab-ui"},  # PEP 503
+     ("PyPI", "prefab-ui", "collectionURL")),
+    ({"collectionURL": "https://www.npmjs.com/package/@scope/x"}, ("npm", "@scope/x", "collectionURL")),
+    ({"collectionURL": "https://www.npmjs.com/package/%40scope/x", "packageName": "@scope/x"},
+     ("npm", "@scope/x", "collectionURL")),
+    ({"collectionURL": "https://www.npmjs.com/package/open"}, ("npm", "open", "collectionURL")),
+    # The CVE JSON 5 schema's own examples name the registry, and packageName the package.
+    ({"collectionURL": "https://pypi.python.org", "packageName": "prefab-ui"}, ("PyPI", "prefab-ui", "collectionURL")),
+    ({"collectionURL": "https://registry.npmjs.org", "packageName": "@scope/x"}, ("npm", "@scope/x", "collectionURL")),
+])
+def test_a_pypi_or_npm_collection_url_maps_without_a_row(fields: dict[str, str], expected: tuple[str, str, str]) -> None:
+    affected = {"vendor": "someone", "product": "something", "versions": _SEMVER_1_2, **fields}
+    assert nvd_feed.map_package(affected, ()) == expected
+    (entry,) = nvd_feed.record_entries(_cna(affected), ())
+    assert (entry["ecosystem"], entry["name"], entry["mapped_by"]) == expected
+
+
+@pytest.mark.parametrize("fields", [
+    {"collectionURL": "https://pypi.org/project/prefab-ui/", "packageName": "prefab"},     # disagrees
+    {"collectionURL": "https://www.npmjs.com/package/open", "packageName": "Open"},         # npm is exact
+    {"collectionURL": "https://registry.npmjs.org"},                                      # a root, no name
+    {"collectionURL": "https://pypi.python.org", "packageName": "not a name"},
+    {"collectionURL": "https://www.npmjs.com/package/scope/x"},                           # not `@scope/x`
+])
+def test_a_collection_url_that_does_not_name_one_package_is_unmapped(fields: dict[str, str]) -> None:
+    """Never a guess: a page and a packageName that disagree map nothing, and the
+    reviewed map is not asked instead, even for IBM's Langflow row."""
+    tally = nvd_feed.Tally()
+    affected = {"vendor": "IBM", "product": "Langflow OSS", "versions": _SEMVER_1_2, **fields}
+    assert nvd_feed.map_package(affected, nvd_feed.load_package_map()) is None
+    assert nvd_feed.record_entries(_cna(affected), nvd_feed.load_package_map(), tally) == []
+    assert (tally.mapped, tally.unmapped) == (0, 1)
+
+
+@pytest.mark.parametrize("url", [
+    "https://github.com/PrefectHQ/prefab", "https://prefect.io/prefab", "https://crates.io/crates/x",
+    "https://pypi.org/project/a/b", "https://pypi.org:8443/project/x", "https://www.npmjs.com/package/x?activeTab=code",
+    "ftp://pypi.org/project/x",
+])
+def test_any_other_collection_url_falls_through_to_the_map(url: str) -> None:
+    affected = {"vendor": "someone", "product": "prefab", "collectionURL": url, "packageName": "prefab-ui",
+                "versions": _SEMVER_1_2}
+    assert nvd_feed.map_package(affected, ()) is None
+    langflow = {**affected, "vendor": "IBM", "product": "Langflow OSS"}
+    assert nvd_feed.map_package(langflow, nvd_feed.load_package_map()) == ("PyPI", "langflow", "map")
+
+
+def test_a_packageurl_wins_over_another_package_s_collection_url() -> None:
+    affected = {"collectionURL": "https://pypi.org/project/prefab-ui/", "packageName": "prefab-ui",
+                "packageURL": "pkg:pypi/lmdeploy", "versions": _SEMVER_1_2}
+    assert nvd_feed.map_package(affected, ()) == ("PyPI", "lmdeploy", "packageURL")
+
+
+@pytest.mark.parametrize("version, fires", [("0.20.2", True), ("0.14.0", True), ("0.21.0", False), ("0.13.9", False)])
+def test_a_uv_lock_with_prefab_ui_is_reported_from_the_bundled_feed(tmp_path: Path, version: str, fires: bool) -> None:
+    _uv_lock(tmp_path, version, name="prefab-ui")
+    findings, _ = scan(tmp_path)
+    named = [f for f in findings if PREFAB_CVE in f.evidence]
+    assert bool(named) is fires
+    if fires:
+        (finding,) = named
+        assert finding.severity is Severity.CRITICAL and finding.file_path == "uv.lock" and finding.line_number == 2
+        assert "0.21.0" in finding.evidence and "NVD CNA record" in finding.evidence

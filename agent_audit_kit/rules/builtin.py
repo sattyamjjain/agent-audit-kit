@@ -380,6 +380,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-002": ["STA-08"],
+    "AAK-MCP-CODEEXEC-SANDBOX-001": ["STA-08", "IVS-04"],
+    "AAK-MCP-CODEEXEC-SANDBOX-002": ["IVS-04", "AIS-07"],
     "AAK-MALICIOUS-EXTENSION-001": ["STA-08", "IVS-04"],
     "AAK-KNOWN-VULN-001": ["STA-08"],
     "AAK-KNOWN-VULN-002": ["STA-08"],
@@ -11538,7 +11540,7 @@ _r(
 
 _r(
     "AAK-MCP-MCPHUB-CVE-2026-79748-001",
-    "@samanhappy/mcphub < 1.0.32 (eight MCP gateway authorization + SSRF defects)",
+    "@samanhappy/mcphub < 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)",
     "MCPHub is a self-hosted gateway that fronts many MCP servers behind one "
     "endpoint, so a defect in its authorization layer is a defect in every server "
     "behind it. Eight advisories landed against it in one batch "
@@ -11557,15 +11559,18 @@ _r(
     "ZIP (< 0.12.13), and the SSRF guard in `src/utils/ssrf.ts` uses a custom "
     "`isBlockedIpv6` that does not cover the address forms it needs to, so an "
     "authenticated non-admin registers a server pointing at an internal URL and "
-    "reads the response back through the hub (< 1.0.32). A project pinning "
-    "`@samanhappy/mcphub` below 1.0.32, or leaving it unpinned, is exposed to at "
-    "least one of these. Note that PyPI `mcphub` is an unrelated project by a "
+    "reads the response back through the hub (< 1.0.32). A ninth, CVE-2026-120323 "
+    "(VulDB, 2 Nov 2026), leaks the credentials a server entry's `passthroughHeaders` "
+    "forward: its record lists every 1.0.x through 1.0.45 and 1.1.x through 1.1.7 as "
+    "affected and names 1.1.8 as the fix, with no 1.0.x fix, so the pin's floor is "
+    "1.1.8. A project pinning `@samanhappy/mcphub` below 1.1.8, or leaving it "
+    "unpinned, is exposed to at least one of these. Note that PyPI `mcphub` is an unrelated project by a "
     "different author on a 0.1.x line; this rule matches the scoped npm name only "
     "and will not fire on it.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@samanhappy/mcphub` to >= 1.0.32 and pin it — that floor clears all "
-    "eight. Until you are past it, treat every authenticated MCPHub user as able "
+    "Upgrade `@samanhappy/mcphub` to >= 1.1.8 and pin it — that floor clears all "
+    "nine. Until you are past it, treat every authenticated MCPHub user as able "
     "to reach the mutating admin routes: put the hub behind an authenticating "
     "proxy, restrict who may create or update server entries at all (that route "
     "reaches command execution), and place the hub on a network segment with no "
@@ -11574,6 +11579,7 @@ _r(
     cve_references=[
         "CVE-2026-79743", "CVE-2026-79744", "CVE-2026-79745", "CVE-2026-79746",
         "CVE-2026-79747", "CVE-2026-79748", "CVE-2026-79749", "CVE-2026-79750",
+        "CVE-2026-120323",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
@@ -17725,6 +17731,93 @@ _r(
 )
 
 _r(
+    "AAK-MCP-CODEEXEC-SANDBOX-001",
+    "FastMCP's GenerativeUI runs caller code in a prefab-ui sandbox with open Deno permissions",
+    "Python source registers FastMCP's Generative UI provider (`mcp.add_provider(GenerativeUI())`, "
+    "from `fastmcp.apps.generative`), whose `generate_prefab_ui` tool runs Python its caller "
+    "supplies in prefab-ui's sandbox, and the project's lockfiles or installed packages give "
+    "prefab-ui 0.14.0 up to 0.21.0, or nothing pins it. That sandbox is Pyodide inside a Deno "
+    "subprocess started with unscoped `--allow-read`, `--allow-write` and `--allow-net`, and the "
+    "Python can reach Deno's API, so whoever can call the tool (anyone, on a server without "
+    "authentication) reads and writes files as the server's user and can persist by writing a "
+    "`.pth` file into its environment (CVE-2026-120338, JFrog, CVSS 10.0, 1 Nov 2026). prefab-ui "
+    "0.21.0 scopes the network permission and revokes read, write and net before it accepts code. "
+    "JFrog's record names prefab-ui only by `collectionURL`, which AAK-KNOWN-VULN-001 now reads, "
+    "so the version is reported there too; this rule says the tool that reaches it is registered.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade prefab-ui to 0.21.0 or later and re-lock: fastmcp's `apps` extra asks only for "
+    "`prefab-ui>=0.18.0`, so pin `prefab-ui>=0.21.0` beside it. Until then, keep the "
+    "`generate_prefab_ui` tool off any server a caller you do not trust can reach. Check the "
+    "server's environment for `.pth` files nobody installed (AAK-STARTUP-HOOK-PTH-001 reads them) "
+    "and rotate what its user could read.",
+    sarif_name="GenerativeUIOpenSandbox",
+    cve_references=["CVE-2026-120338"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads Python source (`*.py` up to 512 KB) for `add_provider(...)` given a `GenerativeUI(...)` "
+        "call, or a name assigned one in the same module, where `GenerativeUI` is imported from "
+        "`fastmcp.apps.generative` (any alias, or the module imported and the class named on it); "
+        "a provider built in another module, passed through a factory or a list, or registered "
+        "another way is not seen. The prefab-ui release is read from the PyPI lockfiles "
+        "AAK-KNOWN-VULN-001 reads (uv.lock, poetry.lock, Pipfile.lock; the first 64 releases of each), "
+        "`prefab_ui-<version>.dist-info` directories its site-packages walk reaches, and exact pins in "
+        "requirements*.txt, pyproject.toml and Pipfile, anywhere under the root, not only beside the "
+        "registering file. A release is affected from 0.14.0 up to 0.21.0 in PEP 440 order, so a 0.21.0 "
+        "pre-release counts. With no release found, a manifest range that admits no affected release "
+        "keeps the rule quiet, and anything else (no range, or none at all) is reported, since "
+        "fastmcp's `apps` extra admits 0.18.0. The rule does not read whether the server has "
+        "authentication, nor whether the tool was called. A lockfile over 32 MiB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-CODEEXEC-SANDBOX-002",
+    "A code-execution sandbox starts Deno with open permissions and hands it caller code",
+    "Source starts a Deno subprocess with an open permission (`-A`, `--allow-all`, or "
+    "`--allow-read`, `--allow-write`, `--allow-net`, `--allow-run`, `--allow-env`, `--allow-ffi`, "
+    "`--allow-sys` or `--allow-import` with no value) and code a caller can supply reaches that "
+    "runtime: a Pyodide `runPython`/`runPythonAsync`, an `eval` or a `new Function` whose argument "
+    "is not a fixed literal, in the launching file or in a script it names beside it, with no "
+    "`Deno.permissions.revoke` of the open permission. A WASM interpreter does not contain code "
+    "that can reach the host runtime's API: prefab-ui's Generative UI sandbox ran caller Python in "
+    "Pyodide under `deno run --allow-read --allow-write --allow-net`, which gave that Python the "
+    "server's own file and network access (CVE-2026-120338, CVSS 10.0). prefab-ui 0.21.0 keeps "
+    "the read and write flags for bootstrap, scopes `--allow-net` to its CDN, and revokes all three "
+    "before taking code, which this rule reads as closed.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Start the sandbox's runtime with no permissions, or scoped ones (`--allow-read=<dir>`, "
+    "`--allow-net=<host>`), and pass `--no-prompt`. If bootstrap needs more, revoke it with "
+    "`Deno.permissions.revoke({ name })` before reading any code to run, as prefab-ui 0.21.0's "
+    "runner does. Check the environment the server runs in for unexpected `.pth` files "
+    "(AAK-STARTUP-HOOK-PTH-001).",
+    sarif_name="DenoSandboxOpenPermissions",
+    cve_references=["CVE-2026-120338"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Pattern matching, not data flow. Reads Python and JS/TS source (`.py`, `.js`, `.mjs`, `.cjs`, "
+        "`.ts`, `.mts`, `.cts`, `.jsx`, `.tsx`, up to 512 KB) for a Deno launch written as `deno`, a path "
+        "ending in it or `Deno.execPath()` followed by `run`, as an argument list or a command string, "
+        "and reads its flags up to the first `]` or `)` and at most 1,500 characters on. `deno eval`, a "
+        "launch built in pieces (a flag list in another variable), a shell script, a Dockerfile and a "
+        "flag set through `DENO_*` variables are not read. A hand-off is a `runPython`, "
+        "`runPythonAsync`, `eval` or `new Function` call whose first argument is not a plain string "
+        "literal (a template with `${...}` counts), in the launching file if it is JS/TS or in a "
+        "JS/TS script whose name the launching file writes as a string literal and which sits at "
+        "that path beside it inside the root (32 names per file); whether a caller's text really "
+        "reaches the call is not traced, and a constant held in a variable counts as caller code. A "
+        "permission counts as closed when the script calls `Deno.permissions.revoke` with its name "
+        "written within 300 characters before or 120 after the call, wherever in the script that is, "
+        "not only before the code runs. `-A` grants read, write, net, run, env, ffi and sys. A "
+        "scoped flag (`--allow-net=cdn.example`) is not read as open, however wide its scope."
+    ),
+)
+
+_r(
     "AAK-KNOWN-VULN-001",
     "A locked, pinned or installed release is affected by a published advisory",
     "A lockfile resolves, a manifest pins, or a site-packages directory has installed "
@@ -17781,9 +17874,11 @@ _r(
         "for the last 120 days of modifications (`--nvd-days`), and each run's entries "
         "replace the last run's, so a record last modified before that window leaves the "
         "feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` "
-        "packageURL or a row of the reviewed `data/cna_package_map.json` matching its "
-        "repository or its vendor and product (three rows on 30 Oct 2026), never through a "
-        "name alone; one that maps to neither is dropped and counted. A CNA version written "
+        "packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's "
+        "root with a `packageName`, which must agree with a page's name), or a row of the "
+        "reviewed `data/cna_package_map.json` matching its repository or its vendor and "
+        "product (four rows on 2 Nov 2026), never through a name alone; one that maps to "
+        "none of these is dropped and counted. A CNA version written "
         "as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one "
         "lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where "
         "semver has a first version after x. NVD's CPE data, other text, a "
@@ -17791,9 +17886,10 @@ _r(
         "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
         "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
         "the package names is dropped for OSV's. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and seven entries from "
-        "NVD's records of five CVEs of 29 and 30 Oct 2026 against langflow, lmdeploy, open, "
-        "@modelcontextprotocol/inspector and opencode-ai, so without `aak update` nothing "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from "
+        "NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, "
+        "prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and "
+        "@samanhappy/mcphub, so without `aak update` nothing "
         "else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
         "records and says so. `.egg-info` installs, `node_modules`, conda metadata and "
         "image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is "

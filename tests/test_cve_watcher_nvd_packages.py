@@ -160,6 +160,14 @@ def test_a_langflow_record_with_no_mcp_words_is_filed_as_pin_floor_stale(pins: l
     assert gate.band_for_issue({"title": entry["title"]}) == "critical"
 
 
+def test_a_record_mapped_by_collection_url_says_so(pins: list[Any]) -> None:
+    affected = {"vendor": "someone", "product": "langflow", "collectionURL": "https://pypi.org/project/langflow/",
+                "packageName": "langflow", "versions": [_lt("1.0.0", "1.13.0")]}
+    (entry,) = _read([_page(_record("CVE-2026-90012", affected))], pins)
+    assert entry["source"].startswith("NVD CNA record from cna@example.com naming PyPI `langflow` "
+                                      "(by its collectionURL)")
+
+
 def test_the_note_names_the_fixed_release_the_record_names(pins: list[Any]) -> None:
     (entry,) = _read([_page(_record("CVE-2026-90011", _purl("langflow", _lt("1.0.0", "1.13.0"))))], pins)
     assert "as its CNA wrote it: 1.0.0 up to 1.13.0. Fixed release: 1.13.0." in entry["pin_note"]

@@ -970,8 +970,11 @@ _PINS: tuple[_Pin, ...] = (
     # across 0.12.13, 0.12.15, 1.0.29, 1.0.30, 1.0.31 and 1.0.32. One floor at the
     # highest of those covers all eight, which is why this is one pin and not
     # eight: reporting a single dependency eight times is noise, not coverage.
+    # CVE-2026-120323 (VulDB, 2 Nov 2026, CVSS 4.3, passthroughHeaders leaks
+    # credentials) lists every 1.0.x up to 1.0.45 and 1.1.x up to 1.1.7 as affected
+    # and 1.1.8 as the fix; it names no 1.0.x fix, so the floor is 1.1.8.
     _Pin("AAK-MCP-MCPHUB-CVE-2026-79748-001", "@samanhappy/mcphub",
-         ("@samanhappy/mcphub",), (1, 0, 32), fix_label="1.0.32"),
+         ("@samanhappy/mcphub",), (1, 1, 8), fix_label="1.1.8"),
     _Pin("AAK-MCP-SEQTHINKING-CVE-2026-81845-001", "mcp-sequential-thinking",
          ("mcp-sequential-thinking",), (0, 6, 0), fix_label="0.6.0"),
     # --- 2026-09-04..07 wave (deferred 2026-09-06, shipped 2026-09-08) ---

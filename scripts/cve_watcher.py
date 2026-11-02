@@ -744,6 +744,8 @@ def osv_records(
 # ---------------------------------------------------------------------------
 
 _PIN_REGISTRY = {"py": "PyPI", "js": "npm"}
+# How `nvd_feed.map_package` named the package, as an issue body says it.
+_MAPPED_BY = {"packageURL": "packageURL", "collectionURL": "collectionURL", "map": "reviewed map row"}
 
 
 def _triple(value: object) -> tuple[int, int, int] | None:
@@ -926,7 +928,7 @@ def _package_entry(vuln: dict, ident: str, named: list[tuple[str, str, str]],
             if (e["ecosystem"], canonical_name(e["ecosystem"], e["name"])) in keys]
     entry.update(
         source=(f"NVD CNA record from {cna} naming "
-                + ", ".join(f"{registry} `{name}` (by its {'packageURL' if how == 'packageURL' else 'reviewed map row'})"
+                + ", ".join(f"{registry} `{name}` (by its {_MAPPED_BY.get(how, 'reviewed map row')})"
                             for registry, name, how in named)
                 + ", a package AAK's pin tables name"),
         url=f"https://nvd.nist.gov/vuln/detail/{ident}",

@@ -89,7 +89,7 @@ The feed has two sources, and a finding says which one it came from.
 of. A CVE's CNA (IBM for Langflow, VulnCheck, GitHub) writes which product
 versions are affected in its CVE record, and NVD's CVE API 2.0 carries that
 data at `vulnerabilities[].cve.affected[].affectedData[]`: a vendor, a product,
-sometimes a `packageURL` or a `repo`, and `versions[]` of `version`,
+sometimes a `packageURL`, a `collectionURL` and `packageName`, or a `repo`, and `versions[]` of `version`,
 `lessThan` or `lessThanOrEqual`, `versionType` and `status`. NVD's own CPE
 `configurations`, added once NVD has analysed a record, are not read: a CPE names
 a vendor and product, not a package.
@@ -104,14 +104,23 @@ a vendor and product, not a package.
   holds the NVD records modified in that window.
 - **Which package a record names**, in this order and never from a name alone:
   the CNA's `packageURL` when it is `pkg:pypi/...` or `pkg:npm/...` (a
-  packageURL of another registry is not overridden); else a row of the reviewed
+  packageURL of another registry is not overridden); else its `collectionURL`
+  when that is PyPI or npm: a package's own page (`https://pypi.org/project/<name>/`,
+  `https://www.npmjs.com/package/<name>`, with a `packageName`, if any, naming
+  the same package), or the registry's root as the CVE JSON 5 schema's examples
+  write it (`https://pypi.python.org`, `https://registry.npmjs.org`) with the name
+  in `packageName`. A page and a `packageName` that disagree map nothing, and the
+  record is counted unmapped rather than guessed at; any other `collectionURL` (a
+  GitHub URL, a vendor's site) is passed over. JFrog's prefab-ui record (in the
+  table below) names its package this way and no other. Else a row of the reviewed
   map, `agent_audit_kit/data/cna_package_map.json`, whose repository is the
   CNA's `repo`, or whose vendor and product are the CNA's. A row is added only
   after checking that the package's own page on pypi.org or npmjs.com names the
-  same repository. On 2026-10-30 the map has three rows: IBM's "Langflow OSS" is
-  PyPI `langflow`, and the repositories sindresorhus/open and
+  same repository. On 2026-11-02 the map has four rows: IBM's "Langflow OSS" is
+  PyPI `langflow`, the repositories sindresorhus/open and
   modelcontextprotocol/inspector are npm `open` and
-  `@modelcontextprotocol/inspector`. A record that maps to no package is
+  `@modelcontextprotocol/inspector`, and VulDB's "samanhappy MCPHub" is npm
+  `@samanhappy/mcphub`. A record that maps to no package is
   counted and dropped, and `aak update` prints how many and the ten
   (vendor, product) pairs that most often mapped to nothing. A record for
   software on neither registry can map to a launch row of the same map instead,
@@ -209,6 +218,8 @@ references: the rule reports whatever advisory the feed holds.
 | Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-93680 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | Langflow OSS 1.0.0 through 1.12.3 | CVE-2026-104339 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
 | npm open 7.2.0 up to 11.0.0, @modelcontextprotocol/inspector 2.0.0 up to 2.12.0, opencode-ai 1.0.137 up to 1.18.33 | CVE-2026-119025 | none | yes, from VulnCheck's record in NVD, which names each package by packageURL (CVSS 3.x 7.5) |
+| prefab-ui 0.14.0 up to 0.21.0, the Generative UI sandbox FastMCP's `generate_prefab_ui` runs | CVE-2026-120338 | none (GHSA-595q-jv4r-q7j9 is a repository advisory only) | yes, from JFrog's record in NVD, which names the package by `collectionURL` and `packageName` (CVSS 3.x 10.0) |
+| @samanhappy/mcphub 1.0.0 through 1.0.45 and 1.1.0 through 1.1.7, fixed in 1.1.8 | CVE-2026-120323 | none | yes, from VulDB's record in NVD, which lists each release and maps by the reviewed row (CVSS 3.x 4.3); AAK-MCP-MCPHUB-CVE-2026-79748-001's floor reports the same releases, so its finding is the one kept |
 | InternLM LMDeploy 0.9.0 through 0.18.0, no fixed release | CVE-2026-119706 | a git commit-range record only, none for PyPI `lmdeploy` | yes, from VulnCheck's record in NVD, which names the package by packageURL (CVSS 3.x 9.8) |
 
 A finding on the vLLM one reads:

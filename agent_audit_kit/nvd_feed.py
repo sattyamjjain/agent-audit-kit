@@ -26,7 +26,15 @@ In this order, never from a name alone:
 1. the CNA's `packageURL` when it is `pkg:pypi/<name>` or `pkg:npm/<name>`
    (`pkg:npm/%40scope/name` is `@scope/name`). A packageURL of another registry
    (`pkg:maven/...`) names a package AAK does not read, and the entry is dropped;
-2. else a row of the reviewed map, `data/cna_package_map.json`, whose `repo` is
+2. else its `collectionURL` when that is PyPI or npm (`collection_package`): a
+   package's own page (`https://pypi.org/project/<name>/`,
+   `https://www.npmjs.com/package/<name>`), or the registry itself, as the CVE
+   JSON 5 schema's examples write it (`https://pypi.python.org`,
+   `https://registry.npmjs.org`), with the name in `packageName`. A page and a
+   `packageName` that disagree name nothing: the entry is not guessed at, and
+   counts as unmapped. JFrog's record of CVE-2026-120338 (prefab-ui, CVSS 10.0)
+   names its package this way and no other, and was dropped before;
+3. else a row of the reviewed map, `data/cna_package_map.json`, whose `repo` is
    the CNA's `repo`, or whose `vendor` and `product` are the CNA's (compared
    without case or surrounding space). A row is added only after checking that
    the package's own page on pypi.org or npmjs.com names the same project.
@@ -107,7 +115,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Iterator
+from typing import Any, Callable, Iterable, Iterator, Literal
 
 from agent_audit_kit.advisory_feed import LAUNCH, _dicts, _interval, bucket, cvss3_base_score
 from agent_audit_kit.malicious_feed import (
@@ -306,17 +314,106 @@ def purl_package(purl: object) -> tuple[str, str] | None:
     return (registry, name) if name and len(parts) == 1 and "@" not in name else None
 
 
+# A PyPI or npm `collectionURL`: the registry's own host, then a package page's path.
+_PYPI_PAGE_HOSTS = frozenset({"pypi.org"})
+_PYPI_ROOT_HOSTS = frozenset({"pypi.org", "pypi.python.org"})
+_NPM_PAGE_HOSTS = frozenset({"www.npmjs.com", "npmjs.com"})
+_NPM_ROOT_HOSTS = frozenset({"www.npmjs.com", "npmjs.com", "registry.npmjs.org"})
+_PYPI_NAME_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?")
+_NPM_PART_RE = re.compile(r"[a-z0-9~-][a-z0-9._~-]*")
+
+
+def _registry_name(registry: str, name: str) -> bool:
+    """Is `name` a name this registry can carry (a PyPI project, an npm package or
+    `@scope/package`)? Nothing is looked up."""
+    if registry == "PyPI":
+        return bool(_PYPI_NAME_RE.fullmatch(name))
+    parts = name[1:].split("/") if name.startswith("@") else [name]
+    expected = 2 if name.startswith("@") else 1
+    return len(parts) == expected and all(_NPM_PART_RE.fullmatch(part) for part in parts)
+
+
+def collection_package(collection_url: object, package_name: object) -> tuple[str, str] | Literal[False] | None:
+    """(registry, name) a CNA's `collectionURL` and `packageName` name together.
+
+    The CVE JSON 5 schema defines `collectionURL` as the URL "identifying a
+    package collection (determines the meaning of packageName)", and its examples
+    give the registries by their root (`https://pypi.python.org`,
+    `https://registry.npmjs.org`); CNAs also write a package's own page
+    (`https://pypi.org/project/prefab-ui/`). Read here, exactly:
+
+    * a PyPI project page, `https://pypi.org/project/<name>` with or without the
+      trailing slash, or an npm package page, `https://www.npmjs.com/package/<name>`
+      or `.../package/@scope/<name>`: the name is the page's, and a `packageName`,
+      when present, must be the same package (PEP 503 for PyPI, exact for npm);
+    * the registry's root (`https://pypi.org`, `https://pypi.python.org`,
+      `https://www.npmjs.com`, `https://registry.npmjs.org`): the name is
+      `packageName`, which must then be present.
+
+    Returns:
+        (registry, name); None when the URL is not one of these (a GitHub URL, a
+        vendor's site, another registry), so the reviewed map is asked as before;
+        False when it is one but names no package this way (a page and a
+        `packageName` that disagree, a root without one, a name the registry
+        cannot carry), which is not guessed at.
+    """
+    if not isinstance(collection_url, str) or not collection_url.strip():
+        return None
+    try:
+        parts = urllib.parse.urlsplit(collection_url.strip())
+        port = parts.port
+    except ValueError:
+        return None
+    host = (parts.hostname or "").lower()
+    if (parts.scheme.lower() not in ("http", "https") or port is not None or parts.username or parts.password
+            or parts.query or parts.fragment):
+        return None
+    segments = [urllib.parse.unquote(segment) for segment in parts.path.split("/")]
+    if segments and segments[-1] == "":
+        segments.pop()  # one trailing slash
+    segments = segments[1:] if segments and segments[0] == "" else segments
+    given = package_name.strip() if isinstance(package_name, str) and package_name.strip() else None
+    registry: str | None = None
+    named: str | None = None
+    if not segments and (host in _PYPI_ROOT_HOSTS or host in _NPM_ROOT_HOSTS):
+        registry = "PyPI" if host in _PYPI_ROOT_HOSTS else "npm"
+    elif host in _PYPI_PAGE_HOSTS and len(segments) == 2 and segments[0] == "project":
+        registry, named = "PyPI", segments[1]
+    elif host in _NPM_PAGE_HOSTS and segments[:1] == ["package"] and len(segments) in (2, 3):
+        registry, named = "npm", "/".join(segments[1:])
+        if len(segments) == 3 and not named.startswith("@"):
+            return False
+    else:
+        return None
+    if named is not None and given is not None:
+        same = (canonical_name(registry, named) == canonical_name(registry, given)) if registry == "PyPI" \
+            else named == given
+        if not same:
+            return False
+    name = given or named
+    if not name or not _registry_name(registry, name):
+        return False
+    return registry, name
+
+
 def map_package(affected: dict[str, Any], rows: Iterable[MapRow]) -> tuple[str, str, str] | None:
     """(registry, name, how it was mapped) for one CNA affected entry, or None.
 
     Its packageURL decides when it has one; a packageURL of a registry the feed
-    does not read is not overridden by the map. Else a reviewed row matching its
-    `repo`, else one matching its vendor and product.
+    does not read is not overridden by the map. Else its collectionURL when that
+    is PyPI or npm (`collection_package`), and one that disagrees with its
+    packageName maps nothing. Else a reviewed row matching its `repo`, else one
+    matching its vendor and product.
     """
     purl = affected.get("packageURL")
     if isinstance(purl, str) and purl.strip():
         found = purl_package(purl)
         return (found[0], found[1], "packageURL") if found else None
+    collected = collection_package(affected.get("collectionURL"), affected.get("packageName"))
+    if collected is False:
+        return None
+    if collected is not None:
+        return collected[0], collected[1], "collectionURL"
     rows = tuple(rows)
     repo = _repo_key(affected.get("repo"))
     if repo:
