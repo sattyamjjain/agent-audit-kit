@@ -111,7 +111,10 @@ def test_n8n_pin_stays_off_the_distinct_n8n_mcp_package(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("version,fires", [
     ("0.12.12", True), ("0.12.14", True), ("1.0.28", True),
-    ("1.0.31", True), ("1.0.32", False), ("1.0.34", False),
+    ("1.0.31", True),
+    # CVE-2026-120323 (2 Nov 2026) lists 1.0.x through 1.0.45 and 1.1.x through 1.1.7,
+    # fixed in 1.1.8 with no 1.0.x fix, which moved the floor from 1.0.32.
+    ("1.0.32", True), ("1.0.45", True), ("1.1.7", True), ("1.1.8", False), ("1.2.0", False),
 ])
 def test_mcphub_floor(tmp_path: Path, version: str, fires: bool) -> None:
     assert (HUB in _npm(tmp_path, **{"@samanhappy/mcphub": version})) is fires
@@ -141,9 +144,10 @@ def test_mcphub_pin_is_keyed_on_the_scoped_name() -> None:
 
 
 def test_mcphub_covers_all_eight_advisories() -> None:
-    """One floor, eight CVEs — so the rule has to cite eight."""
+    """One floor, eight CVEs — so the rule has to cite eight, and since 2 Nov 2026 the
+    ninth, CVE-2026-120323, that moved the floor to 1.1.8."""
     cves = set(RULES[HUB].cve_references)
-    assert cves == {f"CVE-2026-797{n}" for n in range(43, 51)}, cves
+    assert cves == {f"CVE-2026-797{n}" for n in range(43, 51)} | {"CVE-2026-120323"}, cves
 
 
 # ---------------------------------------------------------------------------

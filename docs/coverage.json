@@ -5948,6 +5948,7 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-120323",
         "CVE-2026-79743",
         "CVE-2026-79744",
         "CVE-2026-79745",
@@ -5979,7 +5980,7 @@
       ],
       "rule_id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
       "severity": "critical",
-      "title": "@samanhappy/mcphub < 1.0.32 (eight MCP gateway authorization + SSRF defects)"
+      "title": "@samanhappy/mcphub < 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)"
     },
     {
       "category": "supply-chain",
@@ -11077,7 +11078,7 @@
       "low": 19,
       "medium": 126
     },
-    "total_cves_covered": 381,
+    "total_cves_covered": 382,
     "total_rules": 442
   },
   "tool": "agent-audit-kit"

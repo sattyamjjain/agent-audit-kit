@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-02T08:14:57Z",
+  "last_updated": "2026-11-02T08:31:59Z",
   "aak_version": "0.6.31",
   "rule_count": 442,
   "coverage": [
@@ -1733,6 +1733,7 @@
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-120323",
             "CVE-2026-79743",
             "CVE-2026-79744",
             "CVE-2026-79745",
@@ -3771,6 +3772,7 @@
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-120323",
             "CVE-2026-79743",
             "CVE-2026-79744",
             "CVE-2026-79745",

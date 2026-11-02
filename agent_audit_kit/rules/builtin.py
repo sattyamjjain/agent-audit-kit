@@ -11540,7 +11540,7 @@ _r(
 
 _r(
     "AAK-MCP-MCPHUB-CVE-2026-79748-001",
-    "@samanhappy/mcphub < 1.0.32 (eight MCP gateway authorization + SSRF defects)",
+    "@samanhappy/mcphub < 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)",
     "MCPHub is a self-hosted gateway that fronts many MCP servers behind one "
     "endpoint, so a defect in its authorization layer is a defect in every server "
     "behind it. Eight advisories landed against it in one batch "
@@ -11559,15 +11559,18 @@ _r(
     "ZIP (< 0.12.13), and the SSRF guard in `src/utils/ssrf.ts` uses a custom "
     "`isBlockedIpv6` that does not cover the address forms it needs to, so an "
     "authenticated non-admin registers a server pointing at an internal URL and "
-    "reads the response back through the hub (< 1.0.32). A project pinning "
-    "`@samanhappy/mcphub` below 1.0.32, or leaving it unpinned, is exposed to at "
-    "least one of these. Note that PyPI `mcphub` is an unrelated project by a "
+    "reads the response back through the hub (< 1.0.32). A ninth, CVE-2026-120323 "
+    "(VulDB, 2 Nov 2026), leaks the credentials a server entry's `passthroughHeaders` "
+    "forward: its record lists every 1.0.x through 1.0.45 and 1.1.x through 1.1.7 as "
+    "affected and names 1.1.8 as the fix, with no 1.0.x fix, so the pin's floor is "
+    "1.1.8. A project pinning `@samanhappy/mcphub` below 1.1.8, or leaving it "
+    "unpinned, is exposed to at least one of these. Note that PyPI `mcphub` is an unrelated project by a "
     "different author on a 0.1.x line; this rule matches the scoped npm name only "
     "and will not fire on it.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@samanhappy/mcphub` to >= 1.0.32 and pin it — that floor clears all "
-    "eight. Until you are past it, treat every authenticated MCPHub user as able "
+    "Upgrade `@samanhappy/mcphub` to >= 1.1.8 and pin it — that floor clears all "
+    "nine. Until you are past it, treat every authenticated MCPHub user as able "
     "to reach the mutating admin routes: put the hub behind an authenticating "
     "proxy, restrict who may create or update server entries at all (that route "
     "reaches command execution), and place the hub on a network segment with no "
@@ -11576,6 +11579,7 @@ _r(
     cve_references=[
         "CVE-2026-79743", "CVE-2026-79744", "CVE-2026-79745", "CVE-2026-79746",
         "CVE-2026-79747", "CVE-2026-79748", "CVE-2026-79749", "CVE-2026-79750",
+        "CVE-2026-120323",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
@@ -17873,7 +17877,7 @@ _r(
         "packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's "
         "root with a `packageName`, which must agree with a page's name), or a row of the "
         "reviewed `data/cna_package_map.json` matching its repository or its vendor and "
-        "product (three rows on 30 Oct 2026), never through a name alone; one that maps to "
+        "product (four rows on 2 Nov 2026), never through a name alone; one that maps to "
         "none of these is dropped and counted. A CNA version written "
         "as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one "
         "lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where "
@@ -17882,10 +17886,10 @@ _r(
         "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
         "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
         "the package names is dropped for OSV's. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and eight entries from "
-        "NVD's records of six CVEs of 29 Oct to 1 Nov 2026 against langflow, lmdeploy, "
-        "prefab-ui, open, @modelcontextprotocol/inspector and opencode-ai, so without `aak "
-        "update` nothing "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from "
+        "NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, "
+        "prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and "
+        "@samanhappy/mcphub, so without `aak update` nothing "
         "else is known; a feed over 60 MB keeps only HIGH and CRITICAL "
         "records and says so. `.egg-info` installs, `node_modules`, conda metadata and "
         "image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is "

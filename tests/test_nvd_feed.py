@@ -39,6 +39,7 @@ LANGFLOW_CVES = ("CVE-2026-110186", "CVE-2026-93680", "CVE-2026-104339")
 OPEN_CVE = "CVE-2026-119025"
 LMDEPLOY_CVE = "CVE-2026-119706"
 PREFAB_CVE = "CVE-2026-120338"
+MCPHUB_CVE = "CVE-2026-120323"
 NOW = datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc)
 
 
@@ -91,18 +92,19 @@ def test_the_fixtures_are_nvd_api_answers_with_the_cna_data_at_cve_affected() ->
 
 
 def test_the_bundled_nvd_entries_are_the_fixtures_as_converted() -> None:
-    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the six
-    records, with the reviewed map shipped beside it; every one of the six maps.
+    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the seven
+    records, with the reviewed map shipped beside it; every one of the seven maps.
     CVE-2026-119706 (lmdeploy) maps by its packageURL and CVE-2026-120338 (prefab-ui)
     by its collectionURL, so neither needed a map row. JFrog's `lessThan` 0.21.0 is
-    the converter's `fixed`, as every `lessThan` is."""
+    the converter's `fixed`, as every `lessThan` is. VulDB's CVE-2026-120323 (MCPHub)
+    lists releases one by one and maps by its reviewed row."""
     rows = nvd_feed.load_package_map()
     tally = nvd_feed.Tally()
-    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE, PREFAB_CVE)
+    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE, PREFAB_CVE, MCPHUB_CVE)
                                 for entry in nvd_feed.record_entries(_record(cve), rows, tally))
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert bundled["nvd"] == converted
-    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (6, 6, 0, 8)
+    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (7, 7, 0, 9)
     assert [(e["name"], e["id"], e["ranges"]) for e in converted] == [
         ("langflow", "CVE-2026-104339", [{"introduced": "1.0.0", "last_affected": "1.12.3"}]),
         ("langflow", "CVE-2026-110186", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
@@ -110,10 +112,14 @@ def test_the_bundled_nvd_entries_are_the_fixtures_as_converted() -> None:
         ("lmdeploy", LMDEPLOY_CVE, [{"introduced": "0.9.0", "last_affected": "0.18.0"}]),
         ("prefab-ui", PREFAB_CVE, [{"introduced": "0.14.0", "fixed": "0.21.0"}]),
         ("@modelcontextprotocol/inspector", OPEN_CVE, [{"introduced": "2.0.0", "fixed": "2.12.0"}]),
+        ("@samanhappy/mcphub", MCPHUB_CVE, []),
         ("open", OPEN_CVE, [{"introduced": "7.2.0", "fixed": "11.0.0"}]),
         ("opencode-ai", OPEN_CVE, [{"introduced": "1.0.137", "fixed": "1.18.33"}]),
     ]
     assert {e["severity"] for e in converted if e["name"] in ("langflow", "lmdeploy", "prefab-ui")} == {"CRITICAL"}
+    (hub,) = [e for e in converted if e["id"] == MCPHUB_CVE]
+    assert (hub["mapped_by"], hub["severity"], hub["fixed"], len(hub["versions"])) == ("map", "MEDIUM", [], 54)
+    assert "1.1.7" in hub["versions"] and "1.1.8" not in hub["versions"]
     (prefab,) = [e for e in converted if e["name"] == "prefab-ui"]
     assert (prefab["ecosystem"], prefab["mapped_by"], prefab["score"], prefab["fixed"]) == (
         "PyPI", "collectionURL", 10.0, ["0.21.0"])
@@ -128,8 +134,9 @@ def test_the_reviewed_map_names_each_package_s_own_repository() -> None:
         ("sindresorhus", "open"): ("npm", "open", "github.com/sindresorhus/open"),
         ("modelcontextprotocol", "inspector"): (
             "npm", "@modelcontextprotocol/inspector", "github.com/modelcontextprotocol/inspector"),
+        ("samanhappy", "MCPHub"): ("npm", "@samanhappy/mcphub", "github.com/samanhappy/mcphub"),
     }
-    assert all(row.reviewed == "2026-10-30" for row in rows.values())
+    assert {row.reviewed for row in rows.values()} == {"2026-10-30", "2026-11-02"}
 
 
 # ---- the order's cases, on the bundled feed -----------------------------------------------------------
@@ -522,7 +529,7 @@ def test_the_rebuild_drops_an_nvd_entry_osv_already_lists() -> None:
                       {"field": "lastModified", "start": "2026-07-02T09:00:00Z", "end": "2026-10-30T09:00:00Z",
                        "days": 120})
     written = collector.write(now=NOW)
-    assert (written.nvd, written.nvd_twins) == (7, 1)
+    assert (written.nvd, written.nvd_twins) == (8, 1)
     data = json.loads(written.path.read_text())
     assert "CVE-2026-110186" not in {e["id"] for e in data["nvd"]}
     assert data["source"].endswith("; NVD's records of CNA version data modified 2026-07-02 to 2026-10-30, "
@@ -727,7 +734,7 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
     the file it writes is the one scans read from then on."""
     monkeypatch.setattr(nvd_feed, "_default_opener", lambda: _Opener(_http_error(404)))
     result = CliRunner().invoke(cli, ["update"])
-    assert result.exit_code == 2 and "keeps the 8 NVD and 3 launch entries of the bundled feed." in result.output
+    assert result.exit_code == 2 and "keeps the 9 NVD and 3 launch entries of the bundled feed." in result.output
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert (_cached()["nvd"], _cached()["launch"]) == (bundled["nvd"], bundled["launch"])
     _uv_lock(tmp_path, "1.12.8")
@@ -737,9 +744,9 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
 def test_nvd_days_0_reads_nothing_and_keeps_what_scans_read(offline_osv: None) -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 8 NVD and 3 launch entries of the bundled "
+    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 9 NVD and 3 launch entries of the bundled "
             "feed.") in result.output
-    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (8, 3)
+    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (9, 3)
 
 
 # ---- launch rows: software a project starts ----------------------------------------------------------
