@@ -44,6 +44,7 @@ from agent_audit_kit.scanners import (
     known_vulns_launch,
     langchain_prompt_loader,
     malicious_extensions,
+    mcp_authz_code,
     mcp_codeexec_sandbox,
     malicious_releases,
     mcp_config,
@@ -281,6 +282,10 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The MCP authorization rules, before they were released: a contextvar read per function,
+    # tests of it in many blocks, and many handlers in one file are each read once.
+    "authz-handlers": (mcp_authz_code.scan, lambda k: {"s.py": "".join(f"@m.tool()\ndef t{i}(role):\n    if x:\n        return 1\n" for i in range(k))}, 400, False),
+    "authz-context-tests": (mcp_authz_code.scan, lambda k: {"s.py": "def f():\n    p = user.get(None)\n" + "    if q:\n        raise E\n" * k}, 2_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.
