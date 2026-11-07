@@ -67,6 +67,17 @@ For your own project, `agent-audit-kit sbom` and `agent-audit-kit vex` emit the 
 of the MCP servers it declares and an OpenVEX 0.2.0 document that joins to it on
 purl ([VEX](vex.md)). No release publishes a VEX document of its own.
 
+Verify a wheel or sdist from PyPI against its PEP 740 attestation:
+
+```bash
+pip install pypi-attestations
+pypi-attestations verify pypi --repository https://github.com/sattyamjjain/agent-audit-kit pypi:agent_audit_kit-<version>-py3-none-any.whl
+```
+
+It prints `OK: <file>` when this repository signed the provenance through PyPI's Trusted
+Publishing, and fails if another repository did. For the sdist, name
+`pypi:agent_audit_kit-<version>.tar.gz`. Checked with `pypi-attestations` 0.0.31 on 0.6.31.
+
 Verify a bundle against its signature and signer:
 
 ```bash
