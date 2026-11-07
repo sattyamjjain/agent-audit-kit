@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-SSRF-MAPPED-001 (HIGH): a URL guard that tests `ip_address(host)` against a deny list of IPv4 networks without unwrapping `.ipv4_mapped`, so `http://[::ffff:169.254.169.254]/` passes (#1199).
+- AAK-WEBSOCKET-SERVER-001 (MEDIUM): a Python `websockets` server for MCP, model or policy traffic with no `origins`, `max_size=None`, a 0.0.0.0 default with no authentication, or a traceback sent to the client (#1199).
+
+### Changed
+
+- AAK-SSRF-002, AAK-SSRF-003 and AAK-MCP-009 read a wildcard-DNS name as the address it embeds: `169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`, `localtest.me` (#1199).
+- AAK-SSRF-004 also reports a URL the caller can set, fetched with a client that follows redirects by default, not only an explicit flag (#1199).
+- AAK-SSRF-001 to -005 read agent tool classes with no MCP marker: a LangChain `BaseTool` or `StructuredTool`, and a smolagents `Tool.forward` (#1199).
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

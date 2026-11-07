@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 111,
+  "count": 112,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -445,6 +445,10 @@
     {
       "module": "ufo_mobile_mcp",
       "name": "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)"
+    },
+    {
+      "module": "websocket_server",
+      "name": "WebSocket servers for MCP, model and policy traffic with open defaults"
     }
   ],
   "unregistered_shims": [
