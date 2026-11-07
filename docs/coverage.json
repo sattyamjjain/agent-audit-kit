@@ -3761,6 +3761,27 @@
       "title": "browse-mcp writes fetched content to a caller-controlled path (< 0.8.2)"
     },
     {
+      "category": "mcp-config",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP02:2025 Privilege Escalation via Scope Creep"
+      ],
+      "rule_id": "AAK-MCP-BROWSER-ATTACH-001",
+      "severity": "medium",
+      "title": "A browser-automation MCP server can reach the user's own browser"
+    },
+    {
       "category": "mcp-server-card",
       "cve_references": [],
       "eu_ai_act": [
@@ -11020,7 +11041,7 @@
       "composition": 3,
       "hook-injection": 16,
       "legal-compliance": 19,
-      "mcp-config": 68,
+      "mcp-config": 69,
       "mcp-server-card": 4,
       "secret-exposure": 19,
       "supply-chain": 198,
@@ -11033,24 +11054,24 @@
       "Art. 10 - Data Governance": 229,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 335,
+      "Art. 15 - Robustness & Security": 336,
       "Art. 9 - Risk Management": 226
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 229,
       "Constrain and sandbox tool execution (p.11)": 209,
-      "Design for boundaries (p.10)": 320,
+      "Design for boundaries (p.10)": 321,
       "Filter and monitor output pipelines and chained execution (p.12)": 127,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 290,
-      "Sign and verify MCP messages (p.12)": 300,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 291,
+      "Sign and verify MCP messages (p.12)": 301,
       "Track and patch MCP related vulnerabilities (p.13)": 234,
       "Validate parameters (p.11)": 213
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
-      "ASI03": 117,
+      "ASI03": 118,
       "ASI04": 227,
       "ASI05": 107,
       "ASI06": 5,
@@ -11061,7 +11082,7 @@
     },
     "by_owasp_mcp": {
       "MCP01:2025": 36,
-      "MCP02:2025": 16,
+      "MCP02:2025": 17,
       "MCP03:2025": 13,
       "MCP04:2025": 174,
       "MCP05:2025": 119,
@@ -11076,10 +11097,10 @@
       "high": 190,
       "info": 5,
       "low": 19,
-      "medium": 126
+      "medium": 127
     },
     "total_cves_covered": 382,
-    "total_rules": 442
+    "total_rules": 443
   },
   "tool": "agent-audit-kit"
 }

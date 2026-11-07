@@ -34,6 +34,7 @@ from agent_audit_kit.scanners import (
     _helpers,
     a2a_protocol,
     agent_server_noauth,
+    mcp_browser_attach,
     agent_config,
     composition,
     gha_hardening,
@@ -281,6 +282,10 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The browser rule, before it was released.
+    "browser-args": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"chrome": {"command": "x", "args": ["--x"] * k + ["--no-sandbox"]}}})}, 5_000, False),
+    "browser-servers": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {f"chrome-{i}": {"command": "x", "args": ["--no-sandbox"]} for i in range(k)}})}, 1_000, True),
+    "browser-env": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"chrome": {"command": "x", "env": {f"V{i}": "1" for i in range(k)}}}})}, 2_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

@@ -11726,6 +11726,38 @@ _r(
 
 
 _r(
+    "AAK-MCP-BROWSER-ATTACH-001",
+    "A browser-automation MCP server can reach the user's own browser",
+    "A browser-automation MCP server in a config attaches over CDP to a browser on this machine "
+    "(`--cdp-endpoint`, `--browserUrl`, `--wsEndpoint`, `--remote-debugging-port`, `connectOverCDP`, `cdpUrl`), "
+    "attaches to the running browser (`--autoConnect`, `--extension`), points `--user-data-dir` at the real "
+    "profile, imports cookies, or turns off the renderer sandbox with `--no-sandbox`. The model then holds every "
+    "session that browser is signed in to, and a page it opens can read them through the agent. A hosted browser, a "
+    "profile of its own and `--isolated` do not fire.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Give the server a browser of its own: `--isolated`, or a profile directory used for nothing else, and no CDP "
+    "attach to the browser you browse with. If you do need to attach, start that browser with a throwaway profile. "
+    "Remove `--no-sandbox` outside a container.",
+    sarif_name="McpBrowserAttachesToUserBrowser",
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `args` and `env` of JSON MCP configs, for the flags Playwright MCP and chrome-devtools-mcp document. A "
+        "server's own `--config` file is not read. A CDP endpoint counts only on this machine (loopback, "
+        "host.docker.internal, a bare port), so a browser on another host on your network is not reported, and "
+        "neither is a hosted one. `--extension`, `--autoConnect`, a cookie flag and `--no-sandbox` count only "
+        "on a server whose name or launch words say browser, playwright, puppeteer, chrome, chromium, cdp, selenium, "
+        "devtools or stagehand. `--no-sandbox` under docker, podman or nerdctl is left out, since a container "
+        "often needs it. `--user-data-dir` counts only for the default profile paths of Chrome, Chromium, Brave, Edge "
+        "and Firefox on macOS, Linux and Windows, so a copy of a profile elsewhere is missed. `--storage-state` counts "
+        "only when its path says cookie. In `env`, the names read are CDP_URL, CDP_ENDPOINT, BROWSER_URL, WS_ENDPOINT, "
+        "USER_DATA_DIR and NO_SANDBOX, with any prefix. Configs outside the project are not read."
+    ),
+)
+
+_r(
     "AAK-POLICY-TRUNCATION-001",
     "Deny policy evaluated on a truncated copy of the value the executor receives",
     "A hook bridge, gateway or guard cuts a candidate command, URL or path to a "
