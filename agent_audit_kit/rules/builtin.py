@@ -361,6 +361,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-APACHEANSWER-CVE-2026-71563-001": ["IAM-01", "STA-08"],
     "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111768-001": ["STA-08"],
+    "AAK-MCP-TOOLBOX-HOSTS-001": ["IAM-01", "STA-08"],
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
     "AAK-MCP-D365FO-CVE-2026-114123-001": ["IAM-01", "STA-08"],
     "AAK-MCP-LITELLM-CVE-2026-114612-001": ["IAM-01", "STA-08"],
@@ -16776,6 +16778,76 @@ _r(
 )
 
 _r(
+    "AAK-MCP-TSSDK-CVE-2026-111768-001",
+    "MCP TypeScript SDK: one HTTP request within the size limit can exhaust server memory during validation",
+    "The official MCP TypeScript SDK's HTTP servers put no limit on how many array elements and "
+    "object keys they validated in one request, so one request inside the default 4 MiB limit could "
+    "exhaust the server's memory, and the process aborted with `JavaScript heap out of memory` "
+    "(CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453). No credentials are needed unless requests "
+    "are authenticated before they reach the SDK. It affects `@modelcontextprotocol/sdk` 1.3.0 up to "
+    "1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to `@modelcontextprotocol/sdk` 1.32.0 or `@modelcontextprotocol/server` 2.3.0 or later "
+    "and pin it. The advisory says upgrading alone changes nothing, because the patched versions add "
+    "an option that is off by default: set `maxToolInputElements` on `McpServer` just above the largest "
+    "input your tools need, and lower `maxRequestBodySize` on the transport, or your own body parser's "
+    "limit, to what they need. If you cannot upgrade yet, make the second change.",
+    sarif_name="McpTypeScriptSdkValidationMemory",
+    cve_references=["CVE-2026-111768"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` from 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` "
+        "from 2.0.0 up to 2.3.0 where a package.json, lockfile or MCP config states the version, reporting "
+        "a range that admits an affected version. `latest` is fixed and states no version, so it is not "
+        "reported. It reads the version, not the code: a fixed release without `maxToolInputElements` "
+        "set, which the advisory says is still exposed, is not reported, and a stdio-only server on an "
+        "affected version is reported without being exposed. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOOLBOX-HOSTS-001",
+    "MCP Toolbox for Databases on a network listener with an open Host or Origin check",
+    "MCP Toolbox for Databases before 0.25.0 had no way to validate the `Host` a request names, "
+    "so a page in a browser could rebind a name to its listener (CVE-2026-11624, CWE-346, "
+    "GHSA-76g7-m3xw-x9gr). 0.25.0 added `--allowed-hosts` beside `--allowed-origins`, and both still "
+    "default to `*`, so the server only warns at startup and upgrading closes nothing by itself. "
+    "This rule reports `@toolbox-sdk/server` below 0.25.0, and an MCP config that starts the server on "
+    "a network listener with either flag unset or `*`.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@toolbox-sdk/server` to 0.25.0 or later and pin it, and start the server with both "
+    "`--allowed-hosts` and `--allowed-origins` naming your real hosts and origins. A client that "
+    "starts the server itself can use `--stdio`, which has no listener.",
+    sarif_name="McpToolboxOpenHostCheck",
+    cve_references=["CVE-2026-11624"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-NETWORK-01"],
+    limitations=(
+        "The version half reads `@toolbox-sdk/server` where a package.json, lockfile or MCP config states "
+        "a version; `latest` states none and is not reported, and the Go module is not read. The launch "
+        "half reads the `command` and `args` of servers in `.mcp.json`, `mcp.json`, "
+        "`claude_desktop_config.json` and `*.mcp.json` anywhere outside AAK's skip directories, for "
+        "`npx @toolbox-sdk/server` or a program named `toolbox`. A launch with `--stdio` is not read, and "
+        "neither is a shell script, a compose file or a Kubernetes manifest. A flag given a variable reference "
+        "counts as set, and a list holding `*` beside other names counts as open. The rule reads the flags, "
+        "not the reverse proxy in front of the listener. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
     "AAK-MCP-RIPGREP-CVE-2026-113378-001",
     "mcp-ripgrep hands a tool's fileType argument to a shell unescaped (no fixed release)",
     "`mcp-ripgrep` (npm; mcollina/mcp-ripgrep), an MCP server that runs ripgrep for "
@@ -17843,7 +17915,8 @@ _r(
     "or keep the component the advisory names unreachable until one ships; where an NVD "
     "entry names only the last affected release, upgrade past it to the release the "
     "vendor's advisory names as fixed. Run `aak update` so the scan reads the current "
-    "advisories rather than the bundled few.",
+    "advisories rather than the bundled few. Where the finding says a parent pins the release "
+    "exactly, the upgrade needs an override: `[tool.uv] override-dependencies` or a pip constraint.",
     sarif_name="KnownVulnerableRelease",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -17886,7 +17959,8 @@ _r(
         "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
         "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
         "the package names is dropped for OSV's. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow, the two against anyio below 4.14.2, "
+        "and nine entries from "
         "NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, "
         "prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and "
         "@samanhappy/mcphub, so without `aak update` nothing "
