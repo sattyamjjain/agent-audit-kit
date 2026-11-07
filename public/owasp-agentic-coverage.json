@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-02T09:49:01Z",
+  "last_updated": "2026-11-07T12:24:58Z",
   "aak_version": "0.6.32",
-  "rule_count": 442,
+  "rule_count": 445,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1211,7 +1211,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 117,
+      "rule_density": 120,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1303,6 +1303,12 @@
             "IAM-05",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-AUTHZ-CALLER-INPUT-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-AZURE-MCP-001",
@@ -1455,6 +1461,12 @@
             "IAM-01",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-MCP-AUTHZ-COVERAGE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001",
@@ -2097,6 +2109,12 @@
             "CVE-2026-55156",
             "CVE-2026-73222"
           ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TOKENVERIFIER-AUD-001",
+          "severity": "medium",
+          "cve_references": [],
           "aicm_references": []
         },
         {

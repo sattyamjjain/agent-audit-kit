@@ -877,6 +877,27 @@
       "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm <=1.1.1)"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-AUTHZ-CALLER-INPUT-001",
+      "severity": "high",
+      "title": "An MCP tool's authorization decision reads a tenant, user, role or scope from its own arguments"
+    },
+    {
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-32211"
@@ -3575,6 +3596,27 @@
       "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
       "severity": "high",
       "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
+    },
+    {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-AUTHZ-COVERAGE-001",
+      "severity": "high",
+      "title": "MCP authorization covers tools/call and not the other handlers, one transport, or an unset principal"
     },
     {
       "category": "supply-chain",
@@ -7980,6 +8022,27 @@
       "title": "tumf mcp-text-editor path traversal (affected up to 1.0.2)"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-TOKENVERIFIER-AUD-001",
+      "severity": "medium",
+      "title": "A python-sdk resource server leaves out protected-resource metadata or the token audience check"
+    },
+    {
       "category": "tool-poisoning",
       "cve_references": [
         "CVE-2026-78430"
@@ -11027,30 +11090,30 @@
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
-      "trust-boundary": 18
+      "trust-boundary": 21
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 229,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 335,
+      "Art. 15 - Robustness & Security": 338,
       "Art. 9 - Risk Management": 226
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 229,
       "Constrain and sandbox tool execution (p.11)": 209,
-      "Design for boundaries (p.10)": 320,
+      "Design for boundaries (p.10)": 323,
       "Filter and monitor output pipelines and chained execution (p.12)": 127,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 290,
-      "Sign and verify MCP messages (p.12)": 300,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 293,
+      "Sign and verify MCP messages (p.12)": 303,
       "Track and patch MCP related vulnerabilities (p.13)": 234,
       "Validate parameters (p.11)": 213
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 104,
-      "ASI03": 117,
+      "ASI03": 120,
       "ASI04": 227,
       "ASI05": 107,
       "ASI06": 5,
@@ -11066,20 +11129,20 @@
       "MCP04:2025": 174,
       "MCP05:2025": 119,
       "MCP06:2025": 4,
-      "MCP07:2025": 90,
+      "MCP07:2025": 93,
       "MCP08:2025": 1,
       "MCP09:2025": 5,
       "MCP10:2025": 15
     },
     "by_severity": {
       "critical": 102,
-      "high": 190,
+      "high": 192,
       "info": 5,
       "low": 19,
-      "medium": 126
+      "medium": 127
     },
     "total_cves_covered": 382,
-    "total_rules": 442
+    "total_rules": 445
   },
   "tool": "agent-audit-kit"
 }

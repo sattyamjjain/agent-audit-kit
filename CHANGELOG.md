@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rules for MCP authorization in server code (`mcp_authz_code`) (#1197). AAK-AUTHZ-CALLER-INPUT-001 (HIGH): a decision reads a tenant, user, role or scope from the tool's own arguments. AAK-MCP-AUTHZ-COVERAGE-001 (HIGH): tools/call checks scopes and resources/read, prompts/get or completion/complete do not, a check on one HTTP transport only, or a handler that goes ahead with no principal. AAK-MCP-TOKENVERIFIER-AUD-001 (MEDIUM): `resource_server_url=None` with a `token_verifier`, or a `verify_token` that never reads an audience.
+
+### Changed
+
+- AAK-AGENT-SHARED-RES-AUTHZ-001's remediation takes the actor from the authenticated principal; a parameter may only be checked against it (#1197).
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
