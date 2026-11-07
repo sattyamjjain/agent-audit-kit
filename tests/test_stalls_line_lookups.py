@@ -45,6 +45,7 @@ from agent_audit_kit.scanners import (
     langchain_prompt_loader,
     malicious_extensions,
     mcp_codeexec_sandbox,
+    mcp_server_code,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -281,6 +282,12 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The MCP server code rules, before they were released: one long word holding `state`
+    # many times backtracked quadratically in the first requestState pattern, and tool
+    # registrations are each read for their own stretch of the file.
+    "server-code-state-word": (mcp_server_code.scan, lambda k: {"s.py": "requestState = b64decode(x)\n" + "state" * k + " = 1\n"}, 4_000, False),
+    "server-code-js-tools": (mcp_server_code.scan, lambda k: {"s.ts": "s.tool('a', { readOnlyHint: true }, () => {});\n" * k}, 1_000, False),
+    "server-code-except-blocks": (mcp_server_code.scan, lambda k: {"s.py": "from mcp import x\n" + "try:\n    f()\nexcept E as e:\n    raise ToolError('fixed')\n" * k}, 500, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

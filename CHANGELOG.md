@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rules for MCP server code (`mcp_server_code`) (#1196). AAK-MCP-ENV-DUMP-001 (HIGH): a tool handler returns the whole process environment, or a config launches `server-everything` below 2.1.0, on its date line, or with `GET_ENV_INCLUDE_SECRETS`. AAK-MCP-ERROR-LEAK-001 (MEDIUM): raw exception text in a client-facing error or sent to a remote A2A peer. AAK-MCP-ANNOTATION-MISMATCH-001 (MEDIUM): a tool annotated read-only or non-destructive changes storage. AAK-MCP-REQUESTSTATE-001 (HIGH): an echoed `requestState` trusted as proof of approval or identity without an integrity check and a binding.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
