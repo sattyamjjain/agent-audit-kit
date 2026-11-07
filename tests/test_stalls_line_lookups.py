@@ -53,6 +53,7 @@ from agent_audit_kit.scanners import (
     mcp_stdio_launcher,
     mcp_stdio_params,
     oauth_surface,
+    policy_failopen,
     runtime_advisories,
     secret_exposure,
     shared_resource_authz,
@@ -281,6 +282,13 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # AAK-POLICY-VERDICT-FAILOPEN-001 and AAK-POLICY-IMPORT-FAILOPEN-001, before they were
+    # released: each function is read for one scan of what follows its first check of a
+    # name, nested functions are not read again for the function around them, and the
+    # tests of a name left unset are found in one pass over the module.
+    "failopen-checks": (policy_failopen.scan, lambda k: {"g.py": "def run(verdict, tool):\n" + '    if verdict == "deny":\n        return\n' * k + "    tool()\n"}, 2_000, False),
+    "failopen-nested": (policy_failopen.scan, lambda k: {f"g{i}.py": "".join(" " * d + f"def f{d}(verdict, tool):\n" for d in range(40)) + " " * 40 + 'if verdict == "deny":\n' + " " * 41 + "return\n" + " " * 40 + "tool()\n" for i in range(k)}, 4, False),
+    "failopen-tries": (policy_failopen.scan, lambda k: {"g.py": "".join(f"try:\n    from policy_{i} import c{i}\nexcept ImportError:\n    c{i} = None\n" for i in range(k)) + "".join(f"if c{i} is None:\n    raise E\n" for i in range(k))}, 500, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

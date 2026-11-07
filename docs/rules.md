@@ -10,9 +10,9 @@
 | MCP Configuration | 68 |
 | Tool Poisoning | 32 |
 | Agent Config | 20 |
+| Trust Boundaries | 20 |
 | Legal Compliance | 19 |
 | Secret Exposure | 19 |
-| Trust Boundaries | 18 |
 | Hook Injection | 16 |
 | Transport Security | 15 |
 | Taint Analysis | 14 |
@@ -20,7 +20,7 @@
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **442** |
+| **Total** | **444** |
 
 <!-- END rules-summary -->
 
