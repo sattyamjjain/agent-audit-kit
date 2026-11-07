@@ -36,6 +36,7 @@ from agent_audit_kit.scanners import (
     agent_server_noauth,
     agent_config,
     composition,
+    dns_rebind,
     gha_hardening,
     hook_rce,
     ide_task_rce,
@@ -280,7 +281,17 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
+_DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
+_DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
+
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # AAK-DNS-REBIND-001's SDK defaults, before they were released: an import with no
+    # closing parenthesis, `host=` tokens and half-written wildcard lists are each read
+    # once, and files below one deep directory share their walk to the root.
+    "dns-rebind-open-imports": (dns_rebind.scan, lambda k: {"s.py": "from mcp.server import (\n" * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-hosts": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'host="127.0.0.1"\n' * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-wildcards": (dns_rebind.scan, lambda k: {"s.py": "TrustedHostMiddleware(app, allowed_hosts=[\n" * k + _DNS_SERVER}, 1_000, False),
+    "dns-rebind-deep-files": (dns_rebind.scan, lambda k: {f"{'d/' * 60}s{i}.py": _DNS_IMPORT + _DNS_SERVER for i in range(k)}, 40, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

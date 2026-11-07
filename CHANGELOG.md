@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- AAK-DNS-REBIND-001 follows what `mcp` actually does (#1191). The SDK's own FastMCP on its default loopback host no longer fires at CRITICAL when the project resolves `mcp` to 1.23.0 or later, since that release turns the protection on there (GHSA-9h52-p55h-vw2f); below it, it fires as before, and with no readable version it fires and says what would clear it. `enable_dns_rebinding_protection=False` now fires whatever allow-list sits beside it, and it used to fire nothing. An allow-list whose only entry is `*` no longer counts. `SseServerTransport` built directly and the SDK's 2.x `MCPServer` are read too. The next MCP Security Index snapshot may move grades.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
