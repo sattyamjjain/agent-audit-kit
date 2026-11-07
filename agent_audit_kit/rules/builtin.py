@@ -11726,6 +11726,126 @@ _r(
 
 
 _r(
+    "AAK-MCP-ENV-DUMP-001",
+    "An MCP tool returns the whole process environment to the client",
+    "A tool handler returns the whole environment (`dict(os.environ)`, `os.environ.copy()`, "
+    "`{**os.environ}`, `process.env`, `{...process.env}`, `JSON.stringify(process.env)`), so every API "
+    "key and token in the server's environment is one tool call from the model, with no prompt injection "
+    "needed. A read-only annotation makes it worse, since hosts auto-approve those. The rule also reads an "
+    "MCP config that launches `@modelcontextprotocol/server-everything` at a stated release below 2.1.0 or "
+    "on its date line, or with `GET_ENV_INCLUDE_SECRETS` set: its `get-env` tool returned the full "
+    "environment until 2.1.0 masked credential-like values by default. A handler that returns one named "
+    "variable does not fire.",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Return the named variables the tool needs, or a filtered copy with secrets masked. Treat "
+    "`server-everything` as a demo: leave it out of a real config, or use 2.1.0 or later without "
+    "`GET_ENV_INCLUDE_SECRETS`.",
+    sarif_name="McpToolEnvironmentDump",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: a function decorated `@<name>.tool(...)` or `@<name>.call_tool(...)` whose own `return` holds "
+        "`os.environ` whole, directly or through a local assigned from it; a helper it calls is not "
+        "followed, and neither is a filtered copy, which may still hold secrets. TypeScript and JavaScript: a "
+        "file that registers a tool and holds `JSON.stringify(process.env)` or returns `process.env` whole "
+        "within 120 characters on one line, read by pattern and not tied to the handler. The config half "
+        "reads `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.json`, leaves out configs "
+        "below a tests, fixtures, examples, samples or demo directory, and does not report an unpinned launch, "
+        "which gets `latest`, though a launcher's cache may still hold an older release. A source file over "
+        "512 KB or a config over 1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-ERROR-LEAK-001",
+    "Raw exception text reaches an MCP client or a remote A2A peer",
+    "An except block puts the exception's own text in a client-facing error (CWE-209): "
+    "`ToolError(f\"...{e}\")`, `McpError(str(e))`, a JSON-RPC error message built from `str(exc)` or "
+    "`repr(exc)`, or `traceback.format_exc()` sent to a client or a remote A2A peer. A pydantic validation "
+    "error, for one, shows input values, the backend's types and its version. A fixed message beside "
+    "`logger.exception` loses nothing for the operator and does not fire.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Send the client a fixed message, and log the detail on the server with `logger.exception`. JSON-RPC 2.0 "
+    "says the message should be a concise single sentence, and its `data` member may be omitted.",
+    sarif_name="McpErrorExceptionLeak",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: an `except` body that passes `str(e)`, `repr(e)`, an f-string of `e`, `%` or `.format` formatting "
+        "of `e`, or `traceback.format_exc()` to `ToolError`, `McpError`, `ErrorData`, `JSONRPCError`, "
+        "`ResourceError` or `PromptError` in a file importing `mcp` or `fastmcp`, or builds "
+        "`{\"error\": {\"message\": ...}}` from it there; or to `new_agent_text_message`, "
+        "`TaskStatusUpdateEvent`, `failed` or `update_status` in a file importing `a2a` or `google.adk.a2a`. "
+        "A tool handler that returns `str(e)` as its result is not reported, since a tool's result is how "
+        "the model is told a call failed; a returned `traceback.format_exc()` is. A local holding the text "
+        "first is not followed. TypeScript and JavaScript: `new McpError(...)` holding `err.message`, "
+        "`err.stack`, `String(err)` or an interpolated `err`, for the names err, error, e, ex and exc, by "
+        "pattern on one line. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-ANNOTATION-MISMATCH-001",
+    "A tool annotated read-only or non-destructive changes storage",
+    "A tool annotated `readOnlyHint=True` or `destructiveHint=False` has a handler that writes, deletes or "
+    "rewrites storage (`open(..., \"w\")`, `os.remove`, `shutil.rmtree`, `unlink`, `fs.writeFile`, `fs.rm`, SQL "
+    "DELETE, UPDATE or DROP). Hosts use these hints to auto-approve, so the tool runs without asking. A "
+    "tool with no annotations is not a mismatch: absent hints read as the MCP defaults, readOnlyHint false and "
+    "destructiveHint true, which already say it may write. A read-only annotation on a handler that only "
+    "reads does not fire.",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Correct the annotation, or take the write out of the tool. Hints are the server's word, so a client "
+    "should let its owner override them per tool, and read a missing hint as a possible write.",
+    sarif_name="McpToolAnnotationMismatch",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI09"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: the decorated handler's own calls, so a helper it calls is not followed. readOnlyHint true "
+        "reports any write, an append or an INSERT too. destructiveHint false alone reports only what "
+        "overwrites or removes, so an append or an INSERT passes it. SQL is read from the start of a string "
+        "or f-string passed to `execute`, `executemany` or `executescript`, so a query built first and passed by "
+        "name is not read, and neither is an ORM's delete. An annotation held in a variable is not read. "
+        "TypeScript and JavaScript: by pattern, from the hint to the next tool registration, so a handler defined "
+        "elsewhere and passed by name is not read. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-REQUESTSTATE-001",
+    "Server code trusts an echoed requestState as proof of approval or identity",
+    "A server takes the `requestState` a client echoes back (the 2026-07-28 input-required round trip) as proof "
+    "of approval or identity, without verifying an HMAC or AEAD over it, or without binding it to the principal, "
+    "an expiry and a digest of the request. The client holds that value between requests and can rewrite or "
+    "replay it. The spec says that if it \"influences authorisation, resource access, or business logic, servers "
+    "MUST protect its integrity (e.g. HMAC or AEAD)\". `hmac.compare_digest` over a state that carries the "
+    "principal, an expiry and a request digest does not fire.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Sign or encrypt the state, verify it in constant time before reading it, and bind it to the authenticated "
+    "principal, a short expiry and the method plus a digest of its parameters. Those measures do not guarantee "
+    "single use, so enforce that on the server if an approval may run only once.",
+    sarif_name="McpRequestStateTrusted",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads Python, TypeScript and JavaScript by pattern, one file at a time: `requestState` or "
+        "`request_state`, a decode (`b64decode`, `atob`, `json.loads`, `JSON.parse`, `Buffer.from`), and a read "
+        "of an approval or identity key (approved, approval, authorized, allowed, principal, user, identity, role, "
+        "scope) from a name holding `state`. A check in another file counts as absent, and any HMAC, AEAD, Fernet "
+        "or JWT call in the file counts as present, whether or not it covers this value. The binding is read as "
+        "those words appearing in the file, not as a comparison being made. A state stored server-side and "
+        "looked up by an opaque id is not this shape, and does not fire. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
     "AAK-POLICY-TRUNCATION-001",
     "Deny policy evaluated on a truncated copy of the value the executor receives",
     "A hook bridge, gateway or guard cuts a candidate command, URL or path to a "
