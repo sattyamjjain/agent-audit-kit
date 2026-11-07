@@ -1,0 +1,6 @@
+[package]
+name = "agent"
+version = "0.1.0"
+
+[dependencies]
+surrealdb = "=3.2.1"

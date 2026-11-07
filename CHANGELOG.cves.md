@@ -18,6 +18,53 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-07 (v0.6.33): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
+
+NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
+#1184, and of CVE-2026-123272 and CVE-2026-123271 on 5 Nov 2026, which it has not filed because
+its queue is at the cap. AAK did nothing with any of them, with or without `aak update`: the feed
+read PyPI and npm only, so `nvd_feed` dropped each record at its `pkg:cargo` or `pkg:golang`
+packageURL, and AAK-KNOWN-VULN-001 opened neither a Cargo.lock nor a go.mod. GHSA-pgh9-49q4-hqcx,
+GHSA-xf6j-693p-wqxx and GHSA-95vg-3r9c-2v5q are repository advisories only, with no global record,
+and OSV holds nothing for the three CVEs. The fix is the class: Go and crates.io are now advisory
+ecosystems, read from OSV's exports and NVD's CNA records. NVD text is quoted from the API records,
+read on 2026-11-07 and saved unedited under tests/fixtures/nvd_cna.
+
+### CVE-2026-123272 (mcp-go) and CVE-2026-123271 (ChatCLI): advisory feed 2026-11-07
+
+**`AAK-KNOWN-VULN-001` reports Go `github.com/mark3labs/mcp-go` v0.48.0 up to v1.2.1 and
+`github.com/diillson/chatcli` v1.159.0 up to v1.215.2, HIGH.** NVD on mcp-go: `OAuthHandler.fetchServerMetadata`
+"contains an improper validation vulnerability" that lets a malicious MCP server declare a different
+MCP server as the RFC 8707 resource indicator and replay the token it gets. Each record's CNA data is
+one interval with `defaultStatus: unaffected`, so each bundled entry is that interval with its `lessThan`
+as the fix. They are the records as `nvd_feed` converts them; no hand pin was added. Measured with the
+scanner: a go.mod requiring mcp-go v1.1.0 fires HIGH on the `require` line and names v1.2.1; v1.2.1 and
+v0.47.0 do not fire, a `replace` to v1.2.1 or to a local path does not, and a go.sum with no go.mod does
+not. After `aak update` every mcp-go release also reports GO-2026-6911, a separate advisory (a redirect
+followed with the client's headers) that the Go vulnerability database lists from the first release with
+no fix.
+
+### CVE-2026-121419 (surrealdb): advisory feed 2026-11-07
+
+**`AAK-KNOWN-VULN-001` reports crates.io `surrealdb` 3.1.0 up to 3.3.0, HIGH.** NVD: SurrealDB
+"contains an improper authentication vulnerability" in which the MCP BoundSubject fingerprint
+uses the access method name rather than the user. VulnCheck's CNA data is one interval, 3.1.0 to
+`lessThan` 3.3.0 with `defaultStatus: unaffected`, so the bundled entry is that interval with
+3.3.0 as the fix. It is the record as `nvd_feed` converts it; no hand pin was added. Measured with
+the scanner: a Cargo.lock resolving surrealdb 3.2.1 from a registry fires HIGH and names 3.3.0;
+3.3.0 and 3.0.9 do not fire, and neither does a block with no `source` line. After `aak update`
+with `--nvd-days 7` on 2026-11-07 the same lockfile reports seven more, each a separate advisory:
+RUSTSEC-2026-0453 (CVE-2026-121417) from OSV, and CVE-2026-121416, CVE-2026-121418 and
+CVE-2026-121420 through CVE-2026-121423 from NVD's records of CNA version data.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123272 | 8.0 | `github.com/mark3labs/mcp-go` (Go) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports v0.48.0 up to v1.2.1 from a go.mod. | not filed |
+| CVE-2026-123271 | 8.0 | `github.com/diillson/chatcli` (Go) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports v1.159.0 up to v1.215.2 from a go.mod. | not filed |
+| CVE-2026-121419 | 8.1 | `surrealdb` (crates.io) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 3.1.0 up to 3.3.0 from the bundled NVD entry, HIGH, fixed in 3.3.0. No pin. | #1184 |
+
+CVSS is the record's CVSS 3.1 score, VulnCheck's. Its CVSS 4.0 score is 8.6.
+
 ## 2026-10-31 (v0.6.30): lmdeploy's NVD record in the bundled advisory feed
 
 NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the

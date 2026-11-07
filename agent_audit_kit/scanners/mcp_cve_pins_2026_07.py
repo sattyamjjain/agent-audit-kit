@@ -2376,6 +2376,15 @@ _YARN_VERSION_RE = re.compile(r'^[ \t]+version:?[ \t]+"?([0-9][\w.\-]{0,64})', r
 _TOML_PACKAGE_RE = re.compile(r"^\[\[package\]\]", re.MULTILINE)
 _TOML_NAME_RE = re.compile(r'^name[ \t]*=[ \t]*"([^"\n]{1,214})"', re.MULTILINE)
 _TOML_VERSION_RE = re.compile(r'^version[ \t]*=[ \t]*"([0-9][^"\n]{0,64})"', re.MULTILINE)
+_TOML_SOURCE_RE = re.compile(r"^source[ \t]*=", re.MULTILINE)
+# go.mod, as golang.org/x/mod/modfile reads it: one directive a line or a factored block, `//`
+# comments, a word quoted or bare. A quote holds no escapes here, so an unclosed one is scanned
+# once per line and no more, which a pattern allowing `\\"` inside a quote would not be.
+_GO_MOD_LINE_RE = re.compile(r"[^\n]+")
+_GO_MOD_WORD_RE = re.compile(r'//.*|"[^"\n]*"|`[^`\n]*`|=>|[()]|(?:(?!//)[^\s"`()])+')
+_GO_DIRECTIVE_RE = re.compile(r"^[ \t]*go[ \t]+(\d+)\.(\d+)", re.MULTILINE)
+# golang.org/x/mod/modfile's IsDirectoryPath: every path syntax, because a go.mod moves between systems.
+_GO_LOCAL_PATH_RE = re.compile(r"\.{0,2}[/\\]|[A-Za-z]:")
 
 
 def _json_object_heads(text: str) -> Iterator[tuple[int, int, str]]:
@@ -2445,6 +2454,91 @@ def _lockfile_entries(
     }
 
 
+def _go_mod_words(line: str) -> list[str]:
+    """A go.mod line's words, unquoted, up to its comment."""
+    words: list[str] = []
+    for word in _GO_MOD_WORD_RE.findall(line):
+        if word.startswith("//"):
+            break
+        words.append(word[1:-1] if word[0] in '"`' else word)
+    return words
+
+
+def _go_mod_replacement(args: list[str]) -> tuple[tuple[str, str], tuple[str, str] | None] | None:
+    """((module, version or ""), (new module, new version), or None for a local path) for a
+    `replace` directive's arguments, or None when they are no replacement Go would read.
+
+    A version on the left replaces that version alone. On the right a local path takes no
+    version and another module must have one.
+    """
+    if "=>" not in args:
+        return None
+    arrow = args.index("=>")
+    left, right = args[:arrow], args[arrow + 1:]
+    if not 1 <= len(left) <= 2 or not 1 <= len(right) <= 2:
+        return None
+    key = (left[0], left[1] if len(left) == 2 else "")
+    if _GO_LOCAL_PATH_RE.match(right[0]):
+        return key, None
+    return (key, (right[0], right[1])) if len(right) == 2 else None
+
+
+def _go_mod_entries(text: str, wanted: AbstractSet[str]) -> list[tuple[int, str, str]]:
+    """(offset, module, version) for each `require` of a go.mod, direct or `// indirect`,
+    in file order, after its `replace` directives.
+
+    A replaced module is reported as its replacement, at the `replace` line, because that
+    is the version that runs. One replaced by a local path is the project's own code and
+    is dropped. `exclude` is ignored, and so is a `replace` of a module nothing requires.
+    """
+    requires: list[tuple[int, str, str]] = []
+    replaces: dict[tuple[str, str], tuple[int, str, str] | None] = {}
+    block = ""
+    for match in _GO_MOD_LINE_RE.finditer(text):
+        words = _go_mod_words(match.group())
+        if not words:
+            continue
+        if block:
+            if words[0] == ")":
+                block = ""
+                continue
+            verb, args = block, words
+        else:
+            verb, args = words[0], words[1:]
+            if args == ["("]:
+                block = verb
+                continue
+        if verb == "require" and len(args) >= 2:
+            requires.append((match.start(), args[0], args[1]))
+        elif verb == "replace":
+            replacement = _go_mod_replacement(args)
+            if replacement is not None:
+                key, target = replacement
+                replaces[key] = None if target is None else (match.start(), *target)
+    found: list[tuple[int, str, str]] = []
+    for offset, module, version in requires:
+        original = (offset, module, version)
+        chosen = replaces.get((module, version), replaces.get((module, ""), original))
+        if chosen is not None and chosen[1] in wanted:
+            found.append(chosen)
+    return sorted(found)
+
+
+def go_mod_incomplete_note(text: str) -> str:
+    """A sentence for a finding on a go.mod that lists only part of the build, else "".
+
+    From go 1.17 a go.mod has a `require` for every module that provides a package the
+    build imports. Before that it need not, and with no `go` line Go assumes 1.16.
+    """
+    match = _GO_DIRECTIVE_RE.search(text)
+    if match is None:
+        return " This go.mod has no go line, which Go reads as 1.16, so it lists only part of the build, and the modules it leaves out were not judged."
+    if (int(match.group(1)), int(match.group(2))) >= (1, 17):
+        return ""
+    return (f" This go.mod says go {match.group(1)}.{match.group(2)}, older than 1.17, so it lists only part of "
+            "the build, and the modules it leaves out were not judged.")
+
+
 def _lockfile_raw_entries(
     text: str, filename: str, wanted: AbstractSet[str]
 ) -> dict[str, list[tuple[int, str]]]:
@@ -2472,11 +2566,17 @@ def _lockfile_raw_entries(
         # pnpm states the version in the entry itself.
         found = [(m.start(), m.group(1), m.group(2)) for m in _PNPM_ENTRY_RE.finditer(text)
                  if m.group(1).lower() in wanted]
-    elif filename in ("uv.lock", "poetry.lock"):
+    elif filename == "go.mod":
+        found = _go_mod_entries(text, wanted)
+    elif filename in ("uv.lock", "poetry.lock", "cargo.lock"):
         starts = [m.start() for m in _TOML_PACKAGE_RE.finditer(text)] + [len(text)]
         for start, stop in zip(starts, starts[1:]):
             name_m = _TOML_NAME_RE.search(text, start, stop)
             if name_m is None or _lockfile_canon(name_m.group(1), filename) not in wanted:
+                continue
+            # In a Cargo.lock the root crate, path dependencies and workspace members have no
+            # `source`: they are the project's own code, whatever they are called.
+            if filename == "cargo.lock" and _TOML_SOURCE_RE.search(text, start, stop) is None:
                 continue
             version_m = _TOML_VERSION_RE.search(text, start, stop)
             if version_m is not None:

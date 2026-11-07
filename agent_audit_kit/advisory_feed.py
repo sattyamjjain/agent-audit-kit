@@ -6,19 +6,27 @@ scan knew a vulnerable release only through a hand-written pin, the bundled
 `vuln_db.json` held no Python entries, and `aak update` downloaded OSV's complete
 PyPI and npm exports for the malicious-release feed and kept nothing but their
 `MAL-` records. This feed keeps the advisory records from the same downloads,
-and AAK-KNOWN-VULN-001 matches them against every version a scan resolves.
+and AAK-KNOWN-VULN-001 matches them against every version a scan resolves. It
+also reads OSV's Go and crates.io exports, which `aak update` downloads for this
+feed alone (`ADVISORY_ONLY_ECOSYSTEMS`), so a go.mod and a Cargo.lock are judged the
+same way.
 
 Load order, as `malicious_feed` reads its feed: the cached feed at
 `~/.agent-audit-kit/advisories.json` when it exists and parses, else the bundled
 `data/advisories.json`. A scan never touches the network. `aak update` rebuilds
 the cached copy with a `Collector` fed by `malicious_feed.refresh(on_record=...)`,
-so each export is downloaded and read once for both feeds.
+so each export is downloaded and read once for both feeds, and by
+`read_advisory_only_exports` for the ones the malicious-release feed does not use.
 
 What is kept
 ------------
 A record that is not `MAL-`, not withdrawn, and has, for the export's registry,
 an `ECOSYSTEM` or `SEMVER` range or a list of affected versions (a GIT range
-names commits, which no lockfile records). For each package a record names:
+names commits, which no lockfile records). A package block RustSec marks as
+informational (`database_specific.informational`: `unmaintained`, `unsound` or
+`notice`, 521 of the 3,055 crates.io records on 2026-11-07) is left out: RustSec
+files those as notices, cargo-audit reports them as warnings, and this feed lists
+vulnerabilities. For each package a record names:
 
 * `id`, `aliases` (CVE, GHSA and PYSEC ids), `modified` and the osv.dev `url`;
 * `ranges`: every range's events sorted by version, as OSV's specification
@@ -80,6 +88,8 @@ import json
 import math
 import os
 import tempfile
+import urllib.request
+import zipfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,13 +99,23 @@ from agent_audit_kit.malicious_feed import (
     ECOSYSTEMS,
     OSV_EXPORT,
     FeedError,
+    FeedUpdateError,
     Range,
+    _download,
     _optional,
     _strings,
     canonical_name,
+    export_records,
     version_key,
     version_order,
 )
+
+#: The registries the malicious-release feed does not cover and this one does, as OSV
+#: names them. Their exports are downloaded for this feed alone, so the malicious feed's
+#: counts, its source line and AAK-MALICIOUS-RELEASE-001 stay as they were.
+ADVISORY_ONLY_ECOSYSTEMS = ("Go", "crates.io")
+#: Every registry this feed reads.
+ADVISORY_ECOSYSTEMS = (*ECOSYSTEMS, *ADVISORY_ONLY_ECOSYSTEMS)
 
 BUNDLED_FEED: Path = Path(__file__).parent / "data" / "advisories.json"
 FEED_FILE_NAME = "advisories.json"
@@ -248,6 +268,12 @@ def _interval(row: Range) -> dict[str, str]:
     return out
 
 
+def _is_informational(affected: dict[str, Any]) -> bool:
+    """Does RustSec mark this block as a notice rather than a vulnerability?"""
+    specific = affected.get("database_specific")
+    return isinstance(specific, dict) and bool(specific.get("informational"))
+
+
 def advisory_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
     """Feed entries, one per package, for one OSV advisory record on `ecosystem`.
 
@@ -269,7 +295,7 @@ def advisory_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
         name = package.get("name") if isinstance(package, dict) else None
         if not isinstance(package, dict) or package.get("ecosystem") != ecosystem:
             continue
-        if not isinstance(name, str) or not name.strip():
+        if not isinstance(name, str) or not name.strip() or _is_informational(affected):
             continue
         _, found, listed = packages.setdefault(canonical_name(ecosystem, name), (name.strip(), [], set()))
         for spec in _dicts(affected.get("ranges")):
@@ -467,7 +493,7 @@ def without_osv_twins(
     named: set[tuple[str, str, str]] = set()
     for row in osv_rows:
         ecosystem, name = row.get("ecosystem"), row.get("name")
-        if ecosystem not in ECOSYSTEMS or not isinstance(name, str):
+        if ecosystem not in ADVISORY_ECOSYSTEMS or not isinstance(name, str):
             continue
         key = canonical_name(ecosystem, name)
         for ident in (row.get("id"), *_strings(row.get("aliases"))):
@@ -475,7 +501,7 @@ def without_osv_twins(
                 named.add((ecosystem, key, ident))
     kept = [
         row for row in nvd_rows
-        if not (row.get("ecosystem") in ECOSYSTEMS and isinstance(row.get("name"), str)
+        if not (row.get("ecosystem") in ADVISORY_ECOSYSTEMS and isinstance(row.get("name"), str)
                 and (row["ecosystem"], canonical_name(row["ecosystem"], row["name"]), row.get("id")) in named)
     ]
     return kept, len(nvd_rows) - len(kept)
@@ -559,7 +585,7 @@ def parse_feed(data: object, origin: str, path: Path, fallback: dict[str, Any] |
     if isinstance(data.get("entries"), list):
         rows = [row for row in data["entries"] if isinstance(row, dict)]
     elif isinstance(data.get("records"), list):
-        rows = [row for record in data["records"] for e in ECOSYSTEMS for row in advisory_entries(record, e)]
+        rows = [row for record in data["records"] for e in ADVISORY_ECOSYSTEMS for row in advisory_entries(record, e)]
     else:
         raise FeedError("no `entries` or `records` list")
     nvd = data.get("nvd")
@@ -567,7 +593,7 @@ def parse_feed(data: object, origin: str, path: Path, fallback: dict[str, Any] |
     index: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for raw in rows:
         ecosystem, name = raw.get("ecosystem"), raw.get("name")
-        if ecosystem not in ECOSYSTEMS or not isinstance(name, str) or not name.strip():
+        if ecosystem not in ADVISORY_ECOSYSTEMS or not isinstance(name, str) or not name.strip():
             continue
         if not isinstance(raw.get("id"), str) or not raw["id"]:
             continue
@@ -672,9 +698,28 @@ class Collector:
         self.launch: list[dict[str, Any]] = []
         self.nvd_window: dict[str, Any] | None = None
         self.nvd_note = ""  # where the NVD half came from, as the feed's `source` says it
+        self.exports: list[str] = []  # the advisory-only exports this rebuild holds, read or kept
 
     def add(self, ecosystem: str, record: dict[str, Any]) -> None:
         self.entries.extend(advisory_entries(record, ecosystem))
+
+    def add_export(self, ecosystem: str, entries: list[dict[str, Any]]) -> None:
+        """The entries of one advisory-only export, read or carried over."""
+        self.entries.extend(entries)
+        self.exports.append(ecosystem)
+
+    def keep_cached_entries(self, ecosystem: str) -> int:
+        """Carry one registry's entries over from the cached feed, so an export that
+        could not be downloaded discards nothing. The number carried over."""
+        try:
+            data = json.loads(cache_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return 0
+        rows = [row for row in _dicts(data.get("entries") if isinstance(data, dict) else None)
+                if row.get("ecosystem") == ecosystem]
+        if rows:
+            self.add_export(ecosystem, rows)
+        return len(rows)
 
     def add_nvd(self, entries: list[dict[str, Any]], window: dict[str, Any] | None) -> None:
         """The NVD half of this rebuild: entries `nvd_feed.fetch` read for `window`,
@@ -729,14 +774,14 @@ class Collector:
             return e["ecosystem"], canonical_name(e["ecosystem"], e["name"]), e["id"]
 
         entries = sorted(self.entries, key=order)
-        nvd, twins = without_osv_twins(entries, [e for e in self.nvd if e.get("ecosystem") in ECOSYSTEMS
+        nvd, twins = without_osv_twins(entries, [e for e in self.nvd if e.get("ecosystem") in ADVISORY_ECOSYSTEMS
                                                  and isinstance(e.get("name"), str) and isinstance(e.get("id"), str)])
         nvd.sort(key=order)
         launch = sorted((e for e in self.launch if e.get("ecosystem") == LAUNCH and isinstance(e.get("name"), str)
                          and isinstance(e.get("id"), str) and isinstance(e.get("match"), dict)), key=order)
         generated = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         source = ("OSV advisory records, every one but MAL- and withdrawn ones ("
-                  + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in ECOSYSTEMS) + ")")
+                  + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in (*ECOSYSTEMS, *self.exports)) + ")")
         if self.nvd_note:
             source += f"; {self.nvd_note}, where OSV has no record of the CVE"
         document: dict[str, Any] = {"generated_at": generated, "source": source, "severity_floor": "",
@@ -766,13 +811,37 @@ class Collector:
             temporary.unlink(missing_ok=True)
             raise
         kept_entries = document["entries"]
-        counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ECOSYSTEMS}
+        counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ADVISORY_ECOSYSTEMS}
+        counts = {e: n for e, n in counts.items() if n or e in ECOSYSTEMS}
         packages = len({(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])) for row in kept_entries})
         return Written(target, generated, counts, packages, len(body), full_size, document["severity_floor"],
                        nvd=len(document["nvd"]), nvd_twins=twins, launch=len(document["launch"]))
 
 
+def read_advisory_only_export(collector: Collector, ecosystem: str, opener: Any = None, timeout: float = 300.0) -> None:
+    """Read one OSV export only this feed uses into `collector`. Network; `aak update` only.
+
+    Raises:
+        FeedUpdateError: The export could not be read. What was read of it is not kept.
+    """
+    opener = opener or urllib.request.urlopen
+    directory = cache_path().parent
+    archive = None
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        archive = _download(OSV_EXPORT.format(ecosystem=ecosystem), directory, opener, timeout)
+        rows = [row for record in export_records(archive) for row in advisory_entries(record, ecosystem)]
+    except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
+        raise FeedUpdateError(f"{ecosystem}: {type(exc).__name__}: {exc}") from exc
+    finally:
+        if archive is not None:
+            archive.unlink(missing_ok=True)
+    collector.add_export(ecosystem, rows)
+
+
 __all__ = [
+    "ADVISORY_ECOSYSTEMS",
+    "ADVISORY_ONLY_ECOSYSTEMS",
     "Advisory",
     "AdvisoryFeed",
     "BUNDLED_FEED",
@@ -790,6 +859,7 @@ __all__ = [
     "intervals",
     "load_feed",
     "parse_feed",
+    "read_advisory_only_export",
     "record_severity",
     "without_osv_twins",
 ]

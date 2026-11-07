@@ -281,6 +281,20 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Cargo.lock in AAK-KNOWN-VULN-001, before it was released: each block's `source` is looked
+    # for inside that block alone, however many blocks name a crate the feed lists.
+    # go.mod in AAK-KNOWN-VULN-001, before it was released: one pass over the lines whatever they
+    # hold, and each module looks its replacement up once. An unclosed quote costs one scan of its
+    # line; a quote pattern allowing `\\"` inside it rescanned the line per quote.
+    "go-mod-requires": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\tgithub.com/mark3labs/mcp-go v1.1.{i}\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-other-modules": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\texample.com/m{i} v1.0.0 // indirect\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-replaces": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\n" + "".join(f"require example.com/m{i} v1.0.0\nreplace example.com/m{i} => github.com/mark3labs/mcp-go v1.1.0\n" for i in range(k))}, 1_000, False),
+    "go-mod-unclosed-quotes": (known_vulns.scan, lambda k: {"go.mod": "require " + '"\\' * (20 * k) + "\n"}, 1_000, False),
+    "go-mod-slashes": (known_vulns.scan, lambda k: {"go.mod": "require " + "a/" * (20 * k) + " v1.0.0\n"}, 1_000, False),
+    "go-mod-spaces": (known_vulns.scan, lambda k: {"go.mod": (" " * 80 + "x\n") * k + "require github.com/mark3labs/mcp-go v1.1.0\n"}, 1_000, False),
+    "cargo-lock-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\n' * k}, 1_000, False),
+    "cargo-lock-sourced-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\nsource = "registry+x"\n' * k}, 1_000, False),
+    "cargo-lock-other-crates": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "other"\nversion = "1.0.0"\nsource = "registry+x"\n' * k}, 1_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

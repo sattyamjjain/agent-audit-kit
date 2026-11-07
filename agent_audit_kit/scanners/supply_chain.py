@@ -730,6 +730,7 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
     dependency. Cargo.lock lists the root crate as a `[[package]]` too, without
     one, and counting it reported 200 dependencies as 201. Workspace members and
     path dependencies have no `source` either: they are the project's own crates.
+    AAK-KNOWN-VULN-001 matches the same blocks against the advisory feed.
     """
     findings: list[Finding] = []
     rust_vulns = KNOWN_VULNERABLE_PACKAGES.get("rust", {})
@@ -918,12 +919,16 @@ def _lockfile_canon(name: str, filename: str) -> str:
 
     PyPI lockfiles compare names as PEP 503 normalises them: uv.lock records
     `awslabs-healthlake-mcp-server` for the package published as
-    `awslabs.healthlake-mcp-server`, and the dotted name never matched it.
+    `awslabs.healthlake-mcp-server`, and the dotted name never matched it. Cargo
+    treats `-` and `_` in a crate name as the same character. A Go module path is
+    case-sensitive, so it stays as written.
     """
+    if filename == "go.mod":
+        return name
     lowered = name.lower()
     if filename in ("uv.lock", "poetry.lock", "pipfile.lock"):
         return re.sub(r"[-_.]+", "-", lowered)
-    return lowered
+    return lowered.replace("_", "-") if filename == "cargo.lock" else lowered
 
 
 def _lockfile_lookup(

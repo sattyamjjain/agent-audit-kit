@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.33] - 2026-11-07
+
+### Added
+
+- Go and crates.io are advisory ecosystems. `aak update` reads OSV's Go and crates.io exports for the advisory feed alone (about 17 MB together) and NVD's CNA records naming `pkg:golang/<module path>` or `pkg:cargo/<crate>`, and the feed's counts and the update summary show both. A Go module path compares as written, and a crate name as cargo compares it, in lower case with `-` and `_` equal. Versions on both order as semver. The malicious-release feed stays on PyPI and npm.
+- AAK-KNOWN-VULN-001 reads `go.mod` and `Cargo.lock`. A `go.mod` counts every `require`, direct or `// indirect`, judges a `replace` to another module as that module, drops a module replaced by a local path and ignores `exclude`; `go.sum` is not read. A `go.mod` older than `go 1.17`, or with no `go` line, lists only part of the build, and a finding on one says so. A `Cargo.lock` block counts only with a `source` line. A RustSec record marked informational is left out.
+- The bundled advisory feed holds NVD's records of CVE-2026-123272 (mcp-go v0.48.0 up to v1.2.1, CVSS 8.0: a malicious MCP server gets the user's token minted for another resource), CVE-2026-123271 (ChatCLI v1.159.0 up to v1.215.2, CVSS 8.0, the same flaw) and CVE-2026-121419 (SurrealDB 3.1.0 up to 3.3.0, CVSS 8.1: a low-privilege token takes over another user's MCP session), saved unedited under `tests/fixtures/nvd_cna`, so a scan reports them without `aak update`.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
