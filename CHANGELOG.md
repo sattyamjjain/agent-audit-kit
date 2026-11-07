@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `docs/why.md` shows how to verify a release's wheel or sdist against its PyPI attestation, with the command run against 0.6.31 (#1202).
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
