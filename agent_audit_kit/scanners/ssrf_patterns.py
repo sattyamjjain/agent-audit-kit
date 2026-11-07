@@ -22,8 +22,13 @@ _MAX_FILE_BYTES = 512_000
 # word (`x@tool`), never a decorator at the start of a line, and a file whose
 # only marker was `@tool` was never read.
 _MCP_TOOL_HINT = re.compile(
-    r"(?:\b(?:createTool|McpServer|FastMCP|mcp\.tool|Server\.run_streamable_http)|@tool)\b"
+    r"(?:\b(?:createTool|McpServer|FastMCP|mcp\.tool|Server\.run_streamable_http|BaseTool|StructuredTool)|@tool)\b"
 )
+# A smolagents tool class carries no marker but the shape smolagents requires. Its VisitWebpageTool
+# hands the model's URL to requests.get in a file that says neither MCP nor BaseTool.
+_FORWARD_RE = re.compile(r"\bdef forward\b")
+_OUTPUT_TYPE_RE = re.compile(r"\boutput_type\b")
+_TOOL_CLASS_RE = re.compile(r"^\s*class\s+\w+\s*\([^)\n]*\b(?:Pipeline)?Tool\b", re.M)
 
 # The outbound-call, user-input and private-address patterns that used to live
 # here moved into `_ssrf_reach`, where they are applied to a real call site and
@@ -39,6 +44,8 @@ _FOLLOW_REDIRECTS_RE = re.compile(
     r"follow_redirects\s*=\s*True|allow_redirects\s*=\s*True|redirect\s*:\s*['\"]?follow",
     re.IGNORECASE,
 )
+# TS/JS options are not read call by call, so one of these anywhere in the file counts.
+_JS_NO_FOLLOW_RE = re.compile(r"redirect\s*:\s*['\"](?:manual|error)|maxRedirects\s*:\s*0\b|\.redirects\(\s*0\s*\)")
 
 # A comparison of the scheme, not an assignment. `scheme\s*!?=` read
 # `scheme = "https://"` as a check and silenced AAK-SSRF-001 for the whole file,
@@ -65,6 +72,12 @@ def _iter_source(project_root: Path) -> list[Path]:
     return out
 
 
+def _is_smolagents_shape(text: str) -> bool:
+    """`def forward` and `output_type` alone also describe a model file, whose unrelated download
+    helper would then be read as a tool's fetch, so a class on a `Tool` base is required too."""
+    return bool(_FORWARD_RE.search(text) and _OUTPUT_TYPE_RE.search(text) and _TOOL_CLASS_RE.search(text))
+
+
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     """Report only what an actual outbound call site can be shown to reach.
 
@@ -86,7 +99,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return findings
-    if not _MCP_TOOL_HINT.search(text):
+    if not (_MCP_TOOL_HINT.search(text) or _is_smolagents_shape(text)):
         return findings
     rel = str(path.relative_to(project_root))
 
@@ -132,13 +145,22 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             ))
         break
 
-    if _FOLLOW_REDIRECTS_RE.search(text):
-        m = _FOLLOW_REDIRECTS_RE.search(text)
+    m = _FOLLOW_REDIRECTS_RE.search(text)
+    follower = next((s for s in tainted_sites if s.follows_redirects or not is_python), None)
+    if m:
         findings.append(make_finding(
             "AAK-SSRF-004",
             rel,
-            f"Redirects followed without re-validation: {m.group(0) if m else ''!r}",
-            line_number=find_line_number(text, m.group(0)) if m else None,
+            f"Redirects followed without re-validation: {m.group(0)!r}",
+            line_number=find_line_number(text, m.group(0)),
+        ))
+    elif follower and (is_python or not _JS_NO_FOLLOW_RE.search(text)):
+        findings.append(make_finding(
+            "AAK-SSRF-004",
+            rel,
+            f"Redirects followed without re-validation: {follower.callee!r} follows them by default "
+            f"and the caller can set its URL",
+            line_number=follower.line or None,
         ))
 
     if tainted_sites and not has_allowlist:
