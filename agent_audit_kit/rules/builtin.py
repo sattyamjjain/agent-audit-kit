@@ -1131,15 +1131,22 @@ _r(
     "a hot path / per-request loop with no caching marker (no `lru_cache`, "
     "TTL cache, dict memoization, or `cached_*` helper) nearby. Combined "
     "with reliance on per-session server state, this pattern multiplies "
-    "round-trips and breaks when the 2026-07-28 stateless transport lets "
-    "successive requests hit different server instances with different "
-    "tool catalogs.",
+    "round-trips and breaks under the 2026-07-28 stateless transport, where "
+    "successive requests can reach different server instances. The 2026-07-28 "
+    "tools section says the set a client gets must not vary per connection or as "
+    "a side effect of other requests on the connection, and may vary by the "
+    "authorization presented, so instances serving different sets to the same "
+    "authorization are a server defect for the client to detect, not something "
+    "to design for.",
     Severity.LOW,
     Category.MCP_CONFIG,
     "Cache the `tools/list` response client-side with an explicit TTL "
-    "(`ttlMs`) and refresh it on cache miss or on a server-pushed "
-    "`notifications/tools/list_changed`. Treat tool discovery as a hint "
-    "that may differ between instances under the stateless transport.",
+    "(`ttlMs`), per authorization, since the set may vary by the authorization "
+    "presented, and refresh it on cache miss. Do not rely on "
+    "`notifications/tools/list_changed` alone: it is a SHOULD, and goes only to "
+    "clients subscribed with `toolsListChanged: true`. Instances that serve "
+    "different sets to the same authorization are a server defect, so report or "
+    "refuse that mismatch rather than treating discovery as a hint that may differ.",
     sarif_name="McpClientNoToolsListCache",
     limitations=(
         "Reads source files only in a project whose root manifest names an MCP SDK in "
