@@ -1,0 +1,15 @@
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+permissions:
+  contents: write
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    steps:
+      - run: git clone https://github.com/example/upstream upstream
+      - uses: actions/checkout@v4
+        with:
+          repository: example/upstream
+          path: other
+      - uses: google-github-actions/run-gemini-cli@v0

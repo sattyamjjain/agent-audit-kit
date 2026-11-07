@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rules for gates that pass when they have nothing to say (`agent_gates`) (#1198). AAK-HOOK-FAILOPEN-001 (HIGH): a Claude Code PreToolUse hook whose script can exit with a code other than 2 on an error, read for Python, shell and Node, or a command line ending in `|| true`; only exit 2 blocks, so a gate that crashes opens. It also fires on settings that lean on `permissions.ask` while bypass mode stays available. On 152 public repositories with a PreToolUse hook, 59 of the 106 scripts that can refuse fire. AAK-POLICY-OPTIONAL-TRUST-001 (MEDIUM): `if x is False:` on a trust parameter that may be None, or a trust parameter whose default is the passing value, the shape the tool outcome attestation reference implementation fixed. AAK-AGENT-SUBAGENT-TOOLS-001 (MEDIUM): a project subagent with a wildcard or no `tools` line in a project whose MCP config connects servers that write.
+
+### Changed
+
+- AAK-AGENT-TRUST-002 also fires when the trigger is trusted and the data is not: a job gives an agent write access or a personal token in a workflow that fetches another project's commits or diff, with no egress block (#1198). It takes the finding AAK-AGENT-TRUST-001 would have reported on that workflow.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

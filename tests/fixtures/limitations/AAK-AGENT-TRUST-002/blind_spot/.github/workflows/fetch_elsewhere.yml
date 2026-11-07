@@ -1,0 +1,11 @@
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+permissions:
+  contents: write
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python3 .github/scripts/fetch_upstream.py
+      - uses: google-github-actions/run-gemini-cli@v0

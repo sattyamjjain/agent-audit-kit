@@ -640,6 +640,28 @@
     },
     {
       "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A file under `.claude/agents/` has `tools: *` or no `tools` line, in a project whose MCP config connects a server that writes: mail, chat, a calendar, files, a tracker, a database or a shell. Claude Code gives a subagent every tool it can reach when `tools` is left out, MCP tools included, and a background subagent keeps every MCP tool. So a subagent asked to read code also holds mail send and file delete, and an instruction hidden in what it reads can call them. A `tools` list without a wildcard, `disallowedTools` naming `mcp__*` or each writing server, and a project whose servers only read do not fire. AAK-AGENT-COMPOSE-001 reads the capability union of a set of skills, not subagents, so the two do not overlap.",
+      "incident_references": [],
+      "limitations": "Goes by a server's name and launch words, since no config lists its tools. A server whose name does not say what it does (`acme-tools`) is not counted, and one named for a service counts even if its tools only read, unless a launch argument or an env name says read-only. Reads `.mcp.json` and `mcpServers` in the two settings files, so user-scope servers, claude.ai connectors and servers defined inline in the agent's own frontmatter are not read. Built-in subagents such as general-purpose are no files, so a project with none under `.claude/agents/` does not fire, and neither do agents in the user's home. A file with no `name` or `description` is one Claude Code skips, and is skipped here. `tools: *` is not documented: the docs name leaving the field out as the way to get everything, and this reads a wildcard as asking for the same. A list that names one server (`mcp__gmail__*`) is a choice and does not fire.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "List the tools this subagent needs in `tools`. If it has to keep the built-in tools, withhold MCP in `disallowedTools`, with `mcp__*` or one `mcp__<server>` per server. A subagent that needs one server names only that server, such as `mcp__github__*`.",
+      "rule_id": "AAK-AGENT-SUBAGENT-TOOLS-001",
+      "sarif_name": "SubagentInheritsWriteTools",
+      "severity": "medium",
+      "title": "A project subagent inherits every MCP server, including ones that write"
+    },
+    {
+      "adversa_references": [
         "ADV-INJECT-04"
       ],
       "aicm_references": [
@@ -677,20 +699,20 @@
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
-      "description": "A workflow that runs a coding agent non-interactively is triggered by an attacker-controllable event (`pull_request_target`, `issue_comment`, `workflow_run`, `pull_request_review[_comment]`) or explicitly checks out the pull-request head ref, and then runs the agent with the base repository's write-scoped `GITHUB_TOKEN` and secrets available. Because the headless run trusts repo-resident skill / MCP / task files on load, a fork PR that adds or edits one of those files gets its shell commands executed in CI with the base repo's credentials, with no human trust prompt. This is the trust-on-first-use bypass amplified by the classic pwn-request trigger.",
+      "description": "A workflow that runs a coding agent non-interactively is triggered by an attacker-controllable event (`pull_request_target`, `issue_comment`, `workflow_run`, `pull_request_review[_comment]`) or explicitly checks out the pull-request head ref, and then runs the agent with the base repository's write-scoped `GITHUB_TOKEN` and secrets available. Because the headless run trusts repo-resident skill / MCP / task files on load, a fork PR that adds or edits one of those files gets its shell commands executed in CI with the base repo's credentials, with no human trust prompt. This is the trust-on-first-use bypass amplified by the classic pwn-request trigger. It also fires when the trigger is trusted and the data is not: a job gives an agent (the actions and CLIs above, or the Copilot agent through `gh agent-task`, `copilot-swe-agent` or the `copilot` CLI) `contents: write`, `pull-requests: write`, `write-all` or a personal token, in a workflow that fetches another project's commits or diff (`git fetch` from a remote other than origin, `git remote add`, or `gh api` or `api.github.com` on `repos/<other>/compare` or `commits`), with no egress block on that job. Whoever lands a commit upstream writes part of the prompt. Any trigger counts, a schedule or a `workflow_call` included.",
       "incident_references": [],
-      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001.",
+      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001. The third-party arm reads one workflow file: a fetch in another workflow or in a script it calls, `git clone` and `actions/checkout` of another repository are not read, and neither is an agent started by a script, as a Python script that fires the Copilot agent is. `git fetch` of anything but origin counts, so a variable that holds origin fires, and a repository named by a variable counts as another project unless the env of the step, job or workflow sets it from `github.repository`. Only the `contents` and `pull-requests` scopes and `write-all` are read, so `issues: write` or no `permissions` block, where the repository's default applies, does not fire. A personal token is a secret with PAT or TOKEN in its name, other than `GITHUB_TOKEN` or a model provider's, in the env or `with` of the agent's step, or the env of its job or workflow. `step-security/harden-runner` with `egress-policy: block` is the only egress control read.",
       "owasp_agentic_references": [
         "ASI03",
         "ASI05"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Never run a headless agent on `pull_request_target` / `workflow_run` / `issue_comment` with secrets in scope, and never check out the PR head into a job that then runs the agent. Split the privileged step onto the trusted base ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
+      "remediation": "Never run a headless agent on `pull_request_target` / `workflow_run` / `issue_comment` with secrets in scope, and never check out the PR head into a job that then runs the agent. Split the privileged step onto the trusted base ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only. For another project's commits, split the trust boundary across two workflows: one on a schedule with no permissions fetches and runs the agent, and a separate `workflow_run` workflow holds the write scope and never reads the diff. Add a deny-by-default egress allowlist on the agent's job, and fail the run if the agent touched `.github/`.",
       "rule_id": "AAK-AGENT-TRUST-002",
       "sarif_name": "HeadlessAgentCiUntrustedRef",
       "severity": "critical",
-      "title": "Headless agent CI runs on an attacker-controllable ref (fork-PR config executes with secrets)"
+      "title": "Headless agent CI runs on attacker-controllable input with the repo's credentials"
     },
     {
       "adversa_references": [
@@ -2026,6 +2048,28 @@
       "sarif_name": "HookReferencesSourceFiles",
       "severity": "medium",
       "title": "Hook command references project source files"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "Claude Code blocks a tool call only on exit code 2 from a PreToolUse command hook. Any other failure (a crash, a missing interpreter, `exit 1`) is a non-blocking error and the call goes ahead. A Python hook with an uncaught exception exits 1, a shell hook under `set -e` exits with the failing command's code, a Node hook that throws exits 1, and a command line ending in `|| true` hides every failure. So a gate that can refuse and can also fail opens when it fails, and the input that breaks it can come from the model. The rule also fires on settings that lean on `permissions.ask` with bypass mode still available (`defaultMode: bypassPermissions`, or a documented `--dangerously-skip-permissions` launch): the docs say an ask rule holds in every mode, and an open Claude Code report (issue 95741) measures it not prompting under bypass on 2.1.283 and 2.1.301. A hook that wraps its body and exits 2 or denies on any error, `|| exit 2` on the command line, `onFailure` set to block on the handler, and `disableBypassPermissionsMode` set to disable do not fire.",
+      "incident_references": [],
+      "limitations": "Reads PreToolUse command hooks in `.claude/settings.json`, `.claude/settings.local.json`, a plugin's `hooks/hooks.json` and a skill's frontmatter, and the script a command line names when it is a .py, .sh, .bash, .zsh, .js, .mjs, .cjs or .ts file inside the project. An inline command (`jq ... | grep ...`), `bash -c '...'`, a PowerShell script, a path outside the project or built by a command, an http or prompt handler, another event and the user's own settings are not read. A script counts as a gate when it can refuse: it exits 2, or says deny, block or ask beside a decision. So a script whose refusal is made in a module it imports, or whose exit code is held in a name, is no gate here and does not fire, and a script that only allows or logs does not either. A shell script fires on `set -e` with no trap on ERR or EXIT that exits 2, and on `exit 1`; one without `set -e` that runs on past a failed `jq` with an empty variable fails open as well and does not fire. An import above the wrapping try is not counted. An exit within two lines of a usage message is read as a path a hook never takes. The rule over-reports in three ways it cannot tell apart: a script that guards every command by hand, one that fails open on purpose or enforces a preference rather than a policy, and one that prints a deny and then exits 1, which blocks. Node scripts are read for tokens, not parsed, so a comment or a string counts. The ask arm reads the two settings files, and a launch on a line naming claude in README.md, CONTRIBUTING.md, CLAUDE.md, AGENTS.md, Makefile, justfile or package.json, skipping a line that says never, avoid or do not; `disableBypassPermissionsMode` in managed or user settings is not seen. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Make any error block. On Claude Code 2.1.295 or later, set `onFailure` to block on the handler, which blocks on a crash, a missing script, an unexpected exit code or a timeout. On any version, wrap the whole script and exit 2 in the handler with the reason on stderr, or in shell add a trap on ERR that exits 2. Where a rule has to hold unattended, use a deny rule or a hook that denies instead of an ask rule, and turn bypass mode off with `disableBypassPermissionsMode`.",
+      "rule_id": "AAK-HOOK-FAILOPEN-001",
+      "sarif_name": "HookFailOpen",
+      "severity": "high",
+      "title": "A PreToolUse hook lets the tool call through when it fails"
     },
     {
       "adversa_references": [
@@ -10118,6 +10162,28 @@
       "sarif_name": "ToolDescUrlOrPath",
       "severity": "medium",
       "title": "URL or file path in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "A function takes a trust input as a parameter and refuses only on the explicit failure: `if key_matches_pin is False:` on a parameter that may be None, so None passes, or a parameter such as `verified: bool = True` or `revoked: bool = False` whose default is the passing value. A caller that never ran the check then reads the same as one that ran it and passed. Compare None as unknown, not clean: a function that also tests the value against None or True, reads it as a truth value, or hands it to a helper does not fire, and neither does a directive such as `require_verified=True`, where the default asks for the check.",
+      "incident_references": [],
+      "limitations": "The shape comes from the reference implementation of the tool outcome attestation proposal (github.com/Carmel-Labs-Inc/toa, `classify_absence`): commit 8327499 fires twice, and its fix at f849f0a, where a helper refuses every input left unknown, does not fire. Reads Python function parameters, one function at a time, by name, word by word of a snake_case name: verified, trusted, authenticated, authorized, attested, revoked, tampered, compromised, forged, untrusted and unverified alone, and valid, matches, matched, signed, approved, permitted, allowed, available, expired, denied and blocked only beside what was checked (key, pin, signature, cert, token, hash, digest, credential, issuer, audience, nonce, caller, client, session, origin). So another word (`ok`, `passed`), a camelCase name, a trust input that is no boolean (`verify_reason: str | None = None`) and a field on an object (`ctx.key_matches_pin is False`) are not read. The refusal must be an `if` whose branch raises, returns or exits. A parameter handed to any call counts as answered and the call is not read, so a helper that ignores it stays silent. Callers are not read, so a default that every caller overrides still fires. Paths with a tests, fixtures, examples, samples or demos directory, and test_*.py and conftest.py, are skipped. Other languages are not read. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Make a missing answer refuse. Require the input with no default, or treat None as not checked and return the same refusal a failed check gets, and add a test that leaves each input out. Do this before the first test of the explicit failure, so every path sees it.",
+      "rule_id": "AAK-POLICY-OPTIONAL-TRUST-001",
+      "sarif_name": "PolicyOptionalTrust",
+      "severity": "medium",
+      "title": "A trust check reads a missing answer as a passing one"
     },
     {
       "adversa_references": [

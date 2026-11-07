@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (445 total; 407 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -40,6 +40,7 @@ Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security st
 | `AAK-AGENT-HARNESS-SHARED-STATE-001` | medium | a2a-protocol | Instrument for logging and detection | ASI06 Memory & Context Poisoning; ASI08 Cascading Failures |
 | `AAK-AGENT-SERVER-NOAUTH-001` | high | agent-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-AGENT-SHARED-RES-AUTHZ-001` | high | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
+| `AAK-AGENT-SUBAGENT-TOOLS-001` | medium | agent-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-AGENT-TRUST-001` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE); ASI09 Human-Agent Trust Exploitation |
 | `AAK-AGENT-TRUST-002` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-AGENT-TRUST-003` | high | agent-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation; ASI09 Human-Agent Trust Exploitation |
@@ -93,6 +94,7 @@ Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security st
 | `AAK-HOOK-007` | medium | hook-injection | — | — |
 | `AAK-HOOK-008` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-009` | medium | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
+| `AAK-HOOK-FAILOPEN-001` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-HOOK-RCE-001` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-RCE-002` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-RCE-003` | high | supply-chain | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE); ASI09 Human-Agent Trust Exploitation |
@@ -372,6 +374,7 @@ Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security st
 | `AAK-POISON-004` | high | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-POISON-005` | medium | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-POISON-006` | medium | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-POLICY-OPTIONAL-TRUST-001` | medium | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-POLICY-TRUNCATION-001` | high | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-PROJECT-DEAL-DRIFT-001` | high | agent-config | — | — |
 | `AAK-PRTITLE-IPI-001` | high | taint-analysis | Validate parameters | ASI01 Agent Goal Hijack |
