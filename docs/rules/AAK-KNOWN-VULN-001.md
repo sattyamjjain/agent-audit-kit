@@ -32,11 +32,13 @@ feed now also reads those CNA records, for the CVEs OSV has no package record of
 
 ## What it catches
 
-A PyPI or npm release that an advisory lists as affected, wherever the project
-resolves it:
+A PyPI, npm or crates.io release that an advisory lists as affected, wherever the
+project resolves it:
 
 - a lockfile that resolves it: `uv.lock`, `poetry.lock`, `Pipfile.lock`,
-  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` (v1);
+  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` (v1),
+  `Cargo.lock` (a block with a `source` line: the root crate, path dependencies and
+  workspace members have none and are the project's own code);
 - a declaration that pins it: `vllm==0.31.1` in `requirements.txt`, an exact
   version in `pyproject.toml`, `Pipfile` or `package.json`, or a launch such as
   `uvx pkg==1.2.3` or `npx -y pkg@1.2.3` in an MCP config;
@@ -69,18 +71,23 @@ run's `properties.dataFeeds.knownVulnerabilities` and the console summary say
 which copy was read and when it was generated.
 
 - `aak update` builds the cached copy in the same pass that rebuilds the
-  malicious-release feed, from the same two downloads (about 260 MB). It keeps
+  malicious-release feed, from the same two downloads (about 260 MB), plus OSV's
+  crates.io export (about 4 MB), which it downloads for this feed alone. It keeps
   every record that is not `MAL-`, not withdrawn, and has an `ECOSYSTEM` or
   `SEMVER` range or a list of affected versions. On 2026-10-29 that was 23,579
   package entries for 5,392 packages (PyPI 15,252, npm 8,327), 8.7 MB.
+- A RustSec record marked informational (`unmaintained`, `unsound` or `notice`, 521
+  of the 3,055 crates.io records on 2026-11-07) is left out: RustSec files those as
+  notices and cargo-audit reports them as warnings.
 - A cached copy over 60 MB would keep only HIGH and CRITICAL advisories, and
   `aak update` and the summary would say so. The feed is well under it today.
 - The bundled copy holds two OSV records exactly as OSV returned them on
   2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
-  It also holds the seven entries `nvd_feed` converts from NVD's records of five
-  CVEs as NVD served them on 2026-10-30 and, for lmdeploy, 2026-10-31 (saved
+  It also holds the entries `nvd_feed` converts from NVD's records as NVD served
+  them on 2026-10-30, 2026-10-31 for lmdeploy and 2026-11-07 for crates.io's
+  surrealdb (saved
   unedited under `tests/fixtures/nvd_cna`, and listed under
   [Related advisories](#related-advisories)): three against langflow, one against
   lmdeploy, and one against the npm packages open,
@@ -228,6 +235,7 @@ references: the rule reports whatever advisory the feed holds.
 | npm open 7.2.0 up to 11.0.0, @modelcontextprotocol/inspector 2.0.0 up to 2.12.0, opencode-ai 1.0.137 up to 1.18.33 | CVE-2026-119025 | none | yes, from VulnCheck's record in NVD, which names each package by packageURL (CVSS 3.x 7.5) |
 | prefab-ui 0.14.0 up to 0.21.0, the Generative UI sandbox FastMCP's `generate_prefab_ui` runs | CVE-2026-120338 | none (GHSA-595q-jv4r-q7j9 is a repository advisory only) | yes, from JFrog's record in NVD, which names the package by `collectionURL` and `packageName` (CVSS 3.x 10.0) |
 | @samanhappy/mcphub 1.0.0 through 1.0.45 and 1.1.0 through 1.1.7, fixed in 1.1.8 | CVE-2026-120323 | none | yes, from VulDB's record in NVD, which lists each release and maps by the reviewed row (CVSS 3.x 4.3); AAK-MCP-MCPHUB-CVE-2026-79748-001's floor reports the same releases, so its finding is the one kept |
+| crates.io surrealdb 3.1.0 up to 3.3.0, an MCP session takeover with a low-privilege token | CVE-2026-121419 | none (GHSA-pgh9-49q4-hqcx is a repository advisory only) | yes, from VulnCheck's record in NVD (CVSS 3.x 8.1), read 2026-11-07 |
 | InternLM LMDeploy 0.9.0 through 0.18.0, no fixed release | CVE-2026-119706 | a git commit-range record only, none for PyPI `lmdeploy` | yes, from VulnCheck's record in NVD, which names the package by packageURL (CVSS 3.x 9.8) |
 
 A finding on the vLLM one reads:

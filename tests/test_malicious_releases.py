@@ -266,6 +266,8 @@ def _opener(fail_on: str | None = None, github: list[tuple[list, str]] | None = 
             return _Response(_export(_PYPI))
         if url.endswith("/npm/all.zip"):
             return _Response(_export(_NPM))
+        if url.endswith("/crates.io/all.zip"):  # the advisory feed's own download
+            return _Response(_export({}))
         if url.startswith("https://api.github.com/advisories"):
             body, link = pages.pop(0)
             return _Response(json.dumps(body).encode(), link)

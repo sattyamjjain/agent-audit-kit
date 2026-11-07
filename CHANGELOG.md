@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.33] - 2026-11-07
+
 ### Added
 
+- crates.io is a third advisory ecosystem. `aak update` reads OSV's crates.io export for the advisory feed alone, and NVD's CNA records naming `pkg:cargo/<crate>`, so the feed's counts and the update summary name crates.io. The malicious-release feed and its counts are unchanged. A RustSec record marked informational (`unmaintained`, `unsound` or `notice`, 521 of 3,055 on 7 Nov 2026) is left out, since those are notices rather than vulnerabilities.
+- AAK-KNOWN-VULN-001 reads `Cargo.lock`, for a block with a `source` line (the root crate, path dependencies and workspace members have none). Crate names compare as cargo compares them, in lower case with `-` and `_` equal, and versions as semver 2.0.
+- The bundled advisory feed holds NVD's record of CVE-2026-121419 (SurrealDB 3.1.0 up to 3.3.0, CVSS 8.1: a low-privilege token plus a victim's `mcp-session-id` takes over the victim's MCP session), saved unedited under `tests/fixtures/nvd_cna/`, so a `Cargo.lock` resolving surrealdb 3.2.1 gets a HIGH AAK-KNOWN-VULN-001 naming the fix, 3.3.0, without `aak update`. OSV has no record of the CVE.
 - New rule AAK-KNOWN-VULN-003: an MCP config launches a PyPI or npm package from its registry without pinning a release (no version, a tag such as `@latest`, or a range), and the advisory feed holds an advisory whose affected releases the launch admits. DBHub (`@bytebase/dbhub`), a database MCP server started as `npx -y @bytebase/dbhub`, let MySQL comment syntax past its read-only SQL validation below 0.22.6 (GHSA-j656-3hf2-fvjc, 2 Nov 2026; OSV lists it under CVE-2026-61789), and AAK-KNOWN-VULN-001 could not judge that launch, since it names no release. The finding takes the advisory's severity when every release the launch can fetch is affected, and is MEDIUM when the advisory names a fix, because the release that runs is whichever npx or uvx resolves or finds in its cache. It names the fix to pin (`npx -y @bytebase/dbhub@0.22.6`), and AAK-SUPPLY-001 and AAK-MCP-007 stand down on the same launch. A launch pinned to one release stays AAK-KNOWN-VULN-001's, and a git URL or local path launch is not judged.
 - `aak scan --include-user-config` also checks the launchers' caches against the advisory feed: a release in npm's npx cache or uv's tool environments that an advisory lists is AAK-KNOWN-VULN-001 at the advisory's severity, naming the cache path. The cache readers moved to `scanners/_launcher_caches.py`, which AAK-MALICIOUS-RELEASE-001 now reads through as well.
+
+### Fixed
+
+- v0.6.32 was tagged and never published: its release run failed on two tests that recomputed the coverage page's latency figure with today's date (#1178). The tag stays where it is, and everything listed under 0.6.32 reaches PyPI with this release.
 
 ## [0.6.32] - 2026-11-02
 

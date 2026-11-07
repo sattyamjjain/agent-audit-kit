@@ -281,6 +281,11 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Cargo.lock in AAK-KNOWN-VULN-001, before it was released: each block's `source` is looked
+    # for inside that block alone, however many blocks name a crate the feed lists.
+    "cargo-lock-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\n' * k}, 1_000, False),
+    "cargo-lock-sourced-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\nsource = "registry+x"\n' * k}, 1_000, False),
+    "cargo-lock-other-crates": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "other"\nversion = "1.0.0"\nsource = "registry+x"\n' * k}, 1_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

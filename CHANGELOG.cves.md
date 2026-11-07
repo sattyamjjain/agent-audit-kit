@@ -18,6 +18,34 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-07 (v0.6.33): SurrealDB's NVD record, and crates.io in the advisory feed
+
+NVD published VulnCheck's record of CVE-2026-121419 on 3 Nov 2026, and the watcher filed #1184.
+AAK did nothing with it, with or without `aak update`: the feed read PyPI and npm only, so
+`nvd_feed` dropped the record at its `pkg:cargo/surrealdb` packageURL, and AAK-KNOWN-VULN-001
+never opened a Cargo.lock. GitHub's GHSA-pgh9-49q4-hqcx is a repository advisory only, with no
+global record, and OSV holds nothing for the CVE. The fix is the class: crates.io is now a third
+advisory ecosystem, read from OSV's export and NVD's CNA records. NVD text is quoted from the
+API record, read on 2026-11-07 and saved unedited under tests/fixtures/nvd_cna.
+
+### CVE-2026-121419 (surrealdb): advisory feed 2026-11-07
+
+**`AAK-KNOWN-VULN-001` reports crates.io `surrealdb` 3.1.0 up to 3.3.0, HIGH.** NVD: SurrealDB
+"contains an improper authentication vulnerability" in which the MCP BoundSubject fingerprint
+uses the access method name rather than the user. VulnCheck's CNA data is one interval, 3.1.0 to
+`lessThan` 3.3.0 with `defaultStatus: unaffected`, so the bundled entry is that interval with
+3.3.0 as the fix. It is the record as `nvd_feed` converts it; no hand pin was added. Measured with
+the scanner: a Cargo.lock resolving surrealdb 3.2.1 from a registry fires HIGH and names 3.3.0;
+3.3.0 and 3.0.9 do not fire, and neither does a block with no `source` line. After `aak update`
+the same lockfile also reports RUSTSEC-2026-0453 (CVE-2026-121417), a separate advisory OSV lists
+for surrealdb below 3.3.0.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-121419 | 8.1 | `surrealdb` (crates.io) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 3.1.0 up to 3.3.0 from the bundled NVD entry, HIGH, fixed in 3.3.0. No pin. | #1184 |
+
+CVSS is the record's CVSS 3.1 score, VulnCheck's. Its CVSS 4.0 score is 8.6.
+
 ## 2026-10-31 (v0.6.30): lmdeploy's NVD record in the bundled advisory feed
 
 NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the

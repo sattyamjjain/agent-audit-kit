@@ -370,7 +370,7 @@ def _counting_opener(calls: list[str]):
         calls.append(request.full_url)
         if request.full_url.endswith("/PyPI/all.zip"):
             return _Response(_export(_TWO_RECORDS))
-        if request.full_url.endswith("/npm/all.zip"):
+        if request.full_url.endswith(("/npm/all.zip", "/crates.io/all.zip")):
             return _Response(_export({}))
         raise AssertionError(request.full_url)
 
@@ -419,7 +419,7 @@ def test_aak_update_reports_both_feeds(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 0, result.output
     assert "Malicious-release feed updated: 3 entries" in result.output  # MAL-2026-9001 and the two bundled ones
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
-    assert len(calls) == 2
+    assert len(calls) == 3  # PyPI and npm for both feeds, crates.io for the advisory feed alone
 
 
 def test_aak_update_keeps_the_advisory_feed_when_the_download_fails(monkeypatch: pytest.MonkeyPatch,

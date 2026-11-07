@@ -2376,6 +2376,7 @@ _YARN_VERSION_RE = re.compile(r'^[ \t]+version:?[ \t]+"?([0-9][\w.\-]{0,64})', r
 _TOML_PACKAGE_RE = re.compile(r"^\[\[package\]\]", re.MULTILINE)
 _TOML_NAME_RE = re.compile(r'^name[ \t]*=[ \t]*"([^"\n]{1,214})"', re.MULTILINE)
 _TOML_VERSION_RE = re.compile(r'^version[ \t]*=[ \t]*"([0-9][^"\n]{0,64})"', re.MULTILINE)
+_TOML_SOURCE_RE = re.compile(r"^source[ \t]*=", re.MULTILINE)
 
 
 def _json_object_heads(text: str) -> Iterator[tuple[int, int, str]]:
@@ -2472,11 +2473,15 @@ def _lockfile_raw_entries(
         # pnpm states the version in the entry itself.
         found = [(m.start(), m.group(1), m.group(2)) for m in _PNPM_ENTRY_RE.finditer(text)
                  if m.group(1).lower() in wanted]
-    elif filename in ("uv.lock", "poetry.lock"):
+    elif filename in ("uv.lock", "poetry.lock", "cargo.lock"):
         starts = [m.start() for m in _TOML_PACKAGE_RE.finditer(text)] + [len(text)]
         for start, stop in zip(starts, starts[1:]):
             name_m = _TOML_NAME_RE.search(text, start, stop)
             if name_m is None or _lockfile_canon(name_m.group(1), filename) not in wanted:
+                continue
+            # In a Cargo.lock the root crate, path dependencies and workspace members have no
+            # `source`: they are the project's own code, whatever they are called.
+            if filename == "cargo.lock" and _TOML_SOURCE_RE.search(text, start, stop) is None:
                 continue
             version_m = _TOML_VERSION_RE.search(text, start, stop)
             if version_m is not None:

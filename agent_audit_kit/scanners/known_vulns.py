@@ -5,16 +5,18 @@ MCP hosts install (vLLM, MLflow, the OpenHands SDK and NVIDIA's NeMo Agent
 Toolkit), passed every rule on 0.6.28: AAK knew a vulnerable release only
 through a hand-written pin. This module checks every release a scan already
 resolves against the offline advisory feed (`agent_audit_kit.advisory_feed`),
-OSV's advisory records for PyPI and npm, which `aak update` keeps from the
-exports it downloads for the malicious-release feed. A scan never touches the
-network; without `aak update` the feed is the few records bundled with AAK.
+OSV's advisory records for PyPI, npm and crates.io, which `aak update` keeps from
+the exports it downloads. A scan never touches the network; without `aak update`
+the feed is the few records bundled with AAK.
 
 What it reads (outside `SKIP_DIRS`, anywhere under the root), as
 AAK-MALICIOUS-RELEASE-001 reads it:
 
 * A lockfile's resolved versions: uv.lock, poetry.lock, Pipfile.lock,
-  package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1),
-  through the pin table's lockfile reader. A lockfile is read for its first
+  package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock (v1) and
+  Cargo.lock, through the pin table's lockfile reader. A Cargo.lock block counts
+  only with a `source` line: the root crate, path dependencies and workspace members
+  have none and are the project's own code. A lockfile is read for its first
   `MAX_RELEASES_PER_PACKAGE` distinct releases of a package, which bounds the
   work a crafted lockfile can ask for.
 * A declaration in requirements*.txt, pyproject.toml, Pipfile, package.json
@@ -50,7 +52,7 @@ pinned to one release stays -001's.
 
 A release matches as its registry orders versions (`malicious_feed.Range`):
 PEP 440 for PyPI, so MLflow's `>=3.12.0rc0, <3.17.0` takes 3.12.0rc0 and
-3.17.0rc1 and leaves 3.17.0, and semver for npm. A finding names the advisory,
+3.17.0rc1 and leaves 3.17.0, and semver for npm and crates.io. A finding names the advisory,
 its CVE ids, the release and the fix, and carries the advisory's severity:
 CRITICAL from CVSS 9.0, HIGH from 7.0, MEDIUM otherwise (see
 `advisory_feed.record_severity`), INFO for a range. One finding per file,

@@ -107,7 +107,9 @@ def _releases(project_root: Path, lockfiles: list[Path], manifests: list[Path]) 
     exactly or has installed (the two ship in lockstep)."""
     found: list[str] = []
     for path in lockfiles:
-        _, reader_name = _LOCKFILES[path.name.lower()]
+        ecosystem, reader_name = _LOCKFILES[path.name.lower()]
+        if ecosystem == "crates.io":  # a crate of that name is not the Python distribution
+            continue
         text = read_text(path, MAX_LOCKFILE_BYTES)
         if text is not None:
             for rows in _lockfile_raw_entries(text, reader_name, _DISTRIBUTIONS).values():
