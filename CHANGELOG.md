@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- AAK-MCP-STATELESS-004's text follows the 2026-07-28 tools section (#1195). It told clients to treat discovery as a hint that may differ between instances. The spec says the set must not vary per connection and may vary by authorization, so instances serving different sets to the same authorization now read as a server defect for the client to detect. What the rule fires on is unchanged.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
