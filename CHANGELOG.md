@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rules for policy gates that open on the unexpected (`policy_failopen`) (#1193). AAK-POLICY-VERDICT-FAILOPEN-001 (HIGH): a function refuses only when a verdict equals a deny word and otherwise acts, so `denied`, `DENY`, `error`, an empty value and None all execute. It is a regression pattern from the Nobulex failopen corpus (github.com/arian-gogani/failopen, MIT, Arian Gogani), not an unresolved vulnerability in the project the case came from. AAK-POLICY-IMPORT-FAILOPEN-001 (HIGH): an `except ImportError` around a policy, auth, validator or guard import allows when the import fails.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
