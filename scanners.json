@@ -112,7 +112,7 @@
     },
     {
       "module": "known_vulns",
-      "name": "Locked, pinned and installed packages against OSV advisories (offline feed)"
+      "name": "Locked, pinned, installed and launched packages against OSV advisories (offline feed)"
     },
     {
       "module": "known_vulns_launch",
