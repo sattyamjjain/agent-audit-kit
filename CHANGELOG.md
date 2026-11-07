@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-MCP-TSSDK-CVE-2026-111768-001 (HIGH): the MCP TypeScript SDK's HTTP servers could run out of memory validating one request inside the size limit (#1194). The remediation says what the advisory says: upgrading alone changes nothing, set `maxToolInputElements`.
+- New rule AAK-MCP-TOOLBOX-HOSTS-001 (MEDIUM, `mcp_toolbox_hosts`): `@toolbox-sdk/server` below 0.25.0 (CVE-2026-11624), and an MCP config that starts MCP Toolbox on a network listener with `--allowed-hosts` or `--allowed-origins` unset or `*` (#1194).
+- The bundled advisory feed holds anyio's two advisories below 4.14.2, CVE-2026-63374 and CVE-2026-64847, so a lockfile on 4.12.1 is reported without `aak update` (#1194). Where a uv.lock or poetry.lock shows a package pinning the affected release exactly, an AAK-KNOWN-VULN-001 finding says the fix needs an override, or, for the project's own pin, says to raise it.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

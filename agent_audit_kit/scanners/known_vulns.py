@@ -35,7 +35,9 @@ PEP 440 for PyPI, so MLflow's `>=3.12.0rc0, <3.17.0` takes 3.12.0rc0 and
 its CVE ids, the release and the fix, and carries the advisory's severity:
 CRITICAL from CVSS 9.0, HIGH from 7.0, MEDIUM otherwise (see
 `advisory_feed.record_severity`), INFO for a range. One finding per file,
-package and advisory, at the first entry that resolves an affected release.
+package and advisory, at the first entry that resolves an affected release. Where
+a uv.lock or poetry.lock shows a package pinning that release exactly, the finding says
+the fix needs an override, or, for the project's own pin, says to raise it.
 
 Where a version-pin rule reports the advisory's CVEs on the same line of the same
 file (the declaration or lockfile entry both point at) at or above this
@@ -106,6 +108,59 @@ def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
     return finding if finding.severity is severity else dataclasses.replace(finding, severity=severity)
 
 
+_TOML_PACKAGE_RE = re.compile(r"^\[\[package\]\][ \t]*$", re.M)
+_TOML_NAME_RE = re.compile(r'^name\s*=\s*"([^"\n]+)"', re.M)
+_UV_ROOT_RE = re.compile(r'^source\s*=\s*\{\s*(?:virtual|editable)\s*=', re.M)
+_UV_EXACT_RE = re.compile(r'\{\s*name\s*=\s*"([^"\n]+)"[^}\n]{0,200}?\bspecifier\s*=\s*"==\s*([^",\s]+)"')
+_POETRY_DEPS_RE = re.compile(r"^\[package\.dependencies\][ \t]*$", re.M)
+_POETRY_EXACT_RE = re.compile(
+    r'^([A-Za-z0-9._-]+)\s*=\s*(?:"(?:==)?\s*(\d[^"*,<>=~^ \n]*)"|\{[^}\n]{0,200}?\bversion\s*=\s*"(?:==)?\s*(\d[^"*,<>=~^ \n]*)")',
+    re.M,
+)
+
+
+def _exact_parents(text: str, reader_name: str) -> dict[tuple[str, str], tuple[str, bool]]:
+    """(package, version) -> (the package that pins exactly that, is it this project).
+
+    A uv.lock holds requirements for its workspace members only, under
+    `[package.metadata]`; a poetry.lock holds them for every package under
+    `[package.dependencies]`. One pass over the file, whatever the number of findings.
+    """
+    parents: dict[tuple[str, str], tuple[str, bool]] = {}
+    if reader_name not in ("uv.lock", "poetry.lock"):
+        return parents
+    starts = [m.start() for m in _TOML_PACKAGE_RE.finditer(text)] + [len(text)]
+    for start, stop in zip(starts, starts[1:]):
+        block = text[start:stop]
+        name = _TOML_NAME_RE.search(block)
+        if name is None:
+            continue
+        if reader_name == "uv.lock":
+            own = _UV_ROOT_RE.search(block) is not None
+            pins = [(m.group(1), m.group(2)) for m in _UV_EXACT_RE.finditer(block)]
+        else:
+            own = False
+            deps = _POETRY_DEPS_RE.search(block)
+            body = block[deps.end():].split("\n[", 1)[0] if deps else ""
+            pins = [(m.group(1), m.group(2) or m.group(3)) for m in _POETRY_EXACT_RE.finditer(body)]
+        for package, version in pins:
+            parents.setdefault((canonical_name("PyPI", package), version), (name.group(1), own))
+    return parents
+
+
+def _override_note(parents: dict[tuple[str, str], tuple[str, bool]], name: str, version: str) -> str:
+    """What a lockfile says about why the release is held where it is. A fix cannot
+    land while a parent pins the affected release exactly."""
+    found = parents.get((canonical_name("PyPI", name), version))
+    if found is None:
+        return ""
+    parent, own = found
+    if own:
+        return f"; {parent}, this project, pins {name} =={version} exactly, so raise that pin"
+    return (f"; {parent} pins {name} =={version} exactly, so the upgrade needs an override "
+            "(`[tool.uv] override-dependencies` or a pip constraint)")
+
+
 def _fix(advisory: Advisory, version: str) -> str:
     fixed = advisory.fix_for(version)
     if fixed:
@@ -132,6 +187,7 @@ def _lockfile_findings(
     if not wanted:
         return []
     findings: list[Finding] = []
+    parents: dict[tuple[str, str], tuple[str, bool]] | None = None
     for name, rows in sorted(_lockfile_raw_entries(text, reader_name, wanted).items()):
         resolved.setdefault((path.parent, ecosystem), set()).add(name)
         releases: dict[str, int] = {}  # release -> its first line, in file order
@@ -146,6 +202,8 @@ def _lockfile_findings(
             if not hit:
                 continue
             version, line = hit[0]
+            if parents is None:
+                parents = _exact_parents(text, reader_name)
             more = ""
             if len(hit) > 1:
                 shown = ", ".join(v for v, _ in hit[1:4]) + (", ..." if len(hit) > 4 else "")
@@ -153,7 +211,7 @@ def _lockfile_findings(
             findings.append(_finding(
                 rel,
                 f"{path.name} resolves {name} {version}{more}, which {advisory.label()} lists as "
-                f"affected{_fix(advisory, version)}{_feed_note(feed, advisory)}",
+                f"affected{_fix(advisory, version)}{_override_note(parents, name, version)}{_feed_note(feed, advisory)}",
                 line,
                 advisory.severity,
             ))
