@@ -1,3 +1,4 @@
+from app import work
 import traceback
 
 from mcp.server.fastmcp import FastMCP

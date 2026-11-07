@@ -1,6 +1,6 @@
-
-
-def run() -> dict:
+from app import work
+from mcp import types
+def run(request: types.JSONRPCRequest) -> dict:
     try:
         work()
     except ValueError as exc:

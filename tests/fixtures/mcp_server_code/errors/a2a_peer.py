@@ -1,3 +1,4 @@
+from app import work
 from a2a.utils import new_agent_text_message
 
 

@@ -1,3 +1,4 @@
+from app import work
 from mcp.shared.exceptions import McpError
 from mcp.types import ErrorData
 

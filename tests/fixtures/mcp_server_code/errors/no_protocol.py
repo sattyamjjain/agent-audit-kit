@@ -1,3 +1,4 @@
+from app import work
 class ToolError(Exception):
     pass
 

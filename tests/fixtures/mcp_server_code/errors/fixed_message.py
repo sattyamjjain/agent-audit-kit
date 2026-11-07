@@ -1,3 +1,4 @@
+from app import work
 import logging
 
 from mcp.server.fastmcp.exceptions import ToolError

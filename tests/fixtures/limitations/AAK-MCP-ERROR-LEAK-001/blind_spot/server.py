@@ -1,3 +1,4 @@
+from app import work
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("x")
