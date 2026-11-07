@@ -39,6 +39,7 @@ __all__ = ["scan_cmd"]
 @click.option(
     "--include-user-config", is_flag=True, default=False,
     help="Also read this user's state outside the project: ~/.claude.json and ~/.claude/settings.json, "
+         "Codex's config.toml, AGENTS.md and AGENTS.override.md under $CODEX_HOME (~/.codex), "
          "the npx and uv launcher caches, and the editor extension folders (~/.cursor/extensions, ...).",
 )
 @click.option("--ignore-paths", default=None, help="Comma-separated paths to skip.")

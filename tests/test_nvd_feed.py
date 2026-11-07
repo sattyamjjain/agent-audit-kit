@@ -135,8 +135,11 @@ def test_the_reviewed_map_names_each_package_s_own_repository() -> None:
         ("modelcontextprotocol", "inspector"): (
             "npm", "@modelcontextprotocol/inspector", "github.com/modelcontextprotocol/inspector"),
         ("samanhappy", "MCPHub"): ("npm", "@samanhappy/mcphub", "github.com/samanhappy/mcphub"),
+        ("agentscope-ai", "AgentScope"): ("PyPI", "agentscope", "github.com/agentscope-ai/agentscope"),
+        # No repo: tsparticles/tsparticles is a monorepo that publishes other packages (see the row's `checked`).
+        ("@tsparticles", "mcp-server"): ("npm", "@tsparticles/mcp-server", ""),
     }
-    assert {row.reviewed for row in rows.values()} == {"2026-10-30", "2026-11-02"}
+    assert {row.reviewed for row in rows.values()} == {"2026-10-30", "2026-11-02", "2026-11-07"}
 
 
 # ---- the order's cases, on the bundled feed -----------------------------------------------------------

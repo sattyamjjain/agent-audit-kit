@@ -332,6 +332,11 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # Loops of one distinct key per item that the sweep's table did not list.
     "identifiers": (india_pii.scan, _identifiers, 1_000, True),
     "hook-commands": (hook_rce.scan, _hook_commands, 500, True),
+    # AAK-TRUST-009, before it was released: each profile selects its own provider on its
+    # own host, so each finding's line comes from the one pass over the file.
+    "codex-providers": (trust_boundary.scan, lambda k: {".codex/config.toml": "".join(
+        f'[model_providers.p{i}]\nbase_url = "https://g{i}.example.net/v1"\n[profiles.p{i}]\nmodel_provider = "p{i}"\n'
+        for i in range(k))}, 800, True),
     "base-url-variables": (trust_boundary.scan, lambda k: {".claude/settings.json": _js(
         {"env": {f"P{i}_BASE_URL": "https://x.example" for i in range(k)}})}, 1_000, True),
     "typosquat-lockfile": (supply_chain.scan, _typosquats, 1_000, True),

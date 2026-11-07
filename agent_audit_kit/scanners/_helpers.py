@@ -2042,6 +2042,16 @@ _READ_FLAGS = (
 )
 
 
+def codex_home() -> Path:
+    """Where Codex keeps its user config and global AGENTS.md.
+
+    `$CODEX_HOME`, else `~/.codex`, as OpenAI's environment variable reference
+    states it. An empty value counts as unset.
+    """
+    value = os.environ.get("CODEX_HOME")
+    return Path(value) if value else Path.home() / ".codex"
+
+
 class FileNotRead(OSError):
     """A path `read_bytes_capped` does not read: not a regular file, or over its cap."""
 

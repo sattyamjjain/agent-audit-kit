@@ -186,6 +186,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-TRUST-006": ["IAM-16"],
     "AAK-TRUST-007": ["IAM-02"],
     "AAK-TRUST-008": ["IAM-16", "CEK-08"],
+    "AAK-TRUST-009": ["IAM-16"],
     "AAK-OAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-OAUTH-002": ["IAM-01"],
     "AAK-OAUTH-003": ["IAM-01"],
@@ -733,7 +734,8 @@ _r(
     "Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
     Severity.LOW,
     Category.MCP_CONFIG,
-    "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2.2.0. "
+    "Do not pin this package to a date-style 2025.x.y or 2026.x.y version: npm marks them deprecated and they are not updated.",
     sarif_name="McpUnpinnedPackageVersion",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1760,6 +1762,55 @@ _r(
     ),
 )
 
+_r(
+    "AAK-TRUST-009",
+    "Codex model provider points at a non-OpenAI endpoint",
+    "A Codex config selects a model provider whose `base_url`, or `openai_base_url` for "
+    "the built-in `openai` provider, is not OpenAI's, Azure OpenAI's or this machine's. "
+    "Codex then sends that host the session's prompts and the code in them, and any "
+    "key the provider is set up to send. Check Point Research reported the class on "
+    "4 Nov 2026, through The Hacker News: a GitHub bundle modifies Codex's configuration "
+    "files and writes persistent adverts for an opaque OpenAI-compatible gateway into "
+    "the global agent instruction file. The report names no keys. CRITICAL in a "
+    "project's `.codex/config.toml`: Codex before 0.129.0 honours these keys there, so "
+    "a repository re-points everyone who trusts it. Codex 0.129.0 (May 2026) and later "
+    "ignores them in project config and prints a startup warning, so on a current Codex "
+    "the file is an attempt with no effect. HIGH in the user's `$CODEX_HOME/config.toml`, "
+    "read under `--include-user-config`, where Codex honours them and the user may have "
+    "set the provider on purpose.",
+    Severity.CRITICAL,
+    Category.TRUST_BOUNDARY,
+    "In a project's `.codex/config.toml`, delete `model_provider`, `model_providers`, "
+    "`profiles` and `openai_base_url`, and run Codex 0.129.0 or later. In your own "
+    "`$CODEX_HOME/config.toml`, keep the provider only if you set it and trust its host. "
+    "If you did not set it, remove those keys, rotate any API key those sessions used, "
+    "and read `$CODEX_HOME/AGENTS.md` and `AGENTS.override.md` for text you did not write.",
+    sarif_name="CodexModelProviderOverride",
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-REDIRECT-01"],
+    limitations=(
+        "Reads `.codex/config.toml` at the root of the scanned directory and, under "
+        "`--include-user-config`, `$CODEX_HOME/config.toml` (`~/.codex/config.toml` when "
+        "`CODEX_HOME` is unset or empty); a file that does not parse is skipped. It takes "
+        "the providers selected by the top-level `model_provider` (Codex's default is "
+        "`openai`) and by each `[profiles.*]` table, a shape Codex stopped reading for "
+        "`--profile` in 0.134.0, and judges each one's `[model_providers.<id>].base_url`, "
+        "plus `openai_base_url` for `openai`, by host. `openai.com` and its subdomains, "
+        "`*.openai.azure.com` and this machine (`localhost`, loopback addresses and "
+        "`0.0.0.0`) pass whatever the scheme, so a cleartext `http://api.openai.com/v1` "
+        "passes. Any other host is reported, a company's own gateway included, and so is "
+        "a URL with no single host to read. A provider nothing selects is not reported, and "
+        "each file is judged alone, so a provider one file defines and the other selects "
+        "is not reported either. "
+        "Current Codex refuses a config whose `[model_providers.openai]` sets a `base_url`; "
+        "it is reported all the same. `OPENAI_BASE_URL` in the process environment or a "
+        "shell profile is not read; only these two files are, so a profile file "
+        "(`$CODEX_HOME/<name>.config.toml`) and the same config in a subdirectory "
+        "(`packages/web/.codex/config.toml`) are not read either. A file over 1,000,000 "
+        "bytes is not read."
+    ),
+)
+
 # ---------------------------------------------------------------------------
 # API Key & Secret Exposure (9 rules)
 # ---------------------------------------------------------------------------
@@ -2002,7 +2053,8 @@ _r(
     "Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2.2.0. "
+    "Do not pin this package to a date-style 2025.x.y or 2026.x.y version: npm marks them deprecated and they are not updated.",
     sarif_name="McpPackageNotPinned",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2260,7 +2312,10 @@ _r(
     sarif_name="AgentExternalUrls",
     adversa_references=["ADV-HIJACK-02"],
     limitations=(
-        "Reports the presence of a link, never its content or its reputation. "
+        "Reports the presence of a link, never its content or its reputation, so an "
+        "advert for a gateway is one more link. Reads the instruction files at the root of "
+        "the scanned directory and, under `--include-user-config`, Codex's "
+        "`$CODEX_HOME/AGENTS.md` and `AGENTS.override.md`. "
         "The allowlist is a list of hosts whose links are ordinarily "
         "documentation; it is not a trust decision, and a link to an "
         "allowlisted host can still be hostile — an attacker can host on "

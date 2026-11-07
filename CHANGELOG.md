@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.33] - 2026-11-10
+
+### Added
+
+- New rule AAK-TRUST-009: a Codex config selects a model provider whose `base_url`, or `openai_base_url` for the built-in `openai` provider, is not OpenAI's, Azure OpenAI's or this machine's. CRITICAL in a project's `.codex/config.toml`, HIGH in `$CODEX_HOME/config.toml` under `--include-user-config`. Codex 0.129.0 and later ignores these keys in project config and prints a startup warning, so on a current Codex the project file is an attempt with no effect. Check Point Research reported the class on 4 Nov 2026, through The Hacker News.
+- `aak scan --include-user-config` reads Codex's global instruction files, `$CODEX_HOME/AGENTS.md` and `AGENTS.override.md`, through the AAK-AGENT rules. An advert for a gateway fires AAK-AGENT-002, the LOW inventory rule, as one more link: no rule reads an advert as an advert.
+- Two reviewed rows in `data/cna_package_map.json`, so `aak update` brings CVE-2026-123022 (AgentScope 2.0.0 to 2.0.11) and CVE-2026-76892 and CVE-2026-76893 (`@tsparticles/mcp-server` below 4.3.1 and 4.3.2) into the advisory feed.
+
+### Fixed
+
+- The pin example in AAK-MCP-007 and AAK-SUPPLY-001 named `@modelcontextprotocol/server-filesystem@2025.1.1`, a release npm has never carried. Both now name 2.2.0 and say not to pin this package to a date-style version: npm marks those deprecated.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

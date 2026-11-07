@@ -9,6 +9,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
     SOURCE_MAX_BYTES,
+    codex_home,
     finditer_up_to_last,
     host_ip,
     line_at,
@@ -1021,13 +1022,26 @@ def _zero_width_is_expected(text: str, index: int, at_file_start: bool = False) 
     return False
 
 
-def _find_agent_config_files(project_root: Path) -> list[Path]:
+def _codex_global_instructions() -> list[Path]:
+    """`$CODEX_HOME/AGENTS.override.md` and `AGENTS.md`.
+
+    Codex reads the override when it exists and `AGENTS.md` otherwise. Both are read
+    here: the one Codex skips today is the one it reads once the other is gone.
+    """
+    home = codex_home()
+    return [path for path in (home / "AGENTS.override.md", home / "AGENTS.md") if path.is_file()]
+
+
+def _find_agent_config_files(project_root: Path, include_user_config: bool = False) -> list[Path]:
     """Locate agent configuration / instruction files in the project."""
     found: list[Path] = []
     for rel in _AGENT_CONFIG_FILES:
         p = project_root / rel
         if p.is_file():
             found.append(p)
+    if include_user_config:
+        local = {path.resolve() for path in found}
+        found.extend(path for path in _codex_global_instructions() if path.resolve() not in local)
     return found
 
 
@@ -1193,11 +1207,12 @@ def _check_content(
     return findings
 
 
-def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
+def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Finding], set[str]]:
     """Scan agent configuration files for security issues.
 
     Args:
         project_root: The root directory of the project to scan.
+        include_user_config: Also read Codex's global instruction files.
 
     Returns:
         A tuple of (list of findings, set of scanned file relative paths).
@@ -1205,7 +1220,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned_files: set[str] = set()
 
-    for config_path in _find_agent_config_files(project_root):
+    for config_path in _find_agent_config_files(project_root, include_user_config):
         try:
             content = read_text_capped(config_path, CONFIG_MAX_BYTES, errors="ignore")
             if len(content) > 1_000_000:
@@ -1213,7 +1228,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except OSError:
             continue
 
-        rel_path = str(config_path.relative_to(project_root))
+        rel_path = (
+            str(config_path.relative_to(project_root))
+            if config_path.is_relative_to(project_root) else str(config_path)
+        )
         scanned_files.add(rel_path)
         findings.extend(_check_content(content, rel_path))
 
