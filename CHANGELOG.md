@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- AAK-MCP-007 and AAK-SUPPLY-001 no longer tell you to pin `@modelcontextprotocol/server-filesystem@2025.1.1` (#1190). npm never had that version, and npm now marks the whole date line of the four reference servers deprecated: they went back to semantic versioning at 1.0.0 on 2026-10-11. The remediation now uses a stand-in pin, says to pin those four to a SemVer release, and says what a launcher pin does not fix. AAK-KNOWN-VULN-001 says so when the fix it names is on that line: for server-filesystem 0.6.2, OSV's GHSA-hc55-p739-j48w names 2025.7.1, and every SemVer release is outside it. The new reviewed list is `data/date_line_packages.json`.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

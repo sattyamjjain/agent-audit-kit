@@ -38,7 +38,7 @@ def test_supply_chain_pinned_not_flagged(tmp_path: Path) -> None:
         "mcpServers": {
             "pinned": {
                 "command": "npx",
-                "args": ["@modelcontextprotocol/server-filesystem@2025.1.1", "/data"]
+                "args": ["@modelcontextprotocol/server-filesystem@2.1.0", "/data"]
             }
         }
     }

@@ -35,7 +35,9 @@ PEP 440 for PyPI, so MLflow's `>=3.12.0rc0, <3.17.0` takes 3.12.0rc0 and
 its CVE ids, the release and the fix, and carries the advisory's severity:
 CRITICAL from CVSS 9.0, HIGH from 7.0, MEDIUM otherwise (see
 `advisory_feed.record_severity`), INFO for a range. One finding per file,
-package and advisory, at the first entry that resolves an affected release.
+package and advisory, at the first entry that resolves an affected release. A fix
+on a date line npm has deprecated says so, for the packages the reviewed list
+`data/date_line_packages.json` names.
 
 Where a version-pin rule reports the advisory's CVEs on the same line of the same
 file (the declaration or lockfile entry both point at) at or above this
@@ -49,16 +51,18 @@ from its evidence (`evidence_cves`), the only place they are written.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import os
 import re
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.advisory_feed import Advisory, AdvisoryFeed, load_feed
-from agent_audit_kit.malicious_feed import canonical_name
+from agent_audit_kit.malicious_feed import canonical_name, version_order
 from agent_audit_kit.models import Finding, Severity
 
 from ._dependency_pins import read_text
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import SKIP_DIRS, loads_json, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES, Declaration
 from ._site_packages import site_entries, site_package_dirs
 from ._versions import Spans, intersect, interval_spans, parse_range
@@ -106,10 +110,53 @@ def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
     return finding if finding.severity is severity else dataclasses.replace(finding, severity=severity)
 
 
+@functools.lru_cache(maxsize=1)
+def _date_line_packages() -> dict[tuple[str, str], dict[str, Any]]:
+    """The reviewed list of packages that left a deprecated date line for SemVer."""
+    path = Path(__file__).parent.parent / "data" / "date_line_packages.json"
+    try:
+        rows = loads_json(path.read_text(encoding="utf-8"), path)["packages"]
+    except (OSError, ValueError, KeyError):
+        return {}
+    return {(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])): row for row in rows}
+
+
+def _touches_semver_line(advisory: Advisory, first: tuple[Any, ...], line: tuple[Any, ...]) -> bool:
+    """Does the advisory place any bound or listed version between the first SemVer
+    release and the start of the date line, the releases current installs resolve to?"""
+    bounds = [key for row in advisory.ranges for key in (row.bounds or ())]
+    listed = [version_order(advisory.ecosystem, version) for version in advisory.versions]
+    return any(key is not None and first <= key < line for key in bounds + listed)
+
+
+def _left_date_line(advisory: Advisory, fixed: str) -> str:
+    """What to add when the fix an advisory names is on a date line npm deprecated.
+
+    Four npm reference servers published date versions (2025.1.14 to 2026.8.31), then
+    went back to SemVer at 1.0.0 in October 2026, and npm now marks the date line
+    deprecated. An advisory written before that names 2025.7.1 as the fix, so a project
+    on 0.6.2 was sent to a deprecated release when any SemVer one is outside the
+    advisory. This says so only for an advisory that leaves the SemVer line alone; a
+    later one that lists 1.x, or fixes in it, keeps its own wording.
+    """
+    row = _date_line_packages().get((advisory.ecosystem, canonical_name(advisory.ecosystem, advisory.name)))
+    if row is None:
+        return ""
+    fixed_key = version_order(advisory.ecosystem, fixed)
+    first = version_order(advisory.ecosystem, row["semver_from"])
+    line = version_order(advisory.ecosystem, row["date_line_from"])
+    if fixed_key is None or first is None or line is None or fixed_key < line:
+        return ""
+    if _touches_semver_line(advisory, first, line):
+        return ""
+    return (f", on the date line npm has since deprecated: {row['name']} went back to semantic versioning at "
+            f"{row['semver_from']} on {row['semver_published']}, and this advisory lists none of those releases")
+
+
 def _fix(advisory: Advisory, version: str) -> str:
     fixed = advisory.fix_for(version)
     if fixed:
-        return f"; it is fixed in {fixed}"
+        return f"; it is fixed in {fixed}{_left_date_line(advisory, fixed)}"
     last = advisory.last_affected_for(version)
     if last:  # a CNA's `lessThanOrEqual`: IBM's Langflow records end at 1.12.8 and name no fix
         return f"; the advisory lists no fixed release, and {last} as the last affected one"
@@ -169,7 +216,7 @@ def _affected_spans(advisory: Advisory) -> Spans:
 
 def _below(advisory: Advisory) -> str:
     if advisory.fixed:
-        return f", fixed in {', '.join(advisory.fixed)}"
+        return f", fixed in {', '.join(advisory.fixed)}{_left_date_line(advisory, advisory.fixed[-1])}"
     last = sorted({row.last_affected for row in advisory.ranges if row.last_affected is not None})
     return f", no fixed release listed, last affected {', '.join(last)}" if last else ", no fixed release listed"
 
