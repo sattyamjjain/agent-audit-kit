@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-MCP-BROWSER-ATTACH-001 (MEDIUM): a browser-automation MCP server that attaches over CDP to a browser on this machine, points at the real profile, imports cookies or turns off the renderer sandbox (#1201).
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

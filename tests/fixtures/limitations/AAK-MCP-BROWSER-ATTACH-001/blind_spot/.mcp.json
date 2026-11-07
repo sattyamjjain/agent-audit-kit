@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "on_the_network": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@1.0.0",
+        "--cdp-endpoint",
+        "http://192.168.1.5:9222"
+      ]
+    },
+    "in_a_config_file": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@1.0.0",
+        "--config",
+        "browser.json"
+      ]
+    },
+    "a_copy_of_the_profile": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@1.0.0",
+        "--user-data-dir",
+        "/home/me/chrome-copy"
+      ]
+    },
+    "in_a_container": {
+      "command": "docker",
+      "args": [
+        "run",
+        "mcp/playwright",
+        "--no-sandbox"
+      ]
+    },
+    "named_for_nothing": {
+      "command": "node",
+      "args": [
+        "server.js",
+        "--no-sandbox"
+      ]
+    }
+  }
+}
