@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "a": {
+      "command": "a",
+      "tools": [
+        {
+          "name": "flight_search",
+          "description": "x"
+        }
+      ]
+    },
+    "b": {
+      "command": "b",
+      "tools": [
+        {
+          "name": "flight_search_pro",
+          "description": "x"
+        }
+      ]
+    }
+  }
+}

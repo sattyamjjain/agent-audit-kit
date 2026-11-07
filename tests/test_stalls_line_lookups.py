@@ -34,6 +34,8 @@ from agent_audit_kit.scanners import (
     _helpers,
     a2a_protocol,
     agent_server_noauth,
+    llm_call_shapes,
+    mcp_tool_names,
     agent_config,
     composition,
     gha_hardening,
@@ -281,6 +283,15 @@ def _quoted_server_name(k: int) -> dict[str, str]:
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Group E, before it was released.
+    "prompt-fstrings": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n" + "    x = f'<q>{m}</q>'\n" * k}, 1_000, True),
+    "prompt-many-pieces": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "{m}<q>" * k + "'\n"}, 2_000, False),
+    "prompt-many-tags": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "<a>" * k + "{m}'\n"}, 5_000, False),
+    "prompt-if-handlers": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n" + "".join(
+        f"@app.post('/x')\ndef f{i}(m):\n    return c.chat.completions.create(model='m', max_tokens=1)\n" for i in range(k))}, 500, False),
+    "tool-names-one-stem": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {f"s{i}": {"command": "x", "tools": [{"name": "flight_search"}]} for i in range(k)}})}, 500, False),
+    "tool-names-distinct": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": f"tool_number_{i}_of_many"} for i in range(k)]}}})}, 1_000, False),
+    "tool-names-long": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": "a" * k}]}}})}, 50_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.
