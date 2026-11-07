@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- AAK-SUPPLY-002 and AAK-SUPPLY-006 now name the axios compromise of 31 March 2026 by the releases it hit, 1.14.1 and 0.30.4, plus plain-crypto-js, the trojan they install (#1189). The row read `>=1.7.0 <1.7.4` under that label, a slice of CVE-2024-39338, an unrelated SSRF, so a lockfile with axios 1.14.1 got nothing and one with 1.7.2 got told it was compromised. The bundled malicious-release feed holds OSV MAL-2026-2307 and MAL-2026-2306 too, so AAK-MALICIOUS-RELEASE-001 reports those releases at CRITICAL, and the engine stands the two table rules down on a release it reports in the same file. `_version_in_range` no longer treats a token without an operator as a match; `"1.14.1"` used to match every version. AAK-SUPPLY-006 reads a cached `~/.agent-audit-kit/vuln_db.json` before the bundled copy, so its users see this after their next `aak update`.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
