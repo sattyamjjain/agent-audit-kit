@@ -5567,7 +5567,9 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-101288",
         "CVE-2026-101861",
+        "CVE-2026-104317",
         "CVE-2026-104339",
         "CVE-2026-105697",
         "CVE-2026-105699",
@@ -5581,6 +5583,7 @@
         "CVE-2026-12940",
         "CVE-2026-17623",
         "CVE-2026-17626",
+        "CVE-2026-18894",
         "CVE-2026-7646",
         "CVE-2026-78575",
         "CVE-2026-81941",
@@ -11078,7 +11081,7 @@
       "low": 19,
       "medium": 126
     },
-    "total_cves_covered": 382,
+    "total_cves_covered": 385,
     "total_rules": 442
   },
   "tool": "agent-audit-kit"

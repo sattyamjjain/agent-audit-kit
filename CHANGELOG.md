@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's CVE-2026-104317, CVE-2026-18894 and CVE-2026-101288, which its 1.13.0 floor already reported (#1192). The n8n record CVE-2026-119408 gets no pin, since it is not on n8n's MCP surface, and `AAK-KNOWN-VULN-001` reports it after `aak update`. LM Studio's CVE-2026-119979 is out of scope. The ledger has the reasons.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
