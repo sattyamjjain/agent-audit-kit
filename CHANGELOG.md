@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-TOOL-NEAR-DUPLICATE-001 (MEDIUM): tools on two configured servers whose names differ only in a flourish, in how they are written or by one character, read from the pin file and configs that list tools (#1200).
+- AAK-PROMPT-DELIMITER-001 (LOW): a parameter placed between prompt delimiters with the closing one unescaped (#1200).
+- AAK-LLM-NO-MAX-TOKENS-001 (LOW): a web route or an agent tool that calls a chat completion with no output cap (#1200).
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

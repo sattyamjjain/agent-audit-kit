@@ -8,19 +8,19 @@
 |----------|-------|
 | Supply Chain | 198 |
 | MCP Configuration | 68 |
-| Tool Poisoning | 32 |
+| Tool Poisoning | 33 |
 | Agent Config | 20 |
 | Legal Compliance | 19 |
 | Secret Exposure | 19 |
-| Trust Boundaries | 18 |
+| Trust Boundaries | 19 |
 | Hook Injection | 16 |
+| Taint Analysis | 15 |
 | Transport Security | 15 |
-| Taint Analysis | 14 |
 | A2A Protocol | 13 |
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **442** |
+| **Total** | **445** |
 
 <!-- END rules-summary -->
 

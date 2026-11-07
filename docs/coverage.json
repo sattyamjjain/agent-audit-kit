@@ -2294,6 +2294,23 @@
       "title": "LLM analysis did not cover a tool"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Instrument for logging and detection (p.13)"
+      ],
+      "owasp_agentic": [
+        "ASI08 Cascading Failures"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-LLM-NO-MAX-TOKENS-001",
+      "severity": "low",
+      "title": "A web route or agent tool calls a model with no output cap"
+    },
+    {
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-25879"
@@ -9206,6 +9223,22 @@
         "Art. 9 - Risk Management",
         "Art. 13 - Transparency"
       ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI01 Agent Goal Hijack"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-PROMPT-DELIMITER-001",
+      "severity": "low",
+      "title": "Untrusted text sits between prompt delimiters with the closing one unescaped"
+    },
+    {
+      "category": "taint-analysis",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 13 - Transparency"
+      ],
       "nsa_mcp_csi": [
         "Validate parameters (p.11)"
       ],
@@ -10755,6 +10788,27 @@
       "owasp_agentic": [
         "ASI02 Tool Misuse and Exploitation"
       ],
+      "owasp_mcp": [
+        "MCP03:2025 Tool Poisoning"
+      ],
+      "rule_id": "AAK-TOOL-NEAR-DUPLICATE-001",
+      "severity": "medium",
+      "title": "Two configured servers offer tools with nearly the same name"
+    },
+    {
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation"
+      ],
       "owasp_mcp": [],
       "rule_id": "AAK-TOXICFLOW-001",
       "severity": "high",
@@ -11024,45 +11078,45 @@
       "mcp-server-card": 4,
       "secret-exposure": 19,
       "supply-chain": 198,
-      "taint-analysis": 14,
-      "tool-poisoning": 32,
+      "taint-analysis": 15,
+      "tool-poisoning": 33,
       "transport-security": 15,
-      "trust-boundary": 18
+      "trust-boundary": 19
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 229,
-      "Art. 13 - Transparency": 29,
+      "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 335,
-      "Art. 9 - Risk Management": 226
+      "Art. 15 - Robustness & Security": 336,
+      "Art. 9 - Risk Management": 228
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 229,
-      "Constrain and sandbox tool execution (p.11)": 209,
-      "Design for boundaries (p.10)": 320,
+      "Constrain and sandbox tool execution (p.11)": 210,
+      "Design for boundaries (p.10)": 321,
       "Filter and monitor output pipelines and chained execution (p.12)": 127,
-      "Instrument for logging and detection (p.13)": 21,
+      "Instrument for logging and detection (p.13)": 22,
       "Scan local network for open or vulnerable MCP servers (p.14)": 290,
       "Sign and verify MCP messages (p.12)": 300,
       "Track and patch MCP related vulnerabilities (p.13)": 234,
-      "Validate parameters (p.11)": 213
+      "Validate parameters (p.11)": 214
     },
     "by_owasp_agentic": {
-      "ASI01": 17,
-      "ASI02": 104,
+      "ASI01": 18,
+      "ASI02": 105,
       "ASI03": 117,
       "ASI04": 227,
       "ASI05": 107,
       "ASI06": 5,
       "ASI07": 24,
-      "ASI08": 9,
+      "ASI08": 10,
       "ASI09": 14,
       "ASI10": 5
     },
     "by_owasp_mcp": {
       "MCP01:2025": 36,
       "MCP02:2025": 16,
-      "MCP03:2025": 13,
+      "MCP03:2025": 14,
       "MCP04:2025": 174,
       "MCP05:2025": 119,
       "MCP06:2025": 4,
@@ -11075,11 +11129,11 @@
       "critical": 102,
       "high": 190,
       "info": 5,
-      "low": 19,
-      "medium": 126
+      "low": 21,
+      "medium": 127
     },
     "total_cves_covered": 382,
-    "total_rules": 442
+    "total_rules": 445
   },
   "tool": "agent-audit-kit"
 }
