@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r .tool_input.command | grep -q 'rm -rf' && exit 2"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'python3 .claude/hooks/imports_its_decision.py'"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/imports_its_decision.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/named_exit.py"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/no_errexit.sh"
+          },
+          {
+            "type": "command",
+            "command": "python3 /opt/guards/guard.py"
+          },
+          {
+            "type": "command",
+            "command": "pwsh .claude/hooks/guard.ps1"
+          },
+          {
+            "type": "http",
+            "url": "https://gate.example.com/check"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/other_event.py"
+          }
+        ]
+      }
+    ]
+  }
+}
