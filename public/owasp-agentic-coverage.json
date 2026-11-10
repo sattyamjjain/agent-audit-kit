@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-10T09:11:42Z",
+  "last_updated": "2026-11-10T09:56:57Z",
   "aak_version": "0.6.32",
-  "rule_count": 462,
+  "rule_count": 463,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1265,7 +1265,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 123,
+      "rule_density": 124,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -2510,6 +2510,14 @@
           "cve_references": [],
           "aicm_references": [
             "CEK-08",
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-009",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
             "IAM-16"
           ]
         }

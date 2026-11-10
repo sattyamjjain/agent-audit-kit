@@ -292,15 +292,60 @@ class Release:
         return f"{ids}, which lists {self.name} {version}"
 
 
+_DOCKER_HUB = "docker.io"
+# Every spelling of Docker Hub's registry a reference may carry; none at all is a fourth.
+_DOCKER_HUB_NAMES = frozenset({"docker.io", "index.docker.io", "registry-1.docker.io"})
+# One path component of a repository name, in Docker's reference grammar (lower case).
+_REPOSITORY_COMPONENT_RE = re.compile(r"[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*")
+
+
+def canonical_repository(reference: str) -> str | None:
+    """The repository an image reference names, spelled one way, or None for a
+    string that names none (a template such as `${REGISTRY}/app`, an empty path).
+
+    Lower case, with the tag and the digest dropped. The first part is a registry
+    when it has a `.` or a `:` or is `localhost`, Docker's own rule (the one
+    `container_image_pins._needle` states); otherwise the name is on Docker Hub.
+    `docker.io/`, `index.docker.io/`, `registry-1.docker.io/` and no registry all
+    name Docker Hub, which spells a one-part name under `library/`. So
+    `tomicdd/artex:latest` and `index.docker.io/tomicdd/artex@sha256:...` are both
+    `docker.io/tomicdd/artex`, while `ghcr.io/tomicdd/artex` is another repository.
+    """
+    name = reference.strip().lower().split("@", 1)[0]
+    colon = name.rfind(":")
+    if colon > name.rfind("/"):
+        name = name[:colon]  # a tag; a `:` before the last `/` is a registry's port
+    parts = name.split("/")
+    if len(parts) > 1 and ("." in parts[0] or ":" in parts[0] or parts[0] == "localhost"):
+        registry, path = parts[0], parts[1:]
+    else:
+        registry, path = _DOCKER_HUB, parts
+    if registry in _DOCKER_HUB_NAMES:
+        registry = _DOCKER_HUB
+        if len(path) == 1:
+            path = ["library", *path]
+    if not all(_REPOSITORY_COMPONENT_RE.fullmatch(part) for part in path):
+        return None
+    return registry + "/" + "/".join(path)
+
+
 @dataclass(frozen=True)
 class Image:
-    """One feed image entry: digests of malicious image indexes or manifests."""
+    """One feed image entry: digests of malicious image indexes or manifests, or,
+    with `all_tags`, a repository every build of which is malicious.
+
+    A digest entry fits a hijacked legitimate repository: its tags move back to
+    clean builds, so only the digests mark the payload. `all_tags` fits a
+    repository an attacker owns outright, where every tag and every digest is the
+    payload and the report names no digest at all.
+    """
 
     id: str
     image: str
     digests: frozenset[str]
     tags: tuple[str, ...]
     url: str
+    all_tags: bool = False
 
 
 #: The host an entry names to mean every editor.
@@ -353,6 +398,8 @@ class Feed:
     raw: dict[str, dict[str, list[dict[str, Any]]]] = field(default_factory=dict)
     images: dict[str, Image] = field(default_factory=dict)
     extensions: dict[str, tuple[ExtensionRelease, ...]] = field(default_factory=dict)
+    # Whole-repository (`all_tags`) entries, keyed by `canonical_repository`.
+    repositories: dict[str, Image] = field(default_factory=dict)
     _built: dict[tuple[str, str], tuple[Release, ...]] = field(
         default_factory=dict, compare=False, repr=False
     )
@@ -378,6 +425,12 @@ class Feed:
     def image(self, digest: str) -> Image | None:
         """The entry listing an image digest (`sha256:<64 hex>`), if any."""
         return self.images.get(digest.lower())
+
+    def repository(self, name: str) -> Image | None:
+        """The whole-repository entry for the repository an image reference names
+        (by any tag, by digest or bare), if any."""
+        key = canonical_repository(name)
+        return None if key is None else self.repositories.get(key)
 
     def extension(self, extension_id: str) -> tuple[ExtensionRelease, ...]:
         """Every extension entry for one `publisher.name` id, compared as VS Code
@@ -442,6 +495,7 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
             continue
         index.setdefault(ecosystem, {}).setdefault(canonical_name(ecosystem, name), []).append(raw)
     images: dict[str, Image] = {}
+    repositories: dict[str, Image] = {}
     for raw in data.get("oci") or ():
         if not isinstance(raw, dict) or not isinstance(raw.get("id"), str):
             continue
@@ -451,9 +505,13 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
             digests=frozenset(d.lower() for d in _strings(raw.get("digests"))),
             tags=_strings(raw.get("tags")),
             url=str(raw.get("url") or ""),
+            all_tags=raw.get("all_tags") is True,  # a real bool only: "yes" is not true
         )
         for digest in entry.digests:
             images[digest] = entry
+        repository = canonical_repository(entry.image) if entry.all_tags else None
+        if repository is not None:
+            repositories[repository] = entry
     extensions: dict[str, list[ExtensionRelease]] = {}
     for raw in data.get("extensions") or ():
         found = _extension(raw)
@@ -467,6 +525,7 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
         raw=index,
         images=images,
         extensions={key: tuple(rows) for key, rows in extensions.items()},
+        repositories=repositories,
     )
 
 

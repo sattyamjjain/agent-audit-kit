@@ -28,7 +28,11 @@ What it reads (outside `SKIP_DIRS`, anywhere under the root):
 * An image reference by digest (`repo@sha256:<64 hex>`) in a Dockerfile, a YAML
   file (compose, Kubernetes, Helm, workflows) or an MCP config. A tag alone
   (`latest`, `main-stable`, `v1.107.0`) never matches: a tag moves, a digest does
-  not.
+  not. A whole-repository entry (`all_tags`, for a repository an attacker owns
+  outright, where every tag and digest is the payload) matches any reference to
+  its repository in an image slot instead: an `image:` value, a Helm
+  `repository:` beside its `tag:`, or the image of a Dockerfile FROM line, by any
+  tag, by digest or bare.
 * With `include_user_config` (`aak scan --include-user-config`), what the
   launchers have on disk on this host: the packages in npm's npx cache
   (`<npm cache>/_npx/<hash>/node_modules/<name>/package.json`) and the
@@ -50,12 +54,20 @@ launch, so it is reported once.
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 from pathlib import Path
 from typing import Callable, Iterator
 
-from agent_audit_kit.malicious_feed import Feed, Release, load_feed, version_order
+from agent_audit_kit.malicious_feed import (
+    Feed,
+    Image,
+    Release,
+    canonical_repository,
+    load_feed,
+    version_order,
+)
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import read_manifest, read_text
@@ -71,7 +83,7 @@ from ._manifest_deps import (
 )
 from ._site_packages import site_entries, site_package_dirs
 from ._versions import exact_version, interval_spans, intersect, parse_range, parse_version
-from .container_image_pins import _COMMENT_RE, _kind
+from .container_image_pins import _COMMENT_RE, _IMAGE_KEY_RE, _helm_refs, _in_image_slot, _kind
 from .mcp_cve_pins_2026_07 import _lockfile_raw_entries
 
 _RULE = "AAK-MALICIOUS-RELEASE-001"
@@ -106,6 +118,12 @@ _OPERATOR_RE = re.compile(r"^\s*(?:===|==|=)?\s*")
 # How `Release.describe` words what an entry lists.
 _LISTS = "which lists "
 _EVERY_RELEASE = "every release of "
+# What ends an image reference on its left: the characters `_image_findings` stops at,
+# plus the flow-collection openers and the comma of a YAML or JSON list.
+_REF_DELIMITERS = " \t\"'=,[{("
+# A reference's tag, digest or template after the repository name, as written: a
+# `${TAG}` or `{{ .Values.tag }}` is kept whole, while a bare `}` closes a flow mapping.
+_REF_REST_RE = re.compile(r"(?:\$\{[^}\s\"']{0,64}\}|\{\{[^}\"'\n]{0,64}\}\}|[^\s\"',\]{}#]){0,256}")
 
 
 def _is_manifest(name: str) -> bool:
@@ -460,6 +478,99 @@ def _image_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
             f"{feed.generated_at}. Treat a host or cluster that ran it as compromised.",
             line,
         ))
+    if not is_json:
+        findings.extend(_repository_findings(path, text, rel, feed))
+    return findings
+
+
+def _repository_needle(key: str) -> str:
+    """The text every reference to a canonical repository contains: its path
+    without the registry, which a reference may spell several ways or leave out,
+    and without Docker Hub's `library/`, which a reference usually leaves out."""
+    registry, _, path = key.partition("/")
+    if registry == "docker.io" and path.startswith("library/") and path.count("/") == 1:
+        return path[len("library/"):]
+    return path
+
+
+@functools.lru_cache(maxsize=4)
+def _repository_pattern(keys: tuple[str, ...]) -> re.Pattern[str]:
+    """One pattern for every whole-repository entry's needle, bounded on both
+    sides as `container_image_pins._ref_re` bounds an image: nothing of a name may
+    come before it (`nottomicdd/artex`), except the `/` a registry ends with, and
+    nothing of a longer name after it (`tomicdd/artex-pro`, `tomicdd/artex/x`)."""
+    needles = sorted({_repository_needle(key) for key in keys}, key=lambda n: (-len(n), n))
+    return re.compile(r"(?<![\w.-])(?:" + "|".join(map(re.escape, needles)) + r")(?![\w./-])", re.I)
+
+
+def _repository_message(shown: str, image: Image, feed: Feed) -> str:
+    return (
+        f"`{shown}` runs {image.image}, which {image.id} lists as a repository that ships "
+        f"only malicious builds{f' ({image.url})' if image.url else ''}. Feed: the "
+        f"{feed.origin} copy generated {feed.generated_at}. Treat a host that ran it as "
+        "compromised."
+    )
+
+
+def _repository_findings(path: Path, text: str, rel: str, feed: Feed) -> list[Finding]:
+    """References to a whole-repository (`all_tags`) entry's repository, by any tag,
+    by digest or bare, in an image slot of a Dockerfile or YAML file.
+
+    `text` is the file `_image_findings` already read, under the same cap. A slot is
+    what `container_image_pins._in_image_slot` reads from the line before the
+    reference (an `image:` value, or the image of a FROM line after any flags), plus
+    a Helm mapping that pairs `repository:` with `tag:` (its `_helm_refs`), so a name
+    in prose, a `docker run` argument or a comment is not reported. A digest
+    reference whose digest is itself an `oci` digest entry is left to
+    `_image_findings`, which reports it once.
+    """
+    if not feed.repositories:
+        return []
+    pattern = _repository_pattern(tuple(sorted(feed.repositories)))
+    findings: list[Finding] = []
+    # One pass, as in `_image_findings`: the line, its start and its comment marker are
+    # carried from one match to the next, and every look back stops at _REF_WINDOW.
+    line, last, line_start = 1, 0, 0
+    comment_for, comment_at = -1, -1
+    matched = False
+    for m in pattern.finditer(text):
+        matched = True
+        start, end = m.span()
+        newlines = text.count("\n", last, start)
+        if newlines:
+            line += newlines
+            line_start = text.rfind("\n", last, start) + 1
+        last = start
+        lo = max(line_start, start - _REF_WINDOW)
+        stop = max(text.rfind(c, lo, start) for c in _REF_DELIMITERS)
+        if stop < 0 and lo > line_start:
+            continue  # a reference longer than the window is not read
+        ref_start = lo if stop < 0 else stop + 1
+        image = feed.repository(text[ref_start:end])
+        if image is None:
+            continue  # another registry's name (`ghcr.io/tomicdd/artex`) or a template
+        rest = _REF_REST_RE.match(text, end)
+        rest_end = end if rest is None else rest.end()
+        listed_digest = _DIGEST_RE.search(text, end, rest_end)
+        if listed_digest is not None and feed.image(listed_digest.group(1)) is not None:
+            continue
+        if comment_for != line_start:
+            line_end = text.find("\n", line_start)
+            marker = _LINE_COMMENT_RE.search(text, line_start, len(text) if line_end < 0 else line_end)
+            comment_for, comment_at = line_start, -1 if marker is None else marker.end()
+        if 0 <= comment_at <= ref_start:
+            continue
+        prefix = text[lo:ref_start]
+        # A FROM line is judged from its first word, which a cut prefix may not hold.
+        if not (_in_image_slot(prefix) if lo == line_start else _IMAGE_KEY_RE.search(prefix)):
+            continue
+        shown = text[ref_start:rest_end]
+        findings.append(make_finding(_RULE, rel, _repository_message(shown, image, feed), line))
+    if matched and _kind(path.name) == "yaml":
+        for name, tag, helm_line in _helm_refs(text, path):
+            image = feed.repositories.get(canonical_repository(name) or "")
+            if image is not None:
+                findings.append(make_finding(_RULE, rel, _repository_message(f"{name}:{tag}", image, feed), helm_line))
     return findings
 
 

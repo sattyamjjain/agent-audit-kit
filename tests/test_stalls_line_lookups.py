@@ -564,6 +564,15 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         "compose.yaml": "image: " + ("@" + _LISTED_DIGEST + " ") * k + "\n"}, 400, True),
     "malicious-digests-unseparated": (malicious_releases.scan, lambda k: {
         "compose.yaml": "image: x" + ("@" + _LISTED_DIGEST) * k + "\n"}, 150, True),
+    # Its whole-repository reader (`all_tags` entries, ARTEX), before it was released: one
+    # finding per `image:` line, a name repeated on one line where only the first is in a
+    # slot, and references far from their key, each looking back at most 256 characters.
+    "malicious-repositories-on-lines": (malicious_releases.scan, lambda k: {
+        "compose.yaml": "services:\n" + "".join(f"  s{i}:\n    image: tomicdd/artex:{i}\n" for i in range(k))}, 300, True),
+    "malicious-repositories-on-one-line": (malicious_releases.scan, lambda k: {
+        "compose.yaml": "image: " + "tomicdd/artex " * k + "\n"}, 2_000, False),
+    "malicious-repositories-far-from-key": (malicious_releases.scan, lambda k: {
+        "compose.yaml": "image: " + ("x" * 300 + " tomicdd/artex ") * k + "\n"}, 200, False),
     # runtime_advisories, before it was released: shlex grew a FROM word one character at a
     # time (900,000 characters, 5.2 s), and a `.tool-versions` value was reported once per
     # repetition (140,000, 14 s). Its per-value line searches are timed by
