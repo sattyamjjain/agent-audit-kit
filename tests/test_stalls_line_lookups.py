@@ -573,6 +573,22 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         "compose.yaml": "image: " + "tomicdd/artex " * k + "\n"}, 2_000, False),
     "malicious-repositories-far-from-key": (malicious_releases.scan, lambda k: {
         "compose.yaml": "image: " + ("x" * 300 + " tomicdd/artex ") * k + "\n"}, 200, False),
+    # AAK-SECRET-010 and -011's readers, before they were released: one finding per
+    # permission rule, a rule of many words or many quotes, which `shlex` would have grown a
+    # word at a time, and a `.gitignore` of glob lines and deep `**` paths for the
+    # settings.local.json matcher.
+    "permission-rule-credentials": (secret_exposure.scan, lambda k: {".claude/settings.local.json": json.dumps(
+        {"permissions": {"allow": [f"Bash(sshpass -p Pw{i}x9Kq ssh h{i})" for i in range(k)]}}, indent=1)}, 300, True),
+    "permission-rule-long-command": (secret_exposure.scan, lambda k: {".claude/settings.local.json": json.dumps(
+        {"permissions": {"allow": ["Bash(" + "a " * k + "PGPASSWORD=Xy9Kq psql)"]}})}, 20_000, False),
+    "permission-rule-quotes": (secret_exposure.scan, lambda k: {".claude/settings.local.json": json.dumps(
+        {"permissions": {"allow": ["Bash(echo " + "'a' \"b\" " * k + "-p'" + "c" * k + ")"]}})}, 5_000, False),
+    "settings-local-gitignore-globs": (secret_exposure.scan, lambda k: {
+        ".claude/settings.local.json": "{}", ".gitignore": "".join(f".c*q{i}*e/\ns*{i}*n\n" for i in range(k))},
+        2_000, False),
+    "settings-local-gitignore-deep": (secret_exposure.scan, lambda k: {
+        ".claude/settings.local.json": "{}", ".gitignore": "**/" * k + "settings.json\n" + "a/" * k + "b\n"},
+        15_000, False),
     # runtime_advisories, before it was released: shlex grew a FROM word one character at a
     # time (900,000 characters, 5.2 s), and a `.tool-versions` value was reported once per
     # repetition (140,000, 14 s). Its per-value line searches are timed by

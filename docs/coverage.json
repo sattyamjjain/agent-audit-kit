@@ -10033,6 +10033,48 @@
       "title": "Google Cloud service account key file"
     },
     {
+      "category": "secret-exposure",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token Mismanagement & Secret Exposure"
+      ],
+      "rule_id": "AAK-SECRET-010",
+      "severity": "high",
+      "title": "Credential inside a Claude Code permission rule"
+    },
+    {
+      "category": "secret-exposure",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token Mismanagement & Secret Exposure"
+      ],
+      "rule_id": "AAK-SECRET-011",
+      "severity": "medium",
+      "title": "Claude Code's settings.local.json is not ignored by git"
+    },
+    {
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-55071",
@@ -11448,7 +11490,7 @@
       "legal-compliance": 19,
       "mcp-config": 69,
       "mcp-server-card": 4,
-      "secret-exposure": 20,
+      "secret-exposure": 22,
       "supply-chain": 201,
       "taint-analysis": 15,
       "tool-poisoning": 34,
@@ -11459,24 +11501,24 @@
       "Art. 10 - Data Governance": 231,
       "Art. 13 - Transparency": 31,
       "Art. 14 - Human Oversight": 20,
-      "Art. 15 - Robustness & Security": 345,
+      "Art. 15 - Robustness & Security": 347,
       "Art. 9 - Risk Management": 235
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 231,
       "Constrain and sandbox tool execution (p.11)": 217,
-      "Design for boundaries (p.10)": 335,
+      "Design for boundaries (p.10)": 337,
       "Filter and monitor output pipelines and chained execution (p.12)": 127,
       "Instrument for logging and detection (p.13)": 23,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 299,
-      "Sign and verify MCP messages (p.12)": 311,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 301,
+      "Sign and verify MCP messages (p.12)": 313,
       "Track and patch MCP related vulnerabilities (p.13)": 236,
       "Validate parameters (p.11)": 221
     },
     "by_owasp_agentic": {
       "ASI01": 18,
       "ASI02": 112,
-      "ASI03": 124,
+      "ASI03": 126,
       "ASI04": 229,
       "ASI05": 107,
       "ASI06": 5,
@@ -11486,7 +11528,7 @@
       "ASI10": 5
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 37,
+      "MCP01:2025": 39,
       "MCP02:2025": 16,
       "MCP03:2025": 15,
       "MCP04:2025": 176,
@@ -11499,13 +11541,13 @@
     },
     "by_severity": {
       "critical": 103,
-      "high": 199,
+      "high": 200,
       "info": 5,
       "low": 21,
-      "medium": 135
+      "medium": 136
     },
     "total_cves_covered": 387,
-    "total_rules": 463
+    "total_rules": 465
   },
   "tool": "agent-audit-kit"
 }

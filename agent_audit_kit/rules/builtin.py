@@ -177,6 +177,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SECRET-007": ["DSP-17"],
     "AAK-SECRET-008": ["DSP-17"],
     "AAK-SECRET-009": ["DSP-17"],
+    "AAK-SECRET-010": ["DSP-17"],
+    "AAK-SECRET-011": ["DSP-17"],
     # ---- Identity & Access Management ----------------------------------
     "AAK-TRUST-001": ["IAM-16"],
     "AAK-TRUST-002": ["IAM-16"],
@@ -1825,7 +1827,7 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
-# API Key & Secret Exposure (9 rules)
+# API Key & Secret Exposure (11 rules)
 # ---------------------------------------------------------------------------
 
 _r(
@@ -2052,6 +2054,89 @@ _r(
         "\"service_account\"`. The same key saved under another extension, such as "
         "`.yml`, is not reported."
         " A file over 1,000,000 bytes is not read."
+    ),
+)
+
+_r(
+    "AAK-SECRET-010",
+    "Credential inside a Claude Code permission rule",
+    "A rule in `permissions.allow`, `.ask` or `.deny` of a Claude Code settings file "
+    "(`.claude/settings.json` or `.claude/settings.local.json`) holds a literal "
+    "credential: a password, secret or token assignment before the command "
+    "(`PGPASSWORD=`, `MYSQL_PWD=`), a password attached to a MySQL or MariaDB client's "
+    "`-p`, a `--password` value, `sshpass -p`, `curl -u user:password`, the password in "
+    "a database, broker or HTTP URL, or an `Authorization` header value. When a user "
+    "answers \"Yes, and don't ask again\", Claude Code saves the exact command, secret "
+    "included, as an allow rule in `.claude/settings.local.json`. Apiiro, reported by The "
+    "Hacker News on 7 Nov 2026, found 1,122 of 104,185 public copies of that file holding "
+    "at least one secret, 215 of which neither gitleaks nor TruffleHog flagged. A typed "
+    "password is short and plain, so no length or entropy gate applies: the place is the "
+    "evidence. The finding shows at most the value's first two characters.",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Rotate the credential: it sits in the file in clear text, and in every copy of the "
+    "repository that ever committed it. Then remove the rule, or rewrite it to read the "
+    "secret from the environment (`Bash(PGPASSWORD=$PGPASSWORD psql:*)`) or a client "
+    "config file such as `~/.pgpass`, and keep `.claude/settings.local.json` out of git "
+    "(AAK-SECRET-011).",
+    sarif_name="CredentialInAgentPermissionRule",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TOKEN-06"],
+    incident_references=["APIIRO-CLAUDE-CODE-SETTINGS-2026-11-07"],
+    limitations=(
+        "Reads only `.claude/settings.json` and `.claude/settings.local.json`, at any depth "
+        "outside AAK's skip directories; another agent's permission or allow-list file is "
+        "not read, and neither is a command in a hook, a shell history or a script. In a "
+        "rule it reads `Bash(<command>)`'s command, or the rule as written, cut into shell "
+        "words without expanding anything, and reports these shapes only: an assignment "
+        "whose name holds PASSWORD, PASSWD, PWD, SECRET or TOKEN (not `PWD`, `OLDPWD` or a "
+        "name ending in `_FILE`, `_PATH`, `_DIR` or `_URL`); `-p<value>` after mysql, "
+        "mariadb, mysqldump or mysqladmin; `--password=<value>` on any command, and "
+        "`--password <value>` except after those four, which read no value after a space; "
+        "sshpass's own `-p`; `curl -u` or `--user` with a colon; the password in a "
+        "postgres, postgresql, mysql, redis, rediss, mongodb, mongodb+srv, amqp, amqps, "
+        "http or https URL; and an `Authorization: Bearer`, `Basic` or `token` value. A "
+        "password in any other option (`psql` has none, `docker login -p`, `redis-cli -a`) "
+        "or a key in a positional argument is not read. A value that starts with `$`, is "
+        "or ends in `*`, or reads as a placeholder (`<your-password>`, `changeme`) is not "
+        "reported, so a literal password that starts with `$` is missed. A value a prefix "
+        "rule (AAK-SECRET-001, -002, -003, -008) reports, or AAK-SECRET-004 reports on the "
+        "same line, is left to that rule. A settings file that does not parse as JSON or "
+        "JSONC is not read, and a file over 1,000,000 bytes is not read."
+    ),
+)
+
+_r(
+    "AAK-SECRET-011",
+    "Claude Code's settings.local.json is not ignored by git",
+    "`.claude/settings.local.json` exists at the project root and neither the root "
+    "`.gitignore` nor `.claude/.gitignore` ignores it. Claude Code writes a user's "
+    "\"Yes, and don't ask again\" answers into this file as allow rules, each the exact "
+    "command, credentials included (AAK-SECRET-010), so a commit publishes them: Apiiro "
+    "found 104,185 public copies of the file (The Hacker News, 7 Nov 2026).",
+    Severity.MEDIUM,
+    Category.SECRET_EXPOSURE,
+    "Add `.claude/settings.local.json` to `.gitignore`, remove the file from the index "
+    "(`git rm --cached .claude/settings.local.json`), and rotate any credential it ever "
+    "held: it stays in every commit that included it.",
+    sarif_name="AgentLocalSettingsNotIgnored",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TOKEN-08"],
+    incident_references=["APIIRO-CLAUDE-CODE-SETTINGS-2026-11-07"],
+    limitations=(
+        "Looks at `.claude/settings.local.json` in the project root only, and reads only "
+        "the root `.gitignore` and `.claude/.gitignore`, as git applies them: a pattern "
+        "with no `/` matches the name at any depth, any other `/` anchors it, a trailing "
+        "`/` matches folders only, and a file inside an ignored folder stays ignored "
+        "whatever a later `!` line says. A global excludes file (`core.excludesFile`), "
+        "`.git/info/exclude` and the index are not read, so a file ignored only there, or "
+        "never committed, is still reported; a file already committed is reported only "
+        "while the `.gitignore` misses it, though ignoring it does not remove it from git. "
+        "Another agent's local settings file is not looked for. Each `.gitignore` is read up "
+        "to the last line that ends within its first 1,000,000 bytes, and patterns match "
+        "case-sensitively, as git does by default on Linux."
     ),
 )
 

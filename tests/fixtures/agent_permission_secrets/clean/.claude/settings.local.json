@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(mysql -p)",
+      "Bash(mysql -p$DB_PASS)",
+      "Bash(PGPASSWORD=$PGPASSWORD psql)",
+      "Bash(sshpass -p <your-password> ssh x)"
+    ]
+  }
+}
