@@ -23,9 +23,12 @@ Which package a record names
 ----------------------------
 In this order, never from a name alone:
 
-1. the CNA's `packageURL` when it is `pkg:pypi/<name>` or `pkg:npm/<name>`
-   (`pkg:npm/%40scope/name` is `@scope/name`). A packageURL of another registry
-   (`pkg:maven/...`) names a package AAK does not read, and the entry is dropped;
+1. the CNA's `packageURL` when it is `pkg:pypi/<name>`, `pkg:npm/<name>`
+   (`pkg:npm/%40scope/name` is `@scope/name`), `pkg:golang/<module path>` (every
+   segment, in the case the record writes it: Go module paths are case-sensitive) or
+   `pkg:cargo/<name>` (one segment: crates have no scope). A packageURL of another
+   registry (`pkg:maven/...`) names a package AAK does not read, and the entry is
+   dropped;
 2. else its `collectionURL` when that is PyPI or npm (`collection_package`): a
    package's own page (`https://pypi.org/project/<name>/`,
    `https://www.npmjs.com/package/<name>`), or the registry itself, as the CVE
@@ -117,10 +120,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Literal
 
-from agent_audit_kit.advisory_feed import LAUNCH, _dicts, _interval, bucket, cvss3_base_score
+from agent_audit_kit.advisory_feed import ADVISORY_ECOSYSTEMS, LAUNCH, _dicts, _interval, bucket, cvss3_base_score
 from agent_audit_kit.malicious_feed import (
     _SEMVER_RE,
-    ECOSYSTEMS,
     Range,
     canonical_name,
     version_key,
@@ -144,7 +146,9 @@ BACKOFF = 6.0
 MAX_PAGES = 500
 TIMEOUT = 180.0
 _RETRY_STATUSES = frozenset({403, 429, 500, 502, 503, 504})
-_PURL_REGISTRIES = {"pypi": "PyPI", "npm": "npm"}
+_PURL_REGISTRIES = {"pypi": "PyPI", "npm": "npm", "golang": "Go", "cargo": "crates.io"}
+# What a Go module path is made of (golang.org/x/mod/module), so a stray space is no module.
+_GO_MODULE_RE = re.compile(r"[A-Za-z0-9._~+-]+(?:/[A-Za-z0-9._~+-]+)*")
 _READ_VERSION_TYPES = frozenset({"", "semver", "custom", "python"})
 _LABELS = {"CRITICAL": "CRITICAL", "HIGH": "HIGH", "MEDIUM": "MEDIUM", "LOW": "MEDIUM", "NONE": "MEDIUM"}
 _START = "0"
@@ -212,7 +216,7 @@ def load_package_map(path: Path = PACKAGE_MAP) -> tuple[MapRow, ...]:
         values = {key: raw.get(key) for key in ("vendor", "product", "ecosystem", "name", "reviewed")}
         if not all(isinstance(v, str) and v.strip() for v in values.values()):
             continue
-        if values["ecosystem"] not in ECOSYSTEMS:
+        if values["ecosystem"] not in ADVISORY_ECOSYSTEMS:
             continue
         rows.append(MapRow(
             vendor=str(values["vendor"]).strip(),
@@ -289,12 +293,15 @@ def map_launch(affected: dict[str, Any], rows: Iterable[LaunchRow]) -> LaunchRow
 
 
 def purl_package(purl: object) -> tuple[str, str] | None:
-    """(registry, name) for a `pkg:pypi/...` or `pkg:npm/...` packageURL, else None.
+    """(registry, name) for a `pkg:pypi/...`, `pkg:npm/...`, `pkg:golang/...` or
+    `pkg:cargo/...` packageURL, else None.
 
     The version, qualifiers and subpath are dropped and each segment is
     percent-decoded, so `pkg:npm/%40scope/name@2.11.0` is npm `@scope/name`.
-    Anything else, a PyPI name with a namespace or an npm name of more than scope
-    and name, is not read.
+    A Go name is the whole module path, every segment joined with `/`. Anything else,
+    a PyPI or crates.io name with a namespace or an npm name of more than scope and
+    name, is not read. The name comes back as the record writes it;
+    `malicious_feed.canonical_name` folds it for comparison, and leaves a Go path alone.
     """
     if not isinstance(purl, str) or not purl.strip().lower().startswith("pkg:"):
         return None
@@ -308,6 +315,8 @@ def purl_package(purl: object) -> tuple[str, str] | None:
     if head:  # `name@version`; a scoped name's own `@` is its first character
         name = head
     parts = name.split("/")
+    if registry == "Go":
+        return (registry, name) if _GO_MODULE_RE.fullmatch(name) else None
     if registry == "npm" and name.startswith("@"):
         scoped = len(parts) == 2 and len(parts[0]) > 1 and bool(parts[1])
         return (registry, name) if scoped else None

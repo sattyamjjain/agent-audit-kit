@@ -38,6 +38,7 @@ from agent_audit_kit.scanners._helpers import (
     host_ip,
     parse_python,
     url_readings,
+    wildcard_dns_ip,
 )
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
@@ -142,6 +143,7 @@ class Reach(NamedTuple):
     line: int
     tainted: bool          # caller input can set the URL's host
     private_addr: str | None   # private/metadata address reaching this call
+    follows_redirects: bool = False  # a Python client that follows unless told not to; every JS one does
 
 
 def strip_comments(text: str, is_python: bool) -> str:
@@ -216,6 +218,8 @@ def _private_label(host: str) -> str | None:
     if name in _PRIVATE_NAMES or name.endswith(".localhost"):
         return name
     address = host_ip(name)
+    if address is None:
+        address = wildcard_dns_ip(name)
     if address is None:
         return None
     if address in _PRIVATE_ADDRESSES:
@@ -1558,6 +1562,11 @@ def _is_function_tool(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
 #: which it may override.
 _TOOL_CLASS_BASES = frozenset({"BaseTool", "StructuredTool"})
 _TOOL_CLASS_METHODS = frozenset({"_run", "_arun", "run", "arun"})
+#: A smolagents tool: `Tool` is too common a name to read alone, so it counts when the file
+#: imports it from smolagents or the class carries the attributes smolagents requires. Its own
+#: `default_tools.py` imports `from .tools import Tool`.
+_SMOLAGENTS_BASES = frozenset({"Tool", "PipelineTool"})
+_SMOLAGENTS_ATTRIBUTES = frozenset({"inputs", "output_type"})
 #: The parameters of a `call_tool` method that are the caller's: the names the
 #: old list held. A client's bridge takes the server it was configured with
 #: too (`call_tool(self, server, tool_name, arguments)`), which is not.
@@ -1582,7 +1591,7 @@ def _base_name(node: ast.AST) -> str:
         node = node.value
     name = _py_callee_name(node)
     last = name.rpartition(".")[2]
-    return last if last in _TOOL_CLASS_BASES else name
+    return last if last in _TOOL_CLASS_BASES or last in _SMOLAGENTS_BASES else name
 
 
 def _class_tool_methods(tree: ast.AST) -> set[int]:
@@ -1599,8 +1608,10 @@ def _class_tool_methods(tree: ast.AST) -> set[int]:
     their `query`. A base another file defines is not followed. The names
     the file's classes and aliases build on are walked once, out from the
     tool bases, so classes that each extend the last cost no more than their
-    number, and classes that extend each other end."""
+    number, and classes that extend each other end. A smolagents tool's `forward`
+    counts the same way (`_SMOLAGENTS_BASES`)."""
     classes: list[ast.ClassDef] = []
+    imports_smolagents = False
     # a name -> the classes and aliases the file writes on top of it
     built_on: dict[str, list[str]] = {}
     for node in ast.walk(tree):
@@ -1609,6 +1620,7 @@ def _class_tool_methods(tree: ast.AST) -> set[int]:
             for base in node.bases:
                 built_on.setdefault(_base_name(base), []).append(node.name)
         elif isinstance(node, ast.ImportFrom):
+            imports_smolagents = imports_smolagents or (node.module or "").partition(".")[0] == "smolagents"
             for alias in node.names:
                 if alias.asname:
                     built_on.setdefault(alias.name, []).append(alias.asname)
@@ -1616,21 +1628,39 @@ def _class_tool_methods(tree: ast.AST) -> set[int]:
             for target in node.targets:
                 if isinstance(target, ast.Name):
                     built_on.setdefault(_base_name(node.value), []).append(target.id)
-    tool_names = set(_TOOL_CLASS_BASES)
-    stack = list(_TOOL_CLASS_BASES)
-    while stack:
-        for name in built_on.get(stack.pop(), []):
-            if name not in tool_names:
-                tool_names.add(name)
-                stack.append(name)
+    tool_names = _built_on(built_on, _TOOL_CLASS_BASES)
+    smolagents_names = _built_on(built_on, _SMOLAGENTS_BASES)
     found: set[int] = set()
     for node in classes:
-        if any(_base_name(base) in tool_names for base in node.bases):
-            found.update(
-                id(item) for item in node.body
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in _TOOL_CLASS_METHODS
-            )
+        methods = _TOOL_CLASS_METHODS if any(_base_name(base) in tool_names for base in node.bases) else frozenset()
+        if any(_base_name(base) in smolagents_names for base in node.bases) \
+                and (imports_smolagents or _SMOLAGENTS_ATTRIBUTES <= _class_attributes(node)):
+            methods = methods | {"forward"}
+        found.update(
+            id(item) for item in node.body
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in methods
+        )
     return found
+
+
+def _built_on(built_on: dict[str, list[str]], roots: frozenset[str]) -> set[str]:
+    """`roots` and every name the file's classes and aliases write on top of them."""
+    names = set(roots)
+    stack = list(roots)
+    while stack:
+        for name in built_on.get(stack.pop(), []):
+            if name not in names:
+                names.add(name)
+                stack.append(name)
+    return names
+
+
+def _class_attributes(node: ast.ClassDef) -> set[str]:
+    out: set[str] = set()
+    for item in node.body:
+        targets = item.targets if isinstance(item, ast.Assign) else [item.target] if isinstance(item, ast.AnnAssign) else []
+        out.update(t.id for t in targets if isinstance(t, ast.Name))
+    return out
 
 
 def _tool_inputs(node: ast.AST, registered: set[str], class_tools: set[int]) -> set[str] | None:
@@ -1803,6 +1833,18 @@ def _scopes(tree: ast.Module) -> dict[int, _Scope]:
     return calls
 
 
+def _py_follows_redirects(name: str, call: ast.Call) -> bool:
+    """Does this call follow redirects unless told not to? requests, urllib, aiohttp and a
+    `session` do. httpx does not, so `httpx.get` and a `client` are left to the explicit flag.
+    An `allow_redirects=` whose value is not a literal True is taken to say no."""
+    if not (name.startswith(("requests.", "session.")) or name in ("urllib.request.urlopen", "aiohttp.request")):
+        return False
+    for keyword in call.keywords:
+        if keyword.arg == "allow_redirects":
+            return isinstance(keyword.value, ast.Constant) and keyword.value.value is True
+    return True
+
+
 def analyze_python(text: str) -> list[Reach]:
     """Outbound call sites in a Python source, with what each one reaches."""
     try:
@@ -1848,6 +1890,7 @@ def analyze_python(text: str) -> list[Reach]:
             line=getattr(node, "lineno", 0),
             tainted=id(node) in scopes and scopes[id(node)].sets_host(url_arg),
             private_addr=addr_reaching(url_arg),
+            follows_redirects=_py_follows_redirects(name, node),
         ))
     return out
 

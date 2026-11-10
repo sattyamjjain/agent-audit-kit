@@ -32,9 +32,28 @@ Two detections:
 CVE-2026-81102 (2026-08-27) is the same defect reached through the
 Python **FastMCP** wrapper rather than the raw transport class. The Dash
 MCP server bound its listener to loopback and never checked the `Host` a
-request named, so a rebound name still reached it. Binding to loopback is
-not the control here — the Host allow-list is — which is why an explicit
-`host="127.0.0.1"` does not clear this rule.
+request named, so a rebound name still reached it: its uv.lock resolved `mcp`
+1.15.0, below the release that changed this.
+
+`mcp` 1.23.0 (CVE-2025-66416, GHSA-9h52-p55h-vw2f) made the SDK's own FastMCP
+default to host 127.0.0.1 and turn the protection on for a loopback host when no
+`transport_security` is passed, so a request naming another host gets a 421. The
+SDK's maintainer gave that as the reason for closing
+modelcontextprotocol/python-sdk issue 3562 on 2026-10-06, and it is what 2.x's
+`MCPServer` does too. So a loopback host clears this rule for that one shape, when
+the project resolves `mcp` to 1.23.0 or later (`_mcp_state`). Without a readable
+version it still fires, and the evidence says what would clear it. Three shapes
+never get there, because the auto-enable is not on their path:
+
+* Code that builds `StreamableHTTPSessionManager`, `StreamableHTTPServerTransport`
+  or `SseServerTransport` directly, which is unprotected even on localhost unless
+  it passes `security_settings`.
+* A non-loopback or variable `host=`.
+* The standalone `fastmcp` package, whose defaults were not read.
+
+Switching `enable_dns_rebinding_protection` off beside a transport fires whatever
+else is in the project: the SDK ignores `allowed_hosts` when protection is off. And
+an allow-list whose only entry is `*` is not one.
 
 FastMCP names none of the tokens above: it is constructed as
 `FastMCP(...)` and selects its transport with `run(transport="streamable-http")`,
@@ -54,11 +73,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import NamedTuple
 from xml.etree import ElementTree
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
+from ._dependency_pins import DependencyPin, pinned_dependency, read_lockfile, read_manifest
 from ._helpers import (
     MANIFEST_MAX_BYTES,
     SOURCE_MAX_BYTES,
@@ -68,6 +88,7 @@ from ._helpers import (
     read_text_capped,
     sub_comments,
 )
+from ._versions import exact_version, parse_range
 
 _PY_PATCHED = (1, 23, 0)
 _TS_PATCHED = (1, 21, 1)
@@ -89,13 +110,31 @@ _PY_EXTS = (".py",)
 _SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
 
 _PY_STREAMABLE_RE = re.compile(
-    r"\b(StreamableHTTPSessionManager|streamable_http|StreamableHTTPServerTransport)\b"
+    r"\b(StreamableHTTPSessionManager|streamable_http|StreamableHTTPServerTransport|SseServerTransport)\b"
 )
+# Building the transport directly never goes through FastMCP's loopback auto-enable.
+_PY_DIRECT_RE = re.compile(r"\b(?:StreamableHTTPSessionManager|StreamableHTTPServerTransport|SseServerTransport)\s*\(")
 
 # FastMCP (`mcp.server.fastmcp` and the standalone `fastmcp` package) wraps the
 # same StreamableHTTP transport, so the defect is identical while none of the
 # markers above appear. Construction alone is not enough — see below.
 _PY_FASTMCP_RE = re.compile(r"\bFastMCP\s*\(")
+# 2.x's name for it. Other libraries have an `MCPServer` too, so it counts only
+# beside an import from the SDK.
+_PY_MCPSERVER_RE = re.compile(r"\bMCPServer\s*\(")
+_PY_SDK_SERVER_RE = re.compile(
+    r"""^[ \t]*(?:
+        from[ \t]+mcp\.server(?:\.fastmcp|\.mcpserver)?(?:\.server)?[ \t]+import[ \t]*
+            (?:\([^)]{0,400}?|[^\n]{0,400}?)\b(?:FastMCP|MCPServer)\b
+      | import[ \t]+mcp\.server\.(?:fastmcp|mcpserver)\b
+    )""",
+    re.MULTILINE | re.VERBOSE,
+)
+# Where the listener binds: a keyword argument, an annotated default, or a variable.
+_PY_HOST_RE = re.compile(r"""\bhost\s*(?::\s*\w+\s*)?=(?!=)\s*(?:"([^"\n]*)"|'([^'\n]*)')?""")
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+# Settings of its own, which the auto-enable leaves alone. `None` is the default.
+_PY_TRANSPORT_SECURITY_RE = re.compile(r"\btransport_security\s*=(?!=)\s*(?!None\b)")
 
 # ...it must also select a NETWORK transport. FastMCP defaults to stdio, which
 # has no listener to rebind onto, so requiring an explicit network transport is
@@ -135,6 +174,16 @@ _HOST_ALLOWLIST_RE = re.compile(
     )
     """,
     re.VERBOSE,
+)
+
+# Protection switched off. The SDK ignores `allowed_hosts` then, so no allow-list
+# beside it counts.
+_PROTECTION_OFF_RE = re.compile(r"\benable_dns_rebinding_protection\s*=\s*False\b|\benableDnsRebindingProtection\s*:\s*false\b")
+# An allow-list whose only entry is `*`. Starlette's TrustedHostMiddleware reads that
+# as every host, and it names none in any SDK.
+_WILDCARD_ALLOWLIST_RE = re.compile(
+    r"""(?:TrustedHostMiddleware\s*(?:,|\(\s*\w+\s*,)\s*)?(?:allowed_hosts|allowedHosts|ALLOWED_HOSTS)\s*[:=]\s*"""
+    r"""[\[(]\s*["']\*["']\s*,?\s*[\])]"""
 )
 
 _LINE_COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/|\#.*?$", re.MULTILINE | re.DOTALL)
@@ -281,16 +330,139 @@ def _py_transport_marker(text: str) -> tuple[str, str] | None:
     m = _PY_STREAMABLE_RE.search(text)
     if m:
         return m.group(0), m.group(0)
-    if _PY_FASTMCP_RE.search(text):
+    wrapper = _py_wrapper(text)
+    if wrapper:
         n = _PY_FASTMCP_NET_RE.search(text)
         if n:
-            return f"FastMCP {n.group(0).strip()}", n.group(0)
+            return f"{wrapper} {n.group(0).strip()}", n.group(0)
     return None
 
 
+def _py_wrapper(text: str) -> str | None:
+    """The wrapper class a file constructs, if any. `MCPServer` is 2.x's name."""
+    if _PY_FASTMCP_RE.search(text):
+        return "FastMCP"
+    if _PY_MCPSERVER_RE.search(text) and _PY_SDK_SERVER_RE.search(text):
+        return "MCPServer"
+    return None
+
+
+def _sdk_server_on_loopback(text: str) -> bool:
+    """Is this the SDK's own FastMCP or MCPServer, on the default or a literal
+    loopback host, with no settings of its own? That is the one shape `mcp` 1.23.0's
+    auto-enable covers. Any `host=` in the file counts, a commented one too, so
+    what cannot be told stays reported."""
+    if not _PY_SDK_SERVER_RE.search(text) or _py_wrapper(text) is None:
+        return False
+    if _PY_DIRECT_RE.search(text) or _PY_TRANSPORT_SECURITY_RE.search(text):
+        return False
+    return all((m.group(1) or m.group(2) or "") in _LOOPBACK_HOSTS for m in _PY_HOST_RE.finditer(text))
+
+
+_MCP_FIXED, _MCP_BELOW = "fixed", "below"
+_MCP_LOCKFILES = ("uv.lock", "poetry.lock", "Pipfile.lock")
+
+
+def _mcp_in_directory(directory: Path) -> str | None:
+    """What one directory says about the `mcp` it resolves: `_MCP_FIXED`, `_MCP_BELOW`
+    or None. A lockfile says what is installed, so it is read before a declaration.
+    A declaration counts when it pins one release, or when every release it admits
+    is at or above the fix (`mcp[cli]>=1.25`)."""
+    for name in _MCP_LOCKFILES:
+        lockfile = read_lockfile(directory / name)
+        versions = lockfile.index.get("mcp") if lockfile is not None else None
+        if versions:
+            return _MCP_FIXED if min(versions) >= _PY_PATCHED else _MCP_BELOW
+    for path in [*sorted(directory.glob("requirements*.txt")), directory / "pyproject.toml"]:
+        manifest = read_manifest(path) if path.is_file() else None
+        if manifest is None:
+            continue
+        for declaration in manifest.naming(_PY_PIN.as_table_pin()):
+            if declaration.name.lower() != "mcp":
+                continue
+            spans = parse_range(declaration.version, declaration.dialect)
+            if not spans:
+                continue
+            if all(low >= _PY_PATCHED for low, _ in spans):
+                return _MCP_FIXED
+            exact = exact_version(spans)
+            if exact is not None:
+                return _MCP_BELOW
+    return None
+
+
+def _mcp_state(path: Path, project_root: Path, seen: dict[Path, str | None]) -> str | None:
+    """What the project resolves `mcp` to for a file: the nearest directory, from the
+    file's own up to the root, that says anything. `seen` holds each directory's
+    answer, inherited ones too, so thousands of files below one deep directory walk
+    the chain once."""
+    walked: list[Path] = []
+    directory = path.parent
+    while directory not in seen:
+        walked.append(directory)
+        state = _mcp_in_directory(directory)
+        if state is not None or directory == project_root:
+            break
+        directory = directory.parent
+    else:
+        state = seen[directory]
+    for visited in walked:
+        seen[visited] = state
+    return state
+
+
 def _has_host_allowlist(text: str) -> bool:
-    stripped = _strip_comments(text)
+    stripped = _WILDCARD_ALLOWLIST_RE.sub("", _strip_comments(text))
     return bool(_HOST_ALLOWLIST_RE.search(stripped))
+
+
+class _Candidate(NamedTuple):
+    """A file that exposes a network transport."""
+
+    path: Path
+    marker: str
+    line: int | None
+    protection_off: bool
+    sdk_on_loopback: bool
+
+
+_CVES = "CVE-2025-66414 / CVE-2025-66416 / CVE-2026-35568 / CVE-2026-35577 / CVE-2026-81102"
+
+
+def _candidate(path: Path, text: str) -> _Candidate | None:
+    """The file as a candidate, or None when it exposes no network transport."""
+    sdk_on_loopback = False
+    if path.suffix in _PY_EXTS:
+        hit = _py_transport_marker(text)
+        if hit is None:
+            return None
+        label, literal = hit
+        sdk_on_loopback = _sdk_server_on_loopback(text)
+    else:
+        m = _TS_STREAMABLE_RE.search(text)
+        if m is None:
+            return None
+        label = literal = m.group(0)
+    off = _PROTECTION_OFF_RE.search(_strip_comments(text))
+    if off:
+        return _Candidate(path, label, find_line_number(text, off.group(0)), True, False)
+    return _Candidate(path, label, find_line_number(text, literal), False, sdk_on_loopback)
+
+
+def _evidence(candidate: _Candidate, state: str | None) -> str:
+    if candidate.protection_off:
+        return (f"{candidate.marker} transport runs with DNS-rebinding protection switched off, so the SDK ignores any "
+                f"allow-list beside it ({_CVES}): a malicious browser page can reach a loopback MCP server.")
+    base = (f"{candidate.marker} transport exposed without a Host-header allow-list — DNS-rebinding ({_CVES}) "
+            "lets a malicious browser page reach a loopback MCP server.")
+    if not candidate.sdk_on_loopback:
+        return base
+    if state == _MCP_BELOW:
+        return (f"{base} The project resolves `mcp` below 1.23.0, the release that turned the protection on for "
+                "this server on a loopback host (CVE-2025-66416).")
+    return (f"{base} No `mcp` version could be read from uv.lock, poetry.lock, Pipfile.lock or a pin: from 1.23.0 "
+            "the SDK turns the protection on for this server on a loopback host (CVE-2025-66416), so lock or pin "
+            "it to clear this finding.")
 
 
 def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
@@ -298,8 +470,9 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
     # Collect every file that exposes a StreamableHTTP server. Then check
     # the whole project for a host allow-list — repos often wire the
     # middleware in one place (e.g. `app.py`) while the transport is set
-    # up in another. One allow-list anywhere counts as mitigation.
-    candidates: list[tuple[Path, str, int | None]] = []
+    # up in another. One allow-list anywhere counts as mitigation, except
+    # for a transport whose own file switches the protection off.
+    candidates: list[_Candidate] = []
     project_has_allowlist = False
 
     for path in project_root.rglob("*"):
@@ -316,35 +489,21 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
 
         if _has_host_allowlist(text):
             project_has_allowlist = True
+        candidate = _candidate(path, text)
+        if candidate is not None:
+            candidates.append(candidate)
 
-        if path.suffix in _PY_EXTS:
-            hit = _py_transport_marker(text)
-            if hit is None:
-                continue
-            label, literal = hit
-        else:
-            m = _TS_STREAMABLE_RE.search(text)
-            if m is None:
-                continue
-            label = literal = m.group(0)
-        line = find_line_number(text, literal)
-        candidates.append((path, label, line))
-
-    if project_has_allowlist or not candidates:
-        return findings
-
-    for path, marker, line in candidates:
-        rel = str(path.relative_to(project_root))
+    seen: dict[Path, str | None] = {}
+    for candidate in candidates:
+        if project_has_allowlist and not candidate.protection_off:
+            continue
+        state = _mcp_state(candidate.path, project_root, seen) if candidate.sdk_on_loopback else None
+        if state == _MCP_FIXED:
+            continue
+        rel = str(candidate.path.relative_to(project_root))
         scanned.add(rel)
-        findings.append(make_finding(
-            "AAK-DNS-REBIND-001",
-            rel,
-            f"{marker} transport exposed without a Host-header allow-list — "
-            "DNS-rebinding (CVE-2025-66414 / CVE-2025-66416 / CVE-2026-35568 / "
-            "CVE-2026-35577 / CVE-2026-81102) lets a malicious browser page "
-            "reach a loopback MCP server.",
-            line_number=line,
-        ))
+        findings.append(make_finding("AAK-DNS-REBIND-001", rel, _evidence(candidate, state),
+                                     line_number=candidate.line))
     return findings
 
 

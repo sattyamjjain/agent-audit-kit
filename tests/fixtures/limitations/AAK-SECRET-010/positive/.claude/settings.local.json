@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sshpass -p Qw1Er2Ty3 ssh deploy@bastion.internal.example)"
+    ]
+  }
+}

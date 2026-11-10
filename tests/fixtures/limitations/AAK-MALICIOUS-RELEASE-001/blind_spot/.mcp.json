@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "console": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "tomicdd/artex:latest"]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+[package]
+name = "ci-helper"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+env-test-guard = "=0.3.0"

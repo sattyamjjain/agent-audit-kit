@@ -41,11 +41,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any, NamedTuple
+
+import yaml
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
     find_line_number,
+    load_yaml,
     make_finding,
 )
 
@@ -85,6 +89,25 @@ _PR_HEAD_CHECKOUT_RE = re.compile(
     r"github\.event\.pull_request\.head\.(?:sha|ref|repo)|github\.event\.pull_request\.head\b",
     re.I,
 )
+
+# The other way an attacker reaches a headless agent's prompt: the trigger is trusted
+# (a schedule, a dispatch, a caller's `workflow_call`) and the data is not. The job fetches
+# another project's commits or diff, then hands them to an agent holding write access.
+_THIRD_PARTY_HINT_RE = re.compile(r"\bgit\s+(?:fetch|remote\s+add)\b|\bgh\s+api\b|api\.github\.com")
+_GIT_FETCH_RE = re.compile(r"\bgit\s+fetch\b([^\n|&;]*)")
+_REMOTE_ADD_RE = re.compile(r"\bgit\s+remote\s+add\b[^\n|&;]*")
+_GH_API_RE = re.compile(r"\bgh\s+api\b|api\.github\.com")
+_API_REPO_RE = re.compile(r"repos/(\$\{\{[^}\n]*\}\}|[^/\s\"']+(?:/[^/\s\"']+)?)/(?:compare|commits)\b")
+_OWN_REPO_RE = re.compile(r"github\.repository\b|GITHUB_REPOSITORY\b|github\.event\.repository\b|\{owner\}|\{repo\}|:owner|:repo")
+_SHELL_VAR_RE = re.compile(r"\$\{?(\w+)\}?")
+# The Copilot agent, on top of the agents `_HEADLESS_AGENT_RES` names.
+_COPILOT_AGENT_RE = re.compile(r"\bgh\s+agent-task\b|\bcopilot-swe-agent\b", re.I)
+_COPILOT_CLI_RE = re.compile(r"\bcopilot\b[^\n|&;]*?\s(?:-p|--prompt|--allow-all-tools|--yolo)\b", re.I)
+_COPILOT_CLI_LEAD_RE = re.compile(r"\bcopilot\b", re.I)
+_SECRET_NAME_RE = re.compile(r"\bsecrets\.(\w+)")
+_PAT_NAME_RE = re.compile(r"PAT|TOKEN", re.I)
+_NOT_PERSONAL_RE = re.compile(r"GITHUB_TOKEN|ANTHROPIC|CLAUDE|OPENAI|GEMINI", re.I)
+_WRITE_SCOPES = ("contents", "pull-requests")
 
 # Repo-resident agent settings that persist trust / auto-approval so first-use
 # trust survives every subsequent (including headless) invocation.
@@ -198,6 +221,145 @@ def _headless_hit(text: str) -> re.Match[str] | None:
     return None
 
 
+class _ThirdPartyAgent(NamedTuple):
+    job: str
+    agent: str
+    fetch: str
+    credential: str
+
+
+def _steps(job: dict[str, Any]) -> list[dict[str, Any]]:
+    steps = job.get("steps")
+    return [s for s in steps if isinstance(s, dict)] if isinstance(steps, list) else []
+
+
+def _env_block(block: dict[str, Any]) -> dict[str, Any]:
+    env = block.get("env")
+    return env if isinstance(env, dict) else {}
+
+
+def _elsewhere(subject: str, envs: tuple[dict[str, Any], ...]) -> bool:
+    """Does a `repos/<subject>/...` path name a repository other than this one?"""
+    if _OWN_REPO_RE.search(subject):
+        return False
+    for name in _SHELL_VAR_RE.findall(subject):
+        for env in envs:
+            value = env.get(name)
+            if isinstance(value, str) and _OWN_REPO_RE.search(value):
+                return False
+    return True
+
+
+def _fetch_in_step(run: str, envs: tuple[dict[str, Any], ...]) -> str | None:
+    for match in _GIT_FETCH_RE.finditer(run):
+        words = [w.strip("\"'") for w in match.group(1).split() if not w.startswith("-") and not w.isdigit()]
+        if words and "origin" not in words:
+            return match.group(0).strip()
+    remote = _REMOTE_ADD_RE.search(run)
+    if remote:
+        return remote.group(0).strip()
+    for line in run.splitlines():
+        if _GH_API_RE.search(line):
+            for match in _API_REPO_RE.finditer(line):
+                if _elsewhere(match.group(1), envs):
+                    return match.group(0)
+    return None
+
+
+def _third_party_fetch(doc: dict[str, Any], jobs: dict[str, Any]) -> str | None:
+    doc_env = _env_block(doc)
+    for job in jobs.values():
+        if not isinstance(job, dict):
+            continue
+        job_env = _env_block(job)
+        for step in _steps(job):
+            run = step.get("run")
+            found = _fetch_in_step(run, (_env_block(step), job_env, doc_env)) if isinstance(run, str) else None
+            if found:
+                return found
+    return None
+
+
+def _agent_in_job(job: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    for step in _steps(job):
+        text = " ".join(v for v in (step.get("uses"), step.get("run")) if isinstance(v, str))
+        hit = (
+            _headless_hit(text)
+            or _COPILOT_AGENT_RE.search(text)
+            or _first_per_stretch(_COPILOT_CLI_RE, _COPILOT_CLI_LEAD_RE, text)
+        )
+        if hit:
+            return hit.group(0).strip(), step
+    return None
+
+
+def _personal_token(values: Any) -> str | None:
+    """The first personal token named among these values."""
+    for value in values:
+        if isinstance(value, str):
+            for name in _SECRET_NAME_RE.findall(value):
+                if _PAT_NAME_RE.search(name) and not _NOT_PERSONAL_RE.search(name):
+                    return name
+    return None
+
+
+def _write_credential(
+    doc: dict[str, Any], job: dict[str, Any], step: dict[str, Any], workflow_token: str | None,
+) -> str | None:
+    """The write scope the agent's job holds, or a personal token handed to the agent."""
+    permissions = job["permissions"] if "permissions" in job else doc.get("permissions")
+    if permissions == "write-all":
+        return "`permissions: write-all`"
+    if isinstance(permissions, dict):
+        for scope in _WRITE_SCOPES:
+            if permissions.get(scope) == "write":
+                return f"`{scope}: write`"
+    with_block = step.get("with")
+    with_values = with_block.values() if isinstance(with_block, dict) else ()
+    token = (
+        _personal_token(_env_block(step).values())
+        or _personal_token(with_values)
+        or _personal_token(_env_block(job).values())
+        or workflow_token
+    )
+    return f"the personal token `secrets.{token}`" if token else None
+
+
+def _egress_blocked(job: dict[str, Any]) -> bool:
+    for step in _steps(job):
+        uses = step.get("uses")
+        with_block = step.get("with")
+        if isinstance(uses, str) and "step-security/harden-runner" in uses and isinstance(with_block, dict) \
+                and with_block.get("egress-policy") == "block":
+            return True
+    return False
+
+
+def _third_party_agent(text: str, path: Path) -> _ThirdPartyAgent | None:
+    """A job that gives an agent write access in a workflow that fetches another project's commits."""
+    if not _THIRD_PARTY_HINT_RE.search(text):
+        return None
+    try:
+        doc = load_yaml(text, path)
+    except yaml.YAMLError:
+        return None
+    jobs = doc.get("jobs") if isinstance(doc, dict) else None
+    if not isinstance(jobs, dict):
+        return None
+    fetch = _third_party_fetch(doc, jobs)
+    if fetch is None:
+        return None
+    workflow_token = _personal_token(_env_block(doc).values())
+    for name, job in jobs.items():
+        agent = _agent_in_job(job) if isinstance(job, dict) else None
+        if agent is None or _egress_blocked(job):
+            continue
+        credential = _write_credential(doc, job, agent[1], workflow_token)
+        if credential:
+            return _ThirdPartyAgent(str(name), agent[0], fetch, credential)
+    return None
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Scan for the agent config/skill auto-trust surface (AAK-AGENT-TRUST-*).
 
@@ -228,12 +390,26 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if not text:
             continue
         scanned.add(wf.relative_to(project_root).as_posix())
+        rel = wf.relative_to(project_root).as_posix()
         hit = _headless_hit(text)
+        untrusted = hit and (_UNTRUSTED_TRIGGER_RE.search(text) or _PR_HEAD_CHECKOUT_RE.search(text))
+        third_party = None if untrusted else _third_party_agent(text, wf)
+        if third_party:
+            findings.append(
+                make_finding(
+                    "AAK-AGENT-TRUST-002",
+                    rel,
+                    f"job {third_party.job!r} runs an agent ({third_party.agent[:80]!r}) holding "
+                    f"{third_party.credential}, in a workflow that fetches another project's commits "
+                    f"({third_party.fetch[:80]!r}), with no egress block. Whoever can land a commit "
+                    f"upstream writes part of this agent's prompt." + surface_note,
+                    find_line_number(text, third_party.agent.split()[0]),
+                )
+            )
+            continue
         if not hit:
             continue
-        rel = wf.relative_to(project_root).as_posix()
         line = find_line_number(text, hit.group(0).strip().split()[0])
-        untrusted = _UNTRUSTED_TRIGGER_RE.search(text) or _PR_HEAD_CHECKOUT_RE.search(text)
         if untrusted:
             findings.append(
                 make_finding(

@@ -18,6 +18,139 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-07 (unreleased): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
+
+NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
+#1184, and of CVE-2026-123272 and CVE-2026-123271 on 5 Nov 2026, which it has not filed because
+its queue is at the cap. AAK did nothing with any of them, with or without `aak update`: the feed
+read PyPI and npm only, so `nvd_feed` dropped each record at its `pkg:cargo` or `pkg:golang`
+packageURL, and AAK-KNOWN-VULN-001 opened neither a Cargo.lock nor a go.mod. GHSA-pgh9-49q4-hqcx,
+GHSA-xf6j-693p-wqxx and GHSA-95vg-3r9c-2v5q are repository advisories only, with no global record,
+and OSV holds nothing for the three CVEs. The fix is the class: Go and crates.io are now advisory
+ecosystems, read from OSV's exports and NVD's CNA records. NVD text is quoted from the API records,
+read on 2026-11-07 and saved unedited under tests/fixtures/nvd_cna.
+
+### CVE-2026-123272 (mcp-go) and CVE-2026-123271 (ChatCLI): advisory feed 2026-11-07
+
+**`AAK-KNOWN-VULN-001` reports Go `github.com/mark3labs/mcp-go` v0.48.0 up to v1.2.1 and
+`github.com/diillson/chatcli` v1.159.0 up to v1.215.2, HIGH.** NVD on mcp-go: `OAuthHandler.fetchServerMetadata`
+"contains an improper validation vulnerability" that lets a malicious MCP server declare a different
+MCP server as the RFC 8707 resource indicator and replay the token it gets. Each record's CNA data is
+one interval with `defaultStatus: unaffected`, so each bundled entry is that interval with its `lessThan`
+as the fix. They are the records as `nvd_feed` converts them; no hand pin was added. Measured with the
+scanner: a go.mod requiring mcp-go v1.1.0 fires HIGH on the `require` line and names v1.2.1; v1.2.1 and
+v0.47.0 do not fire, a `replace` to v1.2.1 or to a local path does not, and a go.sum with no go.mod does
+not. After `aak update` every mcp-go release also reports GO-2026-6911, a separate advisory (a redirect
+followed with the client's headers) that the Go vulnerability database lists from the first release with
+no fix.
+
+### CVE-2026-121419 (surrealdb): advisory feed 2026-11-07
+
+**`AAK-KNOWN-VULN-001` reports crates.io `surrealdb` 3.1.0 up to 3.3.0, HIGH.** NVD: SurrealDB
+"contains an improper authentication vulnerability" in which the MCP BoundSubject fingerprint
+uses the access method name rather than the user. VulnCheck's CNA data is one interval, 3.1.0 to
+`lessThan` 3.3.0 with `defaultStatus: unaffected`, so the bundled entry is that interval with
+3.3.0 as the fix. It is the record as `nvd_feed` converts it; no hand pin was added. Measured with
+the scanner: a Cargo.lock resolving surrealdb 3.2.1 from a registry fires HIGH and names 3.3.0;
+3.3.0 and 3.0.9 do not fire, and neither does a block with no `source` line. After `aak update`
+with `--nvd-days 7` on 2026-11-07 the same lockfile reports seven more, each a separate advisory:
+RUSTSEC-2026-0453 (CVE-2026-121417) from OSV, and CVE-2026-121416, CVE-2026-121418 and
+CVE-2026-121420 through CVE-2026-121423 from NVD's records of CNA version data.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123272 | 8.0 | `github.com/mark3labs/mcp-go` (Go) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports v0.48.0 up to v1.2.1 from a go.mod. | not filed |
+| CVE-2026-123271 | 8.0 | `github.com/diillson/chatcli` (Go) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports v1.159.0 up to v1.215.2 from a go.mod. | not filed |
+| CVE-2026-121419 | 8.1 | `surrealdb` (crates.io) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 3.1.0 up to 3.3.0 from the bundled NVD entry, HIGH, fixed in 3.3.0. No pin. | #1184 |
+
+CVSS is the record's CVSS 3.1 score, VulnCheck's. Its CVSS 4.0 score is 8.6.
+
+## 2026-11-07 (unreleased): four advisories no issue named
+
+None of these was filed by the watcher; they came up in threads on other projects. Each is
+read here against OSV and NVD's API record, read on 2026-11-07. Advisory text is quoted from the
+record. Every pin was measured with the scanner on a firing fixture and a negative one.
+
+**MCP TypeScript SDK (CVE-2026-111768) gets `AAK-MCP-TSSDK-CVE-2026-111768-001`.** GHSA-46jr-4wx8-v453:
+"servers put no limit on how many array elements and object keys they validated in one request. One
+HTTP request within the default 4 MiB size limit could exhaust the server's memory". It affects
+`@modelcontextprotocol/sdk` 1.3.0 to below 1.32.0 and `@modelcontextprotocol/server` 2.0.0 to below
+2.3.0. The advisory also says "Upgrading alone changes nothing": the patched versions add
+`maxToolInputElements`, off by default, so the remediation says to set it, and the limitations say the
+rule reads the version and not that option. It is its own rule because its range and fix differ
+from the two SDK pins beside it, and 1.31.0 fires with the task-store pin.
+
+**MCP Toolbox for Databases (CVE-2026-11624) gets `AAK-MCP-TOOLBOX-HOSTS-001`.** NVD: "Prior to the
+v0.25.0 release, users had no way to validate the origin's host. In v0.25.0, a new
+"--allowed-hosts" flag was introduced alongside the existing "--allowed-origins" flag". Both default to
+`*`, checked in the source at v0.24.0, v0.25.0 and v1.16.0. OSV lists the Go module only. npm's
+`@toolbox-sdk/server` runs the binary of its own version, and has releases from 0.21.0, so the
+pin reads it below 0.25.0. The same rule reads an MCP config that starts the server on a network
+listener with either flag unset or `*`, since an upgrade alone leaves both open. The CNA scores it
+9.4 in CVSS 4.0; the rule is MEDIUM because a page in a browser has to reach a listener the launch
+exposes, and the launch half reports configuration rather than a release.
+
+**anyio below 4.14.2 (CVE-2026-63374, CVE-2026-64847) joins the bundled advisory feed.** Python MCP
+servers get anyio through the SDK. GHSA-82r6-8w77-94w6: "TLSStream IDNA 2003 host name encoding enables
+potential TLS certificate spoofing", which GitHub rates CRITICAL, in CVSS 4.0 only.
+GHSA-5p39-cfhj-2xmp: "AnyIO process-pool workers can block indefinitely on undrained stderr", MODERATE.
+Both records are bundled unedited, so `AAK-KNOWN-VULN-001` reports them without `aak update`: a
+uv.lock on 4.12.1 fires and one on 4.14.2 does not. browser-use 0.13.14 requires `anyio==4.12.1`, so
+that project's finding says to raise its own pin, and a poetry.lock showing another package pinning the
+release says the upgrade needs an override. A uv.lock records requirements for workspace members
+only, so a registry parent's pin is not visible there.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-111768 | 7.5 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/server` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111768-001` (HIGH): sdk 1.3.0 to 1.32.0, server 2.0.0 to 2.3.0, a stated version required. | not filed |
+| CVE-2026-11624 | 9.4 (4.0) | `@toolbox-sdk/server` (npm) | **New rule** `AAK-MCP-TOOLBOX-HOSTS-001` (MEDIUM): below 0.25.0, and a launch with either flag open. | not filed |
+| CVE-2026-63374 | 9.3 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, CRITICAL. No pin. | not filed |
+| CVE-2026-64847 | 6.8 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, MEDIUM. No pin. | not filed |
+
+## 2026-11-07 (unreleased): #1152 to #1156
+
+Five issues the watcher filed on 31 Oct, deferred for 0.6.31 with no scope claimed. Each is
+read here against NVD's API record, its CNA record and the published packages, all read on
+2026-11-07. NVD text is quoted from the API record.
+
+**IBM Langflow OSS (#1152, #1153, #1156) joins `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, with no
+floor change.** NVD, CVE-2026-104317: "IBM Langflow OSS 1.0.0 through 1.12.3 could allow a
+remote attacker who could reach the message broker to execute arbitrary code on the system
+due to the deserialization of untrusted data." CVE-2026-18894 runs through 1.12.4 and
+CVE-2026-101288 through 1.12.3. IBM's solutions name 1.12.4 and 1.12.5
+(ibm.com/support/pages/node/7293015 and 7293016). The floor has been 1.13.0 since 30 Oct, so
+every release they list is already reported, and only the rule's `cve_references` change.
+CVE-2026-104317 and CVE-2026-18894 are 9.8 in NVD's own score and 8.1 and 6.5 in IBM's;
+the table gives NVD's, as the issues do.
+
+**n8n (#1155) gets no pin: `AAK-KNOWN-VULN-001` reports it after `aak update`.** NVD: "n8n
+before 2.42.6, 2.43.x before 2.43.3, and 3.x before 3.0.1 contains a remote code execution
+vulnerability via deprecated Function, Function Item, and LangChain Code nodes running
+outside task runner isolation." The watcher titled it `pin floor stale` against
+`AAK-MCP-N8N-CVE-2026-72768-001`, because that rule's floor is 2.41.4. That rule reports
+defects on n8n's MCP surface, and a floor raise would report 2.41.4 to 2.42.5 under those flaws.
+This flaw is in deprecated workflow nodes and names no MCP path, so the floor stays. VulnCheck's
+CNA record names `pkg:npm/n8n`, so `aak update` maps it with no map row. Measured with
+the scanner on a feed holding the record as `nvd_feed` converts it (saved unedited under
+tests/fixtures/nvd_cna): an npm lockfile resolving n8n 2.42.5 or 2.43.2 fires at HIGH, and 2.42.6
+or 2.43.3 does not. It is not bundled: without `aak update` it is not reported, and
+`tests/test_pin_floors_vs_advisories.py` holds the bundled feed to the pins. OSV's answer for
+n8n 2.42.5 today holds no record of it. npm has no 3.x release of n8n yet, so that range
+is the record's and untested on a real artifact.
+
+**LM Studio (#1154) is out of scope.** NVD: "LM Studio before 0.4.22+1 contains a path
+traversal vulnerability in the model downloader's resolveDownloadRequest". The downloader is in
+the desktop app, which ships from lmstudio.ai and on no registry. PyPI `lmstudio` is the Python
+SDK, and npm `lmstudio` is the setup tool, so no project declares the app for a pin to read.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-104317 | 9.8 | `langflow` (PyPI) | **Joins** `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1152 |
+| CVE-2026-18894 | 9.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | #1153 |
+| CVE-2026-101288 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1156 |
+| CVE-2026-119408 | 8.8 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.42.6, 2.43.0 to 2.43.3 and 3.0.0 to 3.0.1. No pin. | #1155 |
+| CVE-2026-119979 | 8.8 | LM Studio (desktop app) | Out of scope: the app is on no registry. | #1154 |
+
 ## 2026-10-31 (v0.6.30): lmdeploy's NVD record in the bundled advisory feed
 
 NVD published VulnCheck's record of CVE-2026-119706 on 30 Oct 2026. Its CNA data names the
