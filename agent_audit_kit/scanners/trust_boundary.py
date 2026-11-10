@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from pathlib import Path
+from typing import Any
 
-from agent_audit_kit.models import Finding
+from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
+    codex_home,
     find_line_number,
+    find_line_numbers,
+    is_loopback_url,
     loads_json,
+    loads_toml,
     make_finding,
     placed,
     read_text_capped,
@@ -183,7 +189,109 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
 
         findings.extend(_proxy_ca_findings(settings_path, rel_path, raw_text, data.get("env")))
 
+    findings.extend(_codex_findings(project_root, include_user_config, scanned_files))
     return findings, scanned_files
+
+
+_CODEX_RULE = "AAK-TRUST-009"
+_CODEX_DEFAULT_PROVIDER = "openai"
+_OPENAI_DOMAIN = "openai.com"
+_AZURE_OPENAI_SUFFIX = ".openai.azure.com"
+
+
+def _is_openai_or_local(value: str) -> bool:
+    """True when a Codex provider URL reaches OpenAI, Azure OpenAI or this machine.
+
+    By host, as `_is_anthropic_endpoint` judges, so `api.openai.com.gateway.example.net`
+    and `api.openai.com@gateway.example.net` are the gateway's. `url_host` has no answer
+    for an IPv6 literal, and `is_loopback_url` does, so `http://[::1]:11434` passes.
+    """
+    if is_loopback_url(value):
+        return True
+    host = url_host(value)
+    if host is None:
+        return False
+    return host == _OPENAI_DOMAIN or host.endswith(("." + _OPENAI_DOMAIN, _AZURE_OPENAI_SUFFIX))
+
+
+def _selected_providers(config: dict[str, Any]) -> list[str]:
+    """The provider ids a Codex config can run: its top-level one and each profile's."""
+    selected = [config.get("model_provider", _CODEX_DEFAULT_PROVIDER)]
+    profiles = config.get("profiles")
+    if isinstance(profiles, dict):
+        selected.extend(p.get("model_provider") for p in profiles.values() if isinstance(p, dict))
+    return list(dict.fromkeys(name for name in selected if isinstance(name, str)))
+
+
+def _provider_urls(config: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """(provider, key, URL) for the URLs the selected providers use.
+
+    A provider nothing selects is left out. `openai_base_url` is how OpenAI's config
+    reference re-points the built-in `openai` provider, which needs no table.
+    """
+    declared = config.get("model_providers")
+    tables = declared if isinstance(declared, dict) else {}
+    override = config.get("openai_base_url")
+    urls: list[tuple[str, str, str]] = []
+    for provider in _selected_providers(config):
+        table = tables.get(provider)
+        url = table.get("base_url") if isinstance(table, dict) else None
+        if isinstance(url, str):
+            urls.append((provider, "base_url", url))
+        if provider == _CODEX_DEFAULT_PROVIDER and isinstance(override, str):
+            urls.append((provider, "openai_base_url", override))
+    return urls
+
+
+def _codex_provider_findings(
+    raw: str, rel_path: str, config: dict[str, Any], is_user_file: bool,
+) -> list[Finding]:
+    """One finding per selected provider URL off the allowlist, naming its host, never its URL."""
+    foreign = [item for item in _provider_urls(config) if not _is_openai_or_local(item[2])]
+    if not foreign:
+        return []
+    lines = find_line_numbers(raw, [item[2] for item in foreign] + ["base_url", "openai_base_url"])
+    findings: list[Finding] = []
+    for provider, key, url in foreign:
+        host = url_host(url)
+        where = f"host {host}" if host else "a host that could not be read"
+        evidence = f"{rel_path}: provider {provider[:100]!r} {key} has {where}"
+        line = lines[url] or lines[key]
+        if is_user_file:
+            evidence += "; this is your user config, so you may have set it on purpose"
+            findings.append(dataclasses.replace(
+                make_finding(_CODEX_RULE, rel_path, evidence, line), severity=Severity.HIGH,
+            ))
+        else:
+            findings.append(make_finding(_CODEX_RULE, rel_path, evidence, line))
+    return findings
+
+
+def _codex_config_files(project_root: Path, include_user_config: bool) -> list[tuple[Path, bool]]:
+    """(path, is the user's own config). A CODEX_HOME that is the project's own `.codex` is read once."""
+    project = project_root / ".codex" / "config.toml"
+    found = [(project, False)] if project.is_file() else []
+    if include_user_config:
+        user = codex_home() / "config.toml"
+        if user.is_file() and user.resolve() != project.resolve():
+            found.append((user, True))
+    return found
+
+
+def _codex_findings(
+    project_root: Path, include_user_config: bool, scanned_files: set[str],
+) -> list[Finding]:
+    findings: list[Finding] = []
+    for path, is_user_file in _codex_config_files(project_root, include_user_config):
+        try:
+            raw = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
+            config = loads_toml(raw, path)
+        except (OSError, ValueError):  # TOMLDecodeError and RefusedTOML are ValueErrors
+            continue
+        rel_path = str(path.relative_to(project_root)) if path.is_relative_to(project_root) else str(path)
+        scanned_files.add(rel_path)
+        findings.extend(_codex_provider_findings(raw, rel_path, config, is_user_file))
+    return findings
 
 
 # ---------------------------------------------------------------------------

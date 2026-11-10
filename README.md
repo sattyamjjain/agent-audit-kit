@@ -76,7 +76,7 @@ to land findings in the GitHub Security tab. Full
 | **Taint Analysis** | <!-- category-count:TAINT_ANALYSIS -->15<!-- /category-count --> | `@tool` parameters reaching shell, SQL, filesystem and network sinks |
 | **Transport Security** | <!-- category-count:TRANSPORT_SECURITY -->17<!-- /category-count --> | Cleartext transports, DNS rebinding, session and body-size limits |
 | **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->19<!-- /category-count --> | Copyleft licences, PII surface, and regional AI duties |
-| **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->26<!-- /category-count --> | Project-scoped trust, untrusted workspace escalation |
+| **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->26<!-- /category-count --> | Project-scoped trust, untrusted workspace escalation, a model provider re-pointed in `.claude/settings.json` or Codex's `config.toml` |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 server cards |
 | **Composition** | <!-- category-count:COMPOSITION -->3<!-- /category-count --> | Risk that exists only between components, not in any one of them |
 | **Agentic Skills** | <!-- category-count:AGENTIC_SKILL -->3<!-- /category-count --> | OWASP Agentic Skills Top 10 surface in skill bundles |

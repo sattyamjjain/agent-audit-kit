@@ -71,6 +71,7 @@ def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("AAK_HOME", raising=False)
+    monkeypatch.delenv("CODEX_HOME", raising=False)
     # `aak scan --include-user-config` reads npm's and uv's caches, which their
     # own variables can place outside HOME (a CI image sets npm_config_cache).
     # Point both inside the empty home; a test that needs one sets it again.

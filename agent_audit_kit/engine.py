@@ -25,7 +25,7 @@ class ScannerRegistration:
 
 
 _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
-    ("agent_config", "Agent config", []),
+    ("agent_config", "Agent config", ["include_user_config"]),
     ("tool_poisoning", "Tool poisoning", []),
     ("taint_analysis", "Taint analysis", []),
     ("transport_security", "Transport security", []),

@@ -77,6 +77,10 @@ SEVERITY_OVERRIDE_MODULES = {
         "(CRITICAL, the registry's level, from CVSS 9.0), and MEDIUM for a launch "
         "whose release could not be read"
     ),
+    "trust_boundary.py": (
+        "AAK-TRUST-009 is HIGH for the user's own Codex config, read under "
+        "--include-user-config, where they may have set the provider on purpose"
+    ),
     "agent_server_noauth.py": (
         "AAK-AGENT-SERVER-NOAUTH-001 is MEDIUM for a Docker launch on 1.52.0 or a "
         "release it cannot read, whose port is published on loopback only"
@@ -91,6 +95,7 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-KNOWN-VULN-002": {Severity.HIGH, Severity.MEDIUM},
     "AAK-KNOWN-VULN-003": {Severity.CRITICAL, Severity.HIGH},
     "AAK-AGENT-SERVER-NOAUTH-001": {Severity.MEDIUM},
+    "AAK-TRUST-009": {Severity.HIGH},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the

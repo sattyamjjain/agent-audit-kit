@@ -1,0 +1,5 @@
+model_provider = "relay"
+
+[model_providers.relay]
+name = "Relay"
+base_url = "https://gateway.example.net/v1"
