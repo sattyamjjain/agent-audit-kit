@@ -80,8 +80,8 @@ run's `properties.dataFeeds.knownVulnerabilities` and the console summary say
 which copy was read and when it was generated.
 
 - `aak update` builds the cached copy in the same pass that rebuilds the
-  malicious-release feed, from the same two downloads (about 260 MB), plus OSV's
-  Go and crates.io exports (about 17 MB), which it downloads for this feed alone. It keeps
+  malicious-release feed, from the same four downloads (PyPI, npm, crates.io and
+  Go, about 280 MB). It keeps
   every record that is not `MAL-`, not withdrawn, and has an `ECOSYSTEM` or
   `SEMVER` range or a list of affected versions. On 2026-10-29 that was 23,579
   package entries for 5,392 packages (PyPI 15,252, npm 8,327), 8.7 MB.

@@ -66,27 +66,6 @@ def _unmapped_line(pairs: Counter[tuple[str, str]]) -> str:
     return f"The CNA (vendor, product) pairs most often mapped to nothing: {shown}."
 
 
-def _read_advisory_only_exports(collector: Collector) -> bool:
-    """Read the OSV exports only the advisory feed uses; False when one failed.
-
-    A failed download keeps that registry's cached entries, so it costs neither the
-    rest of the rebuild, the other registry included, nor them.
-    """
-    from agent_audit_kit import advisory_feed
-    from agent_audit_kit.malicious_feed import FeedUpdateError
-
-    read_all = True
-    for ecosystem in advisory_feed.ADVISORY_ONLY_ECOSYSTEMS:
-        try:
-            advisory_feed.read_advisory_only_export(collector, ecosystem)
-        except FeedUpdateError as exc:
-            kept = collector.keep_cached_entries(ecosystem)
-            click.echo(f"Advisory export read failed: {exc}. The advisory feed keeps {kept:,} cached entries for it.",
-                       err=True)
-            read_all = False
-    return read_all
-
-
 def _read_nvd(collector: Collector, nvd_days: int) -> bool:
     """Read NVD's CNA records into `collector`; False when the read failed.
 
@@ -151,11 +130,11 @@ def _read_nvd(collector: Collector, nvd_days: int) -> bool:
 def update_cmd(github_malware: bool, nvd_days: int) -> None:
     """Update the vulnerability database, the malicious-release feed and the advisory feed.
 
-    Both feeds are rebuilt from OSV's exports for PyPI and npm (about 260 MB,
-    downloaded once): the malicious-package records, plus GitHub's malware
-    advisories with --github-malware, and every other advisory record. The
-    advisory feed also reads OSV's Go and crates.io exports (about 17 MB) and NVD's records
-    of CNA version data for CVEs OSV has no package record of (--nvd-days). Scans
+    Both feeds are rebuilt from OSV's exports for PyPI, npm, crates.io and Go
+    (about 280 MB, each downloaded once): the malicious-package records, plus
+    GitHub's malware advisories with --github-malware, and every other advisory
+    record. The advisory feed also reads NVD's records of CNA version data for
+    CVEs OSV has no package record of (--nvd-days). Scans
     never fetch them; they read
     the copies this writes, else the bundled ones. Any failure keeps what was
     cached before and exits non-zero.
@@ -175,7 +154,8 @@ def update_cmd(github_malware: bool, nvd_days: int) -> None:
     else:
         click.echo("Update failed. Using bundled database.", err=True)
         failed = True
-    click.echo("Rebuilding the malicious-release and advisory feeds from OSV (about 260 MB)...")
+    click.echo("Rebuilding the malicious-release and advisory feeds from OSV's PyPI, npm, crates.io and Go "
+               "exports (about 280 MB)...")
     collector = advisory_feed.Collector()
     try:
         done = malicious_feed.refresh(github_token=token if github_malware else None, on_record=collector.add)
@@ -191,8 +171,6 @@ def update_cmd(github_malware: bool, nvd_days: int) -> None:
         f"Malicious-release feed updated: {sum(done.counts.values()):,} entries ({counts}), "
         f"generated {done.generated_at}, written to {done.path}. GitHub: {done.github}."
     )
-    if not _read_advisory_only_exports(collector):
-        failed = True
     if not _read_nvd(collector, nvd_days):
         failed = True
     try:

@@ -243,7 +243,7 @@ def test_aak_update_reads_the_crates_io_export(update: Any, tmp_path: Path) -> N
         "MAL-2026-1": _crate_record("MAL-2026-1", name="crate-c"),
     }))
     assert result.exit_code == 0, result.output
-    assert "1 packages (PyPI 0, npm 0, crates.io 1)" in result.output
+    assert "1 packages (PyPI 0, npm 0, crates.io 1, Go 0)" in result.output
     assert result.calls.count(malicious_feed.OSV_EXPORT.format(ecosystem="crates.io")) == 1
     data = json.loads(advisory_feed.cache_path().read_text())
     assert [e["id"] for e in data["entries"]] == ["RUSTSEC-2026-0002"]
@@ -253,29 +253,32 @@ def test_aak_update_reads_the_crates_io_export(update: Any, tmp_path: Path) -> N
     assert "RUSTSEC-2026-0002" in finding.evidence and "fixed in 1.2.0" in finding.evidence
 
 
-def test_the_malicious_feed_is_left_as_it_was(update: Any, tmp_path: Path) -> None:
-    update(_export({"MAL-2026-1": _crate_record("MAL-2026-1", name="crate-c")}))
-    assert malicious_feed.ECOSYSTEMS == ("PyPI", "npm")
+def test_the_malicious_feed_takes_the_mal_records_of_the_same_download(update: Any, tmp_path: Path) -> None:
+    result = update(_export({"MAL-2026-1": _crate_record("MAL-2026-1", name="crate-c")}))
+    assert result.exit_code == 0, result.output
+    assert result.calls.count(malicious_feed.OSV_EXPORT.format(ecosystem="crates.io")) == 1
     data = json.loads(malicious_feed.cache_path().read_text())
-    assert not [e for e in data["entries"] if e["ecosystem"] == "crates.io"]
-    assert "crates.io" not in data["source"] and "/Go/" not in data["source"]
-    _lock(tmp_path, "1.0.0", name="crate-c")
-    assert malicious_releases.scan(tmp_path)[0] == []
+    assert [e["id"] for e in data["entries"] if e["ecosystem"] == "crates.io"] == ["MAL-2026-1", "MAL-2026-18776"]
+    assert malicious_feed.OSV_EXPORT.format(ecosystem="crates.io") in data["source"]
+    assert not json.loads(advisory_feed.cache_path().read_text())["entries"]  # the advisory feed reads no MAL-
+    _lock(tmp_path, "1.0.0", name="crate_c")
+    (finding,) = malicious_releases.scan(tmp_path)[0]
+    assert finding.rule_id == "AAK-MALICIOUS-RELEASE-001" and "MAL-2026-1," in finding.evidence
 
 
-def test_a_failed_crates_download_keeps_what_was_cached(update: Any) -> None:
+def test_a_failed_crates_download_keeps_both_cached_feeds(update: Any) -> None:
     assert update(_export({"RUSTSEC-2026-0002": _crate_record("RUSTSEC-2026-0002")})).exit_code == 0
+    before = advisory_feed.cache_path().read_bytes(), malicious_feed.cache_path().read_bytes()
     result = update(None)
     assert result.exit_code != 0
-    assert "Advisory export read failed" in result.output and "keeps 1 cached entries" in result.output
-    data = json.loads(advisory_feed.cache_path().read_text())
-    assert [e["id"] for e in data["entries"]] == ["RUSTSEC-2026-0002"]
+    assert "Malicious-release feed update failed" in result.output and "Advisory feed not rebuilt" in result.output
+    assert (advisory_feed.cache_path().read_bytes(), malicious_feed.cache_path().read_bytes()) == before
 
 
 def test_a_corrupt_export_fails_cleanly(update: Any) -> None:
     result = update(b"not a zip")
-    assert result.exit_code != 0 and "Advisory export read failed" in result.output
-    assert advisory_feed.cache_path().is_file()
+    assert result.exit_code != 0 and "Malicious-release feed update failed" in result.output
+    assert not advisory_feed.cache_path().is_file() and not malicious_feed.cache_path().is_file()
 
 
 def test_no_export_leaves_a_download_behind(update: Any) -> None:
@@ -283,9 +286,9 @@ def test_no_export_leaves_a_download_behind(update: Any) -> None:
     assert not list(advisory_feed.cache_path().parent.glob(".osv-export-*"))
 
 
-def test_a_collector_with_no_crates_read_writes_the_two_registries() -> None:
+def test_a_collector_counts_every_registry_it_read() -> None:
     written = advisory_feed.Collector().write(now=datetime(2026, 11, 7, tzinfo=timezone.utc))
-    assert written.counts == {"PyPI": 0, "npm": 0}
+    assert written.counts == {"PyPI": 0, "npm": 0, "crates.io": 0, "Go": 0}
 
 
 # -- who else reads the lockfile table -------------------------------------------------------
@@ -489,7 +492,7 @@ def test_aak_update_reads_the_go_export_and_counts_it(update: Any, tmp_path: Pat
     crates = _export({"RUSTSEC-2026-0002": _crate_record("RUSTSEC-2026-0002")})
     result = update(crates, go)
     assert result.exit_code == 0, result.output
-    assert "2 packages (PyPI 0, npm 0, Go 1, crates.io 1)" in result.output
+    assert "2 packages (PyPI 0, npm 0, crates.io 1, Go 1)" in result.output
     assert result.calls.count(malicious_feed.OSV_EXPORT.format(ecosystem="Go")) == 1
     data = json.loads(advisory_feed.cache_path().read_text())
     assert malicious_feed.OSV_EXPORT.format(ecosystem="Go") in data["source"]
@@ -508,24 +511,18 @@ def test_a_go_record_and_its_ghsa_twin_are_one_finding(update: Any, tmp_path: Pa
     assert len(_findings(tmp_path)) == 1
 
 
-def test_one_failed_export_keeps_its_cache_and_reads_the_other(update: Any) -> None:
+def test_a_failed_go_download_rebuilds_neither_feed(update: Any) -> None:
     first = update(_export({"RUSTSEC-2026-0002": _crate_record("RUSTSEC-2026-0002")}), _export({"GHSA-aaaa": _go_record("GHSA-aaaa")}))
     assert first.exit_code == 0, first.output
     result = update(_export({"RUSTSEC-2026-0003": _crate_record("RUSTSEC-2026-0003", name="crate-b")}), None)
-    assert result.exit_code != 0 and "Go: " in result.output and "keeps 1 cached entries" in result.output
+    assert result.exit_code != 0 and "Go/all.zip" in result.calls[-1]
     data = json.loads(advisory_feed.cache_path().read_text())
-    assert sorted(e["id"] for e in data["entries"]) == ["GHSA-aaaa", "RUSTSEC-2026-0003"]
+    assert sorted(e["id"] for e in data["entries"]) == ["GHSA-aaaa", "RUSTSEC-2026-0002"]
 
 
-def test_the_collector_counts_go_only_once_it_holds_some() -> None:
-    collector = advisory_feed.Collector()
-    collector.add_export("Go", [])
-    assert collector.write(now=datetime(2026, 11, 7, tzinfo=timezone.utc)).counts == {"PyPI": 0, "npm": 0}
-
-
-def test_the_malicious_feed_keeps_its_two_registries() -> None:
-    assert malicious_feed.ECOSYSTEMS == ("PyPI", "npm")
-    assert advisory_feed.ADVISORY_ECOSYSTEMS == ("PyPI", "npm", "Go", "crates.io")
+def test_both_feeds_read_the_same_four_registries() -> None:
+    assert malicious_feed.ECOSYSTEMS == ("PyPI", "npm", "crates.io", "Go")
+    assert advisory_feed.ADVISORY_ECOSYSTEMS == malicious_feed.ECOSYSTEMS
 
 
 # -- who else reads the lockfile table, on a go.mod ------------------------------------------

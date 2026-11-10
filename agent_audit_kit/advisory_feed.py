@@ -6,17 +6,15 @@ scan knew a vulnerable release only through a hand-written pin, the bundled
 `vuln_db.json` held no Python entries, and `aak update` downloaded OSV's complete
 PyPI and npm exports for the malicious-release feed and kept nothing but their
 `MAL-` records. This feed keeps the advisory records from the same downloads,
-and AAK-KNOWN-VULN-001 matches them against every version a scan resolves. It
-also reads OSV's Go and crates.io exports, which `aak update` downloads for this
-feed alone (`ADVISORY_ONLY_ECOSYSTEMS`), so a go.mod and a Cargo.lock are judged the
-same way.
+and AAK-KNOWN-VULN-001 matches them against every version a scan resolves. The
+same downloads include OSV's crates.io and Go exports, so a Cargo.lock and a go.mod
+are judged the same way.
 
 Load order, as `malicious_feed` reads its feed: the cached feed at
 `~/.agent-audit-kit/advisories.json` when it exists and parses, else the bundled
 `data/advisories.json`. A scan never touches the network. `aak update` rebuilds
 the cached copy with a `Collector` fed by `malicious_feed.refresh(on_record=...)`,
-so each export is downloaded and read once for both feeds, and by
-`read_advisory_only_exports` for the ones the malicious-release feed does not use.
+so each export is downloaded and read once for both feeds.
 
 What is kept
 ------------
@@ -88,8 +86,6 @@ import json
 import math
 import os
 import tempfile
-import urllib.request
-import zipfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -99,23 +95,16 @@ from agent_audit_kit.malicious_feed import (
     ECOSYSTEMS,
     OSV_EXPORT,
     FeedError,
-    FeedUpdateError,
     Range,
-    _download,
     _optional,
     _strings,
     canonical_name,
-    export_records,
     version_key,
     version_order,
 )
 
-#: The registries the malicious-release feed does not cover and this one does, as OSV
-#: names them. Their exports are downloaded for this feed alone, so the malicious feed's
-#: counts, its source line and AAK-MALICIOUS-RELEASE-001 stay as they were.
-ADVISORY_ONLY_ECOSYSTEMS = ("Go", "crates.io")
-#: Every registry this feed reads.
-ADVISORY_ECOSYSTEMS = (*ECOSYSTEMS, *ADVISORY_ONLY_ECOSYSTEMS)
+#: Every registry this feed reads: the malicious-release feed's, from the same exports.
+ADVISORY_ECOSYSTEMS = ECOSYSTEMS
 
 BUNDLED_FEED: Path = Path(__file__).parent / "data" / "advisories.json"
 FEED_FILE_NAME = "advisories.json"
@@ -698,28 +687,9 @@ class Collector:
         self.launch: list[dict[str, Any]] = []
         self.nvd_window: dict[str, Any] | None = None
         self.nvd_note = ""  # where the NVD half came from, as the feed's `source` says it
-        self.exports: list[str] = []  # the advisory-only exports this rebuild holds, read or kept
 
     def add(self, ecosystem: str, record: dict[str, Any]) -> None:
         self.entries.extend(advisory_entries(record, ecosystem))
-
-    def add_export(self, ecosystem: str, entries: list[dict[str, Any]]) -> None:
-        """The entries of one advisory-only export, read or carried over."""
-        self.entries.extend(entries)
-        self.exports.append(ecosystem)
-
-    def keep_cached_entries(self, ecosystem: str) -> int:
-        """Carry one registry's entries over from the cached feed, so an export that
-        could not be downloaded discards nothing. The number carried over."""
-        try:
-            data = json.loads(cache_path().read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return 0
-        rows = [row for row in _dicts(data.get("entries") if isinstance(data, dict) else None)
-                if row.get("ecosystem") == ecosystem]
-        if rows:
-            self.add_export(ecosystem, rows)
-        return len(rows)
 
     def add_nvd(self, entries: list[dict[str, Any]], window: dict[str, Any] | None) -> None:
         """The NVD half of this rebuild: entries `nvd_feed.fetch` read for `window`,
@@ -781,7 +751,7 @@ class Collector:
                          and isinstance(e.get("id"), str) and isinstance(e.get("match"), dict)), key=order)
         generated = (now or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
         source = ("OSV advisory records, every one but MAL- and withdrawn ones ("
-                  + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in (*ECOSYSTEMS, *self.exports)) + ")")
+                  + ", ".join(OSV_EXPORT.format(ecosystem=e) for e in ECOSYSTEMS) + ")")
         if self.nvd_note:
             source += f"; {self.nvd_note}, where OSV has no record of the CVE"
         document: dict[str, Any] = {"generated_at": generated, "source": source, "severity_floor": "",
@@ -812,36 +782,13 @@ class Collector:
             raise
         kept_entries = document["entries"]
         counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ADVISORY_ECOSYSTEMS}
-        counts = {e: n for e, n in counts.items() if n or e in ECOSYSTEMS}
         packages = len({(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])) for row in kept_entries})
         return Written(target, generated, counts, packages, len(body), full_size, document["severity_floor"],
                        nvd=len(document["nvd"]), nvd_twins=twins, launch=len(document["launch"]))
 
 
-def read_advisory_only_export(collector: Collector, ecosystem: str, opener: Any = None, timeout: float = 300.0) -> None:
-    """Read one OSV export only this feed uses into `collector`. Network; `aak update` only.
-
-    Raises:
-        FeedUpdateError: The export could not be read. What was read of it is not kept.
-    """
-    opener = opener or urllib.request.urlopen
-    directory = cache_path().parent
-    archive = None
-    try:
-        directory.mkdir(parents=True, exist_ok=True)
-        archive = _download(OSV_EXPORT.format(ecosystem=ecosystem), directory, opener, timeout)
-        rows = [row for record in export_records(archive) for row in advisory_entries(record, ecosystem)]
-    except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
-        raise FeedUpdateError(f"{ecosystem}: {type(exc).__name__}: {exc}") from exc
-    finally:
-        if archive is not None:
-            archive.unlink(missing_ok=True)
-    collector.add_export(ecosystem, rows)
-
-
 __all__ = [
     "ADVISORY_ECOSYSTEMS",
-    "ADVISORY_ONLY_ECOSYSTEMS",
     "Advisory",
     "AdvisoryFeed",
     "BUNDLED_FEED",
@@ -859,7 +806,6 @@ __all__ = [
     "intervals",
     "load_feed",
     "parse_feed",
-    "read_advisory_only_export",
     "record_severity",
     "without_osv_twins",
 ]
