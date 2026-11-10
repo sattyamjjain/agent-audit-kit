@@ -333,6 +333,20 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Cargo.lock in AAK-KNOWN-VULN-001, before it was released: each block's `source` is looked
+    # for inside that block alone, however many blocks name a crate the feed lists.
+    # go.mod in AAK-KNOWN-VULN-001, before it was released: one pass over the lines whatever they
+    # hold, and each module looks its replacement up once. An unclosed quote costs one scan of its
+    # line; a quote pattern allowing `\\"` inside it rescanned the line per quote.
+    "go-mod-requires": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\tgithub.com/mark3labs/mcp-go v1.1.{i}\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-other-modules": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\texample.com/m{i} v1.0.0 // indirect\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-replaces": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\n" + "".join(f"require example.com/m{i} v1.0.0\nreplace example.com/m{i} => github.com/mark3labs/mcp-go v1.1.0\n" for i in range(k))}, 1_000, False),
+    "go-mod-unclosed-quotes": (known_vulns.scan, lambda k: {"go.mod": "require " + '"\\' * (20 * k) + "\n"}, 1_000, False),
+    "go-mod-slashes": (known_vulns.scan, lambda k: {"go.mod": "require " + "a/" * (20 * k) + " v1.0.0\n"}, 1_000, False),
+    "go-mod-spaces": (known_vulns.scan, lambda k: {"go.mod": (" " * 80 + "x\n") * k + "require github.com/mark3labs/mcp-go v1.1.0\n"}, 1_000, False),
+    "cargo-lock-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\n' * k}, 1_000, False),
+    "cargo-lock-sourced-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\nsource = "registry+x"\n' * k}, 1_000, False),
+    "cargo-lock-other-crates": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "other"\nversion = "1.0.0"\nsource = "registry+x"\n' * k}, 1_000, False),
     # Group E, before it was released.
     "prompt-fstrings": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n" + "    x = f'<q>{m}</q>'\n" * k}, 1_000, True),
     "prompt-many-pieces": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "{m}<q>" * k + "'\n"}, 2_000, False),

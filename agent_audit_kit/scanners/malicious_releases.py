@@ -90,6 +90,9 @@ _LOCKFILES = {
     "npm-shrinkwrap.json": ("npm", "package-lock.json"),
     "pnpm-lock.yaml": ("npm", "pnpm-lock.yaml"),
     "yarn.lock": ("npm", "yarn.lock"),
+    # Advisories only: the malicious-release feed lists no Go or crates.io name, so its reader stops here.
+    "go.mod": ("Go", "go.mod"),
+    "cargo.lock": ("crates.io", "cargo.lock"),
 }
 _REGISTRY = {"py": "PyPI", "js": "npm"}
 _IMAGE_FILE_BYTES = 2_000_000

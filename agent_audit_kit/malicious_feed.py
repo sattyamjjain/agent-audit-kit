@@ -96,9 +96,15 @@ _SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A
 
 
 def canonical_name(ecosystem: str, name: str) -> str:
-    """A package name as its registry compares it: PEP 503 for PyPI, lower case for npm."""
+    """A package name as its registry compares it: PEP 503 for PyPI, lower case for npm,
+    lower case with `-` and `_` equal for crates.io, as cargo compares crate names, and as
+    written for Go, whose module paths are case-sensitive."""
     name = name.strip()
-    return _PEP503_RE.sub("-", name).lower() if ecosystem == "PyPI" else name.lower()
+    if ecosystem == "PyPI":
+        return _PEP503_RE.sub("-", name).lower()
+    if ecosystem == "Go":
+        return name
+    return name.lower().replace("_", "-") if ecosystem == "crates.io" else name.lower()
 
 
 def _digits(text: str | None) -> int:
@@ -182,7 +188,8 @@ def version_key(ecosystem: str, version: str) -> str:
 
 def version_order(ecosystem: str, version: str) -> tuple[Any, ...] | None:
     """A version as a tuple that orders as its registry orders versions: PEP 440
-    for PyPI, semver 2.0 for npm. None when the text is not such a version."""
+    for PyPI, semver 2.0 for npm, Go and crates.io, so a Go pseudo-version is a pre-release
+    and `+incompatible` is build metadata. None when the text is not such a version."""
     if ecosystem == "PyPI":
         return pep440_order(version)
     return _semver(version_key(ecosystem, version))

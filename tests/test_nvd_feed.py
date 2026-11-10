@@ -40,6 +40,9 @@ OPEN_CVE = "CVE-2026-119025"
 LMDEPLOY_CVE = "CVE-2026-119706"
 PREFAB_CVE = "CVE-2026-120338"
 MCPHUB_CVE = "CVE-2026-120323"
+SURREAL_CVE = "CVE-2026-121419"
+MCP_GO_CVE = "CVE-2026-123272"
+CHATCLI_CVE = "CVE-2026-123271"
 NOW = datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc)
 
 
@@ -92,25 +95,30 @@ def test_the_fixtures_are_nvd_api_answers_with_the_cna_data_at_cve_affected() ->
 
 
 def test_the_bundled_nvd_entries_are_the_fixtures_as_converted() -> None:
-    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the seven
-    records, with the reviewed map shipped beside it; every one of the seven maps.
-    CVE-2026-119706 (lmdeploy) maps by its packageURL and CVE-2026-120338 (prefab-ui)
-    by its collectionURL, so neither needed a map row. JFrog's `lessThan` 0.21.0 is
+    """data/advisories.json's `nvd` list is exactly what `nvd_feed` makes of the ten
+    records, with the reviewed map shipped beside it; every one of the ten maps.
+    CVE-2026-119706 (lmdeploy), CVE-2026-121419 (surrealdb, on crates.io), CVE-2026-123272
+    (mcp-go) and CVE-2026-123271 (ChatCLI, both on Go) map by their packageURL and
+    CVE-2026-120338 (prefab-ui) by its collectionURL, so none needed a map row. JFrog's
+    `lessThan` 0.21.0 is
     the converter's `fixed`, as every `lessThan` is. VulDB's CVE-2026-120323 (MCPHub)
     lists releases one by one and maps by its reviewed row."""
     rows = nvd_feed.load_package_map()
     tally = nvd_feed.Tally()
-    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE, PREFAB_CVE, MCPHUB_CVE)
+    converted = nvd_feed.merged(entry for cve in LANGFLOW_CVES + (OPEN_CVE, LMDEPLOY_CVE, PREFAB_CVE, MCPHUB_CVE, SURREAL_CVE, MCP_GO_CVE, CHATCLI_CVE)
                                 for entry in nvd_feed.record_entries(_record(cve), rows, tally))
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert bundled["nvd"] == converted
-    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (7, 7, 0, 9)
+    assert (tally.records, tally.mapped, tally.unmapped, tally.entries) == (10, 10, 0, 12)
     assert [(e["name"], e["id"], e["ranges"]) for e in converted] == [
+        ("github.com/diillson/chatcli", CHATCLI_CVE, [{"introduced": "v1.159.0", "fixed": "v1.215.2"}]),
+        ("github.com/mark3labs/mcp-go", MCP_GO_CVE, [{"introduced": "v0.48.0", "fixed": "v1.2.1"}]),
         ("langflow", "CVE-2026-104339", [{"introduced": "1.0.0", "last_affected": "1.12.3"}]),
         ("langflow", "CVE-2026-110186", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
         ("langflow", "CVE-2026-93680", [{"introduced": "1.0.0", "last_affected": "1.12.8"}]),
         ("lmdeploy", LMDEPLOY_CVE, [{"introduced": "0.9.0", "last_affected": "0.18.0"}]),
         ("prefab-ui", PREFAB_CVE, [{"introduced": "0.14.0", "fixed": "0.21.0"}]),
+        ("surrealdb", SURREAL_CVE, [{"introduced": "3.1.0", "fixed": "3.3.0"}]),
         ("@modelcontextprotocol/inspector", OPEN_CVE, [{"introduced": "2.0.0", "fixed": "2.12.0"}]),
         ("@samanhappy/mcphub", MCPHUB_CVE, []),
         ("open", OPEN_CVE, [{"introduced": "7.2.0", "fixed": "11.0.0"}]),
@@ -529,7 +537,7 @@ def test_the_rebuild_drops_an_nvd_entry_osv_already_lists() -> None:
                       {"field": "lastModified", "start": "2026-07-02T09:00:00Z", "end": "2026-10-30T09:00:00Z",
                        "days": 120})
     written = collector.write(now=NOW)
-    assert (written.nvd, written.nvd_twins) == (8, 1)
+    assert (written.nvd, written.nvd_twins) == (11, 1)
     data = json.loads(written.path.read_text())
     assert "CVE-2026-110186" not in {e["id"] for e in data["nvd"]}
     assert data["source"].endswith("; NVD's records of CNA version data modified 2026-07-02 to 2026-10-30, "
@@ -652,7 +660,7 @@ class _Response(io.BytesIO):
 def _osv(request: urllib.request.Request, timeout: float | None = None) -> _Response:
     if request.full_url.endswith("/PyPI/all.zip"):
         return _Response(_export({"GHSA-aaaa-bbbb-cccc": _OSV_FLAWED}))
-    if request.full_url.endswith("/npm/all.zip"):
+    if request.full_url.endswith(("/npm/all.zip", "/Go/all.zip", "/crates.io/all.zip")):
         return _Response(_export({}))
     raise AssertionError(request.full_url)
 
@@ -683,7 +691,7 @@ def test_aak_update_reads_nvd_into_the_feed(offline_osv: None, monkeypatch: pyte
     assert result.exit_code == 0, result.output
     assert "test-nvd-key-0123" not in result.output and opener.requests[0].get_header("Apikey") == "test-nvd-key-0123"
     assert "NVD: 3 records modified " in result.output
-    assert ("3 carry CNA version data: 2 name a PyPI or npm package or software a launch row lists (4 package and 0 "
+    assert ("3 carry CNA version data: 2 name a PyPI, npm, Go or crates.io package or software a launch row lists (4 package and 0 "
             "launch entries), 1 name none that maps and are dropped") in result.output
     assert "The CNA (vendor, product) pairs most often mapped to nothing: nobody / nothing (1)." in result.output
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
@@ -734,7 +742,7 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
     the file it writes is the one scans read from then on."""
     monkeypatch.setattr(nvd_feed, "_default_opener", lambda: _Opener(_http_error(404)))
     result = CliRunner().invoke(cli, ["update"])
-    assert result.exit_code == 2 and "keeps the 9 NVD and 3 launch entries of the bundled feed." in result.output
+    assert result.exit_code == 2 and "keeps the 12 NVD and 3 launch entries of the bundled feed." in result.output
     bundled = json.loads(advisory_feed.BUNDLED_FEED.read_text())
     assert (_cached()["nvd"], _cached()["launch"]) == (bundled["nvd"], bundled["launch"])
     _uv_lock(tmp_path, "1.12.8")
@@ -744,9 +752,9 @@ def test_without_a_cached_nvd_list_an_outage_keeps_the_bundled_one(offline_osv: 
 def test_nvd_days_0_reads_nothing_and_keeps_what_scans_read(offline_osv: None) -> None:
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 9 NVD and 3 launch entries of the bundled "
+    assert ("NVD not read (--nvd-days 0): the advisory feed keeps the 12 NVD and 3 launch entries of the bundled "
             "feed.") in result.output
-    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (9, 3)
+    assert (len(_cached()["nvd"]), len(_cached()["launch"])) == (12, 3)
 
 
 # ---- launch rows: software a project starts ----------------------------------------------------------
@@ -955,3 +963,57 @@ def test_a_uv_lock_with_prefab_ui_is_reported_from_the_bundled_feed(tmp_path: Pa
         (finding,) = named
         assert finding.severity is Severity.CRITICAL and finding.file_path == "uv.lock" and finding.line_number == 2
         assert "0.21.0" in finding.evidence and "NVD CNA record" in finding.evidence
+
+
+# ---- Go and crates.io -------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cve, ecosystem, name, row", [
+    (MCP_GO_CVE, "Go", "github.com/mark3labs/mcp-go", {"introduced": "v0.48.0", "fixed": "v1.2.1"}),
+    (CHATCLI_CVE, "Go", "github.com/diillson/chatcli", {"introduced": "v1.159.0", "fixed": "v1.215.2"}),
+    (SURREAL_CVE, "crates.io", "surrealdb", {"introduced": "3.1.0", "fixed": "3.3.0"}),
+])
+def test_a_go_or_cargo_packageurl_maps_to_its_one_range(cve: str, ecosystem: str, name: str, row: dict[str, str]) -> None:
+    (entry,) = nvd_feed.record_entries(_record(cve), nvd_feed.load_package_map())
+    assert (entry["ecosystem"], entry["name"], entry["ranges"]) == (ecosystem, name, [row])
+    assert entry["fixed"] == [row["fixed"]] and entry["mapped_by"] == "packageURL"
+
+
+@pytest.mark.parametrize("purl, expected", [
+    ("pkg:golang/github.com/mark3labs/mcp-go", ("Go", "github.com/mark3labs/mcp-go")),
+    ("pkg:golang/github.com/mark3labs/mcp-go@v1.1.0", ("Go", "github.com/mark3labs/mcp-go")),
+    ("pkg:golang/github.com/mark3labs/mcp-go?x=y#sub", ("Go", "github.com/mark3labs/mcp-go")),
+    ("pkg:golang/github.com/BurntSushi/toml", ("Go", "github.com/BurntSushi/toml")),
+    ("pkg:golang/gopkg.in/yaml.v3", ("Go", "gopkg.in/yaml.v3")),
+    ("pkg:golang/github.com/foo/bar/v2", ("Go", "github.com/foo/bar/v2")),
+    ("pkg:golang/github.com%2Ffoo%2Fbar", ("Go", "github.com/foo/bar")),
+    ("PKG:GOLANG/github.com/foo/bar", ("Go", "github.com/foo/bar")),
+    ("pkg:cargo/surrealdb", ("crates.io", "surrealdb")),
+    ("pkg:maven/org.apache/log4j", None),
+    ("pkg:golang/", None),
+    ("pkg:golang/github.com/foo bar", None),
+    ("pkg:cargo/two/segments", None),
+])
+def test_purl_package_reads_go_and_cargo(purl: str, expected: tuple[str, str] | None) -> None:
+    assert nvd_feed.purl_package(purl) == expected
+
+
+@pytest.mark.parametrize("ecosystem, low, high", [
+    ("Go", "v1.1.9", "v1.2.1"),
+    ("Go", "v1.2.1-rc.1", "v1.2.1"),
+    ("Go", "v0.0.0-20261101000000-abcdef123456", "v0.48.0"),
+    ("Go", "v1.2.1-0.20261101000000-abcdef123456", "v1.2.1"),
+    ("crates.io", "3.2.9", "3.3.0"),
+])
+def test_go_and_crate_versions_order_as_semver(ecosystem: str, low: str, high: str) -> None:
+    low_key, high_key = malicious_feed.version_order(ecosystem, low), malicious_feed.version_order(ecosystem, high)
+    assert low_key is not None and high_key is not None and low_key < high_key
+
+
+def test_incompatible_is_ignored_for_ordering() -> None:
+    assert malicious_feed.version_order("Go", "v2.0.0+incompatible") == malicious_feed.version_order("Go", "v2.0.0")
+
+
+def test_a_go_path_keeps_its_case_where_a_crate_name_folds() -> None:
+    assert malicious_feed.canonical_name("Go", "github.com/BurntSushi/toml") == "github.com/BurntSushi/toml"
+    assert malicious_feed.canonical_name("crates.io", "Surreal_DB") == "surreal-db"
