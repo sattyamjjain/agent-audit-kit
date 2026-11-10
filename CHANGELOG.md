@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-SECRET-010 (HIGH): a credential inside a Claude Code permission rule. It reads `permissions.allow`, `.ask` and `.deny` in `.claude/settings.json` and `.claude/settings.local.json` and reports, with no length or entropy gate, a password, secret or token assignment (`PGPASSWORD=`, `MYSQL_PWD=`), `-p<password>` after a MySQL or MariaDB client, a `--password` value, `sshpass -p`, `curl -u user:password`, the password in a database, broker or HTTP URL, and an `Authorization` header value. A finding shows at most two characters of the value. When a user answers "Yes, and don't ask again", Claude Code saves the exact command, secret included, as an allow rule; Apiiro found 1,122 of 104,185 public copies of the file holding a secret (https://thehackernews.com/2026/11/claude-codes-dont-ask-again-file.html). On 0.6.32 a file with `PGPASSWORD=`, `mysql -p` and `sshpass -p` rules gave no secret finding: AAK-SECRET-004 drops a short, plain password, and reads no `-p` at all.
+- New rule AAK-SECRET-011 (MEDIUM): `.claude/settings.local.json` exists at the root and neither the root `.gitignore` nor `.claude/.gitignore` ignores it, read as git reads them, so a file inside an ignored `.claude/` folder stays ignored whatever a later `!` says.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added

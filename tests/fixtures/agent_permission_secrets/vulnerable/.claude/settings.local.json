@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=Xk9vT2qLm7Rw psql -h db.internal.example -U app -c 'select 1')",
+      "Bash(mysql -u root -pZq8Nw3Lt5Vb7 -e 'show databases')",
+      "Bash(sshpass -p 'Hy4Kd9Wm2Px6' ssh deploy@bastion.internal.example)",
+      "Bash(git status)",
+      "Bash(curl -u admin:Rt7Yw2Pq9Lm4 https://api.internal.example/health)",
+      "Bash(psql postgres://app:Vn3Bx8Kq1Wz5@db.internal.example:5432/app -c 'select 1')"
+    ],
+    "deny": []
+  }
+}

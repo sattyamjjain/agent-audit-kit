@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker login -u ci -p Qw1Er2Ty3 registry.internal.example)"
+    ]
+  }
+}

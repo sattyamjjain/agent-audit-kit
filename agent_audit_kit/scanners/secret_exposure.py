@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import functools
 import json
 import math
 import re
 from bisect import bisect_right
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._agent_permission_secrets import (
+    RulePlaces,
+    command_credentials,
+    is_permission_file,
+    permission_rules,
+)
 from agent_audit_kit.scanners._helpers import (
     FileNotRead,
     find_line_number,
@@ -445,6 +453,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files).
     # Both server maps: VS Code keeps its servers under `servers` in
     # .vscode/mcp.json, and reading `mcpServers` alone passed every literal there.
+    data: Any = None
     if suffix == ".json" and file_path.name != ".mcp.json":
         try:
             data = loads_jsonc(content, file_path)
@@ -465,7 +474,55 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
         # Every reported variable's line in one pass over the file, not one search of it per variable.
         findings.extend(placed(content, unplaced))
 
+    # AAK-SECRET-010: a credential Claude Code saved inside a permission rule.
+    if data is not None and is_permission_file(file_path):
+        findings.extend(_permission_rule_findings(data, content, rel_path, lines, findings))
+
     return findings
+
+
+# The prefix rules' patterns: a value one of them matches is already reported in this
+# file (the file is a `.json` one, which those rules always read), so AAK-SECRET-010
+# leaves it alone. AAK-SECRET-009 reads a whole service-account file, never a value.
+_PREFIX_RULE_PATTERNS = (ANTHROPIC_KEY, OPENAI_KEY, AWS_ACCESS_KEY, GITHUB_TOKEN, GITLAB_TOKEN)
+
+
+def _shown(value: str) -> str:
+    """At most a value's first two characters, and none of a value of four or fewer."""
+    return f" (value starts `{value[:2]}`)" if len(value) > 4 else ""
+
+
+def _permission_rule_findings(
+    data: Any, content: str, rel_path: str, lines: LineIndex, reported: list[Finding]
+) -> list[Finding]:
+    """AAK-SECRET-010: every literal credential in a Claude Code settings file's
+    `permissions.allow`, `.ask` and `.deny` rules (`_agent_permission_secrets`).
+
+    No length or entropy gate: a typed password is short and plain, and a permission
+    rule holding one is the leak Apiiro measured. A placeholder (`<your-password>`), a
+    value a prefix rule already reports (a `ghp_` token, an `sk-` key) and one that
+    AAK-SECRET-004 reports on the same line are left out, so a value is reported once.
+    The finding sits on the rule's own line and shows at most two characters of it.
+    """
+    places = RulePlaces(content)
+    entropy_lines = {f.line_number for f in reported if f.rule_id == "AAK-SECRET-004"}
+    found: list[Finding] = []
+    for rule_list, rule in permission_rules(data):
+        credentials = [
+            (shape, value) for shape, value in command_credentials(rule)
+            if not _is_placeholder(value) and not any(p.search(value) for p in _PREFIX_RULE_PATTERNS)
+        ]
+        if not credentials:
+            continue
+        offset = places.offset(rule)
+        line = None if offset is None else lines.at(offset)
+        for shape, value in credentials:
+            if line in entropy_lines and len(value) >= 16 and _shannon_entropy(value) > 4.5:
+                continue
+            found.append(_make_finding(
+                "AAK-SECRET-010", rel_path, f"{shape} in permissions.{rule_list}{_shown(value)}", line,
+            ))
+    return found
 
 
 def _is_key_body(body: str) -> bool:
@@ -913,6 +970,126 @@ def _check_env_gitignore(project_root: Path) -> list[Finding]:
     return findings
 
 
+# AAK-SECRET-011: Claude Code's per-user settings file, which its "don't ask again"
+# rules write commands into, secrets included.
+_SETTINGS_LOCAL = (".claude", "settings.local.json")
+
+
+def _glob_head_and_tail(glob: str) -> tuple[str, str | None]:
+    """The literal text a glob's matches must start with, and the text after its last `*`
+    when that is literal (else None): two string tests that reject most patterns without
+    compiling them."""
+    first = min((i for i, ch in enumerate(glob) if ch in _GLOB_CHARS), default=len(glob))
+    star = glob.rfind("*")
+    tail = glob[star + 1:] if star >= 0 and not _GLOB_CHARS & set(glob[star + 1:]) else None
+    return glob[:first], tail
+
+
+@functools.lru_cache(maxsize=256)
+def _component_segments(glob: str) -> tuple[tuple[re.Pattern[str], int], ...] | None:
+    segments = _glob_segments(glob)
+    return None if segments is None else tuple(segments)
+
+
+def _component_matches(glob: str, name: str) -> bool:
+    """Whether a gitignore glob with no `/` matches one path component, as git's
+    wildmatch does (`_glob_segments`, `_glob_matches`)."""
+    if not _GLOB_CHARS & set(glob):
+        return glob == name
+    head, tail = _glob_head_and_tail(glob)
+    if not name.startswith(head) or (tail is not None and not name.endswith(tail)):
+        return False
+    segments = _component_segments(glob)
+    return segments is not None and _glob_matches(list(segments), name)
+
+
+def _components_match(globs: list[str], names: list[str]) -> bool:
+    """Whether an anchored pattern's `/`-separated globs match the whole path `names`. A
+    `**` takes any number of components, one or more when it ends the pattern (git:
+    `a/**` matches what is inside `a`, not `a` itself)."""
+    if sum(1 for g in globs if g != "**") > len(names):
+        return False
+    reach = {0}
+    last = len(globs) - 1
+    for i, glob in enumerate(globs):
+        if glob == "**":
+            low = 1 if i == last else 0
+            reach = {k for j in reach for k in range(j + low, len(names) + 1)}
+        else:
+            reach = {j + 1 for j in reach if j < len(names) and _component_matches(glob, names[j])}
+        if not reach:
+            return False
+    return len(names) in reach
+
+
+def _gitignore_path_states(text: str, parts: tuple[str, ...]) -> list[bool | None]:
+    """What one `.gitignore` says about each leading part of a path below its folder: for
+    `(".claude", "settings.local.json")`, the folder and then the file. Each state is the
+    last matching pattern's verdict (True: ignored), or None when no pattern matches.
+
+    Patterns are read as `_gitignore_rules` reads them (comments, `!`, escapes, trailing
+    spaces), and placed as git places them: a pattern with no `/` but a trailing one
+    matches a name at any depth, a trailing `/` matches folders only, and any other `/`
+    anchors the pattern to the `.gitignore`'s folder, with `**` for any number of folders.
+    """
+    names = [_byte_chars(part) for part in parts]
+    states: list[bool | None] = [None] * len(names)
+    for raw in _byte_chars(text).split("\n"):
+        line = _trim_trailing_spaces(raw[:-1] if raw.endswith("\r") else raw)
+        if not line or line.startswith("#"):
+            continue
+        negated = line.startswith("!")
+        if negated:
+            line = line[1:]
+        folder_only = line.endswith("/")
+        if folder_only:
+            line = line[:-1]
+        if not line:
+            continue
+        anchored = "/" in line
+        globs = (line[1:] if line.startswith("/") else line).split("/")
+        for depth in range(1, len(names) + 1):
+            if folder_only and depth == len(names):
+                continue
+            if anchored:
+                hit = _components_match(globs, names[:depth])
+            else:
+                hit = _component_matches(line, names[depth - 1])
+            if hit:
+                states[depth - 1] = not negated
+    return states
+
+
+def _settings_local_ignored(root_text: str | None, folder_text: str | None) -> bool:
+    """Whether git ignores `.claude/settings.local.json` by the root `.gitignore` and the
+    one in `.claude/`. A file inside an ignored folder stays ignored whatever a later `!`
+    says, as git cannot re-include it; otherwise the deepest `.gitignore` that matches the
+    file decides."""
+    folder, file = _gitignore_path_states(root_text, _SETTINGS_LOCAL) if root_text is not None else [None, None]
+    if folder:
+        return True
+    if folder_text is not None:
+        (inner,) = _gitignore_path_states(folder_text, _SETTINGS_LOCAL[1:])
+        if inner is not None:
+            file = inner
+    return bool(file)
+
+
+def _check_settings_local_gitignore(project_root: Path) -> list[Finding]:
+    """AAK-SECRET-011: `.claude/settings.local.json` exists at the root and neither the
+    root `.gitignore` nor `.claude/.gitignore` ignores it."""
+    settings = project_root.joinpath(*_SETTINGS_LOCAL)
+    if not settings.is_file():
+        return []
+    rel_path = str(settings.relative_to(project_root))
+    root_has, folder_has = (project_root / ".gitignore").is_file(), (project_root / ".claude" / ".gitignore").is_file()
+    if not root_has and not folder_has:
+        return [_make_finding("AAK-SECRET-011", rel_path, f"{rel_path} exists but no .gitignore found")]
+    if _settings_local_ignored(_read_gitignore(project_root), _read_gitignore(project_root / ".claude")):
+        return []
+    return [_make_finding("AAK-SECRET-011", rel_path, f"{rel_path} exists but .gitignore does not ignore it")]
+
+
 def scan(project_root: Path, ignore_paths: list[str] | None = None) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned_files: set[str] = set()
@@ -939,5 +1116,6 @@ def scan(project_root: Path, ignore_paths: list[str] | None = None) -> tuple[lis
     if gitignore.is_file():
         scanned_files.add(".gitignore")
     findings.extend(_check_env_gitignore(project_root))
+    findings.extend(_check_settings_local_gitignore(project_root))
 
     return findings, scanned_files

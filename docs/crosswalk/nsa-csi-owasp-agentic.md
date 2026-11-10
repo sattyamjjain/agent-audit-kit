@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (444 total; 406 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -395,6 +395,8 @@ Every AgentAuditKit rule (442 total; 404 mapped) against two agentic-security st
 | `AAK-SECRET-007` | medium | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-SECRET-008` | critical | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-SECRET-009` | high | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
+| `AAK-SECRET-010` | high | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
+| `AAK-SECRET-011` | medium | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-SHELL-DEFAULT-PROFILE-001` | high | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-SHELL-QUOTED-INTERP-001` | high | taint-analysis | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001` | critical | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
