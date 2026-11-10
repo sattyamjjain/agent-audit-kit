@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from agent_audit_kit.output import pdf_report
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _STALE_DIGEST = "0" * 64
 
@@ -111,7 +113,7 @@ def test_a_successful_render_stamps_the_results_it_was_built_from(
     the script's bookkeeping around it, not reportlab's drawing.
     """
 
-    def rendered(_results: dict, output_path: Path) -> tuple[bool, str]:
+    def rendered(_results: dict, output_path: Path, **_header: object) -> tuple[bool, str]:
         output_path.write_bytes(b"%PDF rendered from the live results.json")
         return True, f"wrote {output_path}"
 
@@ -120,3 +122,41 @@ def test_a_successful_render_stamps_the_results_it_was_built_from(
     assert render.main([]) == 0
     assert render.stamped_digest() == render.results_digest()
     assert render.main(["--check"]) == 0
+
+
+# ---- what the PDF says, and how it is laid out -------------------------------------------------
+
+
+_RESULTS = {"distinct_configs_scanned": 2303, "corpus_sources": {"crawl": 664, "registry": 1639}}
+
+
+def test_the_header_comes_from_reports_own_header_line() -> None:
+    version, scan_date = render.report_header()
+    report = (REPO_ROOT / "research" / "state-of-mcp-2026" / "REPORT.md").read_text(encoding="utf-8")
+    assert f"**Report version {version}**" in report and scan_date == "2026-07-26"
+
+
+def test_the_corpus_line_is_prose_and_names_the_scan_date() -> None:
+    subtitle, corpus = pdf_report._report_meta(_RESULTS, "1.3", "2026-07-26")
+    assert subtitle == "Report version 1.3 · AgentAuditKit, offline and deterministic"
+    assert corpus == ("Scan date: 2026-07-26 · Corpus: 2,303 distinct public MCP server configs "
+                      "(664 crawled from GitHub, 1,639 from the official MCP Registry)")
+
+
+def test_an_unknown_field_is_left_out_not_printed_as_a_question_mark() -> None:
+    subtitle, corpus = pdf_report._report_meta({"distinct_configs_scanned": 2303}, None, None)
+    assert subtitle == "AgentAuditKit, offline and deterministic"
+    assert corpus == "Corpus: 2,303 distinct public MCP server configs"
+    text = pdf_report._report_text({"distinct_configs_scanned": 2303})
+    assert "?" not in text and "{" not in text
+
+
+def test_a_rule_id_too_wide_for_its_column_breaks_after_a_hyphen() -> None:
+    def narrow(text: str) -> bool:
+        return len(text) <= 20
+
+    assert pdf_report._breakable_rule_id("AAK-MCP-001", narrow) == "AAK-MCP-001"
+    assert pdf_report._breakable_rule_id("AAK-MCP-STDIO-LAUNCHER-INJECT-001", narrow) == (
+        "AAK-MCP-STDIO-<br/>LAUNCHER-INJECT-001"
+    )
+    assert pdf_report._breakable_rule_id("A<B", narrow) == "A&lt;B"

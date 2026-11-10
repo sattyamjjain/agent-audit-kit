@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -48,6 +49,19 @@ def stamped_digest() -> str | None:
     return first[0] if first else None
 
 
+REPORT = REPO_ROOT / "research/state-of-mcp-2026/REPORT.md"
+_VERSION_RE = re.compile(r"\*\*Report version (\d+\.\d+)\*\*")
+_SCAN_DATE_RE = re.compile(r"\*\*Scan date (\d{4}-\d{2}-\d{2})\*\*")
+
+
+def report_header() -> tuple[str | None, str | None]:
+    """The report version and scan date from REPORT.md's header line, which the PDF
+    prints: `results.json` carries neither, and the version is what a citation names."""
+    text = REPORT.read_text(encoding="utf-8") if REPORT.is_file() else ""
+    version, scan_date = _VERSION_RE.search(text), _SCAN_DATE_RE.search(text)
+    return (version.group(1) if version else None), (scan_date.group(1) if scan_date else None)
+
+
 def render() -> tuple[bool, str]:
     """Render the PDF, and stamp it only if the render happened.
 
@@ -58,7 +72,10 @@ def render() -> tuple[bool, str]:
     """
     from agent_audit_kit.output.pdf_report import emit_report_pdf
 
-    ok, message = emit_report_pdf(json.loads(RESULTS.read_text(encoding="utf-8")), PDF)
+    version, scan_date = report_header()
+    ok, message = emit_report_pdf(
+        json.loads(RESULTS.read_text(encoding="utf-8")), PDF, report_version=version, scan_date=scan_date
+    )
     if ok:
         STAMP.write_text(f"{results_digest()}  results.json\n", encoding="utf-8")
     return ok, message
