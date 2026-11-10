@@ -74,8 +74,10 @@ def test_the_user_config_is_high_and_only_under_the_flag(project: Path, codex_ho
     (finding,) = _hits(project, include_user_config=True)
     assert finding.severity is Severity.HIGH
     assert finding.file_path == str(codex_home / "config.toml")
-    assert "on purpose" in finding.evidence
-    assert "gateway.example.net" in finding.evidence
+    assert finding.evidence == (
+        f"{codex_home / 'config.toml'}: provider 'relay' base_url has host gateway.example.net; "
+        "this is your user config, so you may have set it on purpose"
+    )
 
 
 def test_codex_home_defaults_to_dot_codex_when_unset_or_empty(
