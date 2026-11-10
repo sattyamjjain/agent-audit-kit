@@ -36,6 +36,21 @@ def page() -> str:
     return PAGE.read_text(encoding="utf-8")
 
 
+def _computed_on(page: str) -> date:
+    """The date the page says its figure was computed on.
+
+    The two tests below recompute the figure and compare it with the page. They
+    recompute it as of this date, not today: the trailing window moves every day,
+    so a page built yesterday quotes a different n than a run today, and a
+    release tagged the day after its page was built failed its own test suite
+    (0.6.32). How old the date may get is `build_coverage_page.py --check`'s
+    question, not these tests'.
+    """
+    match = MARKER_RE.search(page)
+    assert match, "the coverage page carries no cve-latency-computed-on marker"
+    return date.fromisoformat(match.group(1))
+
+
 # ---------------------------------------------------------------------------
 # The figure
 # ---------------------------------------------------------------------------
@@ -55,7 +70,7 @@ def test_the_figure_prints_its_sample_size(page: str) -> None:
     """
     from scripts.cve_latency import window_stats  # noqa: PLC0415
 
-    stats = window_stats(90)
+    stats = window_stats(90, today=_computed_on(page))
     assert stats is not None, "no CVE in the trailing window; the figure is untestable"
     assert "Sample (n)" in page
     assert f"<td>{stats.n}</td>" in page
@@ -69,7 +84,7 @@ def test_the_figure_matches_a_fresh_computation(page: str) -> None:
     """
     from scripts.cve_latency import window_stats  # noqa: PLC0415
 
-    stats = window_stats(90)
+    stats = window_stats(90, today=_computed_on(page))
     assert stats is not None
     assert f"<td>{stats.median_days:.1f} days</td>" in page
     assert f"<td>{stats.p90_days} days</td>" in page
