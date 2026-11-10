@@ -79,8 +79,9 @@ which copy was read and when it was generated.
   package entries for 5,392 packages (PyPI 15,252, npm 8,327), 8.7 MB.
 - A cached copy over 60 MB would keep only HIGH and CRITICAL advisories, and
   `aak update` and the summary would say so. The feed is well under it today.
-- The bundled copy holds two OSV records exactly as OSV returned them on
-  2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
+- The bundled copy holds four OSV records exactly as OSV returned them: on
+  2026-10-29, GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow), and on
+  2026-11-07, GHSA-82r6-8w77-94w6 and GHSA-5p39-cfhj-2xmp (anyio below 4.14.2). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
   It also holds the seven entries `nvd_feed` converts from NVD's records of five
@@ -224,6 +225,8 @@ references: the rule reports whatever advisory the feed holds.
 |---|---|---|---|
 | vLLM below 0.32.0 | CVE-2026-115915 | GHSA-h3rc-j82p-2c3h (CVSS 3.x 8.1) | yes |
 | MLflow 3.12.0rc0 up to 3.17.0 | CVE-2026-116692 | GHSA-26p8-2jq9-3vq9 (CVSS 3.x 9.8) | yes |
+| anyio below 4.14.2, TLS host names | CVE-2026-63374 | GHSA-82r6-8w77-94w6 (GitHub rates it CRITICAL, CVSS 4.0 only) | yes |
+| anyio below 4.14.2, process-pool workers | CVE-2026-64847 | GHSA-5p39-cfhj-2xmp (GitHub rates it MODERATE, CVSS 4.0 only) | yes |
 | OpenHands Software Agent SDK below 1.52.0 | CVE-2026-112346 | none yet | no; [AAK-AGENT-SERVER-NOAUTH-001](AAK-AGENT-SERVER-NOAUTH-001.md) reads its launchers |
 | NVIDIA NeMo Agent Toolkit | CVE-2026-65145 | none yet | no |
 | Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-110186 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |

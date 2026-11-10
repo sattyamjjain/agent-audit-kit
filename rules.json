@@ -2372,7 +2372,7 @@
       "cve_references": [],
       "description": "A lockfile resolves, a manifest pins, or a site-packages directory has installed a PyPI or npm release that an OSV advisory lists as affected. vLLM 0.31.1 and MLflow 3.16.0 locked in a project passed every rule on 0.6.28 (28 Oct 2026), although CVEs against both were published on 26 and 27 Oct, because AAK knew a vulnerable release only through a hand-written pin. The rule reads the offline advisory feed `aak update` builds from the OSV exports it already downloads for the malicious-release feed: every PyPI and npm record that is not `MAL-` or withdrawn and has a range or a version list. OSV can lag a CNA by days: IBM's Langflow OSS CVEs of 29 Oct 2026, CVSS 9.8, had no OSV package record while NVD carried IBM's affected range, so the feed also holds entries converted from NVD's records of CNA version data, for the CVEs OSV has no package record of. A scan reads the copy cached at `~/.agent-audit-kit/advisories.json`, else the records bundled with AAK, and never touches the network. The finding carries the advisory's severity: CRITICAL from a CVSS 3.x base score of 9.0, HIGH from 7.0, MEDIUM below that or unscored, and INFO for a manifest range that admits affected and unaffected releases.",
       "incident_references": [],
-      "limitations": "Reads what AAK-MALICIOUS-RELEASE-001 reads, anywhere outside AAK's skip directories: the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1); declarations in requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs; and `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches; with `--include-user-config` also the packages in this host's npx cache and uv's tool environments, read as AAK-MALICIOUS-RELEASE-001 reads them and reported with the cache path. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside `>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label is reported MEDIUM. A declaration without a version is not judged (an MCP config launch without one is AAK-KNOWN-VULN-003's), and a range is read on release triples, as the pin table reads ranges, so a pre-release bound counts as its release. A range that admits affected and unaffected releases is one INFO finding naming at most five advisories, and none when a lockfile in the same directory resolves the package. A PYSEC record and its GHSA twin are one advisory, reported under the GHSA id; two GHSA records are never merged. Where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, as most version pins do, only that rule's finding is kept; an advisory without a CVE id is always reported. A lockfile is read for its first 64 distinct releases of a package. NVD's records are read by `aak update` for the last 120 days of modifications (`--nvd-days`), and each run's entries replace the last run's, so a record last modified before that window leaves the feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's root with a `packageName`, which must agree with a page's name), or a row of the reviewed `data/cna_package_map.json` matching its repository or its vendor and product (four rows on 2 Nov 2026), never through a name alone; one that maps to none of these is dropped and counted. A CNA version written as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where semver has a first version after x. NVD's CPE data, other text, a version type other than semver, custom or python, and a `defaultStatus: affected` whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for the package names is dropped for OSV's. The bundled records are the two OSV advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub, so without `aak update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL records and says so. `.egg-info` installs, `node_modules`, conda metadata and image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is not read.",
+      "limitations": "Reads what AAK-MALICIOUS-RELEASE-001 reads, anywhere outside AAK's skip directories: the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1); declarations in requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs; and `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches; with `--include-user-config` also the packages in this host's npx cache and uv's tool environments, read as AAK-MALICIOUS-RELEASE-001 reads them and reported with the cache path. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside `>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label is reported MEDIUM. A declaration without a version is not judged (an MCP config launch without one is AAK-KNOWN-VULN-003's), and a range is read on release triples, as the pin table reads ranges, so a pre-release bound counts as its release. A range that admits affected and unaffected releases is one INFO finding naming at most five advisories, and none when a lockfile in the same directory resolves the package. A PYSEC record and its GHSA twin are one advisory, reported under the GHSA id; two GHSA records are never merged. Where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, as most version pins do, only that rule's finding is kept; an advisory without a CVE id is always reported. A lockfile is read for its first 64 distinct releases of a package. NVD's records are read by `aak update` for the last 120 days of modifications (`--nvd-days`), and each run's entries replace the last run's, so a record last modified before that window leaves the feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's root with a `packageName`, which must agree with a page's name), or a row of the reviewed `data/cna_package_map.json` matching its repository or its vendor and product (four rows on 2 Nov 2026), never through a name alone; one that maps to none of these is dropped and counted. A CNA version written as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where semver has a first version after x. NVD's CPE data, other text, a version type other than semver, custom or python, and a `defaultStatus: affected` whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for the package names is dropped for OSV's. The bundled records are the two OSV advisories of 27 and 28 Oct 2026 against vLLM and MLflow, the two against anyio below 4.14.2, and nine entries from NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub, so without `aak update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL records and says so. `.egg-info` installs, `node_modules`, conda metadata and image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2380,7 +2380,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the finding says the fix is on a date line npm has deprecated, take a current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few.",
+      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the finding says the fix is on a date line npm has deprecated, take a current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few. Where the finding says a parent pins the release exactly, the upgrade needs an override: `[tool.uv] override-dependencies` or a pip constraint.",
       "rule_id": "AAK-KNOWN-VULN-001",
       "sarif_name": "KnownVulnerableRelease",
       "severity": "critical",
@@ -8968,6 +8968,35 @@
       "title": "Google MCP Toolbox 1.2.0 to 1.4.x: the Cloud Storage tools take any bucket and any local path"
     },
     {
+      "adversa_references": [
+        "ADV-NETWORK-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-11624"
+      ],
+      "description": "MCP Toolbox for Databases before 0.25.0 had no way to validate the `Host` a request names, so a page in a browser could rebind a name to its listener (CVE-2026-11624, CWE-346, GHSA-76g7-m3xw-x9gr). 0.25.0 added `--allowed-hosts` beside `--allowed-origins`, and both still default to `*`, so the server only warns at startup and upgrading closes nothing by itself. This rule reports `@toolbox-sdk/server` below 0.25.0, and an MCP config that starts the server on a network listener with either flag unset or `*`.",
+      "incident_references": [],
+      "limitations": "The version half reads `@toolbox-sdk/server` where a package.json, lockfile or MCP config states a version; `latest` states none and is not reported, and the Go module is not read. The launch half reads the `command` and `args` of servers in `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.json` anywhere outside AAK's skip directories, for `npx @toolbox-sdk/server` or a program named `toolbox`. A launch with `--stdio` is not read, and neither is a shell script, a compose file or a Kubernetes manifest. A flag given a variable reference counts as set, and a list holding `*` beside other names counts as open. The rule reads the flags, not the reverse proxy in front of the listener. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `@toolbox-sdk/server` to 0.25.0 or later and pin it, and start the server with both `--allowed-hosts` and `--allowed-origins` naming your real hosts and origins. A client that starts the server itself can use `--stdio`, which has no listener.",
+      "rule_id": "AAK-MCP-TOOLBOX-HOSTS-001",
+      "sarif_name": "McpToolboxOpenHostCheck",
+      "severity": "medium",
+      "title": "MCP Toolbox for Databases on a network listener with an open Host or Origin check"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
@@ -9166,6 +9195,35 @@
       "sarif_name": "McpTypeScriptSdkTaskStoreSessionScope",
       "severity": "high",
       "title": "MCP TypeScript SDK 1.24.0 to 1.31.0: experimental tasks are not tied to the session that created them"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-08"
+      ],
+      "aicm_references": [
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-111768"
+      ],
+      "description": "The official MCP TypeScript SDK's HTTP servers put no limit on how many array elements and object keys they validated in one request, so one request inside the default 4 MiB limit could exhaust the server's memory, and the process aborted with `JavaScript heap out of memory` (CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453). No credentials are needed unless requests are authenticated before they reach the SDK. It affects `@modelcontextprotocol/sdk` 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected.",
+      "incident_references": [],
+      "limitations": "Reports `@modelcontextprotocol/sdk` from 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` from 2.0.0 up to 2.3.0 where a package.json, lockfile or MCP config states the version, reporting a range that admits an affected version. `latest` is fixed and states no version, so it is not reported. It reads the version, not the code: a fixed release without `maxToolInputElements` set, which the advisory says is still exposed, is not reported, and a stdio-only server on an affected version is reported without being exposed. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI08"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade to `@modelcontextprotocol/sdk` 1.32.0 or `@modelcontextprotocol/server` 2.3.0 or later and pin it. The advisory says upgrading alone changes nothing, because the patched versions add an option that is off by default: set `maxToolInputElements` on `McpServer` just above the largest input your tools need, and lower `maxRequestBodySize` on the transport, or your own body parser's limit, to what they need. If you cannot upgrade yet, make the second change.",
+      "rule_id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+      "sarif_name": "McpTypeScriptSdkValidationMemory",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: one HTTP request within the size limit can exhaust server memory during validation"
     },
     {
       "adversa_references": [],

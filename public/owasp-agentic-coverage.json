@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-10T08:17:16Z",
+  "last_updated": "2026-11-10T08:24:07Z",
   "aak_version": "0.6.32",
-  "rule_count": 445,
+  "rule_count": 447,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2440,7 +2440,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 228,
+      "rule_density": 229,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4494,6 +4494,16 @@
           ]
         },
         {
+          "id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111768"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-UFO-CVE-2026-73296-001",
           "severity": "critical",
           "cve_references": [
@@ -6127,7 +6137,7 @@
     {
       "asi_id": "ASI07",
       "title": "Insecure Inter-Agent Communication",
-      "rule_density": 24,
+      "rule_density": 25,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -6311,6 +6321,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-TOOLBOX-HOSTS-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-11624"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TUNNEL-002",
           "severity": "high",
           "cve_references": [],
@@ -6367,7 +6388,7 @@
     {
       "asi_id": "ASI08",
       "title": "Cascading Failures",
-      "rule_density": 9,
+      "rule_density": 10,
       "rules": [
         {
           "id": "AAK-A2A-009",
@@ -6455,6 +6476,16 @@
             "CVE-2026-84289"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111768"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-TASKS-004",

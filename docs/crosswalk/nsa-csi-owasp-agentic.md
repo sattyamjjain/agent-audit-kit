@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (445 total; 407 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (447 total; 409 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -331,6 +331,7 @@ Every AgentAuditKit rule (445 total; 407 mapped) against two agentic-security st
 | `AAK-MCP-TOOL-UNSAFE-EVAL-001` | critical | tool-poisoning | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-MCP-TOOLBOX-CVE-2026-102242-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-TOOLBOX-CVE-2026-93328-001` | critical | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-MCP-TOOLBOX-HOSTS-001` | medium | supply-chain | Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |
 | `AAK-MCP-TOOLGATE-ASYMMETRY-001` | high | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-MCP-TOOLS-LIST-UNBOUNDED-001` | medium | mcp-config | Instrument for logging and detection | ASI08 Cascading Failures |
 | `AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001` | critical | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
@@ -338,6 +339,7 @@ Every AgentAuditKit rule (445 total; 407 mapped) against two agentic-security st
 | `AAK-MCP-TRINITY-CVE-2026-108756-001` | medium | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-TSSDK-CVE-2026-104850-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-TSSDK-CVE-2026-111767-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-MCP-TSSDK-CVE-2026-111768-001` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Instrument for logging and detection; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI08 Cascading Failures |
 | `AAK-MCP-TUNNEL-001` | critical | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-MCP-TUNNEL-002` | high | mcp-config | Design for boundaries; Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |
 | `AAK-MCP-TUNNEL-003` | critical | mcp-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |

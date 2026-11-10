@@ -18,6 +18,48 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-07 (unreleased): four advisories no issue named
+
+None of these was filed by the watcher; they came up in threads on other projects. Each is
+read here against OSV and NVD's API record, read on 2026-11-07. Advisory text is quoted from the
+record. Every pin was measured with the scanner on a firing fixture and a negative one.
+
+**MCP TypeScript SDK (CVE-2026-111768) gets `AAK-MCP-TSSDK-CVE-2026-111768-001`.** GHSA-46jr-4wx8-v453:
+"servers put no limit on how many array elements and object keys they validated in one request. One
+HTTP request within the default 4 MiB size limit could exhaust the server's memory". It affects
+`@modelcontextprotocol/sdk` 1.3.0 to below 1.32.0 and `@modelcontextprotocol/server` 2.0.0 to below
+2.3.0. The advisory also says "Upgrading alone changes nothing": the patched versions add
+`maxToolInputElements`, off by default, so the remediation says to set it, and the limitations say the
+rule reads the version and not that option. It is its own rule because its range and fix differ
+from the two SDK pins beside it, and 1.31.0 fires with the task-store pin.
+
+**MCP Toolbox for Databases (CVE-2026-11624) gets `AAK-MCP-TOOLBOX-HOSTS-001`.** NVD: "Prior to the
+v0.25.0 release, users had no way to validate the origin's host. In v0.25.0, a new
+"--allowed-hosts" flag was introduced alongside the existing "--allowed-origins" flag". Both default to
+`*`, checked in the source at v0.24.0, v0.25.0 and v1.16.0. OSV lists the Go module only. npm's
+`@toolbox-sdk/server` runs the binary of its own version, and has releases from 0.21.0, so the
+pin reads it below 0.25.0. The same rule reads an MCP config that starts the server on a network
+listener with either flag unset or `*`, since an upgrade alone leaves both open. The CNA scores it
+9.4 in CVSS 4.0; the rule is MEDIUM because a page in a browser has to reach a listener the launch
+exposes, and the launch half reports configuration rather than a release.
+
+**anyio below 4.14.2 (CVE-2026-63374, CVE-2026-64847) joins the bundled advisory feed.** Python MCP
+servers get anyio through the SDK. GHSA-82r6-8w77-94w6: "TLSStream IDNA 2003 host name encoding enables
+potential TLS certificate spoofing", which GitHub rates CRITICAL, in CVSS 4.0 only.
+GHSA-5p39-cfhj-2xmp: "AnyIO process-pool workers can block indefinitely on undrained stderr", MODERATE.
+Both records are bundled unedited, so `AAK-KNOWN-VULN-001` reports them without `aak update`: a
+uv.lock on 4.12.1 fires and one on 4.14.2 does not. browser-use 0.13.14 requires `anyio==4.12.1`, so
+that project's finding says to raise its own pin, and a poetry.lock showing another package pinning the
+release says the upgrade needs an override. A uv.lock records requirements for workspace members
+only, so a registry parent's pin is not visible there.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-111768 | 7.5 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/server` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111768-001` (HIGH): sdk 1.3.0 to 1.32.0, server 2.0.0 to 2.3.0, a stated version required. | not filed |
+| CVE-2026-11624 | 9.4 (4.0) | `@toolbox-sdk/server` (npm) | **New rule** `AAK-MCP-TOOLBOX-HOSTS-001` (MEDIUM): below 0.25.0, and a launch with either flag open. | not filed |
+| CVE-2026-63374 | 9.3 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, CRITICAL. No pin. | not filed |
+| CVE-2026-64847 | 6.8 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, MEDIUM. No pin. | not filed |
+
 ## 2026-11-07 (unreleased): #1152 to #1156
 
 Five issues the watcher filed on 31 Oct, deferred for 0.6.31 with no scope claimed. Each is
