@@ -694,7 +694,7 @@ def test_aak_update_reads_nvd_into_the_feed(offline_osv: None, monkeypatch: pyte
     assert ("3 carry CNA version data: 2 name a PyPI, npm, Go or crates.io package or software a launch row lists (4 package and 0 "
             "launch entries), 1 name none that maps and are dropped") in result.output
     assert "The CNA (vendor, product) pairs most often mapped to nothing: nobody / nothing (1)." in result.output
-    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
+    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0, crates.io 0, Go 0)" in result.output
     assert "NVD CNA records: 4 package and 0 launch entries, 0 more dropped because OSV already lists their CVE." in (
         result.output)
     data = _cached()
@@ -724,7 +724,7 @@ def test_an_nvd_outage_keeps_the_cached_nvd_entries_and_rebuilds_osv(offline_osv
     assert result.exit_code == 2, result.output
     assert "NVD read failed: URLError: <urlopen error offline>. The advisory feed is rebuilt from OSV and keeps " \
            "the 1 NVD entries of the cached feed and the 3 launch entries of the bundled feed." in result.output
-    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
+    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0, crates.io 0, Go 0)" in result.output
     data = _cached()
     assert [e["id"] for e in data["entries"]] == ["GHSA-aaaa-bbbb-cccc"]  # the OSV half, rebuilt
     assert data["nvd"] == cached_nvd and data["nvd_window"] == window

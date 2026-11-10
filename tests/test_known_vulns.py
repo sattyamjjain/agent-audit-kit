@@ -389,7 +389,7 @@ def test_one_download_of_each_export_builds_both_feeds() -> None:
     malicious = malicious_feed.load_feed()
     assert malicious.match("PyPI", "aak-evil", "1.0.0") and not malicious.match("PyPI", "aak-flawed", "1.0.0")
     advisories = advisory_feed.load_feed()
-    assert advisories.origin == "cached" and written.counts == {"PyPI": 1, "npm": 0}
+    assert advisories.origin == "cached" and written.counts == {"PyPI": 1, "npm": 0, "crates.io": 0, "Go": 0}
     assert [a.id for a in advisories.match("PyPI", "aak-flawed", "1.9.9")] == ["GHSA-aaaa-bbbb-cccc"]
     assert advisories.match("PyPI", "aak-evil", "1.0.0") == []
     assert not list(written.path.parent.glob(".advisories-*")) and not list(written.path.parent.glob(".osv-export-*"))
@@ -417,9 +417,9 @@ def test_aak_update_reports_both_feeds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 3 entries" in result.output  # MAL-2026-9001 and the two bundled ones
-    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0)" in result.output
-    assert len(calls) == 4  # PyPI and npm for both feeds, Go and crates.io for the advisory feed alone
+    assert "Malicious-release feed updated: 4 entries" in result.output  # MAL-2026-9001 and the three bundled ones
+    assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0, crates.io 0, Go 0)" in result.output
+    assert len(calls) == 4  # PyPI, npm, crates.io and Go, each once, read by both feeds
 
 
 def test_aak_update_keeps_the_advisory_feed_when_the_download_fails(monkeypatch: pytest.MonkeyPatch,

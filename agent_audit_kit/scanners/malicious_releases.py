@@ -91,7 +91,8 @@ _LOCKFILES = {
     "npm-shrinkwrap.json": ("npm", "package-lock.json"),
     "pnpm-lock.yaml": ("npm", "pnpm-lock.yaml"),
     "yarn.lock": ("npm", "yarn.lock"),
-    # Advisories only: the malicious-release feed lists no Go or crates.io name, so its reader stops here.
+    # Matched against the feed's crates.io and Go entries (MAL-2026-18776, env-test-guard), through
+    # the readers AAK-KNOWN-VULN-001 uses; go.sum is not read.
     "go.mod": ("Go", "go.mod"),
     "cargo.lock": ("crates.io", "cargo.lock"),
 }
@@ -285,6 +286,9 @@ def _lockfile_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
     if not wanted:
         return []
     findings: list[Finding] = []
+    # A go.mod's `require` states a minimum, which the build may raise, so it "requires"
+    # a version where a lockfile "resolves" one (as AAK-KNOWN-VULN-001 words it).
+    verb = "requires" if reader_name == "go.mod" else "resolves"
     for name, rows in sorted(_lockfile_raw_entries(text, reader_name, wanted).items()):
         reported: set[str] = set()
         for line, version in rows:
@@ -296,7 +300,7 @@ def _lockfile_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
             for release in feed.match(ecosystem, name, version or None):
                 findings.append(make_finding(
                     _RULE, rel,
-                    f"{path.name} resolves {name} {version}, a malicious release: "
+                    f"{path.name} {verb} {name} {version}, a malicious release: "
                     f"{release.describe(version)}{_feed_note(feed, release.url)}",
                     line,
                 ))

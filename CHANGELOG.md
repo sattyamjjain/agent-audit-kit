@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The malicious-release feed reads crates.io and Go. `aak update` keeps the `MAL-` records of OSV's crates.io and Go exports, out of the same downloads the advisory feed reads, so each export is fetched once for both feeds, and `--github-malware` also pages GitHub's `rust` and `go` malware advisories. AAK-MALICIOUS-RELEASE-001 matches them against `Cargo.lock` (a crate's `-` and `_` alike) and the `require` lines of `go.mod` (a Go `v1.2.3` is `1.2.3`); `go.sum` is not read. The bundled feed lists OSV MAL-2026-18776, the crate env-test-guard 0.2.0 and 0.3.0 (GitHub's GHSA-7w47-jmjx-gvm2, 9 Nov 2026), whose `GitEnv::detect()` sends CI tokens off a runner, so a `Cargo.lock` resolving either is reported without `aak update`. A failed crates.io or Go download now fails `aak update` as a PyPI or npm one does, and both cached feeds stay as they were.
+
 ## [0.6.33] - 2026-11-07
 
 ### Added
