@@ -132,5 +132,5 @@ local-commander-agent: MAL-2026-18425 (GHSA-7j62-5j84-72fv) lists local-commande
 0.3.52 (https://osv.dev/vulnerability/MAL-2026-18425). An unpinned launch runs whichever
 release the registry or the launcher's cache hands it. Pin a release outside the list,
 and check the launcher cache (`aak scan --include-user-config` reads npx's and uv's).
-Feed: the bundled copy generated 2026-11-01T10:12:39Z.
+Feed: the bundled copy generated 2026-11-10T05:17:37Z.
 ```

@@ -175,7 +175,7 @@ A public leaderboard of scanned public MCP servers, with per-server grade cards
 and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md):
 [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/).
 
-<!-- index-cadence -->Last published snapshot: **2026-11-02** (13 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
+<!-- index-cadence -->Last published snapshot: **2026-11-09** (14 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
 
 ## CVE response
 
@@ -193,7 +193,7 @@ Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
 Four of them read what an install leaves behind, not only what the repository declares:
 
 - `startup_hooks` flags Python startup hooks (`.pth` lines that run code, `.start` entry points, `sitecustomize`) in site-packages, inside virtualenvs and [unpacked image root filesystems](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/scan-image-rootfs.md) included, Dockerfiles that add them, and npm install scripts in MCP projects.
-- `malicious_releases` checks declared, locked and installed versions and image digests against an offline feed of published malware (OSV `MAL-` records), which `aak update` refreshes; scans stay offline ([AAK-MALICIOUS-RELEASE-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MALICIOUS-RELEASE-001.md)). An MCP config that launches a listed package with no version (`npx -y local-commander-agent`) is reported too, since it runs whatever release it is handed ([AAK-MALICIOUS-RELEASE-002](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MALICIOUS-RELEASE-002.md)), and `--include-user-config` also checks what npx and uvx already cached on the machine.
+- `malicious_releases` checks declared, locked and installed versions and image digests against an offline feed of published malware (OSV `MAL-` records), which `aak update` refreshes; scans stay offline ([AAK-MALICIOUS-RELEASE-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MALICIOUS-RELEASE-001.md)). A repository the feed lists whole, such as the backdoored `tomicdd/artex` image, is reported wherever an `image:`, Helm `repository:` or `FROM` names it, whatever the tag. An MCP config that launches a listed package with no version (`npx -y local-commander-agent`) is reported too, since it runs whatever release it is handed ([AAK-MALICIOUS-RELEASE-002](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MALICIOUS-RELEASE-002.md)), and `--include-user-config` also checks what npx and uvx already cached on the machine.
 - `malicious_extensions` checks the extensions a VS Code-based editor (Cursor, VS Code) has installed in a home directory, a dev container or an image's `home/*/`, and with `--include-user-config` your own, against the same feed, by version or by the digest of a tampered file, such as the trojanized Claude Code extension Cursor's marketplace served on 29 Oct 2026 ([AAK-MALICIOUS-EXTENSION-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MALICIOUS-EXTENSION-001.md)).
 - `known_vulns` checks the same locked, pinned and installed PyPI and npm releases against OSV's advisories, kept by `aak update` from the same downloads, and against NVD's records of CNA version data for the CVEs OSV has no package record of yet, so a release with a published advisory is reported without anyone writing a pin for it ([AAK-KNOWN-VULN-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-KNOWN-VULN-001.md)). An NVD record names its package by packageURL, by a PyPI or npm `collectionURL` with its `packageName`, or by a reviewed map row, never by a name alone.
 
@@ -203,7 +203,7 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
 
-<!-- test-count:total -->5,076<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->5,091<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->442<!-- /rule-count --> rules

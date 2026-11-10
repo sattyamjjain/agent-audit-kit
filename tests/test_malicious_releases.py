@@ -177,6 +177,160 @@ def test_a_digest_matches_under_any_registry_name(tmp_path: Path) -> None:
     assert _found(tmp_path) == {("Dockerfile", 1)}
 
 
+# ---- whole-repository image entries (ARTEX, The Hacker News, 5 Nov 2026) ---------------------
+
+ARTEX = "ARTEX-2026-11-05-TOMICDD"
+ARTEX_TWIN = "ARTEX-2026-11-05-CONGDONGLINUX"
+OTHER_DIGEST = "sha256:" + "b" * 64
+
+
+@pytest.mark.parametrize("reference", [
+    "tomicdd/artex", "tomicdd/artex:latest", "docker.io/tomicdd/artex:v2", "TomicDD/Artex",
+    f"index.docker.io/tomicdd/artex@{OTHER_DIGEST}", "registry-1.docker.io/tomicdd/artex",
+    "docker.io/tomicdd/artex:v2@" + OTHER_DIGEST,
+])
+def test_every_spelling_of_the_repository_is_one_name(reference: str) -> None:
+    assert malicious_feed.canonical_repository(reference) == "docker.io/tomicdd/artex"
+    assert malicious_feed.load_feed().repository(reference).id == ARTEX
+
+
+@pytest.mark.parametrize("reference", [
+    "tomicdd/artex-pro", "tomicdd/artex2", "nottomicdd/artex", "ghcr.io/tomicdd/artex", "artex",
+    "tomicdd/artex/sub", "${REGISTRY}/tomicdd/artex", "",
+])
+def test_a_lookalike_or_another_registrys_repository_is_not_listed(reference: str) -> None:
+    assert malicious_feed.load_feed().repository(reference) is None
+
+
+def test_docker_rules_for_registries_ports_and_library() -> None:
+    canonical = malicious_feed.canonical_repository
+    assert canonical("artex") == canonical("library/artex") == canonical("docker.io/library/artex:1")
+    assert canonical("artex") == "docker.io/library/artex"
+    assert canonical("localhost:5000/team/app:1.0") == "localhost:5000/team/app"
+    assert canonical("localhost/app") == "localhost/app"
+    assert canonical("registry.example.net:443/a/b@" + OTHER_DIGEST) == "registry.example.net:443/a/b"
+
+
+def test_a_compose_image_by_tag_reports_its_line(tmp_path: Path) -> None:
+    (tmp_path / "docker-compose.yml").write_text(
+        "services:\n  console:\n    image: tomicdd/artex:latest\n    ports: ['8080:8080']\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert (finding.file_path, finding.line_number) == ("docker-compose.yml", 3)
+    assert finding.evidence == (
+        "`tomicdd/artex:latest` runs docker.io/tomicdd/artex, which ARTEX-2026-11-05-TOMICDD lists as a "
+        "repository that ships only malicious builds "
+        "(https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html). Feed: the bundled "
+        f"copy generated {malicious_feed.load_feed().generated_at}. Treat a host that ran it as compromised."
+    )
+
+
+def test_a_dockerfile_from_with_a_platform_flag_reports(tmp_path: Path) -> None:
+    (tmp_path / "Dockerfile").write_text(
+        "FROM --platform=linux/amd64 docker.io/tomicdd/artex\nRUN echo tomicdd/artex\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 1 and finding.evidence.startswith("`docker.io/tomicdd/artex` runs ")
+
+
+def test_a_kubernetes_image_by_digest_reports_once(tmp_path: Path) -> None:
+    (tmp_path / "deploy.yaml").write_text(
+        "spec:\n  containers:\n    - name: console\n"
+        f"      image: congdonglinux/artex@{OTHER_DIGEST}\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 4 and ARTEX_TWIN in finding.evidence
+    assert finding.evidence.startswith(f"`congdonglinux/artex@{OTHER_DIGEST}` runs docker.io/congdonglinux/artex")
+
+
+def test_a_helm_repository_with_its_tag_reports_on_the_repository_line(tmp_path: Path) -> None:
+    (tmp_path / "values.yaml").write_text(
+        "image:\n  registry: docker.io\n  repository: tomicdd/artex\n  tag: v1\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 3 and finding.evidence.startswith("`docker.io/tomicdd/artex:v1` runs ")
+
+
+def test_a_template_tag_is_quoted_whole(tmp_path: Path) -> None:
+    (tmp_path / "compose.yaml").write_text('a:\n  image: "tomicdd/artex:${TAG}"\nb: {image: congdonglinux/artex}\n')
+    findings, _ = scan(tmp_path)
+    assert sorted((f.line_number, f.evidence.split(" runs ")[0]) for f in findings) == [
+        (2, "`tomicdd/artex:${TAG}`"), (3, "`congdonglinux/artex`"),
+    ]
+
+
+def test_lookalikes_other_registries_comments_and_prose_are_quiet(tmp_path: Path) -> None:
+    (tmp_path / "compose.yaml").write_text(
+        "services:\n"
+        "  a:\n    image: tomicdd/artex-pro\n"
+        "  b:\n    image: tomicdd/artex2\n"
+        "  c:\n    image: ghcr.io/tomicdd/artex\n"
+        "  d:\n    # image: tomicdd/artex\n    image: nginx:1.27\n"
+        "  e:\n    command: [\"docker\", \"run\", \"tomicdd/artex\"]\n"
+    )
+    (tmp_path / "README.md").write_text("Do not run tomicdd/artex; pull the image from the vendor.\n")
+    (tmp_path / "notes.yaml").write_text("description: the tomicdd/artex image was backdoored\n")
+    assert _found(tmp_path) == set()
+
+
+def test_a_helm_repository_without_a_tag_is_not_read(tmp_path: Path) -> None:
+    (tmp_path / "values.yaml").write_text("image:\n  repository: tomicdd/artex\n  pullPolicy: Always\n")
+    assert _found(tmp_path) == set()
+
+
+def test_a_listed_digest_under_a_listed_repository_reports_once(tmp_path: Path) -> None:
+    _cached_feed([], oci=[
+        {"id": "WHOLE", "image": "docker.io/evil/app", "all_tags": True, "digests": [], "tags": []},
+        {"id": "DIGEST", "image": "docker.io/evil/app", "digests": [OTHER_DIGEST], "tags": ["v1"]},
+    ])
+    (tmp_path / "compose.yaml").write_text(f"a:\n  image: evil/app@{OTHER_DIGEST}\nb:\n  image: evil/app:v9\n")
+    findings, _ = scan(tmp_path)
+    assert sorted((f.line_number, f.evidence.split(" which ")[1].split(" ")[0]) for f in findings) == [
+        (2, "DIGEST"), (4, "WHOLE"),
+    ]
+
+
+def test_a_repository_reference_is_read_only_within_256_characters(tmp_path: Path) -> None:
+    """The reader looks back at most 256 characters for where a reference starts, so a
+    registry name longer than that is not read (the limitation says so)."""
+    near, far = "r" * 200 + ".example", "r" * 250 + ".example"
+    _cached_feed([], oci=[
+        {"id": "NEAR", "image": f"{near}/evil/app", "all_tags": True},
+        {"id": "FAR", "image": f"{far}/evil/app", "all_tags": True},
+    ])
+    (tmp_path / "compose.yaml").write_text(f"a:\n  image: {near}/evil/app:1\nb:\n  image: {far}/evil/app:1\n")
+    findings, _ = scan(tmp_path)
+    assert [(f.line_number, "NEAR" in f.evidence) for f in findings] == [(2, True)]
+
+
+def test_all_tags_counts_only_a_real_bool(tmp_path: Path) -> None:
+    feed = malicious_feed.parse_feed({"entries": [], "oci": [
+        {"id": "STRING", "image": "docker.io/evil/one", "all_tags": "yes", "digests": []},
+        {"id": "ONE", "image": "docker.io/evil/two", "all_tags": 1, "digests": []},
+        {"id": "REAL", "image": "evil/three", "all_tags": True},
+    ]}, "cached", tmp_path / "feed.json")
+    assert sorted(feed.repositories) == ["docker.io/evil/three"]
+    assert feed.repository("evil/one") is None and feed.repository("evil/two") is None
+
+
+def test_an_entry_without_all_tags_or_digests_indexes_nothing(tmp_path: Path) -> None:
+    feed = malicious_feed.parse_feed({"entries": [], "oci": [
+        {"id": "EMPTY", "image": "docker.io/evil/app", "all_tags": False, "digests": [], "tags": ["latest"]},
+        {"id": "TEMPLATE", "image": "${REGISTRY}/evil/app", "all_tags": True},
+    ]}, "cached", tmp_path / "feed.json")
+    assert feed.images == {} and feed.repositories == {}
+    assert feed.repository("evil/app:latest") is None
+
+
+def test_existing_image_entries_still_build_with_positional_fields() -> None:
+    image = malicious_feed.Image("ID", "docker.io/a/b", frozenset(), (), "")
+    assert image.all_tags is False
+
+
 # ---- the feed and its load order ------------------------------------------------------------
 
 
@@ -192,8 +346,17 @@ def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     assert malicious_feed.osv_entries(record, "npm") == [local_commander]
     assert local_commander["versions"] == ["0.3.52"] and local_commander["aliases"] == ["GHSA-7j62-5j84-72fv"]
     assert "MAL-2026-2144" in data["source"] and "MAL-2026-18425" in data["source"]
-    (image,) = data["oci"]
-    assert image["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
+    images = {image["id"]: image for image in data["oci"]}
+    assert images["LITELLM-2026-10-21"]["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
+    # The two repositories The Hacker News calls backdoored, listed whole: it names no
+    # tag and no digest, and the six other namespaces it names are not called backdoored.
+    artex = "https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html"
+    assert {key: (image["image"], image["all_tags"], image["digests"], image["tags"], image["url"])
+            for key, image in images.items() if image.get("all_tags")} == {
+        "ARTEX-2026-11-05-TOMICDD": ("docker.io/tomicdd/artex", True, [], [], artex),
+        "ARTEX-2026-11-05-CONGDONGLINUX": ("docker.io/congdonglinux/artex", True, [], [], artex),
+    }
+    assert artex in data["source"]
 
 
 def test_the_cached_feed_is_read_first_and_a_broken_one_is_skipped(tmp_path: Path) -> None:
@@ -285,9 +448,13 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
         "MAL-2026-1", "MAL-2026-18425", "MAL-2026-2144", "MAL-2026-3", "MAL-2026-4",
     ]
     assert data["oci"][0]["digests"] == [DIGEST]
+    assert [image["id"] for image in data["oci"] if image.get("all_tags") is True] == [
+        "ARTEX-2026-11-05-TOMICDD", "ARTEX-2026-11-05-CONGDONGLINUX",
+    ]
     assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "bundled": 2}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
+    assert feed.repository("tomicdd/artex:latest").id == "ARTEX-2026-11-05-TOMICDD"
     assert feed.match("npm", "aak-squat", "9.9.9") and feed.match("npm", "aak-ranged", "1.2.5")
     assert not feed.match("npm", "aak-ranged", "1.3.0")
     assert not list(done.path.parent.glob(".osv-export-*")) and not list(done.path.parent.glob(".malicious-*"))

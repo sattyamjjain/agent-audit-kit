@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-01T10:12:39Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 and MAL-2026-18425 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28 and 2026-11-01, the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01). `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
+  "generated_at": "2026-11-10T05:17:37Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144 and MAL-2026-18425 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28 and 2026-11-01, the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI and npm.",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -29,6 +29,24 @@
       "tags": ["v1.107.0", "latest", "main-latest", "main-stable"],
       "url": "https://docs.litellm.ai/blog/security-incident-oct-21-2026",
       "note": "The post names the Docker Hub tags and this image index digest (compromised from 11:46:56 to 14:20 UTC on 2026-10-21) without the repository; docker.io/litellm/litellm carries those four tags (v1.107.0 removed, the rest repointed), and docker.io/berriai/litellm does not exist (404 on 2026-10-28). The post's GHCR digests are truncated, so none is listed. A digest is matched whatever registry name a reference gives it, since a digest names content; the tags are listed for the record and never matched."
+    },
+    {
+      "id": "ARTEX-2026-11-05-TOMICDD",
+      "image": "docker.io/tomicdd/artex",
+      "all_tags": true,
+      "digests": [],
+      "tags": [],
+      "url": "https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html",
+      "note": "The Hacker News (5 Nov 2026): this Docker Hub image of the ARTEX AI console, downloaded 9,000 times, adds a hidden verifyCaptcha() to the login handler, which runs the rest of a CAPTCHA value that starts with a secret marker through sh -c as root before any credential check. 62 ARTEX consoles served the backdoored build between 2 and 4 Nov 2026, and a modified GitHub copy of ARTEX changed one docker-compose.yml line to pull this image. The article names no tag and no digest, so every reference to the repository is matched."
+    },
+    {
+      "id": "ARTEX-2026-11-05-CONGDONGLINUX",
+      "image": "docker.io/congdonglinux/artex",
+      "all_tags": true,
+      "digests": [],
+      "tags": [],
+      "url": "https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html",
+      "note": "The Hacker News (5 Nov 2026) calls this Docker Hub image also backdoored and identical to tomicdd/artex: the same hidden verifyCaptcha() in the login handler. The article names no tag and no digest. It also names six other namespaces that publish an artex image without calling them backdoored; none of those is listed."
     }
   ],
   "extensions": [

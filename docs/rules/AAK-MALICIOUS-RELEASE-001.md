@@ -10,7 +10,7 @@
 | Scanner | `agent_audit_kit/scanners/malicious_releases.py` |
 | OWASP MCP | MCP04:2025 (Software Supply Chain Attacks & Dependency Tampering) |
 | OWASP Agentic | ASI04 (Agentic Supply Chain Vulnerabilities), ASI05 (Unexpected Code Execution) |
-| Incident | litellm 1.107.0, 21 Oct 2026 ([OSV MAL-2026-2144](https://osv.dev/vulnerability/MAL-2026-2144), [LiteLLM's post](https://docs.litellm.ai/blog/security-incident-oct-21-2026)) |
+| Incident | litellm 1.107.0, 21 Oct 2026 ([OSV MAL-2026-2144](https://osv.dev/vulnerability/MAL-2026-2144), [LiteLLM's post](https://docs.litellm.ai/blog/security-incident-oct-21-2026)); the ARTEX AI images on Docker Hub, 5 Nov 2026 ([The Hacker News](https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html)) |
 
 ## What it catches
 
@@ -26,6 +26,10 @@ A release that a source has published as malware, wherever the project names it:
 - an image reference by digest, such as
   `litellm/litellm@sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e`,
   in a Dockerfile, a compose or Kubernetes file, or an MCP config;
+- any reference to a repository the feed lists whole, because an attacker owns
+  it and every build is the payload: `image: tomicdd/artex:latest` in a compose
+  or Kubernetes file, a Helm `repository:` with its `tag:`, or
+  `FROM docker.io/tomicdd/artex`, by any tag, by digest or bare;
 - with `aak scan --include-user-config`, a release a launcher fetched onto this
   host: a package in npm's npx cache
   (`<npm cache>/_npx/<hash>/node_modules/<name>/package.json`) or a
@@ -53,6 +57,12 @@ read and when it was generated.
   the image index digest from LiteLLM's incident post. That post names the
   Docker Hub tags without the repository; `docker.io/litellm/litellm` carries
   them. Its GHCR digests are truncated, so none is listed.
+- It also lists `docker.io/tomicdd/artex` and `docker.io/congdonglinux/artex`
+  whole. [The Hacker News](https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html) reported on 5 Nov 2026 that both carry a
+  hidden `verifyCaptcha()` in the ARTEX AI console's login handler that runs
+  part of the CAPTCHA field through `sh -c` as root before any credential
+  check, and named no tag or digest. The six other namespaces it names as
+  publishing an `artex` image are not called backdoored and are not listed.
 - `aak update` rebuilds the cached copy from OSV's exports for PyPI and npm
   (about 260 MB), keeping only `MAL-` records, the OpenSSF Malicious Packages
   data: 11,960 PyPI and 222,857 npm records on 2026-10-28, withdrawn ones dropped.
@@ -69,8 +79,14 @@ read and when it was generated.
 - A range, or a declaration with no version, matches only an entry that lists
   every release of a package (most typosquats). A range does not say which
   release was installed.
-- An image tag never matches, only a digest, and a digest matches whatever
-  registry name the reference gives it.
+- An image tag never matches a digest entry, only a digest, and a digest
+  matches whatever registry name the reference gives it.
+- A whole-repository entry matches its repository by any tag, by digest or
+  bare, with Docker Hub spelt `docker.io/`, `index.docker.io/`,
+  `registry-1.docker.io/` or not at all, and only in an image slot. It does not
+  match the same path on another registry (`ghcr.io/tomicdd/artex`), a longer
+  name (`tomicdd/artex-pro`), a `docker run` argument, or the name in a comment
+  or in prose.
 - npm's `0.0.1-security` placeholder, which replaces a removed package, never
   matches.
 

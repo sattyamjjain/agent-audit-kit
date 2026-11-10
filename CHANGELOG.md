@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- AAK-MALICIOUS-RELEASE-001 reads whole-repository image entries. An `oci` entry with `"all_tags": true` names a repository that exists to ship a payload, so any reference to it in an image slot (an `image:` value, a Helm `repository:` beside its `tag:`, a Dockerfile `FROM`) is reported, by any tag, by digest or bare, with Docker Hub spelt `docker.io/`, `index.docker.io/`, `registry-1.docker.io/` or not at all. Until now the rule matched an image only by digest, which is right for a hijacked repository whose tags move back to clean builds and misses one an attacker owns, where the report names no digest at all. The bundled feed lists `docker.io/tomicdd/artex` and `docker.io/congdonglinux/artex`, the backdoored ARTEX AI images (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html): a hidden `verifyCaptcha()` in the login handler runs part of the CAPTCHA field through `sh -c` as root before any credential check, and 62 consoles served that build between 2 and 4 Nov 2026. The other namespaces the article names as publishing an `artex` image are not listed.
+
 ## [0.6.32] - 2026-11-02
 
 ### Added
