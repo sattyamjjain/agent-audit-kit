@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- 0.6.32 was tagged but never reached PyPI. Its tag's test run failed two coverage-page tests, which recomputed the trailing 90-day CVE latency figure as of the day they ran rather than the day the page was built, so a tag cut the day after a page refresh failed its own suite. They now recompute as of the page's `cve-latency-computed-on` date. The CI and release test legs also run on `ubuntu-24.04`, since `ubuntu-latest` (Ubuntu 26.04) has no Python 3.9 build and the 3.9 leg stopped at setup. Everything listed under 0.6.32 ships in 0.6.33.
 - The pin example in AAK-MCP-007 and AAK-SUPPLY-001 named `@modelcontextprotocol/server-filesystem@2025.1.1`, a release npm has never carried. Both now name 2.2.0 and say not to pin this package to a date-style version: npm marks those deprecated.
 
 ## [0.6.32] - 2026-11-02
