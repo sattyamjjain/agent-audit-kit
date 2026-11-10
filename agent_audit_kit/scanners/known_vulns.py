@@ -1,4 +1,4 @@
-"""AAK-KNOWN-VULN-001: a locked, pinned or installed package an OSV advisory lists as affected.
+"""AAK-KNOWN-VULN-001 and -003: packages a published advisory lists as affected.
 
 Four critical advisories published on 26 and 27 Oct 2026, for packages agent and
 MCP hosts install (vLLM, MLflow, the OpenHands SDK and NVIDIA's NeMo Agent
@@ -25,9 +25,28 @@ AAK-MALICIOUS-RELEASE-001 reads it:
   INFO, naming the advisories, and not at all when a lockfile in the same
   directory resolves the package, since the lockfile says what is installed.
   Ranges are read on release triples, as the pin table reads them. A
-  declaration without a version is not judged.
+  declaration without a version is not judged, except an MCP config's launch.
 * An installed `<name>-<version>.dist-info` directory in a site-packages or
   dist-packages directory the `_site_packages` walk reaches.
+* With `include_user_config` (`aak scan --include-user-config`), what the
+  launchers keep on this host (`_launcher_caches`): the packages in npm's npx
+  cache and the dist-info directories of uv's tool environments. A cached
+  release an advisory lists is an installed one, reported at the advisory's
+  severity with the cache path.
+
+AAK-KNOWN-VULN-003 is the launch the pins cannot judge. DBHub (`@bytebase/dbhub`),
+a database MCP server, is started straight from an MCP config as
+`npx -y @bytebase/dbhub`, and below 0.22.6 MySQL comment syntax slipped past its
+read-only SQL validation (GHSA-j656-3hf2-fvjc, 2 Nov 2026). Such a launch names
+no release, so -001 had nothing to judge: it runs whatever npx resolves or finds
+in its cache. -003 reports a registry launch (not a git URL or a path) that
+pins no release, with no version, a tag (`@latest`) or a range, for every
+advisory of the package whose affected releases it admits, read as
+AAK-MALICIOUS-RELEASE-002 reads a launch. It carries the advisory's severity
+when every release the launch can fetch is affected (the advisory names no end,
+or a range admits only affected releases), and MEDIUM otherwise: the release
+that runs is the one the launcher picks, which the config does not say. A launch
+pinned to one release stays -001's.
 
 A release matches as its registry orders versions (`malicious_feed.Range`):
 PEP 440 for PyPI, so MLflow's `>=3.12.0rc0, <3.17.0` takes 3.12.0rc0 and
@@ -37,7 +56,9 @@ CRITICAL from CVSS 9.0, HIGH from 7.0, MEDIUM otherwise (see
 `advisory_feed.record_severity`), INFO for a range. One finding per file,
 package and advisory, at the first entry that resolves an affected release. Where
 a uv.lock or poetry.lock shows a package pinning that release exactly, the finding says
-the fix needs an override, or, for the project's own pin, says to raise it.
+the fix needs an override, or, for the project's own pin, says to raise it. A fix
+on a date line npm has deprecated says so, for the packages the reviewed list
+`data/date_line_packages.json` names.
 
 Where a version-pin rule reports the advisory's CVEs on the same line of the same
 file (the declaration or lockfile entry both point at) at or above this
@@ -51,23 +72,29 @@ from its evidence (`evidence_cves`), the only place they are written.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import os
 import re
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.advisory_feed import Advisory, AdvisoryFeed, load_feed
-from agent_audit_kit.malicious_feed import canonical_name
+from agent_audit_kit.malicious_feed import canonical_name, version_order
 from agent_audit_kit.models import Finding, Severity
 
 from ._dependency_pins import read_text
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import MCP_SERVER_KEYS, SKIP_DIRS, loads_json, make_finding
+from ._launcher_caches import npx_cached, resolved, uv_cached
+from ._launchers import is_registry_spec, launch_head
 from ._manifest_deps import MAX_LOCKFILE_BYTES, Declaration
 from ._site_packages import site_entries, site_package_dirs
-from ._versions import Spans, intersect, interval_spans, parse_range
+from ._versions import TOP, ZERO, Spans, intersect, interval_spans, parse_range
 from .malicious_releases import _LOCKFILES, _REGISTRY, _declared, _is_manifest, _version_line, exact_pin
 from .mcp_cve_pins_2026_07 import _lockfile_raw_entries
 
 RULE = "AAK-KNOWN-VULN-001"
+RULE_LAUNCH = "AAK-KNOWN-VULN-003"
+_EVERY_RELEASE: Spans = ((ZERO, TOP),)
 #: How many distinct releases of one package a lockfile is read for. An npm
 #: lockfile nests a few copies of a package at most; 64 bounds a crafted one.
 MAX_RELEASES_PER_PACKAGE = 64
@@ -102,8 +129,8 @@ def _files(project_root: Path) -> tuple[list[Path], list[Path]]:
     return lockfiles, manifests
 
 
-def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
-    finding = make_finding(RULE, rel, evidence, line)
+def _finding(rel: str, evidence: str, line: int | None, level: str, rule: str = RULE) -> Finding:
+    finding = make_finding(rule, rel, evidence, line)
     severity = _LEVEL[level]
     return finding if finding.severity is severity else dataclasses.replace(finding, severity=severity)
 
@@ -161,10 +188,53 @@ def _override_note(parents: dict[tuple[str, str], tuple[str, bool]], name: str, 
             "(`[tool.uv] override-dependencies` or a pip constraint)")
 
 
+@functools.lru_cache(maxsize=1)
+def _date_line_packages() -> dict[tuple[str, str], dict[str, Any]]:
+    """The reviewed list of packages that left a deprecated date line for SemVer."""
+    path = Path(__file__).parent.parent / "data" / "date_line_packages.json"
+    try:
+        rows = loads_json(path.read_text(encoding="utf-8"), path)["packages"]
+    except (OSError, ValueError, KeyError):
+        return {}
+    return {(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])): row for row in rows}
+
+
+def _touches_semver_line(advisory: Advisory, first: tuple[Any, ...], line: tuple[Any, ...]) -> bool:
+    """Does the advisory place any bound or listed version between the first SemVer
+    release and the start of the date line, the releases current installs resolve to?"""
+    bounds = [key for row in advisory.ranges for key in (row.bounds or ())]
+    listed = [version_order(advisory.ecosystem, version) for version in advisory.versions]
+    return any(key is not None and first <= key < line for key in bounds + listed)
+
+
+def _left_date_line(advisory: Advisory, fixed: str) -> str:
+    """What to add when the fix an advisory names is on a date line npm deprecated.
+
+    Four npm reference servers published date versions (2025.1.14 to 2026.8.31), then
+    went back to SemVer at 1.0.0 in October 2026, and npm now marks the date line
+    deprecated. An advisory written before that names 2025.7.1 as the fix, so a project
+    on 0.6.2 was sent to a deprecated release when any SemVer one is outside the
+    advisory. This says so only for an advisory that leaves the SemVer line alone; a
+    later one that lists 1.x, or fixes in it, keeps its own wording.
+    """
+    row = _date_line_packages().get((advisory.ecosystem, canonical_name(advisory.ecosystem, advisory.name)))
+    if row is None:
+        return ""
+    fixed_key = version_order(advisory.ecosystem, fixed)
+    first = version_order(advisory.ecosystem, row["semver_from"])
+    line = version_order(advisory.ecosystem, row["date_line_from"])
+    if fixed_key is None or first is None or line is None or fixed_key < line:
+        return ""
+    if _touches_semver_line(advisory, first, line):
+        return ""
+    return (f", on the date line npm has since deprecated: {row['name']} went back to semantic versioning at "
+            f"{row['semver_from']} on {row['semver_published']}, and this advisory lists none of those releases")
+
+
 def _fix(advisory: Advisory, version: str) -> str:
     fixed = advisory.fix_for(version)
     if fixed:
-        return f"; it is fixed in {fixed}"
+        return f"; it is fixed in {fixed}{_left_date_line(advisory, fixed)}"
     last = advisory.last_affected_for(version)
     if last:  # a CNA's `lessThanOrEqual`: IBM's Langflow records end at 1.12.8 and name no fix
         return f"; the advisory lists no fixed release, and {last} as the last affected one"
@@ -227,7 +297,7 @@ def _affected_spans(advisory: Advisory) -> Spans:
 
 def _below(advisory: Advisory) -> str:
     if advisory.fixed:
-        return f", fixed in {', '.join(advisory.fixed)}"
+        return f", fixed in {', '.join(advisory.fixed)}{_left_date_line(advisory, advisory.fixed[-1])}"
     last = sorted({row.last_affected for row in advisory.ranges if row.last_affected is not None})
     return f", no fixed release listed, last affected {', '.join(last)}" if last else ", no fixed release listed"
 
@@ -259,6 +329,8 @@ def _declaration_findings(
 ) -> list[Finding]:
     findings: list[Finding] = []
     pinned = exact_pin(declaration)
+    if pinned is None and declaration.kind == "launch":
+        return _launch_findings(path, rel, feed, declaration, ecosystem, advisories, line, seen)
     spans = None if pinned is not None else parse_range(declaration.version, declaration.dialect)
     partial: list[Advisory] = []
     for advisory in advisories:
@@ -299,7 +371,96 @@ def _declaration_findings(
     return findings
 
 
-def _installed_findings(project_root: Path, feed: AdvisoryFeed, scanned: set[str]) -> list[Finding]:
+# ---- AAK-KNOWN-VULN-003: a launch that pins no release ------------------------------------
+
+
+def _affected_text(advisory: Advisory) -> str:
+    """Which releases an advisory lists, as a finding says it: `below 0.22.6`."""
+    parts: list[str] = []
+    for row in advisory.ranges:
+        start = "" if row.introduced in ("0", "") else f"from {row.introduced} "
+        if row.fixed is not None:
+            parts.append(f"{start}below {row.fixed}")
+        elif row.last_affected is not None:
+            parts.append(f"{start}through {row.last_affected}")
+        else:
+            parts.append(f"{start}onward" if start else "every release")
+    if advisory.versions:
+        listed = sorted(advisory.versions, key=lambda v: (version_order(advisory.ecosystem, v) or (), v))
+        shown = ", ".join(listed[:5]) + (f" and {len(listed) - 5} more" if len(listed) > 5 else "")
+        parts.append(f"{shown} (listed)")
+    return "; ".join(parts) or "releases it lists"
+
+
+def _open_ended(advisory: Advisory) -> bool:
+    """Does the advisory list releases with no end, so the newest release is affected too?"""
+    return any(row.fixed is None and row.last_affected is None for row in advisory.ranges)
+
+
+def _launch_fix(declaration: Declaration, ecosystem: str, advisory: Advisory) -> str:
+    if not advisory.fixed:
+        return ("The advisory names no fixed release, so every release the launch can fetch past its "
+                "start is affected: stop launching the package, or keep the flawed component unreachable.")
+    fixed = max(advisory.fixed, key=lambda v: (version_order(ecosystem, v) or (), v))
+    launcher = declaration.text[: -len(declaration.spec)].strip() if declaration.spec else declaration.text.split(" ")[0]
+    if ecosystem == "npm":
+        example = f"{launcher} -y {declaration.name}@{fixed}" if launcher == "npx" else f"{launcher} {declaration.name}@{fixed}"
+    else:
+        example = f"{launcher} {declaration.name}=={fixed}"
+    return (f"The release that runs is whichever {launcher} resolves or finds in its cache, which this config "
+            f"does not control. Pin a release outside the advisory's range: `{example}` or later.")
+
+
+def _launch_findings(
+    path: Path, rel: str, feed: AdvisoryFeed, declaration: Declaration, ecosystem: str,
+    advisories: tuple[Advisory, ...], line: int | None, seen: set[tuple[str, str]],
+) -> list[Finding]:
+    """AAK-KNOWN-VULN-003 for one launch that pins no release.
+
+    A launch with no version or a tag (`@latest`) can fetch any release, and one
+    with a range only those it admits, read on release triples as the pin table
+    reads ranges; a git URL or a local path fetches nothing from the registry
+    and is not judged. One finding per launch (a server of a top-level server map,
+    or the launch text) and advisory. The evidence opens with the launch's
+    `launch_head`, as AAK-MALICIOUS-RELEASE-002's does, so the engine stands
+    AAK-SUPPLY-001 and AAK-MCP-007 down on the same launch.
+    """
+    if not is_registry_spec(declaration.ecosystem, declaration.spec):
+        return []
+    text = declaration.version.strip()
+    spans = parse_range(text, declaration.dialect) if text else None
+    admitted = spans if spans is not None else _EVERY_RELEASE
+    where = declaration.path[:2]
+    server = where[1] if len(where) == 2 and where[0] in MCP_SERVER_KEYS and isinstance(where[1], str) else None
+    head = (f"{launch_head(server, declaration.spec)} is launched by `{declaration.text}` in {path.name}"
+            if server is not None and declaration.spec else f"`{declaration.text}` in {path.name} is a launch")
+    state = "with no version pinned" if not text else (
+        f"pinned only to `{text}`, which admits affected releases")
+    findings: list[Finding] = []
+    for advisory in advisories:
+        key = (RULE_LAUNCH + "\0" + advisory.id, repr((declaration.text, declaration.spec, where)))
+        if key in seen:
+            continue
+        overlap = intersect(admitted, _affected_spans(advisory))
+        if not overlap:
+            continue  # the range admits no release the advisory lists
+        seen.add(key)
+        level = advisory.severity if _open_ended(advisory) or (spans is not None and overlap == spans) else "MEDIUM"
+        findings.append(_finding(
+            rel,
+            f"{head} {state}, and {advisory.label()} lists {declaration.name} {_affected_text(advisory)} "
+            f"as affected{_below(advisory)}. {_launch_fix(declaration, ecosystem, advisory)} "
+            "`aak scan --include-user-config` reads npx's and uv's caches for an affected release "
+            f"already fetched{_feed_note(feed, advisory)}",
+            line,
+            level,
+            RULE_LAUNCH,
+        ))
+    return findings
+
+
+def _installed_findings(project_root: Path, feed: AdvisoryFeed, scanned: set[str],
+                        reported: set[Path]) -> list[Finding]:
     findings: list[Finding] = []
     for site_dir in site_package_dirs(project_root):
         for entry in site_entries(site_dir):
@@ -312,6 +473,7 @@ def _installed_findings(project_root: Path, feed: AdvisoryFeed, scanned: set[str
             if not advisories:
                 continue
             directory = Path(entry.path)
+            reported.add(resolved(directory))
             metadata = directory / "METADATA"
             where = metadata if metadata.is_file() else directory
             rel = where.relative_to(project_root).as_posix()
@@ -329,15 +491,43 @@ def _installed_findings(project_root: Path, feed: AdvisoryFeed, scanned: set[str
     return findings
 
 
-def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
-    """Report locked, pinned or installed releases an advisory lists as affected.
+def _cache_findings(feed: AdvisoryFeed, scanned: set[str], reported: set[Path]) -> list[Finding]:
+    """Releases an advisory lists in the launchers' caches on this host: one finding
+    per cache path, package and advisory, at the advisory's severity."""
+    findings: list[Finding] = []
+    for cached in [*npx_cached(feed.names("npm")), *uv_cached(feed.names("PyPI"))]:
+        if cached.real in reported:
+            continue  # the scan root holds this copy, and reported it
+        advisories = feed.match(cached.ecosystem, cached.name, cached.version)
+        if not advisories:
+            continue
+        shown = cached.where.as_posix()
+        scanned.add(shown)
+        for advisory in advisories:
+            findings.append(_finding(
+                shown,
+                f"{cached.launcher} cache at {cached.directory.as_posix()} holds {cached.name} {cached.version}, "
+                f"which {advisory.label()} lists as affected{_fix(advisory, cached.version)}; a launch that pins no "
+                f"release can run it{_feed_note(feed, advisory)}",
+                cached.line,
+                advisory.severity,
+            ))
+    return findings
+
+
+def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Finding], set[str]]:
+    """Report locked, pinned, installed or cached releases an advisory lists as
+    affected, and launches that pin no release of a package with an advisory.
 
     Args:
         project_root: The root directory of the project, or an unpacked image
             root filesystem.
+        include_user_config: Also read this host's npx and uv caches, outside the
+            project (`aak scan --include-user-config`). Off by default.
 
     Returns:
-        A tuple of (list of findings, set of scanned file relative paths).
+        A tuple of (list of findings, set of scanned file paths: relative to the
+        root, absolute for a cache outside it).
     """
     feed = load_feed()
     findings: list[Finding] = []
@@ -352,8 +542,11 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = path.relative_to(project_root).as_posix()
         scanned.add(rel)
         findings.extend(_manifest_findings(path, rel, feed, resolved))
-    findings.extend(_installed_findings(project_root, feed, scanned))
+    reported: set[Path] = set()
+    findings.extend(_installed_findings(project_root, feed, scanned, reported))
+    if include_user_config:
+        findings.extend(_cache_findings(feed, scanned, reported))
     return findings, scanned
 
 
-__all__ = ["MAX_RELEASES_PER_PACKAGE", "RULE", "evidence_cves", "scan"]
+__all__ = ["MAX_RELEASES_PER_PACKAGE", "RULE", "RULE_LAUNCH", "evidence_cves", "scan"]
