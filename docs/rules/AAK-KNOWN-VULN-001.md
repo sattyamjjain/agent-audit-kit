@@ -42,16 +42,28 @@ resolves it:
   `uvx pkg==1.2.3` or `npx -y pkg@1.2.3` in an MCP config;
 - a range every release of which is affected, such as `vllm<0.32`;
 - an installed `<name>-<version>.dist-info` in a site-packages directory, a
-  project's `.venv` and an unpacked image root filesystem included.
+  project's `.venv` and an unpacked image root filesystem included;
+- with `aak scan --include-user-config`, a release a launcher keeps on this host:
+  a package in npm's npx cache (`<cache>/_npx/<hash>/node_modules/<name>`) or a
+  dist-info in one of uv's tool environments (`<cache>/environments-v*/`), read
+  as [AAK-MALICIOUS-RELEASE-001](AAK-MALICIOUS-RELEASE-001.md) reads them. The
+  evidence names the cache path. Without the flag nothing outside the project is
+  read.
 
 A range that admits affected and unaffected releases, such as `vllm>=0.30`, is
 one INFO finding naming the advisories it admits, so a CI gate on HIGH does not
 fail on a range that may resolve to a fixed release. When a lockfile in the same
 directory resolves the package, the range is not reported at all: the lockfile
-says what is installed. A declaration without a version is not judged.
+says what is installed. A declaration without a version is not judged, except an
+MCP config's launch: one that pins no release (no version, a tag or a range) is
+[AAK-KNOWN-VULN-003](AAK-KNOWN-VULN-003.md).
 
 The finding names the advisory, its CVE ids, its score, the release and the
 release that fixes it; a sample is under [Related advisories](#related-advisories).
+When the fix is on a date line npm has since deprecated, the finding says so, for the
+packages `agent_audit_kit/data/date_line_packages.json` names: the four npm reference
+servers went back to SemVer at 1.0.0 in October 2026, so 2025.7.1, the fix an older
+advisory names for server-filesystem, is not where to go any more.
 
 ## The feed
 
