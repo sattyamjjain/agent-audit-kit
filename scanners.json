@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 111,
+  "count": 119,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -13,6 +13,10 @@
     {
       "module": "agent_config",
       "name": "Agent config"
+    },
+    {
+      "module": "agent_gates",
+      "name": "Gates that pass on nothing (optional trust inputs, fail-open PreToolUse hooks, wildcard subagents)"
     },
     {
       "module": "agent_harness_shared_state",
@@ -112,7 +116,7 @@
     },
     {
       "module": "known_vulns",
-      "name": "Locked, pinned and installed packages against OSV advisories (offline feed)"
+      "name": "Locked, pinned, installed and launched packages against OSV advisories (offline feed)"
     },
     {
       "module": "known_vulns_launch",
@@ -133,6 +137,10 @@
     {
       "module": "legal_compliance",
       "name": "Legal compliance"
+    },
+    {
+      "module": "llm_call_shapes",
+      "name": "Unescaped prompt delimiters and request handlers with no output cap"
     },
     {
       "module": "llm_sql_rce",
@@ -173,6 +181,10 @@
     {
       "module": "mcp_auth_patterns",
       "name": "MCP auth patterns"
+    },
+    {
+      "module": "mcp_authz_code",
+      "name": "MCP authorization on caller input, across handlers, and the token audience"
     },
     {
       "module": "mcp_codeexec_sandbox",
@@ -243,6 +255,10 @@
       "name": "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)"
     },
     {
+      "module": "mcp_server_code",
+      "name": "MCP server code: env dumps, leaked exception text, false annotations, trusted requestState"
+    },
+    {
       "module": "mcp_sidecar_http",
       "name": "MCP server binds an unauthenticated sidecar dashboard on loopback (2026-08 wave)"
     },
@@ -267,8 +283,16 @@
       "name": "MCP Tasks leakage"
     },
     {
+      "module": "mcp_tool_names",
+      "name": "Near-duplicate tool names across configured MCP servers"
+    },
+    {
       "module": "mcp_tool_unsafe_eval",
       "name": "Unsafe eval/exec inside @mcp.tool handler (CVE-2026-44717 class)"
+    },
+    {
+      "module": "mcp_toolbox_hosts",
+      "name": "MCP Toolbox launches with an open Host or Origin check (CVE-2026-11624)"
     },
     {
       "module": "mcp_toolgate_asymmetry",
@@ -309,6 +333,10 @@
     {
       "module": "pin_drift",
       "name": "Pin drift"
+    },
+    {
+      "module": "policy_failopen",
+      "name": "Policy gates that open on an unknown verdict or a missing policy module"
     },
     {
       "module": "policy_truncation",
@@ -445,6 +473,10 @@
     {
       "module": "ufo_mobile_mcp",
       "name": "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)"
+    },
+    {
+      "module": "websocket_server",
+      "name": "WebSocket servers for MCP, model and policy traffic with open defaults"
     }
   ],
   "unregistered_shims": [

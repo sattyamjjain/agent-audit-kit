@@ -299,3 +299,18 @@ def test_the_sdk_gate_names_every_manifest_that_declares_it(tmp_path: Path) -> N
     (tmp_path / "Cargo.toml").write_text('[dependencies]\nmcp = "0.1"\n', encoding="utf-8")
     assert declares_mcp_sdk(tmp_path) == (True, ["pyproject.toml", "requirements.txt", "Cargo.toml"])
     assert declares_mcp_sdk(tmp_path / "missing") == (False, [])
+
+
+def test_004_reads_the_tool_set_as_the_2026_07_28_spec_does() -> None:
+    """The set must not vary per connection and may vary by authorization, so a client
+    is told to detect a mismatch, not to expect one, and that the change notification
+    is not enough on its own."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    rule = RULES[RULE_004]
+    assert "must not vary per connection" in rule.description
+    assert "may vary by the authorization" in rule.description
+    assert "server defect" in rule.description and "server defect" in rule.remediation
+    assert "toolsListChanged: true" in rule.remediation
+    assert "different tool catalogs" not in rule.description
+    assert "hint that may differ between instances under" not in rule.remediation

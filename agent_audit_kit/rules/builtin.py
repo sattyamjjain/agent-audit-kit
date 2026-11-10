@@ -361,6 +361,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-APACHEANSWER-CVE-2026-71563-001": ["IAM-01", "STA-08"],
     "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111768-001": ["STA-08"],
+    "AAK-MCP-TOOLBOX-HOSTS-001": ["IAM-01", "STA-08"],
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
     "AAK-MCP-D365FO-CVE-2026-114123-001": ["IAM-01", "STA-08"],
     "AAK-MCP-LITELLM-CVE-2026-114612-001": ["IAM-01", "STA-08"],
@@ -385,6 +387,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MALICIOUS-EXTENSION-001": ["STA-08", "IVS-04"],
     "AAK-KNOWN-VULN-001": ["STA-08"],
     "AAK-KNOWN-VULN-002": ["STA-08"],
+    "AAK-KNOWN-VULN-003": ["STA-08"],
     "AAK-AGENT-SERVER-NOAUTH-001": ["IAM-01", "IVS-04"],
     "AAK-RUNTIME-ADV-001": ["STA-08", "IVS-04"],
     "AAK-RUNTIME-ADV-002": ["STA-08"],
@@ -733,7 +736,10 @@ _r(
     "Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
     Severity.LOW,
     Category.MCP_CONFIG,
-    "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin with an exact @x.y.z suffix, for example `npx -y some-mcp-server@1.4.2`. "
+    "The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic "
+    "versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image "
+    "digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
     sarif_name="McpUnpinnedPackageVersion",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -789,7 +795,8 @@ _r(
         "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a "
         "`.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1, and reads "
         "its host as a client does, so `http://10.1/`, `http://0xa.0.0.5/` and "
-        "`http://%31%30.0.0.5/` are 10.x too; a URL whose own host is loopback "
+        "`http://%31%30.0.0.5/` are 10.x too, as is a wildcard-DNS name that embeds one "
+        "(`10-0-0-5.nip.io`, `0a000005.nip.io`); a URL whose own host is loopback "
         "(localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. "
         "A URL that Node, requests and Rust's `url` crate read differently from curl, "
         "httpx and urlsplit, which keep a backslash inside the authority, is judged "
@@ -1131,15 +1138,22 @@ _r(
     "a hot path / per-request loop with no caching marker (no `lru_cache`, "
     "TTL cache, dict memoization, or `cached_*` helper) nearby. Combined "
     "with reliance on per-session server state, this pattern multiplies "
-    "round-trips and breaks when the 2026-07-28 stateless transport lets "
-    "successive requests hit different server instances with different "
-    "tool catalogs.",
+    "round-trips and breaks under the 2026-07-28 stateless transport, where "
+    "successive requests can reach different server instances. The 2026-07-28 "
+    "tools section says the set a client gets must not vary per connection or as "
+    "a side effect of other requests on the connection, and may vary by the "
+    "authorization presented, so instances serving different sets to the same "
+    "authorization are a server defect for the client to detect, not something "
+    "to design for.",
     Severity.LOW,
     Category.MCP_CONFIG,
     "Cache the `tools/list` response client-side with an explicit TTL "
-    "(`ttlMs`) and refresh it on cache miss or on a server-pushed "
-    "`notifications/tools/list_changed`. Treat tool discovery as a hint "
-    "that may differ between instances under the stateless transport.",
+    "(`ttlMs`), per authorization, since the set may vary by the authorization "
+    "presented, and refresh it on cache miss. Do not rely on "
+    "`notifications/tools/list_changed` alone: it is a SHOULD, and goes only to "
+    "clients subscribed with `toolsListChanged: true`. Instances that serve "
+    "different sets to the same authorization are a server defect, so report or "
+    "refuse that mismatch rather than treating discovery as a hint that may differ.",
     sarif_name="McpClientNoToolsListCache",
     limitations=(
         "Reads source files only in a project whose root manifest names an MCP SDK in "
@@ -2002,7 +2016,10 @@ _r(
     "Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin to an exact version, for example `npx -y some-mcp-server@1.4.2`. "
+    "The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic "
+    "versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image "
+    "digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
     sarif_name="McpPackageNotPinned",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2027,8 +2044,10 @@ _r(
     "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade the package named in the finding to a release outside its affected range "
-    "(currently axios 1.7.4 or later), or remove it. A "
+    "Move the package named in the finding off the listed release, or remove it. The table "
+    "lists releases published as malware: for axios 1.14.1 or 0.30.4 go back to 1.14.0 or "
+    "0.30.3, delete `node_modules/plain-crypto-js`, and rotate every secret on a machine "
+    "that installed either release. A "
     "'Potential typosquat' finding is a name check: confirm the package is the one you "
     "meant to install, and replace it with the real package if it is not.",
     sarif_name="KnownVulnerablePackage",
@@ -2036,9 +2055,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Reads the root package-lock.json against a fixed table of one npm package, "
-        "`axios` 1.7.0 to 1.7.3, and two misspellings of the MCP scope "
-        "(`@modlecontextprotocol`, `modelcontextprotocal`), so a vulnerable version of "
+        "Reads the root package-lock.json against a fixed table of the malicious axios "
+        "releases of 31 March 2026 (1.14.1 and 0.30.4), every numeric release of "
+        "`plain-crypto-js`, the trojan they install, and two misspellings of the MCP scope "
+        "(`@modlecontextprotocol`, `modelcontextprotocal`). Every other malicious release is "
+        "AAK-MALICIOUS-RELEASE-001's, and where that rule reports the same release in the same "
+        "file this finding stands down. A vulnerable version of "
         "any other package (`lodash` 4.17.15 in a lockfile) is not reported, and "
         "neither is any other lookalike name, such as an unscoped copy of an official "
         "server's (`mcp-server-sequential-thinking` for "
@@ -2161,9 +2183,11 @@ _r(
     "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Change the package version in the server's `args` to one outside the affected "
-    "range recorded in the vulnerability database (currently axios 1.7.4 or later), "
-    "and pin it exactly.",
+    "Change the package version in the server's `args` to a release the vulnerability "
+    "database does not list, and pin it exactly. It lists releases published as malware: "
+    "for axios 1.14.1 or 0.30.4 go back to 1.14.0 or 0.30.3, delete "
+    "`node_modules/plain-crypto-js`, and rotate every secret on a machine that installed "
+    "either release.",
     sarif_name="McpSpecificVulnDep",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2173,7 +2197,11 @@ _r(
         "the project root (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, "
         ".amazonq/mcp.json and mcp.json), under `mcpServers` or VS Code's `servers`, "
         "and looks each `package@version` up in the npm section of the vulnerability "
-        "database, which bundles one package, `axios` 1.7.0 to 1.7.3. OpenClaw is not "
+        "database, which bundles the malicious axios releases of 31 March 2026 (1.14.1 and "
+        "0.30.4) and every numeric release of `plain-crypto-js`, the trojan they install; a "
+        "copy `aak update` cached at `~/.agent-audit-kit/vuln_db.json` wins over the bundled "
+        "one. Every other malicious release is AAK-MALICIOUS-RELEASE-001's, and where that "
+        "rule reports the same release in the same file this finding stands down. OpenClaw is not "
         "in it: it publishes calendar versions, which its own CVE pins read, and the "
         "only `openclaw` below 2.1.0, where the database used to place it, is the "
         "empty placeholder 0.0.1. The same package in package.json, in "
@@ -3793,8 +3821,10 @@ _r(
 _r(
     "AAK-SSRF-001",
     "Unvalidated outbound HTTP in MCP tool handler",
-    "An MCP tool handler fetches a URL provided by the caller with no "
-    "host/scheme validation. This is the classic SSRF shape (CWE-918).",
+    "An MCP or agent tool handler fetches a URL provided by the caller with no "
+    "host/scheme validation. This is the classic SSRF shape (CWE-918). A smolagents `forward` "
+    "or a LangChain `_run` counts the same as an MCP tool, since the model chooses the URL "
+    "either way.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
     "Validate the scheme (https only), resolve the host, and reject "
@@ -3805,7 +3835,8 @@ _r(
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. In Python a fetch's URL counts as "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). In Python a fetch's URL counts as "
         "caller input only inside a function read as a tool the way AAK-TAINT-001 reads "
         "one (decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, "
         "`@crewai.tool` or `@autogen.tool`, or a low-level `@<server>.call_tool()` "
@@ -3813,7 +3844,9 @@ _r(
         "`func=` or to `from_function(...)`, or the `_run`, `_arun`, `run` or `arun` "
         "method of a class whose bases reach `BaseTool` or `StructuredTool` in the same "
         "file (through the file's own classes, a name it imports or assigns the base "
-        "as, or a subscripted base; a base another file defines is not followed), or a "
+        "as, or a subscripted base; a base another file defines is not followed), or the "
+        "`forward` method of a class on a `Tool` or `PipelineTool` base, when the file imports "
+        "from smolagents or the class sets `inputs` and `output_type`, or a "
         "function or method called `call_tool` or ending in `_call_tool` (where only "
         "`arguments`, `args`, `params`, `input`, `tool_input`, `kwargs`, `payload`, "
         "`body`, `query`, `request`, `req` and `event` count), when one of its "
@@ -3876,7 +3909,8 @@ _r(
     "public host, or read the target from configuration. The rule matches `localhost` "
     "and names under `.localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to "
     "`172.31.x` and `192.168.x`, also in a URL that writes the address another way "
-    "(`http://2130706433/` is 127.0.0.1). "
+    "(`http://2130706433/` is 127.0.0.1) or in a wildcard-DNS name that embeds it "
+    "(`10-0-0-5.nip.io`, `localtest.me`). "
     "Where the URL can also come from the caller, resolve the host and refuse loopback, "
     "private and link-local results before connecting.",
     sarif_name="SsrfLoopbackReachable",
@@ -3885,10 +3919,15 @@ _r(
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It reads each string that reaches "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It reads each string that reaches "
         "a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, "
         "::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a "
-        "client reads as one (`http://2130706433/`, `http://0x7f.1/`). A string with no "
+        "client reads as one (`http://2130706433/`, `http://0x7f.1/`), or a wildcard-DNS name "
+        "embedding one: the dot, dash, hex and IPv6 forms under `nip.io` and `sslip.io`, the dot "
+        "and dash forms under `xip.io`, and `localtest.me` and `lvh.me`. A name that resolves "
+        "there with nothing in the name to say so (a rebinding service, your own domain) needs a "
+        "lookup, which a scan does not do. A string with no "
         "scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, "
         "`[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with "
         "`HOST = \"2130706433\"`, is missed. Other loopback and private addresses "
@@ -3915,9 +3954,12 @@ _r(
     adversa_references=["ADV-SSRF-03"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254`, "
-        "in any spelling a client reads as it (`http://0xa9fea9fe/`), and "
-        "`metadata.google.internal` only. Other cloud credential endpoints "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It recognises `169.254.169.254`, "
+        "in any spelling a client reads as it (`http://0xa9fea9fe/`) or a wildcard-DNS name "
+        "embedding it (`169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`), "
+        "and `metadata.google.internal` only. A name that resolves there with nothing in the "
+        "name to say so needs a lookup, which a scan does not do. Other cloud credential endpoints "
         "(`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one "
         "finding, for the first matching call (in `ast.walk` order in Python), so a "
         "metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 "
@@ -3928,9 +3970,10 @@ _r(
 _r(
     "AAK-SSRF-004",
     "Redirect chains followed without re-validation",
-    "An MCP tool follows HTTP redirects using the default client settings. "
-    "An attacker can bypass initial host checks by returning a 3xx to an "
-    "internal address. DNS rebinding works the same way.",
+    "An MCP or agent tool fetches a URL the caller can set with a client that follows redirects, "
+    "by default or by an explicit flag. A check before the call covers only the first hop, so "
+    "a public URL that answers with a 3xx to an internal address gets past it. DNS rebinding works "
+    "the same way.",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Disable automatic redirects, or re-run host validation on every hop. "
@@ -3941,10 +3984,19 @@ _r(
     adversa_references=["ADV-SSRF-04"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It fires on an explicit "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It fires on an explicit "
         "`follow_redirects=True`, `allow_redirects=True` or `redirect: \"follow\"` in "
-        "a file with a recognised fetch call. A client left at its default, which "
-        "follows redirects (`requests.get(url)`), is not reported."
+        "a file with a recognised fetch call, and on a call whose URL the caller can set, read as "
+        "AAK-SSRF-001 reads it, made with a client that follows by default: requests, "
+        "`urllib.request.urlopen`, `aiohttp.request` or something called `session` in Python, and "
+        "every TS/JS client AAK-SSRF-001 recognises. httpx does not follow by default, so `httpx.get` "
+        "and something called `client` count only with the flag. `allow_redirects=` with anything "
+        "but a literal True on the call stands it down, and in TS/JS `redirect: \"manual\"` or "
+        "`\"error\"`, `maxRedirects: 0` or `.redirects(0)` anywhere in the file does. A value handed "
+        "to a helper that fetches is not followed, a hand-written check of every hop still fires "
+        "unless it turns redirects off, and a file gets one finding, for the first such call. A "
+        "call that fires this usually fires AAK-SSRF-001 and AAK-SSRF-005 as well."
     ),
 )
 
@@ -3966,7 +4018,8 @@ _r(
     adversa_references=["ADV-SSRF-05"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It fires on a recognised fetch "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It fires on a recognised fetch "
         "call whose URL caller input reaches, read as AAK-SSRF-001 reads it, in a file "
         "that never writes "
         "ALLOW_HOST, ALLOW_HOSTS, ALLOWED_HOST, ALLOWED_HOSTS or URL_ALLOW_LIST (upper "
@@ -4557,7 +4610,7 @@ _r(
 
 _r(
     "AAK-AGENT-TRUST-002",
-    "Headless agent CI runs on an attacker-controllable ref (fork-PR config executes with secrets)",
+    "Headless agent CI runs on attacker-controllable input with the repo's credentials",
     "A workflow that runs a coding agent non-interactively is triggered by an "
     "attacker-controllable event (`pull_request_target`, `issue_comment`, "
     "`workflow_run`, `pull_request_review[_comment]`) or explicitly checks out the "
@@ -4566,15 +4619,41 @@ _r(
     "trusts repo-resident skill / MCP / task files on load, a fork PR that adds or "
     "edits one of those files gets its shell commands executed in CI with the base "
     "repo's credentials, with no human trust prompt. This is the trust-on-first-use "
-    "bypass amplified by the classic pwn-request trigger.",
+    "bypass amplified by the classic pwn-request trigger. It also fires when the trigger "
+    "is trusted and the data is not: a job gives an agent (the actions and CLIs above, or "
+    "the Copilot agent through `gh agent-task`, `copilot-swe-agent` or the `copilot` CLI) "
+    "`contents: write`, `pull-requests: write`, `write-all` or a personal token, in a "
+    "workflow that fetches another project's commits or diff (`git fetch` from a remote "
+    "other than origin, `git remote add`, or `gh api` or `api.github.com` on "
+    "`repos/<other>/compare` or `commits`), with no egress block on that job. Whoever "
+    "lands a commit upstream writes part of the prompt. Any trigger counts, a schedule or "
+    "a `workflow_call` included.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
     "Never run a headless agent on `pull_request_target` / `workflow_run` / "
     "`issue_comment` with secrets in scope, and never check out the PR head into a "
     "job that then runs the agent. Split the privileged step onto the trusted base "
-    "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
+    "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only. For "
+    "another project's commits, split the trust boundary across two workflows: one on a "
+    "schedule with no permissions fetches and runs the agent, and a separate "
+    "`workflow_run` workflow holds the write scope and never reads the diff. Add a "
+    "deny-by-default egress allowlist on the agent's job, and fail the run if the agent "
+    "touched `.github/`.",
     sarif_name="HeadlessAgentCiUntrustedRef",
-    limitations=_AGENT_TRUST_LIMITATION,
+    limitations=(
+        _AGENT_TRUST_LIMITATION
+        + " The third-party arm reads one workflow file: a fetch in another workflow or in a "
+        "script it calls, `git clone` and `actions/checkout` of another repository are not read, "
+        "and neither is an agent started by a script, as a Python script that fires the Copilot "
+        "agent is. `git fetch` of anything but origin counts, so a variable that holds origin "
+        "fires, and a repository named by a variable counts as another project unless the env of "
+        "the step, job or workflow sets it from `github.repository`. Only the `contents` and "
+        "`pull-requests` scopes and `write-all` are read, so `issues: write` or no `permissions` "
+        "block, where the repository's default applies, does not fire. A personal token is a "
+        "secret with PAT or TOKEN in its name, other than `GITHUB_TOKEN` or a model provider's, in "
+        "the env or `with` of the agent's step, or the env of its job or workflow. "
+        "`step-security/harden-runner` with `egress-policy: block` is the only egress control read."
+    ),
     owasp_agentic_references=["ASI03", "ASI05"],
     adversa_references=["ADV-INJECT-04"],
 )
@@ -6775,9 +6854,15 @@ _r(
     "transport (`run(transport=\"streamable-http\"/\"sse\")`, "
     "`streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are "
     "deliberately not flagged**: FastMCP defaults to stdio and a stdio server "
-    "has no listener to rebind onto. **Binding to loopback is not a "
-    "mitigation** and does not clear this rule -- CVE-2026-81102 was loopback-"
-    "bound; the Host allow-list is the control. Single-file pattern detection "
+    "has no listener to rebind onto. **A loopback host clears this rule for one "
+    "shape only**: the SDK's own FastMCP or 2.x MCPServer, when the project resolves "
+    "`mcp` to 1.23.0 or later, the release that turned the protection on for a "
+    "loopback host when no `transport_security` is passed. CVE-2026-81102 was "
+    "loopback-bound on `mcp` 1.15.0, so below that it fires, and without a readable "
+    "version it fires and says what would clear it. "
+    "`enable_dns_rebinding_protection=False` beside a transport fires whatever "
+    "allow-list sits next to it, since the SDK ignores the list then, and an "
+    "allow-list whose only entry is `*` does not count. Single-file pattern detection "
     "with a project-wide mitigation check: one allow-list anywhere in the tree "
     "clears every candidate, so a server whose middleware lives in a separate "
     "package that is not scanned together will read as mitigated.",
@@ -6789,7 +6874,11 @@ _r(
     "Java/Apollo enable `HostHeaderFilter` / `allowedHosts` config. "
     "In Python FastMCP pass "
     "`transport_security=TransportSecuritySettings(allowed_hosts=[...])` "
-    "when constructing the server, or run it over stdio. "
+    "when constructing the server, or run it over stdio. On the default "
+    "loopback host, lock `mcp` to 1.23.0 or later, which turns the protection on "
+    "for you. Code that builds `StreamableHTTPSessionManager`, "
+    "`StreamableHTTPServerTransport` or `SseServerTransport` directly must pass "
+    "`security_settings=` itself, even on localhost. "
     "Alternatively upgrade the SDK to a patched version and pass through "
     "its host-validation option.",
     sarif_name="McpStreamableHttpDnsRebind",
@@ -6811,10 +6900,23 @@ _r(
     incident_references=["MCP-DNS-REBIND-2026-04"],
     limitations=(
         "A candidate is a .py, .ts, .tsx, .js, .mjs or .cjs file that builds a "
-        "StreamableHTTP transport, or a Python FastMCP server run over a network "
+        "StreamableHTTP transport or a Python `SseServerTransport`, or a Python FastMCP "
+        "server, or the SDK's own 2.x MCPServer, run over a network "
         "transport. One Host allow-list anywhere in the project clears every "
         "candidate, whatever it protects: a Django `ALLOWED_HOSTS` in an unrelated app "
-        "counts."
+        "counts, and so does a list that holds `*` beside other names. The exception is "
+        "`enable_dns_rebinding_protection=False` (or TypeScript's "
+        "`enableDnsRebindingProtection: false`) in the transport's own file; the same "
+        "setting in another file is not read. The loopback stand-down follows the SDK "
+        "maintainer's account in modelcontextprotocol/python-sdk issue 3562 and "
+        "GHSA-9h52-p55h-vw2f: it applies to the SDK's own server on the default or a literal "
+        "127.0.0.1, localhost or ::1 host, with no `transport_security=`, and `mcp` read "
+        "from the nearest uv.lock, poetry.lock or Pipfile.lock, else a pin or a range "
+        "whose every release is 1.23.0 or later in requirements*.txt or pyproject.toml, "
+        "walking from the file's directory to the root. Any `host=` in the file is read "
+        "as the listener's, so `uvicorn.run(app, host=\"0.0.0.0\")` keeps the finding "
+        "though the app's own check is on. The standalone `fastmcp` package never "
+        "stands down, since its defaults were not read."
         " A manifest over 2 MB, or a source file over 512 KB, is not read."
     ),
 )
@@ -9087,9 +9189,11 @@ _r(
     "shared-resource language in the tool's own name/description.",
     Severity.HIGH,
     Category.TRUST_BOUNDARY,
-    "Add and enforce a per-actor authorization parameter (e.g. `owner_id`, "
-    "`actor`, `on_behalf_of`, `authorization`) and check it server-side so a "
-    "tool call can only mutate resources the calling principal owns. Do not "
+    "Take the actor from the authenticated principal (the request context, the "
+    "access token), so a tool call can only mutate resources the calling principal "
+    "owns. A parameter such as `owner_id`, `actor` or `on_behalf_of` may only be "
+    "checked against that principal, never trusted on its own: a check on a value "
+    "the caller sends passes while evaluating attacker input. Do not "
     "rely on the agent to self-restrict. If the resource is genuinely global "
     "and every agent is authorized to mutate it, annotate the tool "
     "`\"x-aak-shared-authz\": \"global-ok\"` to document the decision and "
@@ -11726,6 +11830,549 @@ _r(
 
 
 _r(
+    "AAK-PROMPT-DELIMITER-001",
+    "Untrusted text sits between prompt delimiters with the closing one unescaped",
+    "A Python f-string puts a function's parameter straight between prompt delimiters "
+    "(`<user_input>{message}</user_input>`, or a repeated fence such as three backticks, `###` or `---`), "
+    "in a file that calls a model, with nothing done to the value. Delimiters beat bare concatenation, but "
+    "text that contains the closing delimiter closes it itself and writes what comes after it as if the "
+    "prompt's author had. A value run through a call in the braces, or rebound from a call first, does not fire.",
+    Severity.LOW,
+    Category.TAINT_ANALYSIS,
+    "Escape or strip the closing delimiter from the value before it goes in, or pass the text as a separate "
+    "message or a structured field rather than inside the instruction string. Add a test whose input contains "
+    "the closing delimiter and an instruction after it, and assert the output does not change.",
+    sarif_name="PromptDelimiterUnescaped",
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Reads Python f-strings, one function at a time, in a file that mentions a model API (chat.completions, "
+        "ChatCompletion, messages.create, responses.create, ChatOpenAI, ChatAnthropic, generate_content, litellm, "
+        "ollama, openai, anthropic, langchain). The value must be a parameter, or an attribute or item of one, "
+        "with the delimiter text right beside it on both sides. So a local from elsewhere, `.format`, `%`, `+` "
+        "and `string.Template` are not read, and neither is another language. A tag from a list of HTML "
+        "tags (div, span, p and the like) is left out. A call in the braces or a name rebound from a call counts as "
+        "escaping, with nothing to show it handles the closing delimiter, so `{str(message)}` is missed. Whether the "
+        "value can come from an attacker is not read, so an id passed as a parameter fires. Paths with a tests, "
+        "fixtures, examples, samples or demos directory, and test_*.py and conftest.py, are skipped. A source file "
+        "over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-SSRF-MAPPED-001",
+    "A URL guard tests an address against IPv4 networks, and IPv4-mapped IPv6 passes",
+    "A URL or host guard parses the host with `ipaddress.ip_address` and tests membership in a deny "
+    "list of networks (`ip in ip_network(\"169.254.0.0/16\")`, `any(ip in n for n in BLOCKED)`) without "
+    "unwrapping `.ipv4_mapped`. `http://[::ffff:169.254.169.254]/` parses as an IPv6 address, which is in "
+    "no IPv4 network, so it passes, and a dual-stack socket connects to the metadata address. `.is_private` "
+    "is not the same bug: it unwraps a mapped address on every CPython tried from 3.9.0 to 3.13.11, so "
+    "a guard that also reads it does not fire.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Unwrap before the test: on an IPv6 address, use its `ipv4_mapped` when that is set. Adding "
+    "`::ffff:0:0/96` to the deny list or also testing `.is_private` closes it too. Add a test that "
+    "`http://[::ffff:169.254.169.254]/` is refused. Check the resolved address again at connect time, "
+    "since a check at load cannot see a name that later resolves elsewhere.",
+    sarif_name="SsrfGuardPassesMappedAddress",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reads Python, one function at a time, in a file that mentions `ip_network` and one of ssrf, "
+        "urlparse, urlsplit, `.hostname` or getaddrinfo. The test must be `in` on `ip_address(...)` or "
+        "a name bound from it in that function, so an address passed in as a parameter, `subnet_of` and "
+        "an integer range check are not read. A deny list is known by the name of the function or of the "
+        "networks (private, block, deny, internal, metadata, link_local, loopback, reserved, ssrf, forbid, "
+        "unsafe, disallow, banned, restricted) or a private `ip_network(...)` literal, so a list under "
+        "another name is missed, and one named for allow, trust, scope, whitelist or permit fails closed "
+        "on a mapped address and is left out. `ipv4_mapped`, `IPv4Address`, `IPv6Address`, `.version`, "
+        "`::ffff`, `AF_INET` or `gethostbyname` anywhere in the file stands the rule down, without checking "
+        "that it guards this test. `.is_private` or `.is_global` in the function stands it down too: that "
+        "closes the metadata and RFC 1918 cases and not `::ffff:100.64.0.1`. A guard testing only "
+        "`.is_loopback` or `.is_link_local` is not read, though older CPython patch releases do not unwrap "
+        "those (3.12.3 for both, 3.13.0 for link-local). Whether the result gates a fetch is not read, so "
+        "an IP filter that is no URL guard, in a file with one of those words, fires. A source file over "
+        "1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-WEBSOCKET-SERVER-001",
+    "A WebSocket server for MCP, model or policy traffic leaves its defaults open",
+    "A Python `websockets` server for MCP, model or policy traffic has no `origins`, `max_size=None`, "
+    "or a 0.0.0.0 default with no authentication, or sends `traceback.format_exc()` to the client. In "
+    "`websockets` the origin check is opt-in: `origins` defaults to None, which accepts every Origin, "
+    "and a WebSocket handshake is not subject to the same-origin policy, so any page open on that "
+    "machine can connect to `ws://127.0.0.1:8000`. Binding to loopback does not close that. `max_size=None` "
+    "takes a frame of any size from whoever connected, and a traceback hands them the server's internals.",
+    Severity.MEDIUM,
+    Category.TRANSPORT_SECURITY,
+    "Pass `origins=` with the origins you expect, or require a credential in the handshake through "
+    "`process_request`, which a page cannot set on a WebSocket. Leave `max_size` at its 1 MiB default or "
+    "set a bound. Send a fixed error string to the client and log the traceback on the server. Default "
+    "the host to 127.0.0.1, and make listening on every interface an explicit choice.",
+    sarif_name="WebSocketServerOpenDefaults",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `serve` from the Python `websockets` package, under any import name, and `.send(...)` of "
+        "`traceback.format_exc`, `format_exception` or `format_tb`, or of a name assigned from one, in a "
+        "file with `mcp`, `policy`, `model`, `inference`, `agent` or `llm` as a word of its path, or that "
+        "imports mcp or fastmcp. So a `websockets` server anywhere else is not read, and neither is a "
+        "FastAPI or Starlette WebSocket or `unix_serve`. Paths with a tests, fixtures, examples, samples "
+        "or demos directory are skipped. A file that reads `origin` anywhere, or mentions authorization, "
+        "basic_auth, api_key, bearer, token or auth as a word, is taken to check it, with nothing to "
+        "show the check is applied. `**options` on the call stands the origin arm down, since it may set "
+        "`origins`. A host is read as a literal, or as a name matching a parameter with `host` in its "
+        "name and a literal default in the same file, so one from an environment variable or a "
+        "config object is not. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-POLICY-OPTIONAL-TRUST-001",
+    "A trust check reads a missing answer as a passing one",
+    "A function takes a trust input as a parameter and refuses only on the explicit failure: "
+    "`if key_matches_pin is False:` on a parameter that may be None, so None passes, or a parameter "
+    "such as `verified: bool = True` or `revoked: bool = False` whose default is the passing value. A "
+    "caller that never ran the check then reads the same as one that ran it and passed. Compare None "
+    "as unknown, not clean: a function that also tests the value against None or True, reads it as a "
+    "truth value, or hands it to a helper does not fire, and neither does a directive such as "
+    "`require_verified=True`, where the default asks for the check.",
+    Severity.MEDIUM,
+    Category.TRUST_BOUNDARY,
+    "Make a missing answer refuse. Require the input with no default, or treat None as not checked and "
+    "return the same refusal a failed check gets, and add a test that leaves each input out. Do this "
+    "before the first test of the explicit failure, so every path sees it.",
+    sarif_name="PolicyOptionalTrust",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "The shape comes from the reference implementation of the tool outcome attestation proposal "
+        "(github.com/Carmel-Labs-Inc/toa, `classify_absence`): commit 8327499 fires twice, and its fix at "
+        "f849f0a, where a helper refuses every input left unknown, does not fire. Reads Python function "
+        "parameters, one function at a time, by name, word by word of a snake_case name: verified, "
+        "trusted, authenticated, authorized, attested, revoked, tampered, compromised, forged, untrusted "
+        "and unverified alone, and valid, matches, matched, signed, approved, permitted, allowed, "
+        "available, expired, denied and blocked only beside what was checked (key, pin, signature, cert, "
+        "token, hash, digest, credential, issuer, audience, nonce, caller, client, session, origin). So "
+        "another word (`ok`, `passed`), a camelCase name, a trust input that is no boolean "
+        "(`verify_reason: str | None = None`) and a field on an object (`ctx.key_matches_pin is False`) "
+        "are not read. The refusal must be an `if` whose branch raises, returns or exits. A parameter "
+        "handed to any call counts as answered and the call is not read, so a helper that ignores it "
+        "stays silent. Callers are not read, so a default that every caller overrides still fires. Paths "
+        "with a tests, fixtures, examples, samples or demos directory, and test_*.py and conftest.py, are "
+        "skipped. Other languages are not read. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-HOOK-FAILOPEN-001",
+    "A PreToolUse hook lets the tool call through when it fails",
+    "Claude Code blocks a tool call only on exit code 2 from a PreToolUse command hook. Any other "
+    "failure (a crash, a missing interpreter, `exit 1`) is a non-blocking error and the call goes "
+    "ahead. A Python hook with an uncaught exception exits 1, a shell hook under `set -e` exits with "
+    "the failing command's code, a Node hook that throws exits 1, and a command line ending in "
+    "`|| true` hides every failure. So a gate that can refuse and can also fail opens when it fails, "
+    "and the input that breaks it can come from the model. The rule also fires on settings that lean "
+    "on `permissions.ask` with bypass mode still available (`defaultMode: bypassPermissions`, or a "
+    "documented `--dangerously-skip-permissions` launch): the docs say an ask rule holds in every mode, "
+    "and an open Claude Code report (issue 95741) measures it not prompting under bypass on 2.1.283 and "
+    "2.1.301. A hook that wraps its body and exits 2 or denies on any error, `|| exit 2` on the command "
+    "line, `onFailure` set to block on the handler, and `disableBypassPermissionsMode` set to disable do "
+    "not fire.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Make any error block. On Claude Code 2.1.295 or later, set `onFailure` to block on the handler, "
+    "which blocks on a crash, a missing script, an unexpected exit code or a timeout. On any version, "
+    "wrap the whole script and exit 2 in the handler with the reason on stderr, or in shell add a trap "
+    "on ERR that exits 2. Where a rule has to hold unattended, use a deny rule or a hook that denies "
+    "instead of an ask rule, and turn bypass mode off with `disableBypassPermissionsMode`.",
+    sarif_name="HookFailOpen",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads PreToolUse command hooks in `.claude/settings.json`, `.claude/settings.local.json`, a "
+        "plugin's `hooks/hooks.json` and a skill's frontmatter, and the script a command line names when "
+        "it is a .py, .sh, .bash, .zsh, .js, .mjs, .cjs or .ts file inside the project. An inline command "
+        "(`jq ... | grep ...`), `bash -c '...'`, a PowerShell script, a path outside the project or built "
+        "by a command, an http or prompt handler, another event and the user's own settings are not read. "
+        "A script counts as a gate when it can refuse: it exits 2, or says deny, block or ask beside a "
+        "decision. So a script whose refusal is made in a module it imports, or whose exit code is held in "
+        "a name, is no gate here and does not fire, and a script that only allows or logs does not either. "
+        "A shell script fires on `set -e` with no trap on ERR or EXIT that exits 2, and on `exit 1`; one "
+        "without `set -e` that runs on past a failed `jq` with an empty variable fails open as well and "
+        "does not fire. An import above the wrapping try is not counted. An exit within two lines of a "
+        "usage message is read as a path a hook never takes. The rule over-reports in three ways it "
+        "cannot tell apart: a script that guards every command by hand, one that fails open on purpose or "
+        "enforces a preference rather than a policy, and one that prints a deny and then exits 1, which "
+        "blocks. Node scripts are read for tokens, not parsed, so a comment or a string counts. The ask "
+        "arm reads the two settings files, and a launch on a line naming claude in README.md, "
+        "CONTRIBUTING.md, CLAUDE.md, AGENTS.md, Makefile, justfile or package.json, skipping a line that "
+        "says never, avoid or do not; `disableBypassPermissionsMode` in managed or user settings is not "
+        "seen. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-AGENT-SUBAGENT-TOOLS-001",
+    "A project subagent inherits every MCP server, including ones that write",
+    "A file under `.claude/agents/` has `tools: *` or no `tools` line, in a project whose MCP config "
+    "connects a server that writes: mail, chat, a calendar, files, a tracker, a database or a shell. "
+    "Claude Code gives a subagent every tool it can reach when `tools` is left out, MCP tools included, "
+    "and a background subagent keeps every MCP tool. So a subagent asked to read code also holds mail "
+    "send and file delete, and an instruction hidden in what it reads can call them. A `tools` list "
+    "without a wildcard, `disallowedTools` naming `mcp__*` or each writing server, and a project whose "
+    "servers only read do not fire. AAK-AGENT-COMPOSE-001 reads the capability union of a set of "
+    "skills, not subagents, so the two do not overlap.",
+    Severity.MEDIUM,
+    Category.AGENT_CONFIG,
+    "List the tools this subagent needs in `tools`. If it has to keep the built-in tools, withhold MCP "
+    "in `disallowedTools`, with `mcp__*` or one `mcp__<server>` per server. A subagent that needs one "
+    "server names only that server, such as `mcp__github__*`.",
+    sarif_name="SubagentInheritsWriteTools",
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Goes by a server's name and launch words, since no config lists its tools. A server whose name "
+        "does not say what it does (`acme-tools`) is not counted, and one named for a service counts even "
+        "if its tools only read, unless a launch argument or an env name says read-only. Reads `.mcp.json` "
+        "and `mcpServers` in the two settings files, so user-scope servers, claude.ai connectors and "
+        "servers defined inline in the agent's own frontmatter are not read. Built-in subagents such as "
+        "general-purpose are no files, so a project with none under `.claude/agents/` does not fire, and "
+        "neither do agents in the user's home. A file with no `name` or `description` is one Claude Code "
+        "skips, and is skipped here. `tools: *` is not documented: the docs name leaving the field out as "
+        "the way to get everything, and this reads a wildcard as asking for the same. A list that names "
+        "one server (`mcp__gmail__*`) is a choice and does not fire."
+    ),
+)
+
+_r(
+    "AAK-AUTHZ-CALLER-INPUT-001",
+    "An MCP tool's authorization decision reads a tenant, user, role or scope from its own arguments",
+    "A tool handler decides access on a tenant, org, user, role or scope the caller sends: a handler parameter "
+    "named `org_id`, `tenant_id`, `user_id`, `role` or `scope`, or `args[\"org_id\"]`, passed to an authorization "
+    "check or compared with a privilege, instead of the authenticated principal (the request context, the access "
+    "token, a principal contextvar). The check runs and passes while evaluating attacker input. The same check on "
+    "the principal does not fire, and neither does a parameter compared with the principal.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Read the tenant, user, role and scope from the authenticated principal. A parameter that names a tenant or a "
+    "user may only be compared with it, never trusted on its own.",
+    sarif_name="McpAuthzOnCallerInput",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only, in a function decorated `@<name>.tool(...)`, `.call_tool`, `.resource`, `.prompt` or `.completion`. "
+        "It reads a parameter or an `arguments[...]` read named org_id, organization_id, tenant, tenant_id, user_id, "
+        "account_id, role, roles, scope or scopes, passed to a check named like `authorize`, `check_access`, "
+        "`has_permission`, `require_role` or `enforce`; a role or scope compared with a privilege word (admin, owner, "
+        "root, superuser, sudo, write, delete, or a value with a colon); or an id in a test whose body raises a "
+        "permission error. A call or a test that also names the principal (ctx, token, claims, identity, session) "
+        "does not fire, whether or not it compares the two. A helper the handler calls with the value is not "
+        "followed, and a SQL filter on the value is not read as a decision. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-ENV-DUMP-001",
+    "An MCP tool returns the whole process environment to the client",
+    "A tool handler returns the whole environment (`dict(os.environ)`, `os.environ.copy()`, "
+    "`{**os.environ}`, `process.env`, `{...process.env}`, `JSON.stringify(process.env)`), so every API "
+    "key and token in the server's environment is one tool call from the model, with no prompt injection "
+    "needed. A read-only annotation makes it worse, since hosts auto-approve those. The rule also reads an "
+    "MCP config that launches `@modelcontextprotocol/server-everything` at a stated release below 2.1.0 or "
+    "on its date line, or with `GET_ENV_INCLUDE_SECRETS` set: its `get-env` tool returned the full "
+    "environment until 2.1.0 masked credential-like values by default. A handler that returns one named "
+    "variable does not fire.",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Return the named variables the tool needs, or a filtered copy with secrets masked. Treat "
+    "`server-everything` as a demo: leave it out of a real config, or use 2.1.0 or later without "
+    "`GET_ENV_INCLUDE_SECRETS`.",
+    sarif_name="McpToolEnvironmentDump",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: a function decorated `@<name>.tool(...)` or `@<name>.call_tool(...)` whose own `return` holds "
+        "`os.environ` whole, directly or through a local assigned from it; a helper it calls is not "
+        "followed, and neither is a filtered copy, which may still hold secrets. TypeScript and JavaScript: a "
+        "file that registers a tool and holds `JSON.stringify(process.env)` or returns `process.env` whole "
+        "within 120 characters on one line, read by pattern and not tied to the handler. The config half "
+        "reads `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.json`, leaves out configs "
+        "below a tests, fixtures, examples, samples or demo directory, and does not report an unpinned launch, "
+        "which gets `latest`, though a launcher's cache may still hold an older release. A source file over "
+        "512 KB or a config over 1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-AUTHZ-COVERAGE-001",
+    "MCP authorization covers tools/call and not the other handlers, one transport, or an unset principal",
+    "A server checks scopes in its tools/call handler but not in resources/read, prompts/get or "
+    "completion/complete, so it hands out through one door what it refuses at another; it runs a check on one "
+    "HTTP transport and not the other; or a handler goes ahead when the principal contextvar is unset, where "
+    "`.get(None)` is treated as allow. One shared check called from all four handlers does not fire.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Call one shared check from every handler, on the path both transports use, and refuse when there is no "
+    "principal rather than reading its absence as allowed.",
+    sarif_name="McpAuthzCoverageGap",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only, one file at a time, so handlers split across files are not compared, and a check that lives in "
+        "middleware, or in `required_scopes`, is not seen. A check is a call named like `authorize`, `check_scope` or "
+        "`require_scope`, a decorator of that name, or a comparison reading `scopes`, `permissions` or `roles`. A resource "
+        "or prompt that is public on purpose is reported all the same. The transport arm reads `transport == "
+        "\"sse\"` or a streamable HTTP literal with a check in its body and no else, and not `transport != \"stdio\"`, "
+        "since stdio has no network login to check. The contextvar arm reads a local assigned from `<name>.get(None)` "
+        "where the name holds principal, identity, auth, user, subject, token or actor as a word. A source file "
+        "over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-LLM-NO-MAX-TOKENS-001",
+    "A web route or agent tool calls a model with no output cap",
+    "A function decorated as a web route or an agent tool calls a chat completion with no `max_tokens` or "
+    "`max_completion_tokens`, so each request can spend up to the model's own limit and a caller can repeat it. "
+    "A cost ceiling has to hold before the call. `**kwargs` on the call is taken to set the cap.",
+    Severity.LOW,
+    Category.TRUST_BOUNDARY,
+    "Pass `max_tokens` or `max_completion_tokens` on every call a request can reach, cap the length of the "
+    "input as well, and check a per-request or per-caller budget before the call. Accounting after the call is "
+    "useful for dashboards but stops nothing.",
+    sarif_name="LlmCallNoOutputCap",
+    owasp_agentic_references=["ASI08"],
+    limitations=(
+        "Reads a Python function decorated `get`, `post`, `put`, `patch`, `delete`, `route`, `api_route`, "
+        "`websocket`, `tool`, `function_tool` or `call_tool` that itself calls `chat.completions.create`, "
+        "`ChatCompletion.create` or `acreate`, or `litellm.completion` or `acompletion`. So a helper the handler "
+        "calls and a script with no route are not read. Read on every call the rule fired on 105 of 194 public "
+        "OpenAI callers, batch scripts included, and read this way on 4 of them. The Responses API, Gemini and "
+        "LangChain are not read, and the Anthropic SDK requires the parameter. A budget or a rate limit elsewhere "
+        "is not seen. Paths with a tests, fixtures, examples, samples or demos directory, and test_*.py and "
+        "conftest.py, are skipped. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOKENVERIFIER-AUD-001",
+    "A python-sdk resource server leaves out protected-resource metadata or the token audience check",
+    "A python-sdk resource server sets `token_verifier=` with `resource_server_url=None`, which serves no "
+    "protected-resource metadata and leaves the audience check to the verifier, or a custom `verify_token` "
+    "never reads an audience or a resource, so a token issued for another server is accepted. The MCP spec says "
+    "servers MUST validate that a token was issued for them as the intended audience. A version pin covers the "
+    "SDK's own audience-blind check; this rule reads the code shape on any version.",
+    Severity.MEDIUM,
+    Category.TRUST_BOUNDARY,
+    "Set `resource_server_url` to the server's canonical URL, and check the token's `aud` or resource in "
+    "`verify_token`, or use the SDK's resource validation.",
+    sarif_name="McpTokenVerifierNoAudience",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only. The settings arm reads an explicit `resource_server_url=None` in a file naming `token_verifier`. "
+        "The verifier arm reads a method named `verify_token` on a class, leaving out stubs, in a file where no "
+        "`aud`, `audience`, `validate_token_resource`, `check_resource_allowed` or `resource_url` appears anywhere, so "
+        "a mention in another function counts as the check, and a helper in another file does not. A verifier for "
+        "opaque tokens checked upstream, which have no audience of their own, is reported all the same. A source "
+        "file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-TOOL-NEAR-DUPLICATE-001",
+    "Two configured servers offer tools with nearly the same name",
+    "A pin file or an MCP config that lists tools has two tools on different servers whose names differ only in a "
+    "flourish (`flight_search_pro` beside `flight_search`), in how they are written (`readFile` beside `read_file`) or "
+    "by one character. Selection is a model reading each description, which each server's author writes, so a "
+    "similarly named tool with a stronger description can win calls meant for the other one, and no rule on either "
+    "tool alone sees it.",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Decide which tools this agent may bind at all, and keep the other server's tool out with an allowlist at the "
+    "client. Rename your own tool if the overlap is yours. Pin tool definitions with `aak pin`, so a new "
+    "near-duplicate shows up as a change.",
+    sarif_name="ToolNearDuplicateName",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Reads tool names from `.agent-audit-kit/tool-pins.json` and from a `tools` list in a JSON MCP config. A "
+        "config with no list has nothing to read, and a server is never asked for its tools. On 442 public "
+        "`.mcp.json` files that name Playwright or chrome-devtools-mcp the rule had nothing to report, so it has only "
+        "fixtures behind it so far. The same exact name on two servers is left out, since clients namespace tools by "
+        "server, and that may not hold for yours. A flourish is pro, plus, premium, new, official, enhanced, advanced, "
+        "ultra, best, fast, secure, verified, better, improved, real, true, v2, v3, 2 or 3, at the start or the end of the "
+        "name, so one in the middle is missed. One character apart counts for a name of 8 to 64 letters after "
+        "joining its words, leaving out a plural `s`, so a shorter or a longer name, and two characters apart, are "
+        "missed. A file reports at most 200 pairs."
+    ),
+)
+
+_r(
+    "AAK-MCP-ERROR-LEAK-001",
+    "Raw exception text reaches an MCP client or a remote A2A peer",
+    "An except block puts the exception's own text in a client-facing error (CWE-209): "
+    "`ToolError(f\"...{e}\")`, `McpError(str(e))`, a JSON-RPC error message built from `str(exc)` or "
+    "`repr(exc)`, or `traceback.format_exc()` sent to a client or a remote A2A peer. A pydantic validation "
+    "error, for one, shows input values, the backend's types and its version. A fixed message beside "
+    "`logger.exception` loses nothing for the operator and does not fire.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Send the client a fixed message, and log the detail on the server with `logger.exception`. JSON-RPC 2.0 "
+    "says the message should be a concise single sentence, and its `data` member may be omitted.",
+    sarif_name="McpErrorExceptionLeak",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: an `except` body that passes `str(e)`, `repr(e)`, an f-string of `e`, `%` or `.format` formatting "
+        "of `e`, or `traceback.format_exc()` to `ToolError`, `McpError`, `ErrorData`, `JSONRPCError`, "
+        "`ResourceError` or `PromptError` in a file importing `mcp` or `fastmcp`, or builds "
+        "`{\"error\": {\"message\": ...}}` from it there; or to `new_agent_text_message`, "
+        "`TaskStatusUpdateEvent`, `failed` or `update_status` in a file importing `a2a` or `google.adk.a2a`. "
+        "A tool handler that returns `str(e)` as its result is not reported, since a tool's result is how "
+        "the model is told a call failed; a returned `traceback.format_exc()` is. A local holding the text "
+        "first is not followed. TypeScript and JavaScript: `new McpError(...)` holding `err.message`, "
+        "`err.stack`, `String(err)` or an interpolated `err`, for the names err, error, e, ex and exc, by "
+        "pattern on one line. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-ANNOTATION-MISMATCH-001",
+    "A tool annotated read-only or non-destructive changes storage",
+    "A tool annotated `readOnlyHint=True` or `destructiveHint=False` has a handler that writes, deletes or "
+    "rewrites storage (`open(..., \"w\")`, `os.remove`, `shutil.rmtree`, `unlink`, `fs.writeFile`, `fs.rm`, SQL "
+    "DELETE, UPDATE or DROP). Hosts use these hints to auto-approve, so the tool runs without asking. A "
+    "tool with no annotations is not a mismatch: absent hints read as the MCP defaults, readOnlyHint false and "
+    "destructiveHint true, which already say it may write. A read-only annotation on a handler that only "
+    "reads does not fire.",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Correct the annotation, or take the write out of the tool. Hints are the server's word, so a client "
+    "should let its owner override them per tool, and read a missing hint as a possible write.",
+    sarif_name="McpToolAnnotationMismatch",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI09"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python: the decorated handler's own calls, so a helper it calls is not followed. readOnlyHint true "
+        "reports any write, an append or an INSERT too. destructiveHint false alone reports only what "
+        "overwrites or removes, so an append or an INSERT passes it. SQL is read from the start of a string "
+        "or f-string passed to `execute`, `executemany` or `executescript`, so a query built first and passed by "
+        "name is not read, and neither is an ORM's delete. An annotation held in a variable is not read. "
+        "TypeScript and JavaScript: by pattern, from the hint to the next tool registration, so a handler defined "
+        "elsewhere and passed by name is not read. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-REQUESTSTATE-001",
+    "Server code trusts an echoed requestState as proof of approval or identity",
+    "A server takes the `requestState` a client echoes back (the 2026-07-28 input-required round trip) as proof "
+    "of approval or identity, without verifying an HMAC or AEAD over it, or without binding it to the principal, "
+    "an expiry and a digest of the request. The client holds that value between requests and can rewrite or "
+    "replay it. The spec says that if it \"influences authorisation, resource access, or business logic, servers "
+    "MUST protect its integrity (e.g. HMAC or AEAD)\". `hmac.compare_digest` over a state that carries the "
+    "principal, an expiry and a request digest does not fire.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Sign or encrypt the state, verify it in constant time before reading it, and bind it to the authenticated "
+    "principal, a short expiry and the method plus a digest of its parameters. Those measures do not guarantee "
+    "single use, so enforce that on the server if an approval may run only once.",
+    sarif_name="McpRequestStateTrusted",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads Python, TypeScript and JavaScript by pattern, one file at a time: `requestState` or "
+        "`request_state`, a decode (`b64decode`, `atob`, `json.loads`, `JSON.parse`, `Buffer.from`), and a read "
+        "of an approval or identity key (approved, approval, authorized, allowed, principal, user, identity, role, "
+        "scope) from a name holding `state`. A check in another file counts as absent, and any HMAC, AEAD, Fernet "
+        "or JWT call in the file counts as present, whether or not it covers this value. The binding is read as "
+        "those words appearing in the file, not as a comparison being made. A state stored server-side and "
+        "looked up by an opaque id is not this shape, and does not fire. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-POLICY-VERDICT-FAILOPEN-001",
+    "A policy verdict blocks on one deny word and acts on anything else",
+    "A function takes a verdict or decision (a parameter, or a model, HTTP or JSON result named "
+    "verdict, decision, approval, allowed, action or status), refuses only when it equals a deny "
+    "word (`== \"deny\"`, `in (\"deny\", \"reject\")`, with or without `.lower()`), and otherwise "
+    "goes on to act. A parsed answer is whatever came back, so `denied`, `DENY`, `block`, `error`, "
+    "an empty string and None all execute. A check that lets only known values through "
+    "(`verdict != \"allow\"`, `verdict not in ALLOWED`) or maps unknown values to deny "
+    "(`TABLE.get(raw, \"deny\")`) does not fire.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Map unknown verdicts to deny where the answer is parsed: an enum or a table with deny as the "
+    "default, or an explicit check before the action that refuses everything but the one word that "
+    "means go ahead. Add a test that a deny, the same word in capitals, an empty value, None and a word "
+    "you have never seen all refuse, so a later refactor cannot reopen it.",
+    sarif_name="PolicyVerdictFailOpen",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "The verdict pattern is a regression pattern from the Nobulex failopen corpus "
+        "(github.com/arian-gogani/failopen, MIT, Arian Gogani), case `historical/autogen-verdict`: "
+        "microsoft/autogen PR #7960 executed its action on six unknown verdicts at commit 0cd67042, "
+        "and commit ec6cf48c in the same PR (still open, not in AutoGen main) hardened it to block "
+        "all six before the issue was filed, so it is not an unresolved AutoGen vulnerability. "
+        "Reads Python functions, one at a time, for a check of a verdict by name: `verdict`, `decision` "
+        "and `approval` anywhere, and `allowed`, `action` and `status` only in a function or file named for "
+        "a gate (policy, guard, gate, approval, hook and the like), since those words are common. A local "
+        "assigned from one counts. The deny word must be a string literal, so one held in a constant or an "
+        "enum is not read, and a check at module level, a `match` statement, a flag set in the branch "
+        "(`blocked = True`) and a verdict read in another function are not followed. A check in a nested block "
+        "is judged by what follows it in that block. A return of a plain name or of a word that is "
+        "neither a refusal nor a go-ahead is not read as acting. TypeScript and other languages are not read. "
+        "A source file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-POLICY-IMPORT-FAILOPEN-001",
+    "A failed import of a policy module leaves the gate open",
+    "An `except ImportError` or `except ModuleNotFoundError` around a policy, auth, validator or "
+    "guard import allows when the import fails: its handler returns True or an allow value, turns an "
+    "enforce flag off, binds a stub that allows, or does nothing while the code goes on to act; or a "
+    "later test of the missing name goes ahead. A PreToolUse guard shaped like this allowed every "
+    "`mcp__*` call for a policy module that did not exist, and its allow-path tests kept passing. A "
+    "handler that raises, exits non-zero or denies does not fire, and neither does an optional "
+    "import that is no policy (a YAML speedup, `rich`).",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Deny on the ImportError: raise, or exit with the code your gate reads as a refusal (2 for a "
+    "Claude Code PreToolUse hook), and add a test that the policy module being missing denies, "
+    "not only that the module being present allows correctly.",
+    sarif_name="PolicyImportFailOpen",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads Python source for a try that imports a module or a name with a policy word in it (policy, "
+        "auth, valid*, guard*, permission*, acl, rbac, enforc*, secur*, sandbox*, allowlist*, firewall*, gate), "
+        "word by word of a dotted or snake_case name, so a policy module named for something else "
+        "(`from checks import run`) is not read, and a validator library imported for an unrelated "
+        "purpose is. Only `ImportError` and `ModuleNotFoundError` handlers are read, so a bare `except:` or "
+        "`except Exception:` is not. A name left as None or False is followed through later `if` tests in the "
+        "same file; a test of it in another file is not, and with no later test nothing is reported, since "
+        "calling None raises. A handler that passes counts only when the try itself calls the check and "
+        "a call follows it in the same function. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
     "AAK-POLICY-TRUNCATION-001",
     "Deny policy evaluated on a truncated copy of the value the executor receives",
     "A hook bridge, gateway or guard cuts a candidate command, URL or path to a "
@@ -12323,6 +12970,7 @@ _r(
         "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
         "CVE-2026-110186", "CVE-2026-93680", "CVE-2026-110193", "CVE-2026-110192",
         "CVE-2026-104339", "CVE-2026-107327", "CVE-2026-107329",
+        "CVE-2026-104317", "CVE-2026-18894", "CVE-2026-101288",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI04", "ASI05"],
@@ -16776,6 +17424,76 @@ _r(
 )
 
 _r(
+    "AAK-MCP-TSSDK-CVE-2026-111768-001",
+    "MCP TypeScript SDK: one HTTP request within the size limit can exhaust server memory during validation",
+    "The official MCP TypeScript SDK's HTTP servers put no limit on how many array elements and "
+    "object keys they validated in one request, so one request inside the default 4 MiB limit could "
+    "exhaust the server's memory, and the process aborted with `JavaScript heap out of memory` "
+    "(CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453). No credentials are needed unless requests "
+    "are authenticated before they reach the SDK. It affects `@modelcontextprotocol/sdk` 1.3.0 up to "
+    "1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to `@modelcontextprotocol/sdk` 1.32.0 or `@modelcontextprotocol/server` 2.3.0 or later "
+    "and pin it. The advisory says upgrading alone changes nothing, because the patched versions add "
+    "an option that is off by default: set `maxToolInputElements` on `McpServer` just above the largest "
+    "input your tools need, and lower `maxRequestBodySize` on the transport, or your own body parser's "
+    "limit, to what they need. If you cannot upgrade yet, make the second change.",
+    sarif_name="McpTypeScriptSdkValidationMemory",
+    cve_references=["CVE-2026-111768"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` from 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` "
+        "from 2.0.0 up to 2.3.0 where a package.json, lockfile or MCP config states the version, reporting "
+        "a range that admits an affected version. `latest` is fixed and states no version, so it is not "
+        "reported. It reads the version, not the code: a fixed release without `maxToolInputElements` "
+        "set, which the advisory says is still exposed, is not reported, and a stdio-only server on an "
+        "affected version is reported without being exposed. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOOLBOX-HOSTS-001",
+    "MCP Toolbox for Databases on a network listener with an open Host or Origin check",
+    "MCP Toolbox for Databases before 0.25.0 had no way to validate the `Host` a request names, "
+    "so a page in a browser could rebind a name to its listener (CVE-2026-11624, CWE-346, "
+    "GHSA-76g7-m3xw-x9gr). 0.25.0 added `--allowed-hosts` beside `--allowed-origins`, and both still "
+    "default to `*`, so the server only warns at startup and upgrading closes nothing by itself. "
+    "This rule reports `@toolbox-sdk/server` below 0.25.0, and an MCP config that starts the server on "
+    "a network listener with either flag unset or `*`.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@toolbox-sdk/server` to 0.25.0 or later and pin it, and start the server with both "
+    "`--allowed-hosts` and `--allowed-origins` naming your real hosts and origins. A client that "
+    "starts the server itself can use `--stdio`, which has no listener.",
+    sarif_name="McpToolboxOpenHostCheck",
+    cve_references=["CVE-2026-11624"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-NETWORK-01"],
+    limitations=(
+        "The version half reads `@toolbox-sdk/server` where a package.json, lockfile or MCP config states "
+        "a version; `latest` states none and is not reported, and the Go module is not read. The launch "
+        "half reads the `command` and `args` of servers in `.mcp.json`, `mcp.json`, "
+        "`claude_desktop_config.json` and `*.mcp.json` anywhere outside AAK's skip directories, for "
+        "`npx @toolbox-sdk/server` or a program named `toolbox`. A launch with `--stdio` is not read, and "
+        "neither is a shell script, a compose file or a Kubernetes manifest. A flag given a variable reference "
+        "counts as set, and a list holding `*` beside other names counts as open. The rule reads the flags, "
+        "not the reverse proxy in front of the listener. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
     "AAK-MCP-RIPGREP-CVE-2026-113378-001",
     "mcp-ripgrep hands a tool's fileType argument to a shell unescaped (no fixed release)",
     "`mcp-ripgrep` (npm; mcollina/mcp-ripgrep), an MCP server that runs ripgrep for "
@@ -17587,7 +18305,8 @@ _r(
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
     "Remove the release: pin a version the feed does not list (for litellm, 1.106.2, "
-    "the version LiteLLM named), re-lock, and rebuild the environment or image from "
+    "the version LiteLLM named; for axios 1.14.1 or 0.30.4, 1.14.0 or 0.30.3, and delete "
+    "`node_modules/plain-crypto-js`, as the axios postmortem advises), re-lock, and rebuild the environment or image from "
     "scratch rather than upgrading in place. Treat every environment, host or "
     "cluster that installed or ran it as compromised: rotate each credential it could "
     "reach and review its outbound traffic. Run `aak update` to refresh the feed.",
@@ -17623,8 +18342,9 @@ _r(
         "runs by name names no registry and is not read, nor are `.egg-info` installs, "
         "`node_modules`, conda metadata or an image's registry layers. The bundled feed "
         "lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0), MAL-2026-18425 "
-        "(local-commander-agent 0.3.52) and one image index digest, so without `aak "
-        "update` nothing else is known. A lockfile that "
+        "(local-commander-agent 0.3.52), MAL-2026-2307 (axios 0.30.4 and 1.14.1), "
+        "MAL-2026-2306 (every release of plain-crypto-js) and one image index digest, so "
+        "without `aak update` nothing else is known. A lockfile that "
         "resolves one release more than once is reported once, at its first entry, and "
         "an image reference is quoted from at most 256 characters before its digest. A "
         "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
@@ -17674,8 +18394,8 @@ _r(
         "not know whether a listed release is still the registry's newest or was ever "
         "fetched. A finding names at most ten listed versions per entry. AAK-SUPPLY-001 and "
         "AAK-MCP-007 stand down only on a launch of a server in a top-level `mcpServers` or "
-        "`servers` map. The bundled feed lists two packages with version-specific entries "
-        "(litellm and local-commander-agent), so without `aak update` nothing else is known. "
+        "`servers` map. The bundled feed lists three packages with version-specific entries "
+        "(litellm, local-commander-agent and axios), so without `aak update` nothing else is known. "
         "A config over 2 MB is not read."
     ),
 )
@@ -17839,11 +18559,13 @@ _r(
     Category.SUPPLY_CHAIN,
     "Upgrade to the release the finding names as fixed on that line, re-lock, and "
     "rebuild the environment or image; for a manifest range, raise its lower bound past "
-    "the fix. Where the advisory lists no fixed release, remove or replace the package, "
+    "the fix. Where the finding says the fix is on a date line npm has deprecated, take a "
+    "current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, "
     "or keep the component the advisory names unreachable until one ships; where an NVD "
     "entry names only the last affected release, upgrade past it to the release the "
     "vendor's advisory names as fixed. Run `aak update` so the scan reads the current "
-    "advisories rather than the bundled few.",
+    "advisories rather than the bundled few. Where the finding says a parent pins the release "
+    "exactly, the upgrade needs an override: `[tool.uv] override-dependencies` or a pip constraint.",
     sarif_name="KnownVulnerableRelease",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -17855,12 +18577,15 @@ _r(
         "requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and "
         "the launches in MCP configs; and `<name>-<version>.dist-info` directories in the "
         "site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk "
-        "reaches. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside "
+        "reaches; with `--include-user-config` also the packages in this host's npx cache "
+        "and uv's tool environments, read as AAK-MALICIOUS-RELEASE-001 reads them and "
+        "reported with the cache path. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside "
         "`>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the "
         "record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed "
         "versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package "
         "are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label "
-        "is reported MEDIUM. A declaration without a version is not judged, and a range "
+        "is reported MEDIUM. A declaration without a version is not judged (an MCP config "
+        "launch without one is AAK-KNOWN-VULN-003's), and a range "
         "is read on release triples, as the pin table reads ranges, so a pre-release "
         "bound counts as its release. A range that admits affected and unaffected "
         "releases is one INFO finding naming at most five advisories, and none when a "
@@ -17886,7 +18611,8 @@ _r(
         "whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x "
         "vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for "
         "the package names is dropped for OSV's. The bundled records are the two OSV "
-        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from "
+        "advisories of 27 and 28 Oct 2026 against vLLM and MLflow, the two against anyio below 4.14.2, "
+        "and nine entries from "
         "NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, "
         "prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and "
         "@samanhappy/mcphub, so without `aak update` nothing "
@@ -17952,6 +18678,53 @@ _r(
         "bundled launch entries are NVD's three records of 30 Oct 2026 against MoLing "
         "and TAKO, so without `aak update` nothing else is known. A file over 2 MB is not "
         "read."
+    ),
+)
+
+_r(
+    "AAK-KNOWN-VULN-003",
+    "An MCP config launches, without pinning a release, a package a published advisory lists as affected",
+    "An MCP client config launches a PyPI or npm package from its registry with no version, a "
+    "tag (`@latest`) or a range, and the offline advisory feed holds an advisory whose "
+    "affected releases the launch admits. Such a launch runs whichever release npx or uvx "
+    "resolves, or finds in its cache, and the config does not say which. DBHub "
+    "(`@bytebase/dbhub`), a database MCP server usually started as `npx -y @bytebase/dbhub`, "
+    "let MySQL and MariaDB comment syntax past its read-only SQL validation below 0.22.6 "
+    "(GHSA-j656-3hf2-fvjc, 2 Nov 2026), and AAK-KNOWN-VULN-001 could not judge that launch: "
+    "it names no release. The finding carries the advisory's severity when every release the "
+    "launch can fetch is affected (the advisory names no end, or a range admits only affected "
+    "releases), and MEDIUM when the advisory names a fix, since the newest release may be the "
+    "fixed one; the scan then reports the launch once, standing AAK-SUPPLY-001 and AAK-MCP-007 "
+    "down on it. A launch pinned to one release is AAK-KNOWN-VULN-001's.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Pin the launch to a release outside the advisory's range, the fix the finding names or "
+    "later (`npx -y @bytebase/dbhub@0.22.6`, `uvx pkg==1.2.3`), and restart the server. Then "
+    "run `aak scan --include-user-config` to check whether npx or uv already cached an "
+    "affected release, and clear that cache entry if so. Where the advisory names no fixed "
+    "release, stop launching the package or keep the flawed component unreachable. Run `aak "
+    "update` so the scan reads the current advisories rather than the bundled few.",
+    sarif_name="UnpinnedLaunchOfVulnerablePackage",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads the launches in the MCP configs AAK-KNOWN-VULN-001 reads (`.mcp.json`, `mcp.json`, "
+        "`claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`, outside AAK's skip "
+        "directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, `npm exec`, "
+        "`pnpm dlx`, `yarn dlx`, uvx, `uv tool run`, `pipx run`, and `--with` packages); a launch in a "
+        "shell script or a package.json `scripts` entry, a program a config runs by name, a git URL "
+        "and a local path are not judged. A launch with no version or a tag counts as able to fetch "
+        "any release, and a readable range only the releases it admits, read on release triples as "
+        "the version pins read ranges. The rule reports what the launch could run, not what it ran: "
+        "it does not know the registry's newest release, so an advisory fixed long ago is still "
+        "reported, at MEDIUM. One finding per launch and advisory; where another rule reports every "
+        "CVE id of the advisory on the same line of the same file at or above this finding's "
+        "severity, only that rule's finding is kept. AAK-SUPPLY-001 and AAK-MCP-007 stand down only "
+        "on a launch of a server in a top-level `mcpServers` or `servers` map. Without `aak update` "
+        "the feed is the few records bundled with AAK (npm's open, @modelcontextprotocol/inspector, "
+        "opencode-ai and @samanhappy/mcphub among them), so nothing else is known. A config over 2 MB "
+        "is not read."
     ),
 )
 

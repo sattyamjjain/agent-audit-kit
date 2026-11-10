@@ -551,6 +551,17 @@ def _unpinned_label(version: str) -> str:
     return f"floating tag `{version}`"
 
 
+def is_registry_spec(ecosystem: str | None, spec: str) -> bool:
+    """Does a launch of `spec` fetch from the registry, not a git URL or a path?
+    An empty spec (a declaration that names only the package) counts as one.
+    AAK-MALICIOUS-RELEASE-002 and AAK-KNOWN-VULN-003 judge only such launches."""
+    if not spec:
+        return True
+    if ecosystem == "js":
+        return npm_spec(spec).kind == "registry"
+    return py_spec(spec).kind == "registry"
+
+
 def pin_problem(launched: Launched) -> str | None:
     """Why `launched` is not pinned to one release, or None when it is.
 
