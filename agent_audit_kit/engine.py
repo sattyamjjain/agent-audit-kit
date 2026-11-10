@@ -340,7 +340,9 @@ def run_scan(
 
     result.findings.extend(
         _drop_known_vulns_a_rule_reports(
-            _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+            _drop_table_findings_the_feed_reports(
+                _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+            )
         )
     )
 
@@ -491,6 +493,51 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
                 continue
         kept.append(f)
     return kept
+
+
+def _drop_table_findings_the_feed_reports(findings: list[Finding]) -> list[Finding]:
+    """Stand AAK-SUPPLY-002 and -006 down on a release AAK-MALICIOUS-RELEASE-001
+    reports in the same file.
+
+    The fixed table those two rules read and the malicious-release feed both list
+    the axios releases of 2026-03-31 and plain-crypto-js, so one lockfile entry came
+    back as a HIGH and a CRITICAL. The table stays, since older clients download it
+    and a run with `--rules AAK-SUPPLY-002` or a feed copy that lacks the release
+    still needs an answer, so this compares findings, as the passes above do: a table
+    finding is dropped when its package and version (`supply_chain.table_release`)
+    are what a feed finding in the same file names
+    (`malicious_releases.listed_release`), at or above its own severity. The line is
+    no key: AAK-SUPPLY-002 points at the first line naming the package and the feed
+    finding at the resolved entry. It runs after the `--rules`, `--exclude-rules` and
+    `ignore_paths` filter, so it stands down only for a finding that is going to be
+    reported. A typosquat finding names no release and stays.
+    """
+    tabled = {"AAK-SUPPLY-002", "AAK-SUPPLY-006"}
+    if not any(f.rule_id in tabled for f in findings):
+        return findings
+    try:
+        from agent_audit_kit.scanners.malicious_releases import listed_release
+    except ImportError:
+        return findings
+    from agent_audit_kit.scanners.supply_chain import table_release
+
+    reported: dict[tuple[str, str, str | None], int] = {}
+    for f in findings:
+        listed = listed_release(f.evidence) if f.rule_id == "AAK-MALICIOUS-RELEASE-001" else None
+        if listed is not None:
+            key = (f.file_path, listed[0].lower(), listed[1])
+            reported[key] = max(reported.get(key, 0), f.severity.numeric())
+    if not reported:
+        return findings
+
+    def _reported(finding: Finding) -> bool:
+        release = table_release(finding.evidence)
+        if release is None:
+            return False
+        name, own = release[0].lower(), finding.severity.numeric()
+        return any(reported.get((finding.file_path, name, version), 0) >= own for version in (release[1], None))
+
+    return [f for f in findings if f.rule_id not in tabled or not _reported(f)]
 
 
 def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding]:

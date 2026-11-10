@@ -99,6 +99,9 @@ _LINE_COMMENT_RE = re.compile(_COMMENT_RE.pattern, re.M)
 # How far before a digest the reference it ends is looked for, and quoted from.
 _REF_WINDOW = 256
 _OPERATOR_RE = re.compile(r"^\s*(?:===|==|=)?\s*")
+# How `Release.describe` words what an entry lists.
+_LISTS = "which lists "
+_EVERY_RELEASE = "every release of "
 
 
 def _is_manifest(name: str) -> bool:
@@ -131,6 +134,25 @@ def exact_pin(declaration: Declaration) -> str | None:
     if spans is None or exact_version(spans) is None:
         return None
     return _OPERATOR_RE.sub("", declaration.version).strip() or None
+
+
+def listed_release(evidence: str) -> tuple[str, str | None] | None:
+    """The (name, version) an AAK-MALICIOUS-RELEASE-001 finding reports, version
+    None for an entry listing every release; None for a finding that names no
+    package, such as an image digest. Every package finding ends in
+    `Release.describe` and `_feed_note`, after the free text of a declaration, so
+    the last `which lists` is the feed's own. `engine.run_scan` reads this to stand
+    the older table rules down on a release this rule reports."""
+    start = evidence.rfind(_LISTS)
+    if start < 0:
+        return None
+    tail = evidence[start + len(_LISTS):]
+    ends = [i for i in (tail.find(" ("), tail.find(". Feed:")) if i >= 0]
+    listed = tail[:min(ends)] if ends else tail
+    if listed.startswith(_EVERY_RELEASE):
+        return listed[len(_EVERY_RELEASE):], None
+    name, _, version = listed.rpartition(" ")
+    return (name, version) if name else None
 
 
 def _feed_note(feed: Feed, release_url: str) -> str:
@@ -470,4 +492,4 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
     return findings, scanned
 
 
-__all__ = ["scan", "exact_pin", "npm_cache_dir", "uv_cache_dir"]
+__all__ = ["scan", "exact_pin", "listed_release", "npm_cache_dir", "uv_cache_dir"]

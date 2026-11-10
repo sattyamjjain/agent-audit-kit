@@ -2028,8 +2028,10 @@ _r(
     "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade the package named in the finding to a release outside its affected range "
-    "(currently axios 1.7.4 or later), or remove it. A "
+    "Move the package named in the finding off the listed release, or remove it. The table "
+    "lists releases published as malware: for axios 1.14.1 or 0.30.4 go back to 1.14.0 or "
+    "0.30.3, delete `node_modules/plain-crypto-js`, and rotate every secret on a machine "
+    "that installed either release. A "
     "'Potential typosquat' finding is a name check: confirm the package is the one you "
     "meant to install, and replace it with the real package if it is not.",
     sarif_name="KnownVulnerablePackage",
@@ -2037,9 +2039,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Reads the root package-lock.json against a fixed table of one npm package, "
-        "`axios` 1.7.0 to 1.7.3, and two misspellings of the MCP scope "
-        "(`@modlecontextprotocol`, `modelcontextprotocal`), so a vulnerable version of "
+        "Reads the root package-lock.json against a fixed table of the malicious axios "
+        "releases of 31 March 2026 (1.14.1 and 0.30.4), every numeric release of "
+        "`plain-crypto-js`, the trojan they install, and two misspellings of the MCP scope "
+        "(`@modlecontextprotocol`, `modelcontextprotocal`). Every other malicious release is "
+        "AAK-MALICIOUS-RELEASE-001's, and where that rule reports the same release in the same "
+        "file this finding stands down. A vulnerable version of "
         "any other package (`lodash` 4.17.15 in a lockfile) is not reported, and "
         "neither is any other lookalike name, such as an unscoped copy of an official "
         "server's (`mcp-server-sequential-thinking` for "
@@ -2162,9 +2167,11 @@ _r(
     "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Change the package version in the server's `args` to one outside the affected "
-    "range recorded in the vulnerability database (currently axios 1.7.4 or later), "
-    "and pin it exactly.",
+    "Change the package version in the server's `args` to a release the vulnerability "
+    "database does not list, and pin it exactly. It lists releases published as malware: "
+    "for axios 1.14.1 or 0.30.4 go back to 1.14.0 or 0.30.3, delete "
+    "`node_modules/plain-crypto-js`, and rotate every secret on a machine that installed "
+    "either release.",
     sarif_name="McpSpecificVulnDep",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2174,7 +2181,11 @@ _r(
         "the project root (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, "
         ".amazonq/mcp.json and mcp.json), under `mcpServers` or VS Code's `servers`, "
         "and looks each `package@version` up in the npm section of the vulnerability "
-        "database, which bundles one package, `axios` 1.7.0 to 1.7.3. OpenClaw is not "
+        "database, which bundles the malicious axios releases of 31 March 2026 (1.14.1 and "
+        "0.30.4) and every numeric release of `plain-crypto-js`, the trojan they install; a "
+        "copy `aak update` cached at `~/.agent-audit-kit/vuln_db.json` wins over the bundled "
+        "one. Every other malicious release is AAK-MALICIOUS-RELEASE-001's, and where that "
+        "rule reports the same release in the same file this finding stands down. OpenClaw is not "
         "in it: it publishes calendar versions, which its own CVE pins read, and the "
         "only `openclaw` below 2.1.0, where the database used to place it, is the "
         "empty placeholder 0.0.1. The same package in package.json, in "
@@ -17588,7 +17599,8 @@ _r(
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
     "Remove the release: pin a version the feed does not list (for litellm, 1.106.2, "
-    "the version LiteLLM named), re-lock, and rebuild the environment or image from "
+    "the version LiteLLM named; for axios 1.14.1 or 0.30.4, 1.14.0 or 0.30.3, and delete "
+    "`node_modules/plain-crypto-js`, as the axios postmortem advises), re-lock, and rebuild the environment or image from "
     "scratch rather than upgrading in place. Treat every environment, host or "
     "cluster that installed or ran it as compromised: rotate each credential it could "
     "reach and review its outbound traffic. Run `aak update` to refresh the feed.",
@@ -17624,8 +17636,9 @@ _r(
         "runs by name names no registry and is not read, nor are `.egg-info` installs, "
         "`node_modules`, conda metadata or an image's registry layers. The bundled feed "
         "lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0), MAL-2026-18425 "
-        "(local-commander-agent 0.3.52) and one image index digest, so without `aak "
-        "update` nothing else is known. A lockfile that "
+        "(local-commander-agent 0.3.52), MAL-2026-2307 (axios 0.30.4 and 1.14.1), "
+        "MAL-2026-2306 (every release of plain-crypto-js) and one image index digest, so "
+        "without `aak update` nothing else is known. A lockfile that "
         "resolves one release more than once is reported once, at its first entry, and "
         "an image reference is quoted from at most 256 characters before its digest. A "
         "manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB "
@@ -17675,8 +17688,8 @@ _r(
         "not know whether a listed release is still the registry's newest or was ever "
         "fetched. A finding names at most ten listed versions per entry. AAK-SUPPLY-001 and "
         "AAK-MCP-007 stand down only on a launch of a server in a top-level `mcpServers` or "
-        "`servers` map. The bundled feed lists two packages with version-specific entries "
-        "(litellm and local-commander-agent), so without `aak update` nothing else is known. "
+        "`servers` map. The bundled feed lists three packages with version-specific entries "
+        "(litellm, local-commander-agent and axios), so without `aak update` nothing else is known. "
         "A config over 2 MB is not read."
     ),
 )
