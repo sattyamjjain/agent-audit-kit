@@ -209,6 +209,25 @@ def test_every_docs_site_link_has_a_source_page() -> None:
         )
 
 
+def test_every_raw_main_url_names_a_file_in_the_tree() -> None:
+    """The demo GIF is served from this repository, not a third-party host.
+
+    It was an asciinema.org SVG until 0.6.33, which GitHub's image proxy could
+    not fetch, so the README showed a broken image. A raw URL works on GitHub
+    and on PyPI; lychee skips it because it 404s until a PR merges, so this
+    checks it against the working tree instead.
+    """
+    raw = "https://raw.githubusercontent.com/sattyamjjain/agent-audit-kit/main/"
+    paths = set(re.findall(re.escape(raw) + r"([A-Za-z0-9_./-]+)", _text()))
+    assert "docs/assets/demo.gif" in paths, "README lost its demo GIF"
+    for path in paths:
+        assert (REPO / path).is_file(), f"README points at {path}, which does not exist"
+
+
+def test_demo_is_not_hosted_on_asciinema() -> None:
+    assert "asciinema.org" not in _text()
+
+
 #: Paths that really are served under the Pages origin. The root is the MCP
 #: Security Index; `docs/` is the MkDocs site, built and staged by
 #: `mcp-security-index.yml` and checked daily by link-check.yml's `nav-liveness`

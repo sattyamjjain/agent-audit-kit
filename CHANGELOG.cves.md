@@ -18,7 +18,7 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-11-07 (unreleased): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
+## 2026-11-07 (v0.6.33): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
 #1184, and of CVE-2026-123272 and CVE-2026-123271 on 5 Nov 2026, which it has not filed because
@@ -65,7 +65,7 @@ CVE-2026-121420 through CVE-2026-121423 from NVD's records of CNA version data.
 
 CVSS is the record's CVSS 3.1 score, VulnCheck's. Its CVSS 4.0 score is 8.6.
 
-## 2026-11-07 (unreleased): four advisories no issue named
+## 2026-11-07 (v0.6.33): four advisories no issue named
 
 None of these was filed by the watcher; they came up in threads on other projects. Each is
 read here against OSV and NVD's API record, read on 2026-11-07. Advisory text is quoted from the
@@ -107,7 +107,7 @@ only, so a registry parent's pin is not visible there.
 | CVE-2026-63374 | 9.3 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, CRITICAL. No pin. | not filed |
 | CVE-2026-64847 | 6.8 (4.0) | `anyio` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 4.14.2 from the bundled OSV record, MEDIUM. No pin. | not filed |
 
-## 2026-11-07 (unreleased): #1152 to #1156
+## 2026-11-07 (v0.6.33): #1152 to #1156
 
 Five issues the watcher filed on 31 Oct, deferred for 0.6.31 with no scope claimed. Each is
 read here against NVD's API record, its CNA record and the published packages, all read on
