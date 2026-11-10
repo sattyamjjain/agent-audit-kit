@@ -1,0 +1,7 @@
+{
+  "name": "debug-tools",
+  "private": true,
+  "scripts": {
+    "inspect": "npx -y @modelcontextprotocol/inspector"
+  }
+}

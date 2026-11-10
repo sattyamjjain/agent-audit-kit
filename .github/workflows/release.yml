@@ -38,7 +38,8 @@ jobs:
   # --------------------------------------------------------------------------
   test:
     name: Test suite (tagged commit)
-    runs-on: ubuntu-latest
+    # Not ubuntu-latest: actions/python-versions has no 3.9 build for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     # Job-scoped, because the top-level block above lists explicit scopes and
     # anything unlisted is `none` -- so a GH_TOKEN handed to the test step
     # would read no issues and the cve-deferred gate tests would skip here, at
