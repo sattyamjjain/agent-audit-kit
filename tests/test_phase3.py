@@ -43,7 +43,7 @@ def test_cyclonedx_sbom_has_required_fields(tmp_path: Path) -> None:
                 "mcpServers": {
                     "fs": {
                         "command": "npx",
-                        "args": ["@modelcontextprotocol/server-filesystem@2025.1.1"],
+                        "args": ["@modelcontextprotocol/server-filesystem@2.1.0"],
                     }
                 }
             }
@@ -56,7 +56,7 @@ def test_cyclonedx_sbom_has_required_fields(tmp_path: Path) -> None:
     assert data["components"]
     component = data["components"][0]
     assert component["name"] == "@modelcontextprotocol/server-filesystem"
-    assert component["version"] == "2025.1.1"
+    assert component["version"] == "2.1.0"
 
 
 def test_spdx_sbom_emits(tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ def test_spdx_sbom_emits(tmp_path: Path) -> None:
                 "mcpServers": {
                     "fs": {
                         "command": "npx",
-                        "args": ["@modelcontextprotocol/server-filesystem@2025.1.1"],
+                        "args": ["@modelcontextprotocol/server-filesystem@2.1.0"],
                     }
                 }
             }
@@ -95,7 +95,7 @@ def test_cli_sbom_command(tmp_path: Path) -> None:
                 "mcpServers": {
                     "fs": {
                         "command": "npx",
-                        "args": ["@modelcontextprotocol/server-filesystem@2025.1.1"],
+                        "args": ["@modelcontextprotocol/server-filesystem@2.1.0"],
                     }
                 }
             }

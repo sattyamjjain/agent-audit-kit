@@ -202,8 +202,8 @@ CASES: list[Case] = [
     Case("secret-003 access key in a file", "AAK-SECRET-003", secret_exposure, {"settings.yml": "key: AKIAABCDEFGHIJKLMNOP\n"}, True),
     Case("secret-003 key removed", "AAK-SECRET-003", secret_exposure, {"settings.yml": "key: ${AWS_ACCESS_KEY_ID}\n"}, False),
     # ---- AAK-SUPPLY-002: the ranges the text quotes -------------------------
-    Case("supply-002 axios 1.7.2", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.7.2"), True),
-    Case("supply-002 axios 1.7.4", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.7.4"), False),
+    Case("supply-002 axios 1.14.1", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.14.1"), True),
+    Case("supply-002 axios 1.14.0", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.14.0"), False),
     Case("supply-002 typosquat name", "AAK-SUPPLY-002", supply_chain, _npm_lock("modelcontextprotocal", "1.0.0"), True),
     Case("supply-002 the real package", "AAK-SUPPLY-002", supply_chain, _npm_lock("@modelcontextprotocol/sdk", "1.0.0"), False),
     # ---- AAK-SUPPLY-004: the lockfiles and the commands that write them -----
@@ -224,8 +224,8 @@ CASES: list[Case] = [
     Case("supply-005 201 packages", "AAK-SUPPLY-005", supply_chain, _lock(201), True),
     Case("supply-005 200 packages", "AAK-SUPPLY-005", supply_chain, _lock(200), False),
     # ---- AAK-SUPPLY-006 ------------------------------------------------------
-    Case("supply-006 axios 1.7.2", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.7.2"]}}), True),
-    Case("supply-006 axios 1.7.4", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.7.4"]}}), False),
+    Case("supply-006 axios 1.14.1", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.14.1"]}}), True),
+    Case("supply-006 axios 1.14.0", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.14.0"]}}), False),
     # ---- AAK-AGENT-005: the three kinds of hidden content --------------------
     Case("agent-005 html comment", "AAK-AGENT-005", agent_config, {"CLAUDE.md": "# Rules\n<!-- note to the agent -->\n"}, True),
     Case("agent-005 markdown comment", "AAK-AGENT-005", agent_config, {"CLAUDE.md": "# Rules\n[//]: # (note to the agent)\n"}, True),

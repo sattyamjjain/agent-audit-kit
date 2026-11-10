@@ -38,6 +38,7 @@ from agent_audit_kit.scanners import (
     agent_server_noauth,
     agent_config,
     composition,
+    dns_rebind,
     gha_hardening,
     hook_rce,
     ide_task_rce,
@@ -46,7 +47,9 @@ from agent_audit_kit.scanners import (
     known_vulns_launch,
     langchain_prompt_loader,
     malicious_extensions,
+    mcp_authz_code,
     mcp_codeexec_sandbox,
+    mcp_server_code,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -55,6 +58,7 @@ from agent_audit_kit.scanners import (
     mcp_stdio_launcher,
     mcp_stdio_params,
     oauth_surface,
+    policy_failopen,
     runtime_advisories,
     secret_exposure,
     shared_resource_authz,
@@ -312,6 +316,9 @@ def _run_step(body: str) -> dict[str, str]:
 
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
+_DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
+_DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
+
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
     # The gate rules, before they were released. Written to stay linear, so these pin it: a test of
     # many operands reads its branch once, a name is looked up in sets and not in a merged one, a
@@ -345,6 +352,30 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "trust-copilot-words": (agent_trust_surface.scan, lambda k: {
         ".github/workflows/w.yml": "on: push\npermissions: {contents: write}\njobs:\n  j:\n    steps:\n"
         "      - run: git fetch upstream\n      - run: " + json.dumps("copilot " * k) + "\n"}, 5_000, False),
+    # The MCP authorization rules, before they were released: a contextvar read per function,
+    # tests of it in many blocks, and many handlers in one file are each read once.
+    "authz-handlers": (mcp_authz_code.scan, lambda k: {"s.py": "".join(f"@m.tool()\ndef t{i}(role):\n    if x:\n        return 1\n" for i in range(k))}, 400, False),
+    "authz-context-tests": (mcp_authz_code.scan, lambda k: {"s.py": "def f():\n    p = user.get(None)\n" + "    if q:\n        raise E\n" * k}, 2_000, False),
+    # The MCP server code rules, before they were released: one long word holding `state`
+    # many times backtracked quadratically in the first requestState pattern, and tool
+    # registrations are each read for their own stretch of the file.
+    "server-code-state-word": (mcp_server_code.scan, lambda k: {"s.py": "requestState = b64decode(x)\n" + "state" * k + " = 1\n"}, 4_000, False),
+    "server-code-js-tools": (mcp_server_code.scan, lambda k: {"s.ts": "s.tool('a', { readOnlyHint: true }, () => {});\n" * k}, 1_000, False),
+    "server-code-except-blocks": (mcp_server_code.scan, lambda k: {"s.py": "from mcp import x\n" + "try:\n    f()\nexcept E as e:\n    raise ToolError('fixed')\n" * k}, 500, False),
+    # AAK-POLICY-VERDICT-FAILOPEN-001 and AAK-POLICY-IMPORT-FAILOPEN-001, before they were
+    # released: each function is read for one scan of what follows its first check of a
+    # name, nested functions are not read again for the function around them, and the
+    # tests of a name left unset are found in one pass over the module.
+    "failopen-checks": (policy_failopen.scan, lambda k: {"g.py": "def run(verdict, tool):\n" + '    if verdict == "deny":\n        return\n' * k + "    tool()\n"}, 2_000, False),
+    "failopen-nested": (policy_failopen.scan, lambda k: {f"g{i}.py": "".join(" " * d + f"def f{d}(verdict, tool):\n" for d in range(40)) + " " * 40 + 'if verdict == "deny":\n' + " " * 41 + "return\n" + " " * 40 + "tool()\n" for i in range(k)}, 4, False),
+    "failopen-tries": (policy_failopen.scan, lambda k: {"g.py": "".join(f"try:\n    from policy_{i} import c{i}\nexcept ImportError:\n    c{i} = None\n" for i in range(k)) + "".join(f"if c{i} is None:\n    raise E\n" for i in range(k))}, 500, False),
+    # AAK-DNS-REBIND-001's SDK defaults, before they were released: an import with no
+    # closing parenthesis, `host=` tokens and half-written wildcard lists are each read
+    # once, and files below one deep directory share their walk to the root.
+    "dns-rebind-open-imports": (dns_rebind.scan, lambda k: {"s.py": "from mcp.server import (\n" * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-hosts": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'host="127.0.0.1"\n' * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-wildcards": (dns_rebind.scan, lambda k: {"s.py": "TrustedHostMiddleware(app, allowed_hosts=[\n" * k + _DNS_SERVER}, 1_000, False),
+    "dns-rebind-deep-files": (dns_rebind.scan, lambda k: {f"{'d/' * 60}s{i}.py": _DNS_IMPORT + _DNS_SERVER for i in range(k)}, 40, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.
@@ -560,6 +591,10 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "deno-handoffs-and-revokes": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": 'spawn("deno", ["run", "-A"]);\n'
                                                                        + "p.runPython(`${c}`); Deno.permissions.revoke({name: 'net'});\n" * k},
                                   600, False),
+    # known_vulns' AAK-KNOWN-VULN-003, before it was released: one finding per server
+    # launching a package with an advisory, each described once from the bundled feed.
+    "unpinned-advisory-launches": (known_vulns.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "npx", "args": ["-y", "@modelcontextprotocol/inspector"]} for i in range(k)}})}, 300, True),
     "genui-registrations": (mcp_codeexec_sandbox.scan, lambda k: {
         "server.py": "from fastmcp.apps.generative import GenerativeUI\n" + "mcp.add_provider(GenerativeUI())\n" * k,
         "uv.lock": '[[package]]\nname = "prefab-ui"\nversion = "0.20.2"\n'}, 1_000, True),
