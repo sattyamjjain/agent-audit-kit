@@ -45,6 +45,7 @@ from agent_audit_kit.scanners import (
     known_vulns_launch,
     langchain_prompt_loader,
     malicious_extensions,
+    mcp_authz_code,
     mcp_codeexec_sandbox,
     mcp_server_code,
     malicious_releases,
@@ -287,6 +288,10 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The MCP authorization rules, before they were released: a contextvar read per function,
+    # tests of it in many blocks, and many handlers in one file are each read once.
+    "authz-handlers": (mcp_authz_code.scan, lambda k: {"s.py": "".join(f"@m.tool()\ndef t{i}(role):\n    if x:\n        return 1\n" for i in range(k))}, 400, False),
+    "authz-context-tests": (mcp_authz_code.scan, lambda k: {"s.py": "def f():\n    p = user.get(None)\n" + "    if q:\n        raise E\n" * k}, 2_000, False),
     # The MCP server code rules, before they were released: one long word holding `state`
     # many times backtracked quadratically in the first requestState pattern, and tool
     # registrations are each read for their own stretch of the file.

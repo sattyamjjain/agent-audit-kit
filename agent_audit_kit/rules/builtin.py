@@ -9137,9 +9137,11 @@ _r(
     "shared-resource language in the tool's own name/description.",
     Severity.HIGH,
     Category.TRUST_BOUNDARY,
-    "Add and enforce a per-actor authorization parameter (e.g. `owner_id`, "
-    "`actor`, `on_behalf_of`, `authorization`) and check it server-side so a "
-    "tool call can only mutate resources the calling principal owns. Do not "
+    "Take the actor from the authenticated principal (the request context, the "
+    "access token), so a tool call can only mutate resources the calling principal "
+    "owns. A parameter such as `owner_id`, `actor` or `on_behalf_of` may only be "
+    "checked against that principal, never trusted on its own: a check on a value "
+    "the caller sends passes while evaluating attacker input. Do not "
     "rely on the agent to self-restrict. If the resource is genuinely global "
     "and every agent is authorized to mutate it, annotate the tool "
     "`\"x-aak-shared-authz\": \"global-ok\"` to document the decision and "
@@ -11776,6 +11778,34 @@ _r(
 
 
 _r(
+    "AAK-AUTHZ-CALLER-INPUT-001",
+    "An MCP tool's authorization decision reads a tenant, user, role or scope from its own arguments",
+    "A tool handler decides access on a tenant, org, user, role or scope the caller sends: a handler parameter "
+    "named `org_id`, `tenant_id`, `user_id`, `role` or `scope`, or `args[\"org_id\"]`, passed to an authorization "
+    "check or compared with a privilege, instead of the authenticated principal (the request context, the access "
+    "token, a principal contextvar). The check runs and passes while evaluating attacker input. The same check on "
+    "the principal does not fire, and neither does a parameter compared with the principal.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Read the tenant, user, role and scope from the authenticated principal. A parameter that names a tenant or a "
+    "user may only be compared with it, never trusted on its own.",
+    sarif_name="McpAuthzOnCallerInput",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only, in a function decorated `@<name>.tool(...)`, `.call_tool`, `.resource`, `.prompt` or `.completion`. "
+        "It reads a parameter or an `arguments[...]` read named org_id, organization_id, tenant, tenant_id, user_id, "
+        "account_id, role, roles, scope or scopes, passed to a check named like `authorize`, `check_access`, "
+        "`has_permission`, `require_role` or `enforce`; a role or scope compared with a privilege word (admin, owner, "
+        "root, superuser, sudo, write, delete, or a value with a colon); or an id in a test whose body raises a "
+        "permission error. A call or a test that also names the principal (ctx, token, claims, identity, session) "
+        "does not fire, whether or not it compares the two. A helper the handler calls with the value is not "
+        "followed, and a SQL filter on the value is not read as a decision. A source file over 512 KB is not read."
+    ),
+)
+
+_r(
     "AAK-MCP-ENV-DUMP-001",
     "An MCP tool returns the whole process environment to the client",
     "A tool handler returns the whole environment (`dict(os.environ)`, `os.environ.copy()`, "
@@ -11805,6 +11835,59 @@ _r(
         "below a tests, fixtures, examples, samples or demo directory, and does not report an unpinned launch, "
         "which gets `latest`, though a launcher's cache may still hold an older release. A source file over "
         "512 KB or a config over 1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-AUTHZ-COVERAGE-001",
+    "MCP authorization covers tools/call and not the other handlers, one transport, or an unset principal",
+    "A server checks scopes in its tools/call handler but not in resources/read, prompts/get or "
+    "completion/complete, so it hands out through one door what it refuses at another; it runs a check on one "
+    "HTTP transport and not the other; or a handler goes ahead when the principal contextvar is unset, where "
+    "`.get(None)` is treated as allow. One shared check called from all four handlers does not fire.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Call one shared check from every handler, on the path both transports use, and refuse when there is no "
+    "principal rather than reading its absence as allowed.",
+    sarif_name="McpAuthzCoverageGap",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only, one file at a time, so handlers split across files are not compared, and a check that lives in "
+        "middleware, or in `required_scopes`, is not seen. A check is a call named like `authorize`, `check_scope` or "
+        "`require_scope`, a decorator of that name, or a comparison reading `scopes`, `permissions` or `roles`. A resource "
+        "or prompt that is public on purpose is reported all the same. The transport arm reads `transport == "
+        "\"sse\"` or a streamable HTTP literal with a check in its body and no else, and not `transport != \"stdio\"`, "
+        "since stdio has no network login to check. The contextvar arm reads a local assigned from `<name>.get(None)` "
+        "where the name holds principal, identity, auth, user, subject, token or actor as a word. A source file "
+        "over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOKENVERIFIER-AUD-001",
+    "A python-sdk resource server leaves out protected-resource metadata or the token audience check",
+    "A python-sdk resource server sets `token_verifier=` with `resource_server_url=None`, which serves no "
+    "protected-resource metadata and leaves the audience check to the verifier, or a custom `verify_token` "
+    "never reads an audience or a resource, so a token issued for another server is accepted. The MCP spec says "
+    "servers MUST validate that a token was issued for them as the intended audience. A version pin covers the "
+    "SDK's own audience-blind check; this rule reads the code shape on any version.",
+    Severity.MEDIUM,
+    Category.TRUST_BOUNDARY,
+    "Set `resource_server_url` to the server's canonical URL, and check the token's `aud` or resource in "
+    "`verify_token`, or use the SDK's resource validation.",
+    sarif_name="McpTokenVerifierNoAudience",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Python only. The settings arm reads an explicit `resource_server_url=None` in a file naming `token_verifier`. "
+        "The verifier arm reads a method named `verify_token` on a class, leaving out stubs, in a file where no "
+        "`aud`, `audience`, `validate_token_resource`, `check_resource_allowed` or `resource_url` appears anywhere, so "
+        "a mention in another function counts as the check, and a helper in another file does not. A verifier for "
+        "opaque tokens checked upstream, which have no audience of their own, is reported all the same. A source "
+        "file over 512 KB is not read."
     ),
 )
 
