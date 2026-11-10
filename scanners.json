@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 115,
+  "count": 116,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -13,6 +13,10 @@
     {
       "module": "agent_config",
       "name": "Agent config"
+    },
+    {
+      "module": "agent_gates",
+      "name": "Gates that pass on nothing (optional trust inputs, fail-open PreToolUse hooks, wildcard subagents)"
     },
     {
       "module": "agent_harness_shared_state",

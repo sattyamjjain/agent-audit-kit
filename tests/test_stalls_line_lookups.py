@@ -33,6 +33,8 @@ import pytest
 from agent_audit_kit.scanners import (
     _helpers,
     a2a_protocol,
+    agent_gates,
+    agent_trust_surface,
     agent_server_noauth,
     agent_config,
     composition,
@@ -283,11 +285,73 @@ def _quoted_server_name(k: int) -> dict[str, str]:
                                     separators=(",", ":"))}
 
 
+def _hook_handlers(commands: list[str], script: str = "import sys\nsys.exit(2)\n") -> dict[str, str]:
+    """One hook script, and a settings file with a handler per command naming it."""
+    handlers = [{"type": "command", "command": c} for c in commands]
+    return {
+        ".claude/settings.json": json.dumps({"hooks": {"PreToolUse": [{"hooks": handlers}]}}),
+        ".claude/hooks/g.py": script,
+    }
+
+
+def _hook_script(name: str, text: str) -> dict[str, str]:
+    command = {"type": "command", "command": f"run .claude/hooks/{name}"}
+    return {
+        ".claude/settings.json": json.dumps({"hooks": {"PreToolUse": [{"hooks": [command]}]}}),
+        f".claude/hooks/{name}": text,
+    }
+
+
+def _third_party_jobs(k: int) -> dict[str, str]:
+    """Jobs that each run an agent with no write access, under one large workflow env."""
+    env = "".join(f"  V{i}: ${{{{ secrets.V{i} }}}}\n" for i in range(k))
+    jobs = "".join(f"  j{i}:\n    steps:\n      - uses: anthropics/claude-code-action@v1\n" for i in range(k))
+    head = "on: push\npermissions: {}\n"
+    fetch = "  f:\n    steps:\n      - run: gh api repos/a/b/compare/c\n"
+    return {".github/workflows/w.yml": f"{head}env:\n{env}jobs:\n{fetch}{jobs}"}
+
+
+def _run_step(body: str) -> dict[str, str]:
+    return {".github/workflows/w.yml": f"on: push\njobs:\n  j:\n    steps:\n      - run: {json.dumps(body)}\n"}
+
+
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The gate rules, before they were released. Written to stay linear, so these pin it: a test of
+    # many operands reads its branch once, a name is looked up in sets and not in a merged one, a
+    # script many handlers name is read once, the lines of swallowed commands are found in one pass,
+    # and a workflow's env is read once for all its jobs.
+    "gates-trust-params": (agent_gates.scan, lambda k: {"g.py": "def f(" + ", ".join(f"verified_{i}=None" for i in range(k))
+                           + "):\n" + "".join(f"    if verified_{i} is False:\n        return 1\n" for i in range(k))}, 500, True),
+    "gates-if-operands": (agent_gates.scan, lambda k: {"g.py": "def f(verified=None):\n    if "
+                          + " or ".join(f"a{i}" for i in range(k)) + ":\n" + "        return 1\n" * k}, 1_500, False),
+    "gates-handlers-one-script": (agent_gates.scan, lambda k: _hook_handlers([".claude/hooks/g.py"] * k,
+                                  "import sys\n" + "x = 1\n" * 20_000 + "sys.exit(2)\n"), 1_000, False),
+    "gates-swallowed-commands": (agent_gates.scan, lambda k: _hook_handlers(
+        [f"python3 .claude/hooks/g.py {i} || true" for i in range(k)]), 1_000, False),
+    "gates-shell-traps": (agent_gates.scan, lambda k: _hook_script("g.sh", "exit 2\nset -e\n" + "trap on_error ERR\nexit 0\n" * k), 3_000, False),
+    "gates-node-tokens": (agent_gates.scan, lambda k: _hook_script("g.mjs", "process.exit(2);\n" + "try { x(); } catch { y(); }\n" * k), 1_500, False),
+    "gates-node-usage-exits": (agent_gates.scan, lambda k: _hook_script("g.mjs", "process.exit(2);\n" + "// usage\nprocess.exit(1);\n" * k), 1_500, False),
+    "gates-python-handlers": (agent_gates.scan, lambda k: _hook_script("g.py", "import sys\n" + "".join(
+        f"def f{i}():\n    sys.exit(2)\n" for i in range(k)) + "try:\n    f0()\nexcept Exception:\n    f0()\n" * k), 700, False),
+    "gates-one-agent-many-servers": (agent_gates.scan, lambda k: {
+        ".mcp.json": json.dumps({"mcpServers": {f"mail{i}": {"command": "gmail-mcp"} for i in range(k)}}),
+        ".claude/agents/a.md": "---\nname: a\ndescription: b\ndisallowedTools: " + ", ".join(f"mcp__mail{i}" for i in range(k - 1)) + "\n---\n",
+    }, 1_000, False),
+    "gates-many-agents": (agent_gates.scan, lambda k: {
+        ".mcp.json": json.dumps({"mcpServers": {"gmail": {"command": "gmail-mcp"}}}),
+        **{f".claude/agents/a{i}.md": "---\nname: a\ndescription: b\n---\n" for i in range(k)},
+    }, 100, False),
+    "trust-third-party-jobs": (agent_trust_surface.scan, _third_party_jobs, 100, False),
+    "trust-api-lines": (agent_trust_surface.scan, lambda k: _run_step("gh api repos/${{ github.repository }}/commits\n" * k), 1_000, False),
+    "trust-api-repos-one-line": (agent_trust_surface.scan, lambda k: _run_step("gh api " + "repos/a/" * k), 5_000, False),
+    "trust-fetch-one-line": (agent_trust_surface.scan, lambda k: _run_step("git fetch origin " * k), 5_000, False),
+    "trust-copilot-words": (agent_trust_surface.scan, lambda k: {
+        ".github/workflows/w.yml": "on: push\npermissions: {contents: write}\njobs:\n  j:\n    steps:\n"
+        "      - run: git fetch upstream\n      - run: " + json.dumps("copilot " * k) + "\n"}, 5_000, False),
     # The MCP authorization rules, before they were released: a contextvar read per function,
     # tests of it in many blocks, and many handlers in one file are each read once.
     "authz-handlers": (mcp_authz_code.scan, lambda k: {"s.py": "".join(f"@m.tool()\ndef t{i}(role):\n    if x:\n        return 1\n" for i in range(k))}, 400, False),
