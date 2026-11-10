@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "inspector": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/inspector"]
+    }
+  }
+}

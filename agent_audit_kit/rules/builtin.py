@@ -385,6 +385,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MALICIOUS-EXTENSION-001": ["STA-08", "IVS-04"],
     "AAK-KNOWN-VULN-001": ["STA-08"],
     "AAK-KNOWN-VULN-002": ["STA-08"],
+    "AAK-KNOWN-VULN-003": ["STA-08"],
     "AAK-AGENT-SERVER-NOAUTH-001": ["IAM-01", "IVS-04"],
     "AAK-RUNTIME-ADV-001": ["STA-08", "IVS-04"],
     "AAK-RUNTIME-ADV-002": ["STA-08"],
@@ -17868,12 +17869,15 @@ _r(
         "requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and "
         "the launches in MCP configs; and `<name>-<version>.dist-info` directories in the "
         "site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk "
-        "reaches. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside "
+        "reaches; with `--include-user-config` also the packages in this host's npx cache "
+        "and uv's tool environments, read as AAK-MALICIOUS-RELEASE-001 reads them and "
+        "reported with the cache path. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside "
         "`>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the "
         "record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed "
         "versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package "
         "are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label "
-        "is reported MEDIUM. A declaration without a version is not judged, and a range "
+        "is reported MEDIUM. A declaration without a version is not judged (an MCP config "
+        "launch without one is AAK-KNOWN-VULN-003's), and a range "
         "is read on release triples, as the pin table reads ranges, so a pre-release "
         "bound counts as its release. A range that admits affected and unaffected "
         "releases is one INFO finding naming at most five advisories, and none when a "
@@ -17965,6 +17969,53 @@ _r(
         "bundled launch entries are NVD's three records of 30 Oct 2026 against MoLing "
         "and TAKO, so without `aak update` nothing else is known. A file over 2 MB is not "
         "read."
+    ),
+)
+
+_r(
+    "AAK-KNOWN-VULN-003",
+    "An MCP config launches, without pinning a release, a package a published advisory lists as affected",
+    "An MCP client config launches a PyPI or npm package from its registry with no version, a "
+    "tag (`@latest`) or a range, and the offline advisory feed holds an advisory whose "
+    "affected releases the launch admits. Such a launch runs whichever release npx or uvx "
+    "resolves, or finds in its cache, and the config does not say which. DBHub "
+    "(`@bytebase/dbhub`), a database MCP server usually started as `npx -y @bytebase/dbhub`, "
+    "let MySQL and MariaDB comment syntax past its read-only SQL validation below 0.22.6 "
+    "(GHSA-j656-3hf2-fvjc, 2 Nov 2026), and AAK-KNOWN-VULN-001 could not judge that launch: "
+    "it names no release. The finding carries the advisory's severity when every release the "
+    "launch can fetch is affected (the advisory names no end, or a range admits only affected "
+    "releases), and MEDIUM when the advisory names a fix, since the newest release may be the "
+    "fixed one; the scan then reports the launch once, standing AAK-SUPPLY-001 and AAK-MCP-007 "
+    "down on it. A launch pinned to one release is AAK-KNOWN-VULN-001's.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Pin the launch to a release outside the advisory's range, the fix the finding names or "
+    "later (`npx -y @bytebase/dbhub@0.22.6`, `uvx pkg==1.2.3`), and restart the server. Then "
+    "run `aak scan --include-user-config` to check whether npx or uv already cached an "
+    "affected release, and clear that cache entry if so. Where the advisory names no fixed "
+    "release, stop launching the package or keep the flawed component unreachable. Run `aak "
+    "update` so the scan reads the current advisories rather than the bundled few.",
+    sarif_name="UnpinnedLaunchOfVulnerablePackage",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads the launches in the MCP configs AAK-KNOWN-VULN-001 reads (`.mcp.json`, `mcp.json`, "
+        "`claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`, outside AAK's skip "
+        "directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, `npm exec`, "
+        "`pnpm dlx`, `yarn dlx`, uvx, `uv tool run`, `pipx run`, and `--with` packages); a launch in a "
+        "shell script or a package.json `scripts` entry, a program a config runs by name, a git URL "
+        "and a local path are not judged. A launch with no version or a tag counts as able to fetch "
+        "any release, and a readable range only the releases it admits, read on release triples as "
+        "the version pins read ranges. The rule reports what the launch could run, not what it ran: "
+        "it does not know the registry's newest release, so an advisory fixed long ago is still "
+        "reported, at MEDIUM. One finding per launch and advisory; where another rule reports every "
+        "CVE id of the advisory on the same line of the same file at or above this finding's "
+        "severity, only that rule's finding is kept. AAK-SUPPLY-001 and AAK-MCP-007 stand down only "
+        "on a launch of a server in a top-level `mcpServers` or `servers` map. Without `aak update` "
+        "the feed is the few records bundled with AAK (npm's open, @modelcontextprotocol/inspector, "
+        "opencode-ai and @samanhappy/mcphub among them), so nothing else is known. A config over 2 MB "
+        "is not read."
     ),
 )
 
