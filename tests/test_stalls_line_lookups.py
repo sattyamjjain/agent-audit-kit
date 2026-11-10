@@ -507,6 +507,10 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "deno-handoffs-and-revokes": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": 'spawn("deno", ["run", "-A"]);\n'
                                                                        + "p.runPython(`${c}`); Deno.permissions.revoke({name: 'net'});\n" * k},
                                   600, False),
+    # known_vulns' AAK-KNOWN-VULN-003, before it was released: one finding per server
+    # launching a package with an advisory, each described once from the bundled feed.
+    "unpinned-advisory-launches": (known_vulns.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "npx", "args": ["-y", "@modelcontextprotocol/inspector"]} for i in range(k)}})}, 300, True),
     "genui-registrations": (mcp_codeexec_sandbox.scan, lambda k: {
         "server.py": "from fastmcp.apps.generative import GenerativeUI\n" + "mcp.add_provider(GenerativeUI())\n" * k,
         "uv.lock": '[[package]]\nname = "prefab-ui"\nversion = "0.20.2"\n'}, 1_000, True),
