@@ -339,7 +339,7 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
                          + "_ = ip_network\n"}, 500, False),
     "websocket-calls": (websocket_server.scan, _ws_servers, 1_000, True),
     "websocket-host-params": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\n" + "".join(
-        f"def f{i}(host{i}='0.0.0.0'):\n    return websockets.serve(h, host{i}, 80, origins=['x'])\n" for i in range(k))}, 500, False),
+        f"def f{i}(host{i}='0.0.0.{0}'):\n    return websockets.serve(h, host{i}, 80, origins=['x'])\n" for i in range(k))}, 500, False),
     "websocket-tracebacks": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\nimport traceback\n"
                              + "e = traceback.format_exc()\nw.send(e)\n" * k}, 1_000, False),
     "ssrf-wildcard-words": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom mcp.server.fastmcp import FastMCP\n"
