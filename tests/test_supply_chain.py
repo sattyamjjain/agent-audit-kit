@@ -38,7 +38,7 @@ def test_supply_chain_pinned_not_flagged(tmp_path: Path) -> None:
         "mcpServers": {
             "pinned": {
                 "command": "npx",
-                "args": ["@modelcontextprotocol/server-filesystem@2025.1.1", "/data"]
+                "args": ["@modelcontextprotocol/server-filesystem@2.1.0", "/data"]
             }
         }
     }
@@ -56,8 +56,8 @@ def test_known_vulnerable_package(tmp_path: Path) -> None:
         "lockfileVersion": 3,
         "packages": {
             "node_modules/axios": {
-                "version": "1.7.2",
-                "resolved": "https://registry.npmjs.org/axios/-/axios-1.7.2.tgz"
+                "version": "1.14.1",
+                "resolved": "https://registry.npmjs.org/axios/-/axios-1.14.1.tgz"
             }
         }
     }
@@ -65,7 +65,7 @@ def test_known_vulnerable_package(tmp_path: Path) -> None:
     (tmp_path / "package.json").write_text('{"name":"test","version":"1.0.0"}')
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
-    assert len(supply002) > 0, "Known vulnerable axios version should be detected"
+    assert len(supply002) > 0, "A malicious axios release should be detected"
 
 
 def test_dangerous_install_scripts(project_with_package_risks: Path) -> None:
@@ -458,8 +458,8 @@ def test_version_in_range_boundary_above() -> None:
 def test_python_version_range_lower_bound_trips(tmp_path: Path, python_table: str) -> None:
     """End-to-end version-range check: pin exactly at the lower bound
     of an affected range must produce AAK-SUPPLY-002."""
-    # axios >=1.7.0 <1.7.4 is the seeded range in KNOWN_VULNERABLE_PACKAGES
-    # but axios is npm-only, and the PyPI table is empty: use the stand-in.
+    # The seeded entries in KNOWN_VULNERABLE_PACKAGES are npm-only, and the PyPI
+    # table is empty: use the stand-in.
     (tmp_path / "requirements.txt").write_text(f"{python_table}==1.5.0\n")  # below 2.1.0
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
@@ -603,14 +603,14 @@ def test_npm_lockfile_v1_format(tmp_path: Path) -> None:
         "name": "test",
         "lockfileVersion": 1,
         "dependencies": {
-            "axios": {"version": "1.7.2"},
+            "axios": {"version": "1.14.1"},
         },
     }
     (tmp_path / "package-lock.json").write_text(json.dumps(lockfile))
     (tmp_path / "package.json").write_text('{"name":"test","version":"1.0.0"}')
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
-    assert len(supply002) > 0, "Vulnerable axios in v1 lockfile should be detected"
+    assert len(supply002) > 0, "A malicious axios in a v1 lockfile should be detected"
 
 
 def test_npm_lockfile_typosquat_detection(tmp_path: Path) -> None:
@@ -847,11 +847,11 @@ def _write_padded_package_lock(path: Path, minimum_bytes: int, packages: dict) -
 
 def test_a_package_lock_over_1mb_is_read(tmp_path: Path) -> None:
     _write_padded_package_lock(
-        tmp_path / "package-lock.json", 1_100_000, {"node_modules/axios": {"version": "1.7.2"}}
+        tmp_path / "package-lock.json", 1_100_000, {"node_modules/axios": {"version": "1.14.1"}}
     )
     findings, _ = scan(tmp_path)
     supply002 = [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-002"]
-    assert any(e.startswith("axios@1.7.2") for e in supply002), supply002
+    assert any(e.startswith("axios@1.14.1") for e in supply002), supply002
     assert [f for f in findings if f.rule_id == "AAK-SUPPLY-005"], "the count was skipped too"
 
 
@@ -885,7 +885,7 @@ def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pyte
     from agent_audit_kit.scanners import supply_chain
 
     _write_padded_package_lock(
-        tmp_path / "package-lock.json", 60_000, {"node_modules/axios": {"version": "1.7.2"}}
+        tmp_path / "package-lock.json", 60_000, {"node_modules/axios": {"version": "1.14.1"}}
     )
     rules = ("AAK-SUPPLY-002", "AAK-SUPPLY-005")
     assert {f.rule_id for f in scan(tmp_path)[0]} >= set(rules), "the file is reportable"
@@ -1011,18 +1011,18 @@ def test_a_crafted_lockfile_indexes_in_linear_time(filename: str) -> None:
 
 
 def test_a_pypi_launch_is_not_looked_up_in_the_npm_table(tmp_path: Path) -> None:
-    """uvx reads `axios@1.7.2` as a PyPI project, which the npm table says
+    """uvx reads `axios@1.14.1` as a PyPI project, which the npm table says
     nothing about; npx reads it as the npm package the table lists. (This was
     `openclaw@2.0.0`: uvx reads that as the cmdop CLI installer on PyPI.)"""
     def supply006(command: str) -> list[str]:
-        config = {"mcpServers": {"x": {"command": command, "args": ["axios@1.7.2"]}}}
+        config = {"mcpServers": {"x": {"command": command, "args": ["axios@1.14.1"]}}}
         (tmp_path / ".mcp.json").write_text(json.dumps(config))
         return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-006"]
 
     assert supply006("uvx") == []
     assert supply006("uv tool run") == []
     hits = supply006("npx")
-    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses axios@1.7.2"), hits
+    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses axios@1.14.1"), hits
 
 
 def test_the_npm_openclaw_placeholder_is_not_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1518,7 +1518,7 @@ def _supply_006(root: Path) -> list[tuple[str, str]]:
 def test_supply_006_reads_a_vscode_servers_map() -> None:
     [(path, evidence)] = _supply_006(_SUPPLY_006_VSCODE / "detecting")
     assert path == str(Path(".vscode") / "mcp.json")
-    assert evidence.startswith("Server 'claw' uses axios@1.7.2")
+    assert evidence.startswith("Server 'claw' uses axios@1.14.1")
 
 
 def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
@@ -1527,12 +1527,12 @@ def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
 
 def test_supply_006_reads_both_maps_of_the_root_config(tmp_path: Path) -> None:
     config = {
-        "mcpServers": {"a": {"command": "npx", "args": ["axios@1.7.3"]}},
-        "servers": {"b": {"command": "npx", "args": ["axios@1.7.2"]}},
+        "mcpServers": {"a": {"command": "npx", "args": ["axios@0.30.4"]}},
+        "servers": {"b": {"command": "npx", "args": ["axios@1.14.1"]}},
     }
     (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
     hits = [evidence.split(" — ")[0] for _, evidence in _supply_006(tmp_path)]
-    assert hits == ["Server 'a' uses axios@1.7.3", "Server 'b' uses axios@1.7.2"]
+    assert hits == ["Server 'a' uses axios@0.30.4", "Server 'b' uses axios@1.14.1"]
 
 
 _SUPPLY_001_CONFIGS = (".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".amazonq/mcp.json", "mcp.json")
@@ -1543,16 +1543,16 @@ def test_supply_006_reads_every_config_supply_001_reads(tmp_path: Path, rel: str
     """It read .mcp.json and .vscode/mcp.json only, so the same vulnerable launch
     in Cursor's, Amazon Q's or the root mcp.json was never looked up, though
     AAK-SUPPLY-001 judged its pin in all five."""
-    _write(tmp_path, rel, {"mcpServers": {"x": {"command": "npx", "args": ["-y", "axios@1.7.2"]}}})
+    _write(tmp_path, rel, {"mcpServers": {"x": {"command": "npx", "args": ["-y", "axios@1.14.1"]}}})
     assert [path for path, _ in _supply_006(tmp_path)] == [str(Path(rel))]
-    _write(tmp_path, rel, {"servers": {"x": {"command": "npx", "args": ["-y", "axios@1.7.4"]}}})
+    _write(tmp_path, rel, {"servers": {"x": {"command": "npx", "args": ["-y", "axios@1.14.0"]}}})
     assert _supply_006(tmp_path) == []
 
 
 def test_supply_006_reads_a_jsonc_cursor_config(tmp_path: Path) -> None:
     (tmp_path / ".cursor").mkdir()
     (tmp_path / ".cursor" / "mcp.json").write_text(
-        '{\n  // Cursor allows comments\n  "mcpServers": {"x": {"command": "npx", "args": ["axios@1.7.3",],},},\n}\n',
+        '{\n  // Cursor allows comments\n  "mcpServers": {"x": {"command": "npx", "args": ["axios@0.30.4",],},},\n}\n',
         encoding="utf-8",
     )
     assert [path for path, _ in _supply_006(tmp_path)] == [str(Path(".cursor") / "mcp.json")]

@@ -177,12 +177,274 @@ def test_a_digest_matches_under_any_registry_name(tmp_path: Path) -> None:
     assert _found(tmp_path) == {("Dockerfile", 1)}
 
 
+# ---- crates.io and Go (MAL-2026-18776, env-test-guard, 9 Nov 2026) ----------------------------
+
+CARGO = FIXTURES / "cargo"
+
+
+@pytest.mark.parametrize("project", ["env-test-guard-0.3.0", "env_test_guard-0.3.0"])
+def test_a_cargo_lock_resolving_env_test_guard_fires_once_whatever_its_spelling(project: str) -> None:
+    findings, _ = scan(CARGO / project)
+    (finding,) = findings
+    # The Cargo.lock reader AAK-KNOWN-VULN-001 uses places a crate at its `name` line.
+    assert (finding.rule_id, finding.file_path, finding.line_number) == (RULE, "Cargo.lock", 14)
+    assert finding.evidence.startswith("Cargo.lock resolves env-test-guard 0.3.0, a malicious release: MAL-2026-18776")
+
+
+def test_the_clean_cargo_lock_twin_is_quiet() -> None:
+    assert scan(CARGO / "env-test-guard-0.1.0")[0] == []
+
+
+def test_a_go_mod_requiring_a_listed_module_fires() -> None:
+    _cached_feed([_entry("example.com/evil/telemetry", ecosystem="Go", versions=["0.4.1"])])
+    findings, _ = scan(FIXTURES / "go" / "malicious-module")
+    (finding,) = findings
+    assert (finding.file_path, finding.line_number) == ("go.mod", 7)
+    assert finding.evidence.startswith("go.mod requires example.com/evil/telemetry v0.4.1, a malicious release: MAL-TEST-")
+
+
+def test_a_go_module_path_keeps_its_case_and_a_crate_folds_its_separators() -> None:
+    _cached_feed([_entry("Example.com/Evil", ecosystem="Go", versions=["1.0.0"]),
+                  _entry("some_crate", ecosystem="crates.io", versions=["1.0.0"])])
+    feed = malicious_feed.load_feed()
+    assert feed.match("Go", "Example.com/Evil", "v1.0.0") and not feed.match("Go", "example.com/evil", "v1.0.0")
+    assert feed.match("crates.io", "some-crate", "1.0.0") and feed.match("crates.io", "Some_Crate", "1.0.0")
+
+
+@pytest.mark.parametrize(("ecosystem", "a", "b"), [("Go", "v1.2.3", "1.2.3"), ("Go", "v0.4.1", "=0.4.1"),
+                                                   ("crates.io", "0.3.0", "=0.3.0")])
+def test_a_leading_v_or_equals_names_the_same_version(ecosystem: str, a: str, b: str) -> None:
+    assert malicious_feed.version_key(ecosystem, a) == malicious_feed.version_key(ecosystem, b)
+    assert malicious_feed.version_order(ecosystem, a) == malicious_feed.version_order(ecosystem, b) is not None
+
+
+def test_parse_feed_keeps_crates_io_and_go_and_skips_an_unknown_registry(tmp_path: Path) -> None:
+    feed = malicious_feed.parse_feed({"entries": [
+        _entry("env-test-guard", ecosystem="crates.io", versions=["0.3.0"]),
+        _entry("example.com/evil", ecosystem="Go", versions=["1.0.0"]),
+        _entry("evil", ecosystem="RubyGems", versions=["1.0.0"]),
+    ]}, "cached", tmp_path / "feed.json")
+    assert set(feed.names("crates.io")) == {"env-test-guard"} and set(feed.names("Go")) == {"example.com/evil"}
+    assert not feed.names("RubyGems")
+
+
+def test_osv_entries_read_a_crates_io_record_by_its_versions() -> None:
+    record = json.loads((FIXTURES / "osv" / "MAL-2026-18776.json").read_text())
+    (entry,) = malicious_feed.osv_entries(record, "crates.io")
+    assert (entry["name"], entry["versions"], entry["aliases"]) == ("env-test-guard", ["0.2.0", "0.3.0"], [])
+    assert "ranges" not in entry and "all_versions" not in entry
+    assert malicious_feed.osv_entries(record, "Go") == []
+
+
+def test_osv_entries_keep_a_go_semver_range_and_the_feed_reads_it(tmp_path: Path) -> None:
+    record = {"id": "MAL-2026-9100", "modified": "2026-11-09T00:00:00Z", "affected": [{
+        "package": {"ecosystem": "Go", "name": "example.com/evil/telemetry"},
+        "ranges": [{"type": "SEMVER", "events": [{"introduced": "0.4.0"}, {"fixed": "0.5.0"}]}],
+    }]}
+    (entry,) = malicious_feed.osv_entries(record, "Go")
+    assert entry["ranges"] == [{"introduced": "0.4.0", "fixed": "0.5.0"}] and entry["versions"] == []
+    feed = malicious_feed.parse_feed({"entries": [entry]}, "cached", tmp_path / "feed.json")
+    assert feed.match("Go", "example.com/evil/telemetry", "v0.4.1")
+    assert not feed.match("Go", "example.com/evil/telemetry", "v0.5.0")
+    assert not feed.match("Go", "example.com/evil/telemetry", "v0.3.9")
+
+
+def test_github_entries_read_the_ghsa_7w47_rest_shape() -> None:
+    advisory = json.loads((FIXTURES / "github" / "GHSA-7w47-jmjx-gvm2.json").read_text())
+    entries = malicious_feed.github_entries([advisory])
+    assert [(e["ecosystem"], e["name"], e["versions"]) for e in entries] == [
+        ("crates.io", "env-test-guard", ["0.2.0"]), ("crates.io", "env-test-guard", ["0.3.0"]),
+    ]
+    assert {e["id"] for e in entries} == {"GHSA-7w47-jmjx-gvm2"}
+    assert {e["modified"] for e in entries} == {"2026-11-09T06:30:33Z"}
+    assert malicious_feed.github_entries([{**advisory, "withdrawn_at": "2026-11-10T00:00:00Z"}]) == []
+
+
+def test_github_entries_keep_a_go_range() -> None:
+    (entry,) = malicious_feed.github_entries([{"ghsa_id": "GHSA-gggg-gggg-gggg", "vulnerabilities": [
+        {"package": {"ecosystem": "go", "name": "example.com/evil"}, "vulnerable_version_range": ">= 1.0.0, < 1.2.0"}]}])
+    assert (entry["ecosystem"], entry["ranges"]) == ("Go", [{"introduced": "1.0.0", "fixed": "1.2.0"}])
+
+
+def test_refresh_reads_a_crates_io_mal_record_from_one_download() -> None:
+    calls: list[str] = []
+    crates = {"MAL-2026-9200": {"id": "MAL-2026-9200", "modified": "m", "affected": [
+        {"package": {"ecosystem": "crates.io", "name": "evil_crate"}, "versions": ["1.0.0"]}]}}
+    opener = _opener(exports={"crates.io": crates})
+
+    def counting(request: urllib.request.Request, timeout: float | None = None) -> _Response:
+        calls.append(request.full_url)
+        return opener(request, timeout)
+
+    done = malicious_feed.refresh(opener=counting, now=NOW)
+    assert done.counts["OSV crates.io"] == 1 and done.counts["OSV Go"] == 0
+    assert sorted(calls) == sorted(malicious_feed.OSV_EXPORT.format(ecosystem=e) for e in malicious_feed.ECOSYSTEMS)
+    feed = malicious_feed.load_feed()
+    assert feed.match("crates.io", "evil-crate", "1.0.0")
+    for ecosystem in malicious_feed.ECOSYSTEMS:
+        assert malicious_feed.OSV_EXPORT.format(ecosystem=ecosystem) in feed.source
+
+
+# ---- whole-repository image entries (ARTEX, The Hacker News, 5 Nov 2026) ---------------------
+
+ARTEX = "ARTEX-2026-11-05-TOMICDD"
+ARTEX_TWIN = "ARTEX-2026-11-05-CONGDONGLINUX"
+OTHER_DIGEST = "sha256:" + "b" * 64
+
+
+@pytest.mark.parametrize("reference", [
+    "tomicdd/artex", "tomicdd/artex:latest", "docker.io/tomicdd/artex:v2", "TomicDD/Artex",
+    f"index.docker.io/tomicdd/artex@{OTHER_DIGEST}", "registry-1.docker.io/tomicdd/artex",
+    "docker.io/tomicdd/artex:v2@" + OTHER_DIGEST,
+])
+def test_every_spelling_of_the_repository_is_one_name(reference: str) -> None:
+    assert malicious_feed.canonical_repository(reference) == "docker.io/tomicdd/artex"
+    assert malicious_feed.load_feed().repository(reference).id == ARTEX
+
+
+@pytest.mark.parametrize("reference", [
+    "tomicdd/artex-pro", "tomicdd/artex2", "nottomicdd/artex", "ghcr.io/tomicdd/artex", "artex",
+    "tomicdd/artex/sub", "${REGISTRY}/tomicdd/artex", "",
+])
+def test_a_lookalike_or_another_registrys_repository_is_not_listed(reference: str) -> None:
+    assert malicious_feed.load_feed().repository(reference) is None
+
+
+def test_docker_rules_for_registries_ports_and_library() -> None:
+    canonical = malicious_feed.canonical_repository
+    assert canonical("artex") == canonical("library/artex") == canonical("docker.io/library/artex:1")
+    assert canonical("artex") == "docker.io/library/artex"
+    assert canonical("localhost:5000/team/app:1.0") == "localhost:5000/team/app"
+    assert canonical("localhost/app") == "localhost/app"
+    assert canonical("registry.example.net:443/a/b@" + OTHER_DIGEST) == "registry.example.net:443/a/b"
+
+
+def test_a_compose_image_by_tag_reports_its_line(tmp_path: Path) -> None:
+    (tmp_path / "docker-compose.yml").write_text(
+        "services:\n  console:\n    image: tomicdd/artex:latest\n    ports: ['8080:8080']\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert (finding.file_path, finding.line_number) == ("docker-compose.yml", 3)
+    assert finding.evidence == (
+        "`tomicdd/artex:latest` runs docker.io/tomicdd/artex, which ARTEX-2026-11-05-TOMICDD lists as a "
+        "repository that ships only malicious builds "
+        "(https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html). Feed: the bundled "
+        f"copy generated {malicious_feed.load_feed().generated_at}. Treat a host that ran it as compromised."
+    )
+
+
+def test_a_dockerfile_from_with_a_platform_flag_reports(tmp_path: Path) -> None:
+    (tmp_path / "Dockerfile").write_text(
+        "FROM --platform=linux/amd64 docker.io/tomicdd/artex\nRUN echo tomicdd/artex\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 1 and finding.evidence.startswith("`docker.io/tomicdd/artex` runs ")
+
+
+def test_a_kubernetes_image_by_digest_reports_once(tmp_path: Path) -> None:
+    (tmp_path / "deploy.yaml").write_text(
+        "spec:\n  containers:\n    - name: console\n"
+        f"      image: congdonglinux/artex@{OTHER_DIGEST}\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 4 and ARTEX_TWIN in finding.evidence
+    assert finding.evidence.startswith(f"`congdonglinux/artex@{OTHER_DIGEST}` runs docker.io/congdonglinux/artex")
+
+
+def test_a_helm_repository_with_its_tag_reports_on_the_repository_line(tmp_path: Path) -> None:
+    (tmp_path / "values.yaml").write_text(
+        "image:\n  registry: docker.io\n  repository: tomicdd/artex\n  tag: v1\n"
+    )
+    findings, _ = scan(tmp_path)
+    (finding,) = findings
+    assert finding.line_number == 3 and finding.evidence.startswith("`docker.io/tomicdd/artex:v1` runs ")
+
+
+def test_a_template_tag_is_quoted_whole(tmp_path: Path) -> None:
+    (tmp_path / "compose.yaml").write_text('a:\n  image: "tomicdd/artex:${TAG}"\nb: {image: congdonglinux/artex}\n')
+    findings, _ = scan(tmp_path)
+    assert sorted((f.line_number, f.evidence.split(" runs ")[0]) for f in findings) == [
+        (2, "`tomicdd/artex:${TAG}`"), (3, "`congdonglinux/artex`"),
+    ]
+
+
+def test_lookalikes_other_registries_comments_and_prose_are_quiet(tmp_path: Path) -> None:
+    (tmp_path / "compose.yaml").write_text(
+        "services:\n"
+        "  a:\n    image: tomicdd/artex-pro\n"
+        "  b:\n    image: tomicdd/artex2\n"
+        "  c:\n    image: ghcr.io/tomicdd/artex\n"
+        "  d:\n    # image: tomicdd/artex\n    image: nginx:1.27\n"
+        "  e:\n    command: [\"docker\", \"run\", \"tomicdd/artex\"]\n"
+    )
+    (tmp_path / "README.md").write_text("Do not run tomicdd/artex; pull the image from the vendor.\n")
+    (tmp_path / "notes.yaml").write_text("description: the tomicdd/artex image was backdoored\n")
+    assert _found(tmp_path) == set()
+
+
+def test_a_helm_repository_without_a_tag_is_not_read(tmp_path: Path) -> None:
+    (tmp_path / "values.yaml").write_text("image:\n  repository: tomicdd/artex\n  pullPolicy: Always\n")
+    assert _found(tmp_path) == set()
+
+
+def test_a_listed_digest_under_a_listed_repository_reports_once(tmp_path: Path) -> None:
+    _cached_feed([], oci=[
+        {"id": "WHOLE", "image": "docker.io/evil/app", "all_tags": True, "digests": [], "tags": []},
+        {"id": "DIGEST", "image": "docker.io/evil/app", "digests": [OTHER_DIGEST], "tags": ["v1"]},
+    ])
+    (tmp_path / "compose.yaml").write_text(f"a:\n  image: evil/app@{OTHER_DIGEST}\nb:\n  image: evil/app:v9\n")
+    findings, _ = scan(tmp_path)
+    assert sorted((f.line_number, f.evidence.split(" which ")[1].split(" ")[0]) for f in findings) == [
+        (2, "DIGEST"), (4, "WHOLE"),
+    ]
+
+
+def test_a_repository_reference_is_read_only_within_256_characters(tmp_path: Path) -> None:
+    """The reader looks back at most 256 characters for where a reference starts, so a
+    registry name longer than that is not read (the limitation says so)."""
+    near, far = "r" * 200 + ".example", "r" * 250 + ".example"
+    _cached_feed([], oci=[
+        {"id": "NEAR", "image": f"{near}/evil/app", "all_tags": True},
+        {"id": "FAR", "image": f"{far}/evil/app", "all_tags": True},
+    ])
+    (tmp_path / "compose.yaml").write_text(f"a:\n  image: {near}/evil/app:1\nb:\n  image: {far}/evil/app:1\n")
+    findings, _ = scan(tmp_path)
+    assert [(f.line_number, "NEAR" in f.evidence) for f in findings] == [(2, True)]
+
+
+def test_all_tags_counts_only_a_real_bool(tmp_path: Path) -> None:
+    feed = malicious_feed.parse_feed({"entries": [], "oci": [
+        {"id": "STRING", "image": "docker.io/evil/one", "all_tags": "yes", "digests": []},
+        {"id": "ONE", "image": "docker.io/evil/two", "all_tags": 1, "digests": []},
+        {"id": "REAL", "image": "evil/three", "all_tags": True},
+    ]}, "cached", tmp_path / "feed.json")
+    assert sorted(feed.repositories) == ["docker.io/evil/three"]
+    assert feed.repository("evil/one") is None and feed.repository("evil/two") is None
+
+
+def test_an_entry_without_all_tags_or_digests_indexes_nothing(tmp_path: Path) -> None:
+    feed = malicious_feed.parse_feed({"entries": [], "oci": [
+        {"id": "EMPTY", "image": "docker.io/evil/app", "all_tags": False, "digests": [], "tags": ["latest"]},
+        {"id": "TEMPLATE", "image": "${REGISTRY}/evil/app", "all_tags": True},
+    ]}, "cached", tmp_path / "feed.json")
+    assert feed.images == {} and feed.repositories == {}
+    assert feed.repository("evil/app:latest") is None
+
+
+def test_existing_image_entries_still_build_with_positional_fields() -> None:
+    image = malicious_feed.Image("ID", "docker.io/a/b", frozenset(), (), "")
+    assert image.all_tags is False
+
+
 # ---- the feed and its load order ------------------------------------------------------------
 
 
 def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
-    litellm, local_commander = data["entries"]
+    litellm, local_commander, axios, plain_crypto, env_test_guard = data["entries"]
     assert (litellm["id"], litellm["ecosystem"], litellm["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
     assert litellm["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
     assert litellm["modified"] == "2026-10-21T22:01:01.881791175Z"
@@ -192,8 +454,32 @@ def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     assert malicious_feed.osv_entries(record, "npm") == [local_commander]
     assert local_commander["versions"] == ["0.3.52"] and local_commander["aliases"] == ["GHSA-7j62-5j84-72fv"]
     assert "MAL-2026-2144" in data["source"] and "MAL-2026-18425" in data["source"]
-    (image,) = data["oci"]
-    assert image["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
+    # The axios compromise of 31 March 2026, saved unedited from
+    # https://api.osv.dev/v1/vulns/<id> on 2026-11-07.
+    for entry, ident in ((axios, "MAL-2026-2307"), (plain_crypto, "MAL-2026-2306")):
+        record = json.loads((FIXTURES / "osv" / f"{ident}.json").read_text())
+        assert malicious_feed.osv_entries(record, "npm") == [entry]
+        assert ident in data["source"]
+    assert axios["versions"] == ["0.30.4", "1.14.1"] and "all_versions" not in axios
+    assert plain_crypto["all_versions"] is True and "0.0.1-security" in plain_crypto["versions"]
+    # MAL-2026-18776 the same way, from https://api.osv.dev/v1/vulns/MAL-2026-18776 on
+    # 2026-11-10. The record names no alias: GitHub's GHSA-7w47-jmjx-gvm2 lists the same two
+    # releases, but OSV does not link it, so the entry does not either.
+    record = json.loads((FIXTURES / "osv" / "MAL-2026-18776.json").read_text())
+    assert malicious_feed.osv_entries(record, "crates.io") == [env_test_guard]
+    assert (env_test_guard["name"], env_test_guard["versions"]) == ("env-test-guard", ["0.2.0", "0.3.0"])
+    assert env_test_guard["modified"] == "2026-11-09T04:45:05.142026828Z" and "MAL-2026-18776" in data["source"]
+    images = {image["id"]: image for image in data["oci"]}
+    assert images["LITELLM-2026-10-21"]["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
+    # The two repositories The Hacker News calls backdoored, listed whole: it names no
+    # tag and no digest, and the six other namespaces it names are not called backdoored.
+    artex = "https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html"
+    assert {key: (image["image"], image["all_tags"], image["digests"], image["tags"], image["url"])
+            for key, image in images.items() if image.get("all_tags")} == {
+        "ARTEX-2026-11-05-TOMICDD": ("docker.io/tomicdd/artex", True, [], [], artex),
+        "ARTEX-2026-11-05-CONGDONGLINUX": ("docker.io/congdonglinux/artex", True, [], [], artex),
+    }
+    assert artex in data["source"]
 
 
 def test_the_cached_feed_is_read_first_and_a_broken_one_is_skipped(tmp_path: Path) -> None:
@@ -255,8 +541,10 @@ class _Response(io.BytesIO):
         self.headers = {"Link": link}
 
 
-def _opener(fail_on: str | None = None, github: list[tuple[list, str]] | None = None):
+def _opener(fail_on: str | None = None, github: list[tuple[list, str]] | None = None,
+            exports: dict[str, dict[str, dict]] | None = None):
     pages = list(github or [])
+    exports = exports or {}
 
     def opener(request: urllib.request.Request, timeout: float | None = None) -> _Response:
         url = request.full_url
@@ -266,8 +554,10 @@ def _opener(fail_on: str | None = None, github: list[tuple[list, str]] | None = 
             return _Response(_export(_PYPI))
         if url.endswith("/npm/all.zip"):
             return _Response(_export(_NPM))
+        if url.endswith(("/Go/all.zip", "/crates.io/all.zip")):
+            return _Response(_export(exports.get(url.rsplit("/", 2)[-2], {})))
         if url.startswith("https://api.github.com/advisories"):
-            body, link = pages.pop(0)
+            body, link = pages.pop(0) if pages else ([], "")  # a registry with no queued page has none
             return _Response(json.dumps(body).encode(), link)
         raise AssertionError(url)
 
@@ -282,12 +572,17 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
     data = json.loads(done.path.read_text())
     assert data["generated_at"] == "2026-10-28T12:00:00Z"
     assert sorted(e["id"] for e in data["entries"]) == [
-        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-2144", "MAL-2026-3", "MAL-2026-4",
+        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18776", "MAL-2026-2144", "MAL-2026-2306", "MAL-2026-2307",
+        "MAL-2026-3", "MAL-2026-4",
     ]
     assert data["oci"][0]["digests"] == [DIGEST]
-    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "bundled": 2}
+    assert [image["id"] for image in data["oci"] if image.get("all_tags") is True] == [
+        "ARTEX-2026-11-05-TOMICDD", "ARTEX-2026-11-05-CONGDONGLINUX",
+    ]
+    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 5}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
+    assert feed.repository("tomicdd/artex:latest").id == "ARTEX-2026-11-05-TOMICDD"
     assert feed.match("npm", "aak-squat", "9.9.9") and feed.match("npm", "aak-ranged", "1.2.5")
     assert not feed.match("npm", "aak-ranged", "1.3.0")
     assert not list(done.path.parent.glob(".osv-export-*")) and not list(done.path.parent.glob(".malicious-*"))
@@ -341,7 +636,7 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 5 entries" in result.output
+    assert "Malicious-release feed updated: 8 entries" in result.output
     assert "GitHub: skipped" in result.output
 
 

@@ -68,12 +68,18 @@ SEVERITY_OVERRIDE_MODULES = {
     "known_vulns.py": (
         "AAK-KNOWN-VULN-001 takes the severity of the advisory that decided it "
         "(CRITICAL, the registry's level, from CVSS 9.0), and INFO for a range "
-        "that admits affected and unaffected releases"
+        "that admits affected and unaffected releases; AAK-KNOWN-VULN-003 takes the "
+        "advisory's when every release a launch can fetch is affected, and is MEDIUM, "
+        "the registry's level, otherwise"
     ),
     "known_vulns_launch.py": (
         "AAK-KNOWN-VULN-002 takes the severity of the advisory that decided it "
         "(CRITICAL, the registry's level, from CVSS 9.0), and MEDIUM for a launch "
         "whose release could not be read"
+    ),
+    "trust_boundary.py": (
+        "AAK-TRUST-009 is HIGH for the user's own Codex config, read under "
+        "--include-user-config, where they may have set the provider on purpose"
     ),
     "agent_server_noauth.py": (
         "AAK-AGENT-SERVER-NOAUTH-001 is MEDIUM for a Docker launch on 1.52.0 or a "
@@ -87,7 +93,9 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-GHA-SECRET-DUMP-001": {Severity.CRITICAL},
     "AAK-KNOWN-VULN-001": {Severity.HIGH, Severity.MEDIUM, Severity.INFO},
     "AAK-KNOWN-VULN-002": {Severity.HIGH, Severity.MEDIUM},
+    "AAK-KNOWN-VULN-003": {Severity.CRITICAL, Severity.HIGH},
     "AAK-AGENT-SERVER-NOAUTH-001": {Severity.MEDIUM},
+    "AAK-TRUST-009": {Severity.HIGH},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the
