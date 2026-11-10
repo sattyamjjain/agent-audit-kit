@@ -131,7 +131,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
      ["include_user_config"]),
     ("malicious_extensions", "Installed editor extensions the malicious-release feed lists (Cursor, VS Code)",
      ["include_user_config"]),
-    ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
+    ("known_vulns", "Locked, pinned, installed and launched packages against OSV advisories (offline feed)",
+     ["include_user_config"]),
     ("known_vulns_launch", "Launched MCP servers, binaries and images against NVD advisories (offline feed)", []),
     ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),
     ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
@@ -461,15 +462,16 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
     not load, it reported nothing, and every scan goes on.
 
     AAK-KNOWN-VULN-002, the same feed's records matched to what a project
-    launches, names its advisory's CVE ids the same way and stands down the same
-    way. Neither feed rule counts as the other rule here: two findings that only
-    the feed made would stand each other down, and the flaw would go unreported.
+    launches, and AAK-KNOWN-VULN-003, a launch that pins no release of a package
+    with an advisory, name their advisory's CVE ids the same way and stand down the
+    same way. No feed rule counts as another here: two findings that only the feed
+    made would stand each other down, and the flaw would go unreported.
     """
     try:
         from agent_audit_kit.scanners.known_vulns import RULE, evidence_cves
     except ImportError:
         return findings
-    feed_rules = {RULE, "AAK-KNOWN-VULN-002"}
+    feed_rules = {RULE, "AAK-KNOWN-VULN-002", "AAK-KNOWN-VULN-003"}
 
     reported: dict[tuple[str, int, str], int] = {}
     for f in findings:
@@ -533,6 +535,8 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     so a launch is the same when that evidence starts with the subject the
     other rule's evidence gives (`_launchers.names_launch`). A launch that is
     not an entry of a top-level server map gets no head, and both findings stay.
+    AAK-KNOWN-VULN-003, the same unpinned launch of a package an advisory lists,
+    opens its evidence the same way and stands both down the same way.
     """
     from agent_audit_kit.scanners._launchers import launch_subject, names_launch
 
@@ -542,7 +546,7 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     reported: dict[tuple[str, str], int] = {}
     unpinned: dict[str, list[tuple[str, int]]] = {}
     for f in findings:
-        if f.rule_id == "AAK-MALICIOUS-RELEASE-002":
+        if f.rule_id in _UNPINNED_LAUNCH_RULES:
             unpinned.setdefault(_file(f), []).append((f.evidence, f.severity.numeric()))
         elif f.rule_id == "AAK-SUPPLY-001":
             subject = launch_subject(f.evidence)
@@ -567,3 +571,6 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
 
 # The rules `_drop_launches_supply_chain_reports` may stand down.
 _LAUNCH_DUPLICATES = frozenset({"AAK-MCP-007", "AAK-SUPPLY-001"})
+# The rules that report an unpinned launch with a reason, and open their evidence
+# with its `launch_head`: a listed malicious release, an open advisory.
+_UNPINNED_LAUNCH_RULES = frozenset({"AAK-MALICIOUS-RELEASE-002", "AAK-KNOWN-VULN-003"})
