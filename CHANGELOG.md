@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AAK-SSRF-002, AAK-SSRF-003 and AAK-MCP-009 read a wildcard-DNS name as the address it embeds: `169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`, `localtest.me` (#1199).
 - AAK-SSRF-004 also reports a URL the caller can set, fetched with a client that follows redirects by default, not only an explicit flag (#1199).
 - AAK-SSRF-001 to -005 read agent tool classes with no MCP marker: a LangChain `BaseTool` or `StructuredTool`, and a smolagents `Tool.forward` (#1199).
+- `docs/why.md` shows how to verify a release's wheel or sdist against its PyPI attestation, with the command run against 0.6.31 (#1202).
 
 ### Fixed
 
