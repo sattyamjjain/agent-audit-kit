@@ -197,3 +197,47 @@ def test_action_documents_external_sarif_upload_not_silent_noop() -> None:
     assert "github/codeql-action/upload-sarif" in readme
     # entrypoint warns loudly instead of silently skipping.
     assert "does NOT upload to Code Scanning" in entry
+
+
+def test_every_sarif_how_to_pairs_the_action_with_an_upload_step() -> None:
+    """A workflow copied from the docs has to land findings in Code Scanning.
+
+    The example workflow set `upload-sarif: true` with the comment "Auto-upload
+    to GitHub Code Scanning" and no upload step, and the Action reference said
+    the input uploads. Each how-to now carries the upload step that reads the
+    Action's `sarif-file` output.
+    """
+    repo = Path(__file__).resolve().parent.parent
+    for rel in ("README.md", "docs/github-action.md", "docs/cli.md", "examples/ci-integration/github-actions-sarif.yml"):
+        text = (repo / rel).read_text(encoding="utf-8")
+        assert "github/codeql-action/upload-sarif" in text, rel
+        assert "outputs.sarif-file" in text, rel
+        assert "Auto-upload" not in text, rel
+
+
+def test_sarif_pointers_name_a_section_that_exists() -> None:
+    """action.yml and the bridge's notice sent readers to "README > SARIF
+    Integration" for a year after that section moved to docs/cli.md."""
+    repo = Path(__file__).resolve().parent.parent
+    target = "https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md#sarif-integration"
+    assert "\n## SARIF Integration\n" in (repo / "docs/cli.md").read_text(encoding="utf-8")
+    for rel in ("action.yml", "entrypoint.sh"):
+        text = (repo / rel).read_text(encoding="utf-8")
+        assert "README > SARIF Integration" not in text, rel
+        assert target in text, rel
+
+
+def test_action_reference_documents_every_input_and_output() -> None:
+    """docs/github-action.md listed 10 of action.yml's 13 inputs."""
+    import yaml
+
+    repo = Path(__file__).resolve().parent.parent
+    action = yaml.safe_load((repo / "action.yml").read_text(encoding="utf-8"))
+    doc = (repo / "docs/github-action.md").read_text(encoding="utf-8")
+    for name, spec in action["inputs"].items():
+        default = str(spec.get("default", ""))
+        row = f"| `{name}` | `{default}` |" if default else f"| `{name}` | |"
+        assert row in doc, f"{name} (default {default!r}) missing or stale"
+    for name in action["outputs"]:
+        assert f"| `{name}` |" in doc, name
+

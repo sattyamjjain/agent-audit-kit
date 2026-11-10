@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The SARIF how-tos land findings in Code Scanning. The example workflow `examples/ci-integration/github-actions-sarif.yml` set `upload-sarif: true` as an "auto-upload" with no upload step, and the README's CI snippet and the GitHub Action reference said the same, so a workflow copied from any of them never put a finding in the Security tab. Each now adds `github/codeql-action/upload-sarif` reading the Action's `sarif-file` output. The Action reference lists all 13 inputs, `preset`, `comment-on-pr` and `fingerprint-strategy` among them, and a test holds it to `action.yml`.
+- `action.yml` and the Action's notice point at the SARIF Integration section in `docs/cli.md`, not a README section that moved there when the README was rewritten (#724).
+- The README's false-positive badge links to its results page by absolute URL, so the link works on PyPI, which resolves no repository-relative path.
+
 ## [0.6.33] - 2026-11-10
 
 ### Added

@@ -154,6 +154,10 @@ def test_readme_has_no_relative_links() -> None:
     """
     relative = re.findall(r"\]\((?!https?://|#)([^)]+)\)", _text())
     assert not relative, f"relative links break on PyPI: {sorted(set(relative))[:10]}"
+    # HTML too: the false-positive badge's <a href> was relative until 0.6.34,
+    # and the markdown pattern above never looked at it.
+    html = re.findall(r'(?:href|src)="(?!https?://|#)([^"]+)"', _text())
+    assert not html, f"relative href/src break on PyPI: {sorted(set(html))[:10]}"
 
 
 def test_pyproject_still_points_at_this_readme() -> None:

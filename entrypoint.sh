@@ -183,7 +183,7 @@ if [ -f "${SARIF_FILE}" ] && [ -n "${GITHUB_WORKSPACE:-}" ]; then
 fi
 
 if [ "${INPUT_UPLOAD_SARIF}" = "true" ] && [ "${INPUT_FORMAT}" = "sarif" ]; then
-    echo "::notice title=AgentAuditKit SARIF::SARIF written to '${SARIF_FILE}' (output: sarif-file). This action does NOT upload to Code Scanning; add a 'github/codeql-action/upload-sarif' step with sarif_file: \${{ steps.<id>.outputs.sarif-file }} and 'permissions: security-events: write'. See README > SARIF Integration."
+    echo "::notice title=AgentAuditKit SARIF::SARIF written to '${SARIF_FILE}' (output: sarif-file). This action does NOT upload to Code Scanning; add a 'github/codeql-action/upload-sarif' step with sarif_file: \${{ steps.<id>.outputs.sarif-file }} and 'permissions: security-events: write'. See https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md#sarif-integration"
 fi
 
 # ---------------------------------------------------------------------------
