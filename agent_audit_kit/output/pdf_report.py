@@ -16,7 +16,7 @@ import io
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO, Iterable
+from typing import IO, Callable, Iterable
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import ScanResult, Severity
@@ -429,12 +429,46 @@ def _build_pdf(result: ScanResult, framework: str, target: str | IO[bytes]) -> b
     return True
 
 
-def _report_text(results: dict) -> str:
+# How a source key in `results.json`'s `corpus_sources` is named in the report.
+_CORPUS_SOURCE_LABELS = {
+    "crawl": "crawled from GitHub",
+    "registry": "from the official MCP Registry",
+}
+
+
+def _corpus_sources(results: dict) -> str:
+    """`corpus_sources` as prose (`664 crawled from GitHub, 1,639 from the official MCP
+    Registry`), never a Python dict; empty when the results carry none."""
+    sources = results.get("corpus_sources")
+    if not isinstance(sources, dict) or not sources:
+        return ""
+    return ", ".join(
+        f"{count:,} {_CORPUS_SOURCE_LABELS.get(name, name)}" if isinstance(count, int) else f"{count} {name}"
+        for name, count in sources.items()
+    )
+
+
+def _report_meta(results: dict, report_version: str | None, scan_date: str | None) -> tuple[str, str]:
+    """The subtitle and the corpus line. A field the caller does not know is left out
+    rather than printed as `?`; `results.json` holds no scan date, REPORT.md does."""
+    n = results["distinct_configs_scanned"]
+    subtitle = (f"Report version {report_version} · " if report_version else "") + "AgentAuditKit, offline and deterministic"
+    sources = _corpus_sources(results)
+    corpus = f"Corpus: {n:,} distinct public MCP server configs" + (f" ({sources})" if sources else "")
+    return subtitle, (f"Scan date: {scan_date} · " if scan_date else "") + corpus
+
+
+def _number(value: object) -> str:
+    return f"{value:,}" if isinstance(value, int) else str(value)
+
+
+def _report_text(results: dict, report_version: str | None = None, scan_date: str | None = None) -> str:
     """Plain-text fallback for the State-of-MCP aggregate report."""
+    subtitle, corpus = _report_meta(results, report_version, scan_date)
     lines = [
-        "The State of MCP Security, 2026 — AgentAuditKit",
-        f"Scan date: {results.get('scan_date', '?')}",
-        f"Corpus: {results['distinct_configs_scanned']:,} distinct public MCP server configs",
+        "The State of MCP Security, 2026",
+        subtitle,
+        corpus,
         "",
         "Top findings (% of corpus):",
     ]
@@ -443,48 +477,91 @@ def _report_text(results: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def emit_report_pdf(results: dict, output_path: Path) -> tuple[bool, str]:
+def _breakable_rule_id(rule_id: str, fits: Callable[[str], bool]) -> str:
+    """A rule id as Paragraph markup that fits its column: whole when `fits` says so, else
+    broken after the hyphen nearest its middle (`AAK-MCP-STDIO-<br/>LAUNCHER-INJECT-001`),
+    so a long id wraps at a word boundary instead of running into the next column."""
+    from xml.sax.saxutils import escape
+
+    hyphens = [i for i, c in enumerate(rule_id) if c == "-"]
+    if fits(rule_id) or not hyphens:
+        return escape(rule_id)
+    cut = min(hyphens, key=lambda i: abs(i + 1 - len(rule_id) / 2)) + 1
+    return escape(rule_id[:cut]) + "<br/>" + escape(rule_id[cut:])
+
+
+def emit_report_pdf(
+    results: dict,
+    output_path: Path,
+    report_version: str | None = None,
+    scan_date: str | None = None,
+) -> tuple[bool, str]:
     """Render the State-of-MCP aggregate (`results.json`) as a human PDF.
 
     Reuses the same reportlab primitives as `emit_pdf`; falls back to a .txt when
     reportlab is missing. This is the credibility artifact — the "% of public MCP
     servers fail X" report — not a per-scan compliance pack.
+
+    Args:
+        results: The parsed `results.json`.
+        output_path: Where the PDF goes.
+        report_version: The report's version (REPORT.md's header), printed in the
+            subtitle; the tool version at render time says nothing about the numbers.
+        scan_date: The corpus scan date (REPORT.md's header); `results.json` has none.
     """
     try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.units import inch
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib import colors
+        from reportlab.lib.enums import TA_RIGHT
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import inch
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.pdfbase.pdfmetrics import stringWidth
     except ImportError:
         text_path = output_path.with_suffix(".txt")
-        text_path.write_text(_report_text(results), encoding="utf-8")
+        text_path.write_text(_report_text(results, report_version, scan_date), encoding="utf-8")
         return False, f"reportlab not installed; wrote plain-text fallback to {text_path}."
+    from xml.sax.saxutils import escape
 
     doc = SimpleDocTemplate(str(output_path), pagesize=letter, title="State of MCP Security 2026")
     styles = getSampleStyleSheet()
     body = ParagraphStyle("aak-body", parent=styles["BodyText"], fontName="Helvetica", fontSize=9, leading=12)
+    cell = ParagraphStyle("aak-cell", parent=body, fontSize=7, leading=8.5)
+    head = ParagraphStyle("aak-head", parent=cell, fontName="Helvetica-Bold")
+    cell_num = ParagraphStyle("aak-cell-num", parent=cell, alignment=TA_RIGHT)
+    head_num = ParagraphStyle("aak-head-num", parent=head, alignment=TA_RIGHT)
     n = results["distinct_configs_scanned"]
+    subtitle, corpus = _report_meta(results, report_version, scan_date)
     story = [
         Paragraph("<b>The State of MCP Security, 2026</b>", styles["Title"]),
-        Paragraph(f"AgentAuditKit {__version__} — offline, deterministic", styles["Heading3"]),
-        Paragraph(
-            f"Scan date: {results.get('scan_date', '?')} &nbsp;·&nbsp; Corpus: {n:,} distinct "
-            f"public MCP server configs ({results.get('corpus_sources', {})})",
-            body,
-        ),
+        Paragraph(escape(subtitle), styles["Heading3"]),
+        Paragraph(escape(corpus), body),
         Spacer(1, 0.2 * inch),
         Paragraph("<b>Headline findings — % of public MCP servers</b>", styles["Heading2"]),
     ]
-    rows = [["Rule", "Severity", "% of corpus", "Configs", "Finding"]]
+    # The frame is 6.5 in wide on letter paper. The rule column fits the longest id now in
+    # the report at 7 pt; Finding takes the rest and wraps.
+    widths = [2.1 * inch, 0.7 * inch, 0.75 * inch, 0.6 * inch, 2.35 * inch]
+    padding = 6  # reportlab's default left and right cell padding, in points
+
+    def fits(text: str) -> bool:
+        return stringWidth(text, cell.fontName, cell.fontSize) <= widths[0] - 2 * padding
+
+    rows = [[Paragraph("Rule", head), Paragraph("Severity", head), Paragraph("% of corpus", head_num),
+             Paragraph("Configs", head_num), Paragraph("Finding", head)]]
     for t in results.get("top_misconfigurations", []):
-        rows.append([t["rule_id"], t["severity"].upper(), f"{t['config_pct']}%", str(t["configs"]), t["title"]])
-    tbl = Table(rows, colWidths=[1.7 * inch, 0.7 * inch, 0.8 * inch, 0.6 * inch, 2.7 * inch])
+        rows.append([
+            Paragraph(_breakable_rule_id(t["rule_id"], fits), cell),
+            Paragraph(escape(str(t["severity"]).upper()), cell),
+            Paragraph(f"{t['config_pct']}%", cell_num),
+            Paragraph(_number(t["configs"]), cell_num),
+            Paragraph(escape(str(t["title"])), cell),
+        ])
+    tbl = Table(rows, colWidths=widths, repeatRows=1)
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
         ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 7),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
     ]))
     story.append(tbl)
@@ -492,18 +569,19 @@ def emit_report_pdf(results: dict, output_path: Path) -> tuple[bool, str]:
 
     ap = results.get("auth_profile_2026_07_28", {})
     na = ap.get("no_authentication", {})
+    static = ap.get("remote_auth_static_credential", {})
     story.append(Paragraph("<b>Authentication posture (2026-07-28 profile)</b>", styles["Heading2"]))
     story.append(Paragraph(
-        f"No authentication: {na.get('n')} of {n:,} ({na.get('pct')}%). "
-        f"RFC 9728 PRM discovery: {ap.get('rfc9728_prm_discovery', {}).get('n')} of {n:,}. "
-        f"Of inline-auth remotes, {ap.get('remote_auth_static_credential', {}).get('n')} of "
-        f"{ap.get('remote_auth_static_credential', {}).get('denominator')} hardcode a static credential.",
+        f"No authentication: {_number(na.get('n'))} of {n:,} ({na.get('pct')}%). "
+        f"RFC 9728 PRM discovery: {_number(ap.get('rfc9728_prm_discovery', {}).get('n'))} of {n:,}. "
+        f"Of inline-auth remotes, {_number(static.get('n'))} of {_number(static.get('denominator'))} "
+        "hardcode a static credential.",
         body,
     ))
     story.append(Spacer(1, 0.15 * inch))
     story.append(Paragraph(
         "Reproduce (offline, deterministic): <font face='Courier'>make report</font>. "
-        "Full narrative + method: research/state-of-mcp-2026/REPORT.md.",
+        "Full narrative and method: research/state-of-mcp-2026/REPORT.md.",
         body,
     ))
     doc.build(story)
