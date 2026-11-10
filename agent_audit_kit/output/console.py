@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 
+from agent_audit_kit import __version__
 from agent_audit_kit.models import Finding, ScanResult, Severity
 
 
@@ -183,5 +184,7 @@ def format_results(
             f"{advisories.get('generatedAt') or 'at an unknown time'}{RESET}"
         )
     lines.append(f"{DIM}Time: {result.scan_duration_ms:.0f}ms{RESET}")
-    lines.append(f"\n{DIM}\U0001f4a1 GitHub Action: uses: sattyamjjain/agent-audit-kit@v1{RESET}\n{DIM}\U0001f4a1 CI mode: agent-audit-kit scan . --ci{RESET}\n")
+    # The tip names this release's tag. It said `@v1` until 0.6.33, a ref the
+    # repository never had, so a workflow copied from it failed to resolve.
+    lines.append(f"\n{DIM}\U0001f4a1 GitHub Action: uses: sattyamjjain/agent-audit-kit@v{__version__}{RESET}\n{DIM}\U0001f4a1 CI mode: agent-audit-kit scan . --ci{RESET}\n")
     return "\n".join(lines)

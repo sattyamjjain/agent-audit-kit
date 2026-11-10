@@ -52,7 +52,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/|github\.com/snyk/agent-scan/blob/main/docs/(issue-codes|risks)\.md|github\.com/openvex/spec/blob/main/OPENVEX-SPEC\.md|genai\.owasp\.org/resource/owasp-top-10-for-agentic-applications-for-2026/'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|raw\.githubusercontent\.com/sattyamjjain/agent-audit-kit/main/|sattyamjjain\.github\.io/agent-audit-kit/docs/|github\.com/snyk/agent-scan/blob/main/docs/(issue-codes|risks)\.md|github\.com/openvex/spec/blob/main/OPENVEX-SPEC\.md|genai\.owasp\.org/resource/owasp-top-10-for-agentic-applications-for-2026/'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -98,7 +98,9 @@ jobs:
       # network is both weaker and wrong here -- weaker because GitHub answers
       # 200 for paths that redirect, and wrong because a PR that adds a docs
       # page and links to it 404s until the branch merges, which is how this
-      # exclusion came to be needed on 2026-09-12.
+      # exclusion came to be needed on 2026-09-12. The README's demo GIF is a
+      # raw.githubusercontent.com/.../main/ URL for the same reason, and
+      # tests/test_readme_contract.py checks it names a file in the tree.
       #
       # They are checked instead against the working tree by
       # tests/test_readme_contract.py::test_every_docs_site_link_has_a_source_page,
@@ -107,12 +109,10 @@ jobs:
       # request -- its anti-bot status, not a dead link. It entered scope on
       # 2026-09-12 when the grant application moved from the repo root into
       # docs/, which lychee scans. The link itself resolves fine in a browser.
-      # asciinema.org is excluded for the same reason, after the gentler fix was
-      # tried and did not work: the README's demo embed times out from the runner
-      # while answering 200 in ~0.9s from elsewhere, and raising --timeout from
-      # 20s to 30s did not change it — so it is being throttled or blocked by
-      # IP range, not merely slow. A timeout exits 2 exactly like a dead link, so
-      # leaving it in makes the job permanently red.
+      # asciinema.org was excluded for the same reason until 0.6.33: the README's
+      # demo embed timed out from the runner while answering 200 elsewhere, and
+      # GitHub's image proxy failed on it too, so the README showed a broken
+      # image. The demo is now a GIF in docs/assets/, and nothing links there.
       #
       # --timeout stays at 30 regardless: it is a reasonable default for the
       # remaining hosts and costs nothing.
