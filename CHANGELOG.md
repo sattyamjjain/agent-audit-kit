@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.34] - 2026-11-10
+
 ### Fixed
 
+- 0.6.33 was tagged but never reached PyPI. Its tag run failed `test_deepseek_v4_nested_functions_read_in_linear_time` on Python 3.9 twice (4.1x and 4.5x against a 3x + 0.5 s bound) on a commit whose PR matrix passed it. The reader had not slowed down, v0.6.31 times the same: each nesting level indents the 9,000 innermost lines further, so the deep input is 7.5 times the bytes and a linear reader takes about 2.7 times as long. The test takes the best of three runs against 5x + 0.5 s now, and a reader that searches each function's source again still fails it at 17x (#1213). Everything listed under 0.6.33 ships in 0.6.34.
 - The SARIF how-tos land findings in Code Scanning. The example workflow `examples/ci-integration/github-actions-sarif.yml` set `upload-sarif: true` as an "auto-upload" with no upload step, and the README's CI snippet and the GitHub Action reference said the same, so a workflow copied from any of them never put a finding in the Security tab. Each now adds `github/codeql-action/upload-sarif` reading the Action's `sarif-file` output. The Action reference lists all 13 inputs, `preset`, `comment-on-pr` and `fingerprint-strategy` among them, and a test holds it to `action.yml`.
 - `action.yml` and the Action's notice point at the SARIF Integration section in `docs/cli.md`, not a README section that moved there when the README was rewritten (#724).
 - The README's false-positive badge links to its results page by absolute URL, so the link works on PyPI, which resolves no repository-relative path.

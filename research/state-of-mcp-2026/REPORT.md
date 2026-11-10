@@ -7,7 +7,7 @@
 > pipeline on the same committed corpus reproduces this exact file, so version 1.3
 > always refers to these numbers. Version 1.3 supersedes version 1.2 (2026-10-28):
 > the corpus and the harness are the same, and a rule added in agent-audit-kit
-> 0.6.33 found a browser-automation server with the user's own browser in reach in
+> 0.6.34 found a browser-automation server with the user's own browser in reach in
 > six configs. Version 1.2 had superseded 1.1 (2026-10-15) after a rule added in
 > 0.6.28 found a critical flaw in one more config, and 1.1 had superseded 1.0
 > (2026-08-17) after corrected rules and a corrected scan harness moved the figures.
@@ -228,10 +228,10 @@ notification.
 
 ## What changed in v1.3
 
-Version 1.3 rescans the same 2026-07-26 corpus with agent-audit-kit 0.6.33. No config
+Version 1.3 rescans the same 2026-07-26 corpus with agent-audit-kit 0.6.34. No config
 was added or removed, and the harness did not change. One step moved figures:
 
-- **(x)** `AAK-MCP-BROWSER-ATTACH-001`, new in 0.6.33, reports a browser-automation MCP
+- **(x)** `AAK-MCP-BROWSER-ATTACH-001`, new in 0.6.34, reports a browser-automation MCP
   server that has the user's own browser in reach: it attaches over CDP to a browser on
   the same machine or to the running browser, points `--user-data-dir` at the real
   profile, imports cookies, or turns off the renderer sandbox with `--no-sandbox`. It
