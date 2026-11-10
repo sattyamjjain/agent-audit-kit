@@ -42,16 +42,28 @@ resolves it:
   `uvx pkg==1.2.3` or `npx -y pkg@1.2.3` in an MCP config;
 - a range every release of which is affected, such as `vllm<0.32`;
 - an installed `<name>-<version>.dist-info` in a site-packages directory, a
-  project's `.venv` and an unpacked image root filesystem included.
+  project's `.venv` and an unpacked image root filesystem included;
+- with `aak scan --include-user-config`, a release a launcher keeps on this host:
+  a package in npm's npx cache (`<cache>/_npx/<hash>/node_modules/<name>`) or a
+  dist-info in one of uv's tool environments (`<cache>/environments-v*/`), read
+  as [AAK-MALICIOUS-RELEASE-001](AAK-MALICIOUS-RELEASE-001.md) reads them. The
+  evidence names the cache path. Without the flag nothing outside the project is
+  read.
 
 A range that admits affected and unaffected releases, such as `vllm>=0.30`, is
 one INFO finding naming the advisories it admits, so a CI gate on HIGH does not
 fail on a range that may resolve to a fixed release. When a lockfile in the same
 directory resolves the package, the range is not reported at all: the lockfile
-says what is installed. A declaration without a version is not judged.
+says what is installed. A declaration without a version is not judged, except an
+MCP config's launch: one that pins no release (no version, a tag or a range) is
+[AAK-KNOWN-VULN-003](AAK-KNOWN-VULN-003.md).
 
 The finding names the advisory, its CVE ids, its score, the release and the
 release that fixes it; a sample is under [Related advisories](#related-advisories).
+When the fix is on a date line npm has since deprecated, the finding says so, for the
+packages `agent_audit_kit/data/date_line_packages.json` names: the four npm reference
+servers went back to SemVer at 1.0.0 in October 2026, so 2025.7.1, the fix an older
+advisory names for server-filesystem, is not where to go any more.
 
 ## The feed
 
@@ -67,8 +79,9 @@ which copy was read and when it was generated.
   package entries for 5,392 packages (PyPI 15,252, npm 8,327), 8.7 MB.
 - A cached copy over 60 MB would keep only HIGH and CRITICAL advisories, and
   `aak update` and the summary would say so. The feed is well under it today.
-- The bundled copy holds two OSV records exactly as OSV returned them on
-  2026-10-29: GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow). OSV
+- The bundled copy holds four OSV records exactly as OSV returned them: on
+  2026-10-29, GHSA-h3rc-j82p-2c3h (vLLM) and GHSA-26p8-2jq9-3vq9 (MLflow), and on
+  2026-11-07, GHSA-82r6-8w77-94w6 and GHSA-5p39-cfhj-2xmp (anyio below 4.14.2). OSV
   had no record for the OpenHands SDK or the NeMo Agent Toolkit advisory that
   day, so neither is bundled; once OSV publishes one, `aak update` picks it up.
   It also holds the seven entries `nvd_feed` converts from NVD's records of five
@@ -212,6 +225,8 @@ references: the rule reports whatever advisory the feed holds.
 |---|---|---|---|
 | vLLM below 0.32.0 | CVE-2026-115915 | GHSA-h3rc-j82p-2c3h (CVSS 3.x 8.1) | yes |
 | MLflow 3.12.0rc0 up to 3.17.0 | CVE-2026-116692 | GHSA-26p8-2jq9-3vq9 (CVSS 3.x 9.8) | yes |
+| anyio below 4.14.2, TLS host names | CVE-2026-63374 | GHSA-82r6-8w77-94w6 (GitHub rates it CRITICAL, CVSS 4.0 only) | yes |
+| anyio below 4.14.2, process-pool workers | CVE-2026-64847 | GHSA-5p39-cfhj-2xmp (GitHub rates it MODERATE, CVSS 4.0 only) | yes |
 | OpenHands Software Agent SDK below 1.52.0 | CVE-2026-112346 | none yet | no; [AAK-AGENT-SERVER-NOAUTH-001](AAK-AGENT-SERVER-NOAUTH-001.md) reads its launchers |
 | NVIDIA NeMo Agent Toolkit | CVE-2026-65145 | none yet | no |
 | Langflow OSS 1.0.0 through 1.12.8 | CVE-2026-110186 | none | yes, from IBM's record in NVD (CVSS 3.x 9.8) |
