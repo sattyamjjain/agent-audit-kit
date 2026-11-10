@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The State of MCP Security 2026 report moves to version 1.3. `AAK-MCP-BROWSER-ATTACH-001` fires on 6 of its 2,303 configs, so medium findings go from 4,930 to 4,936, configs under OWASP's MCP02:2025 from 14 to 20, and one config from grade A to B; `results.json`, the PDF, the change table, the citation forms and `CITATION.cff` say 1.3.
 - `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's CVE-2026-104317, CVE-2026-18894 and CVE-2026-101288, which its 1.13.0 floor already reported (#1192). The n8n record CVE-2026-119408 gets no pin, since it is not on n8n's MCP surface, and `AAK-KNOWN-VULN-001` reports it after `aak update`. LM Studio's CVE-2026-119979 is out of scope. The ledger has the reasons.
 - AAK-MCP-STATELESS-004's text follows the 2026-07-28 tools section (#1195). It told clients to treat discovery as a hint that may differ between instances. The spec says the set must not vary per connection and may vary by authorization, so instances serving different sets to the same authorization now read as a server defect for the client to detect. What the rule fires on is unchanged.
 - AAK-AGENT-SHARED-RES-AUTHZ-001's remediation takes the actor from the authenticated principal; a parameter may only be checked against it (#1197).

@@ -10,8 +10,8 @@
   "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 788,
-    "B": 1280,
+    "A": 787,
+    "B": 1281,
     "C": 96,
     "D": 52,
     "F": 87
@@ -23,7 +23,7 @@
   "severity_totals": {
     "critical": 1293,
     "high": 208,
-    "medium": 4930,
+    "medium": 4936,
     "low": 652
   },
   "transport_distribution": {
@@ -118,8 +118,8 @@
       "pct": 9.2
     },
     "MCP02:2025": {
-      "configs": 14,
-      "pct": 0.6
+      "configs": 20,
+      "pct": 0.9
     },
     "MCP09:2025": {
       "configs": 3,
@@ -290,6 +290,10 @@
     "AAK-MCP-002": {
       "configs": 9,
       "pct": 0.4
+    },
+    "AAK-MCP-BROWSER-ATTACH-001": {
+      "configs": 6,
+      "pct": 0.3
     },
     "AAK-AIACT50-001": {
       "configs": 5,
