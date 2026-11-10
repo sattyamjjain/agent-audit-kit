@@ -1,8 +1,16 @@
 {
   "npm": {
     "axios": {
-      "affected": ">=1.7.0 <1.7.4",
-      "description": "Claude Code supply chain compromise (March 31 2026)"
+      "versions": [
+        "0.30.4",
+        "1.14.1"
+      ],
+      "affected": ">=1.14.1 <=1.14.1",
+      "description": "malicious release, published from the lead maintainer's hijacked npm account on 2026-03-31; it installs plain-crypto-js 4.2.1, a remote access trojan (OSV MAL-2026-2307, https://github.com/axios/axios/issues/10636)"
+    },
+    "plain-crypto-js": {
+      "affected": ">=0.0.0",
+      "description": "malicious package, the remote access trojan the compromised axios 1.14.1 and 0.30.4 install (OSV MAL-2026-2306, https://github.com/axios/axios/issues/10636)"
     }
   },
   "python": {},

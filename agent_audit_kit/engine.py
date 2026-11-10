@@ -111,6 +111,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("approval_parser_desync", "Command-safety parser vs PowerShell stop-parsing token (CVE-2026-19591)", []),
     ("ufo_mobile_mcp", "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)", []),
     ("policy_truncation", "Deny policy evaluated on a truncated copy of the executed value (CVE-2026-73614 class)", []),
+    ("policy_failopen", "Policy gates that open on an unknown verdict or a missing policy module", []),
     ("mcp_sidecar_http", "MCP server binds an unauthenticated sidecar dashboard on loopback (2026-08 wave)", []),
     ("quoted_shell_interp", "Tool argument interpolated into a shell command despite quoting (CVE-2026-55157 class)", []),
     ("llm_sql_rce", "LLM-generated SQL on an RCE-capable DB role (CVE-2026-25879)", []),
@@ -124,6 +125,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_routing_desync", "MCP 2026-07-28 routable-header ↔ body desync (SEP-2243)", []),
     ("mcp_apps_ui", "MCP Apps UI iframe sandbox / sanitization (SEP-1865)", []),
     ("mcp_codeexec_sandbox", "Code-execution tool sandboxes with open runtime permissions (prefab-ui GenerativeUI, Deno)", []),
+    ("mcp_toolbox_hosts", "MCP Toolbox launches with an open Host or Origin check (CVE-2026-11624)", []),
     ("mcp_cve_pins_2026_07", "MCP/agent CVE version-pins — 2026-07 disclosure wave", []),
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
     ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
@@ -131,7 +133,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
      ["include_user_config"]),
     ("malicious_extensions", "Installed editor extensions the malicious-release feed lists (Cursor, VS Code)",
      ["include_user_config"]),
-    ("known_vulns", "Locked, pinned and installed packages against OSV advisories (offline feed)", []),
+    ("known_vulns", "Locked, pinned, installed and launched packages against OSV advisories (offline feed)",
+     ["include_user_config"]),
     ("known_vulns_launch", "Launched MCP servers, binaries and images against NVD advisories (offline feed)", []),
     ("agent_server_noauth", "OpenHands sandbox agent server without a session key (CVE-2026-112346)", []),
     ("runtime_advisories", "Runtime and bundled-codec advisories: Node.js, PHP, Python, Brotli (PHP2Shell, CVE-2026-111497)", []),
@@ -339,7 +342,9 @@ def run_scan(
 
     result.findings.extend(
         _drop_known_vulns_a_rule_reports(
-            _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+            _drop_table_findings_the_feed_reports(
+                _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+            )
         )
     )
 
@@ -461,15 +466,16 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
     not load, it reported nothing, and every scan goes on.
 
     AAK-KNOWN-VULN-002, the same feed's records matched to what a project
-    launches, names its advisory's CVE ids the same way and stands down the same
-    way. Neither feed rule counts as the other rule here: two findings that only
-    the feed made would stand each other down, and the flaw would go unreported.
+    launches, and AAK-KNOWN-VULN-003, a launch that pins no release of a package
+    with an advisory, name their advisory's CVE ids the same way and stand down the
+    same way. No feed rule counts as another here: two findings that only the feed
+    made would stand each other down, and the flaw would go unreported.
     """
     try:
         from agent_audit_kit.scanners.known_vulns import RULE, evidence_cves
     except ImportError:
         return findings
-    feed_rules = {RULE, "AAK-KNOWN-VULN-002"}
+    feed_rules = {RULE, "AAK-KNOWN-VULN-002", "AAK-KNOWN-VULN-003"}
 
     reported: dict[tuple[str, int, str], int] = {}
     for f in findings:
@@ -489,6 +495,51 @@ def _drop_known_vulns_a_rule_reports(findings: list[Finding]) -> list[Finding]:
                 continue
         kept.append(f)
     return kept
+
+
+def _drop_table_findings_the_feed_reports(findings: list[Finding]) -> list[Finding]:
+    """Stand AAK-SUPPLY-002 and -006 down on a release AAK-MALICIOUS-RELEASE-001
+    reports in the same file.
+
+    The fixed table those two rules read and the malicious-release feed both list
+    the axios releases of 2026-03-31 and plain-crypto-js, so one lockfile entry came
+    back as a HIGH and a CRITICAL. The table stays, since older clients download it
+    and a run with `--rules AAK-SUPPLY-002` or a feed copy that lacks the release
+    still needs an answer, so this compares findings, as the passes above do: a table
+    finding is dropped when its package and version (`supply_chain.table_release`)
+    are what a feed finding in the same file names
+    (`malicious_releases.listed_release`), at or above its own severity. The line is
+    no key: AAK-SUPPLY-002 points at the first line naming the package and the feed
+    finding at the resolved entry. It runs after the `--rules`, `--exclude-rules` and
+    `ignore_paths` filter, so it stands down only for a finding that is going to be
+    reported. A typosquat finding names no release and stays.
+    """
+    tabled = {"AAK-SUPPLY-002", "AAK-SUPPLY-006"}
+    if not any(f.rule_id in tabled for f in findings):
+        return findings
+    try:
+        from agent_audit_kit.scanners.malicious_releases import listed_release
+    except ImportError:
+        return findings
+    from agent_audit_kit.scanners.supply_chain import table_release
+
+    reported: dict[tuple[str, str, str | None], int] = {}
+    for f in findings:
+        listed = listed_release(f.evidence) if f.rule_id == "AAK-MALICIOUS-RELEASE-001" else None
+        if listed is not None:
+            key = (f.file_path, listed[0].lower(), listed[1])
+            reported[key] = max(reported.get(key, 0), f.severity.numeric())
+    if not reported:
+        return findings
+
+    def _reported(finding: Finding) -> bool:
+        release = table_release(finding.evidence)
+        if release is None:
+            return False
+        name, own = release[0].lower(), finding.severity.numeric()
+        return any(reported.get((finding.file_path, name, version), 0) >= own for version in (release[1], None))
+
+    return [f for f in findings if f.rule_id not in tabled or not _reported(f)]
 
 
 def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding]:
@@ -533,6 +584,8 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     so a launch is the same when that evidence starts with the subject the
     other rule's evidence gives (`_launchers.names_launch`). A launch that is
     not an entry of a top-level server map gets no head, and both findings stay.
+    AAK-KNOWN-VULN-003, the same unpinned launch of a package an advisory lists,
+    opens its evidence the same way and stands both down the same way.
     """
     from agent_audit_kit.scanners._launchers import launch_subject, names_launch
 
@@ -542,7 +595,7 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     reported: dict[tuple[str, str], int] = {}
     unpinned: dict[str, list[tuple[str, int]]] = {}
     for f in findings:
-        if f.rule_id == "AAK-MALICIOUS-RELEASE-002":
+        if f.rule_id in _UNPINNED_LAUNCH_RULES:
             unpinned.setdefault(_file(f), []).append((f.evidence, f.severity.numeric()))
         elif f.rule_id == "AAK-SUPPLY-001":
             subject = launch_subject(f.evidence)
@@ -567,3 +620,6 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
 
 # The rules `_drop_launches_supply_chain_reports` may stand down.
 _LAUNCH_DUPLICATES = frozenset({"AAK-MCP-007", "AAK-SUPPLY-001"})
+# The rules that report an unpinned launch with a reason, and open their evidence
+# with its `launch_head`: a listed malicious release, an open advisory.
+_UNPINNED_LAUNCH_RULES = frozenset({"AAK-MALICIOUS-RELEASE-002", "AAK-KNOWN-VULN-003"})

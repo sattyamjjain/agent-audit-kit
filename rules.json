@@ -1429,11 +1429,11 @@
         "CVE-2026-81102",
         "CVE-2026-77363"
       ],
-      "description": "The upstream MCP Python, Java, Apollo and TypeScript SDKs shipped a StreamableHTTP transport that trusts the browser-supplied `Host` header. A malicious web page that a user visits can resolve a custom domain to 127.0.0.1 via DNS rebinding and reach a local MCP server, turning every browser tab into a remote-attack surface for stdio-grade tools. The upstream patch adds a Host allow-list; downstream servers embedding StreamableHTTP must enforce one too. See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), CVE-2026-35577 (Apollo), CVE-2026-81102 (Python FastMCP), and CVE-2026-77363, a downstream server (obsidian-tc before 1.3.1) whose TypeScript transport checked neither Host nor Origin. Detection reads the raw SDK transport classes and, since v0.3.93, the Python **FastMCP** wrapper when it is told to run over a network transport (`run(transport=\"streamable-http\"/\"sse\")`, `streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are deliberately not flagged**: FastMCP defaults to stdio and a stdio server has no listener to rebind onto. **Binding to loopback is not a mitigation** and does not clear this rule -- CVE-2026-81102 was loopback-bound; the Host allow-list is the control. Single-file pattern detection with a project-wide mitigation check: one allow-list anywhere in the tree clears every candidate, so a server whose middleware lives in a separate package that is not scanned together will read as mitigated.",
+      "description": "The upstream MCP Python, Java, Apollo and TypeScript SDKs shipped a StreamableHTTP transport that trusts the browser-supplied `Host` header. A malicious web page that a user visits can resolve a custom domain to 127.0.0.1 via DNS rebinding and reach a local MCP server, turning every browser tab into a remote-attack surface for stdio-grade tools. The upstream patch adds a Host allow-list; downstream servers embedding StreamableHTTP must enforce one too. See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), CVE-2026-35577 (Apollo), CVE-2026-81102 (Python FastMCP), and CVE-2026-77363, a downstream server (obsidian-tc before 1.3.1) whose TypeScript transport checked neither Host nor Origin. Detection reads the raw SDK transport classes and, since v0.3.93, the Python **FastMCP** wrapper when it is told to run over a network transport (`run(transport=\"streamable-http\"/\"sse\")`, `streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are deliberately not flagged**: FastMCP defaults to stdio and a stdio server has no listener to rebind onto. **A loopback host clears this rule for one shape only**: the SDK's own FastMCP or 2.x MCPServer, when the project resolves `mcp` to 1.23.0 or later, the release that turned the protection on for a loopback host when no `transport_security` is passed. CVE-2026-81102 was loopback-bound on `mcp` 1.15.0, so below that it fires, and without a readable version it fires and says what would clear it. `enable_dns_rebinding_protection=False` beside a transport fires whatever allow-list sits next to it, since the SDK ignores the list then, and an allow-list whose only entry is `*` does not count. Single-file pattern detection with a project-wide mitigation check: one allow-list anywhere in the tree clears every candidate, so a server whose middleware lives in a separate package that is not scanned together will read as mitigated.",
       "incident_references": [
         "MCP-DNS-REBIND-2026-04"
       ],
-      "limitations": "A candidate is a .py, .ts, .tsx, .js, .mjs or .cjs file that builds a StreamableHTTP transport, or a Python FastMCP server run over a network transport. One Host allow-list anywhere in the project clears every candidate, whatever it protects: a Django `ALLOWED_HOSTS` in an unrelated app counts. A manifest over 2 MB, or a source file over 512 KB, is not read.",
+      "limitations": "A candidate is a .py, .ts, .tsx, .js, .mjs or .cjs file that builds a StreamableHTTP transport or a Python `SseServerTransport`, or a Python FastMCP server, or the SDK's own 2.x MCPServer, run over a network transport. One Host allow-list anywhere in the project clears every candidate, whatever it protects: a Django `ALLOWED_HOSTS` in an unrelated app counts, and so does a list that holds `*` beside other names. The exception is `enable_dns_rebinding_protection=False` (or TypeScript's `enableDnsRebindingProtection: false`) in the transport's own file; the same setting in another file is not read. The loopback stand-down follows the SDK maintainer's account in modelcontextprotocol/python-sdk issue 3562 and GHSA-9h52-p55h-vw2f: it applies to the SDK's own server on the default or a literal 127.0.0.1, localhost or ::1 host, with no `transport_security=`, and `mcp` read from the nearest uv.lock, poetry.lock or Pipfile.lock, else a pin or a range whose every release is 1.23.0 or later in requirements*.txt or pyproject.toml, walking from the file's directory to the root. Any `host=` in the file is read as the listener's, so `uvicorn.run(app, host=\"0.0.0.0\")` keeps the finding though the app's own check is on. The standalone `fastmcp` package never stands down, since its defaults were not read. A manifest over 2 MB, or a source file over 512 KB, is not read.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -1441,7 +1441,7 @@
       "owasp_mcp_references": [
         "MCP07:2025"
       ],
-      "remediation": "Wrap the StreamableHTTP app with a Host-header allow-list. In Starlette / FastAPI attach `TrustedHostMiddleware(allowed_hosts=...)`; in Node attach an `allowedHosts:` option or a Host middleware; in Java/Apollo enable `HostHeaderFilter` / `allowedHosts` config. In Python FastMCP pass `transport_security=TransportSecuritySettings(allowed_hosts=[...])` when constructing the server, or run it over stdio. Alternatively upgrade the SDK to a patched version and pass through its host-validation option.",
+      "remediation": "Wrap the StreamableHTTP app with a Host-header allow-list. In Starlette / FastAPI attach `TrustedHostMiddleware(allowed_hosts=...)`; in Node attach an `allowedHosts:` option or a Host middleware; in Java/Apollo enable `HostHeaderFilter` / `allowedHosts` config. In Python FastMCP pass `transport_security=TransportSecuritySettings(allowed_hosts=[...])` when constructing the server, or run it over stdio. On the default loopback host, lock `mcp` to 1.23.0 or later, which turns the protection on for you. Code that builds `StreamableHTTPSessionManager`, `StreamableHTTPServerTransport` or `SseServerTransport` directly must pass `security_settings=` itself, even on localhost. Alternatively upgrade the SDK to a patched version and pass through its host-validation option.",
       "rule_id": "AAK-DNS-REBIND-001",
       "sarif_name": "McpStreamableHttpDnsRebind",
       "severity": "critical",
@@ -2372,7 +2372,7 @@
       "cve_references": [],
       "description": "A lockfile resolves, a manifest pins, or a site-packages directory has installed a PyPI or npm release that an OSV advisory lists as affected. vLLM 0.31.1 and MLflow 3.16.0 locked in a project passed every rule on 0.6.28 (28 Oct 2026), although CVEs against both were published on 26 and 27 Oct, because AAK knew a vulnerable release only through a hand-written pin. The rule reads the offline advisory feed `aak update` builds from the OSV exports it already downloads for the malicious-release feed: every PyPI and npm record that is not `MAL-` or withdrawn and has a range or a version list. OSV can lag a CNA by days: IBM's Langflow OSS CVEs of 29 Oct 2026, CVSS 9.8, had no OSV package record while NVD carried IBM's affected range, so the feed also holds entries converted from NVD's records of CNA version data, for the CVEs OSV has no package record of. A scan reads the copy cached at `~/.agent-audit-kit/advisories.json`, else the records bundled with AAK, and never touches the network. The finding carries the advisory's severity: CRITICAL from a CVSS 3.x base score of 9.0, HIGH from 7.0, MEDIUM below that or unscored, and INFO for a manifest range that admits affected and unaffected releases.",
       "incident_references": [],
-      "limitations": "Reads what AAK-MALICIOUS-RELEASE-001 reads, anywhere outside AAK's skip directories: the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1); declarations in requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs; and `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside `>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label is reported MEDIUM. A declaration without a version is not judged, and a range is read on release triples, as the pin table reads ranges, so a pre-release bound counts as its release. A range that admits affected and unaffected releases is one INFO finding naming at most five advisories, and none when a lockfile in the same directory resolves the package. A PYSEC record and its GHSA twin are one advisory, reported under the GHSA id; two GHSA records are never merged. Where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, as most version pins do, only that rule's finding is kept; an advisory without a CVE id is always reported. A lockfile is read for its first 64 distinct releases of a package. NVD's records are read by `aak update` for the last 120 days of modifications (`--nvd-days`), and each run's entries replace the last run's, so a record last modified before that window leaves the feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's root with a `packageName`, which must agree with a page's name), or a row of the reviewed `data/cna_package_map.json` matching its repository or its vendor and product (four rows on 2 Nov 2026), never through a name alone; one that maps to none of these is dropped and counted. A CNA version written as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where semver has a first version after x. NVD's CPE data, other text, a version type other than semver, custom or python, and a `defaultStatus: affected` whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for the package names is dropped for OSV's. The bundled records are the two OSV advisories of 27 and 28 Oct 2026 against vLLM and MLflow and nine entries from NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub, so without `aak update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL records and says so. `.egg-info` installs, `node_modules`, conda metadata and image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is not read.",
+      "limitations": "Reads what AAK-MALICIOUS-RELEASE-001 reads, anywhere outside AAK's skip directories: the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1); declarations in requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs; and `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches; with `--include-user-config` also the packages in this host's npx cache and uv's tool environments, read as AAK-MALICIOUS-RELEASE-001 reads them and reported with the cache path. A release matches by PEP 440 order on PyPI (3.12.0rc0 is inside `>=3.12.0rc0`, 3.17.0rc1 below a 3.17.0 fix) and semver on npm, against the record's `ECOSYSTEM` and `SEMVER` ranges, read in version order, and its listed versions; a git range, a CVSS 4.0 vector and a record with no PyPI or npm package are not read, and a record scored by neither a CVSS 3.x vector nor GitHub's label is reported MEDIUM. A declaration without a version is not judged (an MCP config launch without one is AAK-KNOWN-VULN-003's), and a range is read on release triples, as the pin table reads ranges, so a pre-release bound counts as its release. A range that admits affected and unaffected releases is one INFO finding naming at most five advisories, and none when a lockfile in the same directory resolves the package. A PYSEC record and its GHSA twin are one advisory, reported under the GHSA id; two GHSA records are never merged. Where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, as most version pins do, only that rule's finding is kept; an advisory without a CVE id is always reported. A lockfile is read for its first 64 distinct releases of a package. NVD's records are read by `aak update` for the last 120 days of modifications (`--nvd-days`), and each run's entries replace the last run's, so a record last modified before that window leaves the feed. A record names a package only through its CNA's `pkg:pypi` or `pkg:npm` packageURL, a PyPI or npm `collectionURL` (a package's own page, or the registry's root with a `packageName`, which must agree with a page's name), or a row of the reviewed `data/cna_package_map.json` matching its repository or its vendor and product (four rows on 2 Nov 2026), never through a name alone; one that maps to none of these is dropped and counted. A CNA version written as text is read in GitHub's advisory grammar (`< 0.5.0`, `>= 2.2.0, < 3.0.1`, one lower and one upper bound at most, or `= x` alone), and `> x` only on npm, where semver has a first version after x. NVD's CPE data, other text, a version type other than semver, custom or python, and a `defaultStatus: affected` whose exceptions no interval states are not read; an NVD entry without a CVSS 3.x vector takes its CVSS 4.0 label, else MEDIUM; and one whose CVE an OSV entry for the package names is dropped for OSV's. The bundled records are the two OSV advisories of 27 and 28 Oct 2026 against vLLM and MLflow, the two against anyio below 4.14.2, and nine entries from NVD's records of seven CVEs of 29 Oct to 2 Nov 2026 against langflow, lmdeploy, prefab-ui, open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub, so without `aak update` nothing else is known; a feed over 60 MB keeps only HIGH and CRITICAL records and says so. `.egg-info` installs, `node_modules`, conda metadata and image layers are not read. A manifest over 2 MB or a lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2380,7 +2380,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few.",
+      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the finding says the fix is on a date line npm has deprecated, take a current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few. Where the finding says a parent pins the release exactly, the upgrade needs an override: `[tool.uv] override-dependencies` or a pip constraint.",
       "rule_id": "AAK-KNOWN-VULN-001",
       "sarif_name": "KnownVulnerableRelease",
       "severity": "critical",
@@ -2411,6 +2411,32 @@
       "sarif_name": "KnownVulnerableLaunch",
       "severity": "critical",
       "title": "A launched MCP server, binary or image is a release a published advisory lists as affected"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-04"
+      ],
+      "aicm_references": [
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "An MCP client config launches a PyPI or npm package from its registry with no version, a tag (`@latest`) or a range, and the offline advisory feed holds an advisory whose affected releases the launch admits. Such a launch runs whichever release npx or uvx resolves, or finds in its cache, and the config does not say which. DBHub (`@bytebase/dbhub`), a database MCP server usually started as `npx -y @bytebase/dbhub`, let MySQL and MariaDB comment syntax past its read-only SQL validation below 0.22.6 (GHSA-j656-3hf2-fvjc, 2 Nov 2026), and AAK-KNOWN-VULN-001 could not judge that launch: it names no release. The finding carries the advisory's severity when every release the launch can fetch is affected (the advisory names no end, or a range admits only affected releases), and MEDIUM when the advisory names a fix, since the newest release may be the fixed one; the scan then reports the launch once, standing AAK-SUPPLY-001 and AAK-MCP-007 down on it. A launch pinned to one release is AAK-KNOWN-VULN-001's.",
+      "incident_references": [],
+      "limitations": "Reads the launches in the MCP configs AAK-KNOWN-VULN-001 reads (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`, outside AAK's skip directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, `npm exec`, `pnpm dlx`, `yarn dlx`, uvx, `uv tool run`, `pipx run`, and `--with` packages); a launch in a shell script or a package.json `scripts` entry, a program a config runs by name, a git URL and a local path are not judged. A launch with no version or a tag counts as able to fetch any release, and a readable range only the releases it admits, read on release triples as the version pins read ranges. The rule reports what the launch could run, not what it ran: it does not know the registry's newest release, so an advisory fixed long ago is still reported, at MEDIUM. One finding per launch and advisory; where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, only that rule's finding is kept. AAK-SUPPLY-001 and AAK-MCP-007 stand down only on a launch of a server in a top-level `mcpServers` or `servers` map. Without `aak update` the feed is the few records bundled with AAK (npm's open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub among them), so nothing else is known. A config over 2 MB is not read.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Pin the launch to a release outside the advisory's range, the fix the finding names or later (`npx -y @bytebase/dbhub@0.22.6`, `uvx pkg==1.2.3`), and restart the server. Then run `aak scan --include-user-config` to check whether npx or uv already cached an affected release, and clear that cache entry if so. Where the advisory names no fixed release, stop launching the package or keep the flawed component unreachable. Run `aak update` so the scan reads the current advisories rather than the bundled few.",
+      "rule_id": "AAK-KNOWN-VULN-003",
+      "sarif_name": "UnpinnedLaunchOfVulnerablePackage",
+      "severity": "medium",
+      "title": "An MCP config launches, without pinning a release, a package a published advisory lists as affected"
     },
     {
       "adversa_references": [
@@ -2818,7 +2844,7 @@
       "incident_references": [
         "BERRIAI-LITELLM-2026-10-21"
       ],
-      "limitations": "Reads, anywhere outside AAK's skip directories, requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`) for a declaration that pins one version; the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1) for resolved versions; `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches; and `@sha256:` image references in Dockerfiles, YAML files and MCP configs. With `--include-user-config` it also reads this host's npx cache (`<npm cache>/_npx/*/node_modules/<name>/package.json`, the cache an `npm_config_cache` variable names, else `~/.npm` or `%LocalAppData%\\npm-cache`) and uv's tool environments (the `<name>-<version>.dist-info` directories under `<uv cache>/environments-v*/`, the cache `UV_CACHE_DIR` names, else `$XDG_CACHE_HOME/uv`, `~/.cache/uv` or `%LOCALAPPDATA%\\uv\\cache`); an `.npmrc` `cache=` line, uv's `--cache-dir` and `tool.uv.cache-dir`, `uv tool install` environments and the pnpm, yarn and bun caches are not read, and without the flag no cache is. A version matches exactly, PEP 440 normalised for PyPI and as written for npm, so a pre-release beside a malicious release (litellm 1.107.0rc1) is not reported, and npm's `0.0.1-security` placeholder never matches. A range, or a declaration without a version, matches only an entry that lists every release of the package, since a range does not say which release was installed. An image tag never matches, only a digest, and a digest matches whatever registry name the reference gives it. A program an MCP config runs by name names no registry and is not read, nor are `.egg-info` installs, `node_modules`, conda metadata or an image's registry layers. The bundled feed lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0), MAL-2026-18425 (local-commander-agent 0.3.52) and one image index digest, so without `aak update` nothing else is known. A lockfile that resolves one release more than once is reported once, at its first entry, and an image reference is quoted from at most 256 characters before its digest. A manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB is not read.",
+      "limitations": "Reads, anywhere outside AAK's skip directories, requirements*.txt, pyproject.toml, Pipfile, package.json (not its `scripts`) and the launches in MCP configs (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`) for a declaration that pins one version; the lockfiles uv.lock, poetry.lock, Pipfile.lock, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml and yarn.lock (v1) for resolved versions; `<name>-<version>.dist-info` directories in the site-packages and dist-packages directories AAK-STARTUP-HOOK-PTH-001's walk reaches; and `@sha256:` image references in Dockerfiles, YAML files and MCP configs. With `--include-user-config` it also reads this host's npx cache (`<npm cache>/_npx/*/node_modules/<name>/package.json`, the cache an `npm_config_cache` variable names, else `~/.npm` or `%LocalAppData%\\npm-cache`) and uv's tool environments (the `<name>-<version>.dist-info` directories under `<uv cache>/environments-v*/`, the cache `UV_CACHE_DIR` names, else `$XDG_CACHE_HOME/uv`, `~/.cache/uv` or `%LOCALAPPDATA%\\uv\\cache`); an `.npmrc` `cache=` line, uv's `--cache-dir` and `tool.uv.cache-dir`, `uv tool install` environments and the pnpm, yarn and bun caches are not read, and without the flag no cache is. A version matches exactly, PEP 440 normalised for PyPI and as written for npm, so a pre-release beside a malicious release (litellm 1.107.0rc1) is not reported, and npm's `0.0.1-security` placeholder never matches. A range, or a declaration without a version, matches only an entry that lists every release of the package, since a range does not say which release was installed. An image tag never matches, only a digest, and a digest matches whatever registry name the reference gives it. A program an MCP config runs by name names no registry and is not read, nor are `.egg-info` installs, `node_modules`, conda metadata or an image's registry layers. The bundled feed lists only MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0), MAL-2026-18425 (local-commander-agent 0.3.52), MAL-2026-2307 (axios 0.30.4 and 1.14.1), MAL-2026-2306 (every release of plain-crypto-js) and one image index digest, so without `aak update` nothing else is known. A lockfile that resolves one release more than once is reported once, at its first entry, and an image reference is quoted from at most 256 characters before its digest. A manifest over 2 MB, a lockfile over 32 MiB or an image-reference file over 2 MB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -2827,7 +2853,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Remove the release: pin a version the feed does not list (for litellm, 1.106.2, the version LiteLLM named), re-lock, and rebuild the environment or image from scratch rather than upgrading in place. Treat every environment, host or cluster that installed or ran it as compromised: rotate each credential it could reach and review its outbound traffic. Run `aak update` to refresh the feed.",
+      "remediation": "Remove the release: pin a version the feed does not list (for litellm, 1.106.2, the version LiteLLM named; for axios 1.14.1 or 0.30.4, 1.14.0 or 0.30.3, and delete `node_modules/plain-crypto-js`, as the axios postmortem advises), re-lock, and rebuild the environment or image from scratch rather than upgrading in place. Treat every environment, host or cluster that installed or ran it as compromised: rotate each credential it could reach and review its outbound traffic. Run `aak update` to refresh the feed.",
       "rule_id": "AAK-MALICIOUS-RELEASE-001",
       "sarif_name": "KnownMaliciousRelease",
       "severity": "critical",
@@ -2847,7 +2873,7 @@
       "incident_references": [
         "LOCAL-COMMANDER-AGENT-2026-10-31"
       ],
-      "limitations": "Reads the launches in the MCP configs AAK-MALICIOUS-RELEASE-001 reads (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`, outside AAK's skip directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, `npm exec`, `pnpm dlx`, `yarn dlx`, uvx, `uv tool run`, `pipx run`, and `--with` packages); a launch in a shell script, a Makefile or a package.json `scripts` entry is not read, and neither is a program a config runs by name, a git URL or a local path. A launch with no version, a tag or a range the version reader cannot read is reported for every version-specific entry of the package; a readable range only when it admits a listed release, read on release triples as the version pins read ranges, so a pre-release beside a listed release counts as it. An exact pin is never reported here: a listed one is AAK-MALICIOUS-RELEASE-001's, any other is safe by the feed. The rule reports what could be launched, not what was: it does not know whether a listed release is still the registry's newest or was ever fetched. A finding names at most ten listed versions per entry. AAK-SUPPLY-001 and AAK-MCP-007 stand down only on a launch of a server in a top-level `mcpServers` or `servers` map. The bundled feed lists two packages with version-specific entries (litellm and local-commander-agent), so without `aak update` nothing else is known. A config over 2 MB is not read.",
+      "limitations": "Reads the launches in the MCP configs AAK-MALICIOUS-RELEASE-001 reads (`.mcp.json`, `mcp.json`, `claude_desktop_config.json`, `*.mcp.json`, `*.mcp.yaml`, `*.mcp.yml`, outside AAK's skip directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, `npm exec`, `pnpm dlx`, `yarn dlx`, uvx, `uv tool run`, `pipx run`, and `--with` packages); a launch in a shell script, a Makefile or a package.json `scripts` entry is not read, and neither is a program a config runs by name, a git URL or a local path. A launch with no version, a tag or a range the version reader cannot read is reported for every version-specific entry of the package; a readable range only when it admits a listed release, read on release triples as the version pins read ranges, so a pre-release beside a listed release counts as it. An exact pin is never reported here: a listed one is AAK-MALICIOUS-RELEASE-001's, any other is safe by the feed. The rule reports what could be launched, not what was: it does not know whether a listed release is still the registry's newest or was ever fetched. A finding names at most ten listed versions per entry. AAK-SUPPLY-001 and AAK-MCP-007 stand down only on a launch of a server in a top-level `mcpServers` or `servers` map. The bundled feed lists three packages with version-specific entries (litellm, local-commander-agent and axios), so without `aak update` nothing else is known. A config over 2 MB is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3141,7 +3167,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "remediation": "Pin with an exact @x.y.z suffix, for example `npx -y some-mcp-server@1.4.2`. The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
       "rule_id": "AAK-MCP-007",
       "sarif_name": "McpUnpinnedPackageVersion",
       "severity": "low",
@@ -6190,7 +6216,10 @@
         "CVE-2026-110192",
         "CVE-2026-104339",
         "CVE-2026-107327",
-        "CVE-2026-107329"
+        "CVE-2026-107329",
+        "CVE-2026-104317",
+        "CVE-2026-18894",
+        "CVE-2026-101288"
       ],
       "description": "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to unauthenticated remote code execution through its MCP stdio launcher: the `DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, `BASHOPTS`, and `PS4`, so an unauthenticated attacker can inject those environment variables into a launched stdio MCP server process and achieve arbitrary code execution (CVE-2026-12940, CVSS 9.8). The same 1.11.0 floor also remediates five further Langflow OSS CVEs disclosed for 1.0.0\u20131.10.3: CVE-2026-17623 (command-field RCE in MCP server configurations), CVE-2026-17626 (host-file read/modify via unfiltered Docker volume-mount and device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading the JWT signing secret, the SQLite DB, and process env). A seventh, CVE-2026-9186, raised the floor past those: Langflow OSS 1.0.0\u20131.11.2 trusts a spoofed `X-Forwarded-For: 127.0.0.1` header to satisfy its localhost-only guard on MCP-config installation, so a remote authenticated attacker writes arbitrary IDE configuration files (`~/.cursor/mcp.json` and siblings) \u2014 which 1.11.0, 1.11.1 and 1.11.2 are all exposed to. Three further IBM advisories then moved the floor again, all scoped 1.0.0 through 1.11.5: CVE-2026-85025 (CRITICAL 9.8) \u2014 unauthenticated arbitrary code execution and access to other users' chat sessions through publicly shared MCP project endpoints, because public-flow security restrictions and session isolation are both enforced improperly; CVE-2026-78575 (HIGH 8.8) \u2014 a remote authenticated attacker executes arbitrary commands through improperly validated command-line arguments in the MCP stdio server configuration; and CVE-2026-81941 (HIGH 8.8) \u2014 a non-administrative authenticated user runs OS commands at the application's privilege level by building a flow whose MCP Tools component uses a local stdio subprocess transport, bypassing both `LANGFLOW_CUSTOM_COMPONENT_ADMIN_ONLY` and `LANGFLOW_BLOCK_CODE_INTERPRETER_COMPONENTS`. Those are fixed in 1.11.6. CVE-2026-101861 (CVSS 4.1) then moved the floor to 1.12.0: from 1.0.16 through 1.11.6, an authenticated caller's Tool-Mode input options reach `eval()` in `schema.py` when a component is converted into a LangChain tool through `ComponentToolkit.get_tools()`, a custom-component save through the API included, so an option object with a crafted `__repr__` runs code (GHSA-33p4-w7j3-33mw). Treat < 1.12.0 (and unpinned) as exposed; 1.11.6 is exposed to that one alone. Three more advisories sit under that floor: CVE-2026-105697 (CVSS 9.9) and CVE-2026-105740 (CVSS 9.9), the MCP stdio transport running a configured command through `bash -c` with no allowlist (fixed in 1.10.3 and 1.9.0), and CVE-2026-105741 (CVSS 7.1), a spoofed `X-Forwarded-For` on the MCP-config install endpoint from 1.5.0 (fixed in 1.10.3). So does CVE-2026-105699 (CVSS 4.0 7.1): from 1.6.8, a project-scoped MCP connection's `resources/read` returned another user's flow files without checking that the flow belonged to the caller (fixed in 1.9.1). IBM's records of 29 Oct 2026 then moved the `langflow` floor to 1.13.0: CVE-2026-110186 (CVSS 9.8, arbitrary code through improper control of code generation), CVE-2026-93680 (CVSS 9.8, a security-restriction bypass through improper authentication), CVE-2026-110193 (CVSS 8.8, a low-privileged user has the Agentic Assistant generate or submit component code that runs) and CVE-2026-110192 (CVSS 6.5, API credentials exposed to an authenticated user) affect 1.0.0 through 1.12.8 and are fixed in 1.13.0; CVE-2026-104339 (CVSS 9.8, OS command injection) affects 1.0.0 through 1.12.3, fixed in 1.12.4, and CVE-2026-107327 and CVE-2026-107329 (CVSS 9.9 each, code execution by an authenticated user) 1.0.0 through 1.12.4, fixed in 1.12.5. Treat `langflow` < 1.13.0 (and unpinned) as exposed. The same code ships as `langflow-base` and `lfx`, which reached 1.12.0 in the same release as `langflow`, so both are read at that floor; no IBM bulletin or CNA record names either package for the October records, so their floors stay at 1.12.0. Pre-1.0.0 releases of `langflow` predate the MCP stdio launcher and are not in the affected range.",
       "incident_references": [],
@@ -8939,6 +8968,35 @@
       "title": "Google MCP Toolbox 1.2.0 to 1.4.x: the Cloud Storage tools take any bucket and any local path"
     },
     {
+      "adversa_references": [
+        "ADV-NETWORK-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-11624"
+      ],
+      "description": "MCP Toolbox for Databases before 0.25.0 had no way to validate the `Host` a request names, so a page in a browser could rebind a name to its listener (CVE-2026-11624, CWE-346, GHSA-76g7-m3xw-x9gr). 0.25.0 added `--allowed-hosts` beside `--allowed-origins`, and both still default to `*`, so the server only warns at startup and upgrading closes nothing by itself. This rule reports `@toolbox-sdk/server` below 0.25.0, and an MCP config that starts the server on a network listener with either flag unset or `*`.",
+      "incident_references": [],
+      "limitations": "The version half reads `@toolbox-sdk/server` where a package.json, lockfile or MCP config states a version; `latest` states none and is not reported, and the Go module is not read. The launch half reads the `command` and `args` of servers in `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.json` anywhere outside AAK's skip directories, for `npx @toolbox-sdk/server` or a program named `toolbox`. A launch with `--stdio` is not read, and neither is a shell script, a compose file or a Kubernetes manifest. A flag given a variable reference counts as set, and a list holding `*` beside other names counts as open. The rule reads the flags, not the reverse proxy in front of the listener. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `@toolbox-sdk/server` to 0.25.0 or later and pin it, and start the server with both `--allowed-hosts` and `--allowed-origins` naming your real hosts and origins. A client that starts the server itself can use `--stdio`, which has no listener.",
+      "rule_id": "AAK-MCP-TOOLBOX-HOSTS-001",
+      "sarif_name": "McpToolboxOpenHostCheck",
+      "severity": "medium",
+      "title": "MCP Toolbox for Databases on a network listener with an open Host or Origin check"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
@@ -9137,6 +9195,35 @@
       "sarif_name": "McpTypeScriptSdkTaskStoreSessionScope",
       "severity": "high",
       "title": "MCP TypeScript SDK 1.24.0 to 1.31.0: experimental tasks are not tied to the session that created them"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-08"
+      ],
+      "aicm_references": [
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-111768"
+      ],
+      "description": "The official MCP TypeScript SDK's HTTP servers put no limit on how many array elements and object keys they validated in one request, so one request inside the default 4 MiB limit could exhaust the server's memory, and the process aborted with `JavaScript heap out of memory` (CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453). No credentials are needed unless requests are authenticated before they reach the SDK. It affects `@modelcontextprotocol/sdk` 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected.",
+      "incident_references": [],
+      "limitations": "Reports `@modelcontextprotocol/sdk` from 1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` from 2.0.0 up to 2.3.0 where a package.json, lockfile or MCP config states the version, reporting a range that admits an affected version. `latest` is fixed and states no version, so it is not reported. It reads the version, not the code: a fixed release without `maxToolInputElements` set, which the advisory says is still exposed, is not reported, and a stdio-only server on an affected version is reported without being exposed. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI08"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade to `@modelcontextprotocol/sdk` 1.32.0 or `@modelcontextprotocol/server` 2.3.0 or later and pin it. The advisory says upgrading alone changes nothing, because the patched versions add an option that is off by default: set `maxToolInputElements` on `McpServer` just above the largest input your tools need, and lower `maxRequestBodySize` on the transport, or your own body parser's limit, to what they need. If you cannot upgrade yet, make the second change.",
+      "rule_id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+      "sarif_name": "McpTypeScriptSdkValidationMemory",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: one HTTP request within the size limit can exhaust server memory during validation"
     },
     {
       "adversa_references": [],
@@ -10126,6 +10213,28 @@
       "aicm_references": [],
       "auto_fixable": false,
       "category": "trust-boundary",
+      "cve_references": [],
+      "description": "An `except ImportError` or `except ModuleNotFoundError` around a policy, auth, validator or guard import allows when the import fails: its handler returns True or an allow value, turns an enforce flag off, binds a stub that allows, or does nothing while the code goes on to act; or a later test of the missing name goes ahead. A PreToolUse guard shaped like this allowed every `mcp__*` call for a policy module that did not exist, and its allow-path tests kept passing. A handler that raises, exits non-zero or denies does not fire, and neither does an optional import that is no policy (a YAML speedup, `rich`).",
+      "incident_references": [],
+      "limitations": "Reads Python source for a try that imports a module or a name with a policy word in it (policy, auth, valid*, guard*, permission*, acl, rbac, enforc*, secur*, sandbox*, allowlist*, firewall*, gate), word by word of a dotted or snake_case name, so a policy module named for something else (`from checks import run`) is not read, and a validator library imported for an unrelated purpose is. Only `ImportError` and `ModuleNotFoundError` handlers are read, so a bare `except:` or `except Exception:` is not. A name left as None or False is followed through later `if` tests in the same file; a test of it in another file is not, and with no later test nothing is reported, since calling None raises. A handler that passes counts only when the try itself calls the check and a call follows it in the same function. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Deny on the ImportError: raise, or exit with the code your gate reads as a refusal (2 for a Claude Code PreToolUse hook), and add a test that the policy module being missing denies, not only that the module being present allows correctly.",
+      "rule_id": "AAK-POLICY-IMPORT-FAILOPEN-001",
+      "sarif_name": "PolicyImportFailOpen",
+      "severity": "high",
+      "title": "A failed import of a policy module leaves the gate open"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-73614"
       ],
@@ -10142,6 +10251,28 @@
       "sarif_name": "DenyPolicyTruncationBypass",
       "severity": "high",
       "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "A function takes a verdict or decision (a parameter, or a model, HTTP or JSON result named verdict, decision, approval, allowed, action or status), refuses only when it equals a deny word (`== \"deny\"`, `in (\"deny\", \"reject\")`, with or without `.lower()`), and otherwise goes on to act. A parsed answer is whatever came back, so `denied`, `DENY`, `block`, `error`, an empty string and None all execute. A check that lets only known values through (`verdict != \"allow\"`, `verdict not in ALLOWED`) or maps unknown values to deny (`TABLE.get(raw, \"deny\")`) does not fire.",
+      "incident_references": [],
+      "limitations": "The verdict pattern is a regression pattern from the Nobulex failopen corpus (github.com/arian-gogani/failopen, MIT, Arian Gogani), case `historical/autogen-verdict`: microsoft/autogen PR #7960 executed its action on six unknown verdicts at commit 0cd67042, and commit ec6cf48c in the same PR (still open, not in AutoGen main) hardened it to block all six before the issue was filed, so it is not an unresolved AutoGen vulnerability. Reads Python functions, one at a time, for a check of a verdict by name: `verdict`, `decision` and `approval` anywhere, and `allowed`, `action` and `status` only in a function or file named for a gate (policy, guard, gate, approval, hook and the like), since those words are common. A local assigned from one counts. The deny word must be a string literal, so one held in a constant or an enum is not read, and a check at module level, a `match` statement, a flag set in the branch (`blocked = True`) and a verdict read in another function are not followed. A check in a nested block is judged by what follows it in that block. A return of a plain name or of a word that is neither a refusal nor a go-ahead is not read as acting. TypeScript and other languages are not read. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Map unknown verdicts to deny where the answer is parsed: an enum or a table with deny as the default, or an explicit check before the action that refuses everything but the one word that means go ahead. Add a test that a deny, the same word in capitals, an empty value, None and a word you have never seen all refuse, so a later refactor cannot reopen it.",
+      "rule_id": "AAK-POLICY-VERDICT-FAILOPEN-001",
+      "sarif_name": "PolicyVerdictFailOpen",
+      "severity": "high",
+      "title": "A policy verdict blocks on one deny word and acts on anything else"
     },
     {
       "adversa_references": [],
@@ -11498,7 +11629,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+      "remediation": "Pin to an exact version, for example `npx -y some-mcp-server@1.4.2`. The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
       "rule_id": "AAK-SUPPLY-001",
       "sarif_name": "McpPackageNotPinned",
       "severity": "medium",
@@ -11516,7 +11647,7 @@
       "cve_references": [],
       "description": "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
       "incident_references": [],
-      "limitations": "Reads the root package-lock.json against a fixed table of one npm package, `axios` 1.7.0 to 1.7.3, and two misspellings of the MCP scope (`@modlecontextprotocol`, `modelcontextprotocal`), so a vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) is not reported, and neither is any other lookalike name, such as an unscoped copy of an official server's (`mcp-server-sequential-thinking` for `@modelcontextprotocol/server-sequential-thinking`, which npm has since replaced with a security holding package). The rule used to report every `mcp-server-<word>-<word>` name, a shape real servers share. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the table used to place it, is the empty placeholder 0.0.1. The table lists no PyPI package or crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over 32 MiB are not read.",
+      "limitations": "Reads the root package-lock.json against a fixed table of the malicious axios releases of 31 March 2026 (1.14.1 and 0.30.4), every numeric release of `plain-crypto-js`, the trojan they install, and two misspellings of the MCP scope (`@modlecontextprotocol`, `modelcontextprotocal`). Every other malicious release is AAK-MALICIOUS-RELEASE-001's, and where that rule reports the same release in the same file this finding stands down. A vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) is not reported, and neither is any other lookalike name, such as an unscoped copy of an official server's (`mcp-server-sequential-thinking` for `@modelcontextprotocol/server-sequential-thinking`, which npm has since replaced with a security holding package). The rule used to report every `mcp-server-<word>-<word>` name, a shape real servers share. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the table used to place it, is the empty placeholder 0.0.1. The table lists no PyPI package or crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over 32 MiB are not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -11524,7 +11655,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Upgrade the package named in the finding to a release outside its affected range (currently axios 1.7.4 or later), or remove it. A 'Potential typosquat' finding is a name check: confirm the package is the one you meant to install, and replace it with the real package if it is not.",
+      "remediation": "Move the package named in the finding off the listed release, or remove it. The table lists releases published as malware: for axios 1.14.1 or 0.30.4 go back to 1.14.0 or 0.30.3, delete `node_modules/plain-crypto-js`, and rotate every secret on a machine that installed either release. A 'Potential typosquat' finding is a name check: confirm the package is the one you meant to install, and replace it with the real package if it is not.",
       "rule_id": "AAK-SUPPLY-002",
       "sarif_name": "KnownVulnerablePackage",
       "severity": "high",
@@ -11621,7 +11752,7 @@
       "cve_references": [],
       "description": "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
       "incident_references": [],
-      "limitations": "Reads the `args` of the servers in the MCP configs AAK-SUPPLY-001 reads at the project root (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, .amazonq/mcp.json and mcp.json), under `mcpServers` or VS Code's `servers`, and looks each `package@version` up in the npm section of the vulnerability database, which bundles one package, `axios` 1.7.0 to 1.7.3. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the database used to place it, is the empty placeholder 0.0.1. The same package in package.json, in claude_desktop_config.json or in a sub-project's .mcp.json is not reported, and neither is a package that states no version. An MCP config over 1 MB is not read.",
+      "limitations": "Reads the `args` of the servers in the MCP configs AAK-SUPPLY-001 reads at the project root (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, .amazonq/mcp.json and mcp.json), under `mcpServers` or VS Code's `servers`, and looks each `package@version` up in the npm section of the vulnerability database, which bundles the malicious axios releases of 31 March 2026 (1.14.1 and 0.30.4) and every numeric release of `plain-crypto-js`, the trojan they install; a copy `aak update` cached at `~/.agent-audit-kit/vuln_db.json` wins over the bundled one. Every other malicious release is AAK-MALICIOUS-RELEASE-001's, and where that rule reports the same release in the same file this finding stands down. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the database used to place it, is the empty placeholder 0.0.1. The same package in package.json, in claude_desktop_config.json or in a sub-project's .mcp.json is not reported, and neither is a package that states no version. An MCP config over 1 MB is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -11629,7 +11760,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Change the package version in the server's `args` to one outside the affected range recorded in the vulnerability database (currently axios 1.7.4 or later), and pin it exactly.",
+      "remediation": "Change the package version in the server's `args` to a release the vulnerability database does not list, and pin it exactly. It lists releases published as malware: for axios 1.14.1 or 0.30.4 go back to 1.14.0 or 0.30.3, delete `node_modules/plain-crypto-js`, and rotate every secret on a machine that installed either release.",
       "rule_id": "AAK-SUPPLY-006",
       "sarif_name": "McpSpecificVulnDep",
       "severity": "high",
