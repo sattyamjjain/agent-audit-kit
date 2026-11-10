@@ -387,8 +387,10 @@ def _policy_module(body: list[ast.stmt]) -> str | None:
 
 def _catches_import_error(handler: ast.ExceptHandler) -> bool:
     kind = handler.type
+    if kind is None:  # a bare `except:` names no exception
+        return False
     kinds = kind.elts if isinstance(kind, ast.Tuple) else [kind]
-    return any(_dotted_tail(k) in _IMPORT_ERRORS for k in kinds if k is not None)
+    return any(_dotted_tail(k) in _IMPORT_ERRORS for k in kinds)
 
 
 def _is_quiet_stmt(stmt: ast.stmt) -> bool:
