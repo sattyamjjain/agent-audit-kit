@@ -6,7 +6,7 @@
 |---|---|
 | Severity | HIGH |
 | Category | `MCP_CONFIG` |
-| Shipped | v0.6.33 |
+| Shipped | v0.6.34 |
 | Scanner | `agent_audit_kit/scanners/mcp_codeexec_sandbox.py` |
 | CVE | CVE-2026-120338 |
 | OWASP MCP | MCP05:2025 (Command Injection & Execution) |

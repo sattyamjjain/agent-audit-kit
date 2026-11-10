@@ -6,7 +6,7 @@
 |---|---|
 | Severity | The advisory's when every release the launch can fetch is affected (the advisory names no end, or a range admits only affected releases); MEDIUM otherwise |
 | Category | `SUPPLY_CHAIN` |
-| Shipped | v0.6.33 |
+| Shipped | v0.6.34 |
 | Scanner | `agent_audit_kit/scanners/known_vulns.py` |
 | Feed | the advisory feed of `agent_audit_kit/advisory_feed.py`, the one [AAK-KNOWN-VULN-001](AAK-KNOWN-VULN-001.md) reads |
 | OWASP MCP | MCP04:2025 (Software Supply Chain Attacks & Dependency Tampering) |

@@ -12,7 +12,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.6.33
+  - uses: sattyamjjain/agent-audit-kit@v0.6.34
     id: scan
     with:
       fail-on: high
