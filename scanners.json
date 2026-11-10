@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 113,
+  "count": 114,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -241,6 +241,10 @@
     {
       "module": "mcp_server_card",
       "name": "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)"
+    },
+    {
+      "module": "mcp_server_code",
+      "name": "MCP server code: env dumps, leaked exception text, false annotations, trusted requestState"
     },
     {
       "module": "mcp_sidecar_http",

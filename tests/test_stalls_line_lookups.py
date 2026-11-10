@@ -46,6 +46,7 @@ from agent_audit_kit.scanners import (
     langchain_prompt_loader,
     malicious_extensions,
     mcp_codeexec_sandbox,
+    mcp_server_code,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -286,6 +287,12 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The MCP server code rules, before they were released: one long word holding `state`
+    # many times backtracked quadratically in the first requestState pattern, and tool
+    # registrations are each read for their own stretch of the file.
+    "server-code-state-word": (mcp_server_code.scan, lambda k: {"s.py": "requestState = b64decode(x)\n" + "state" * k + " = 1\n"}, 4_000, False),
+    "server-code-js-tools": (mcp_server_code.scan, lambda k: {"s.ts": "s.tool('a', { readOnlyHint: true }, () => {});\n" * k}, 1_000, False),
+    "server-code-except-blocks": (mcp_server_code.scan, lambda k: {"s.py": "from mcp import x\n" + "try:\n    f()\nexcept E as e:\n    raise ToolError('fixed')\n" * k}, 500, False),
     # AAK-POLICY-VERDICT-FAILOPEN-001 and AAK-POLICY-IMPORT-FAILOPEN-001, before they were
     # released: each function is read for one scan of what follows its first check of a
     # name, nested functions are not read again for the function around them, and the
