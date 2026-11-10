@@ -54,6 +54,7 @@ from agent_audit_kit.scanners import (
     mcp_stdio_launcher,
     mcp_stdio_params,
     oauth_surface,
+    policy_failopen,
     runtime_advisories,
     secret_exposure,
     shared_resource_authz,
@@ -285,6 +286,13 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # AAK-POLICY-VERDICT-FAILOPEN-001 and AAK-POLICY-IMPORT-FAILOPEN-001, before they were
+    # released: each function is read for one scan of what follows its first check of a
+    # name, nested functions are not read again for the function around them, and the
+    # tests of a name left unset are found in one pass over the module.
+    "failopen-checks": (policy_failopen.scan, lambda k: {"g.py": "def run(verdict, tool):\n" + '    if verdict == "deny":\n        return\n' * k + "    tool()\n"}, 2_000, False),
+    "failopen-nested": (policy_failopen.scan, lambda k: {f"g{i}.py": "".join(" " * d + f"def f{d}(verdict, tool):\n" for d in range(40)) + " " * 40 + 'if verdict == "deny":\n' + " " * 41 + "return\n" + " " * 40 + "tool()\n" for i in range(k)}, 4, False),
+    "failopen-tries": (policy_failopen.scan, lambda k: {"g.py": "".join(f"try:\n    from policy_{i} import c{i}\nexcept ImportError:\n    c{i} = None\n" for i in range(k)) + "".join(f"if c{i} is None:\n    raise E\n" for i in range(k))}, 500, False),
     # AAK-DNS-REBIND-001's SDK defaults, before they were released: an import with no
     # closing parenthesis, `host=` tokens and half-written wildcard lists are each read
     # once, and files below one deep directory share their walk to the root.

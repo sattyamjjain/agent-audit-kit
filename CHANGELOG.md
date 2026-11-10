@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New rule AAK-KNOWN-VULN-003: an MCP config launches a PyPI or npm package from its registry without pinning a release (no version, a tag such as `@latest`, or a range), and the advisory feed holds an advisory whose affected releases the launch admits. DBHub (`@bytebase/dbhub`), a database MCP server started as `npx -y @bytebase/dbhub`, let MySQL comment syntax past its read-only SQL validation below 0.22.6 (GHSA-j656-3hf2-fvjc, 2 Nov 2026; OSV lists it under CVE-2026-61789), and AAK-KNOWN-VULN-001 could not judge that launch, since it names no release. The finding takes the advisory's severity when every release the launch can fetch is affected, and is MEDIUM when the advisory names a fix, because the release that runs is whichever npx or uvx resolves or finds in its cache. It names the fix to pin (`npx -y @bytebase/dbhub@0.22.6`), and AAK-SUPPLY-001 and AAK-MCP-007 stand down on the same launch. A launch pinned to one release stays AAK-KNOWN-VULN-001's, and a git URL or local path launch is not judged.
 - `aak scan --include-user-config` also checks the launchers' caches against the advisory feed: a release in npm's npx cache or uv's tool environments that an advisory lists is AAK-KNOWN-VULN-001 at the advisory's severity, naming the cache path. The cache readers moved to `scanners/_launcher_caches.py`, which AAK-MALICIOUS-RELEASE-001 now reads through as well.
+- New rules for policy gates that open on the unexpected (`policy_failopen`) (#1193). AAK-POLICY-VERDICT-FAILOPEN-001 (HIGH): a function refuses only when a verdict equals a deny word and otherwise acts, so `denied`, `DENY`, `error`, an empty value and None all execute. It is a regression pattern from the Nobulex failopen corpus (github.com/arian-gogani/failopen, MIT, Arian Gogani), not an unresolved vulnerability in the project the case came from. AAK-POLICY-IMPORT-FAILOPEN-001 (HIGH): an `except ImportError` around a policy, auth, validator or guard import allows when the import fails.
 
 ### Changed
 
@@ -890,7 +891,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Latency figures are unchanged (median 1.0, p90 4, 96 rows) — Shipped is the
   section date, which this does not touch.
 
-
 - **The ADMT scanner's answer depended on the filesystem it ran on.**
   `_find_declaration` and `_find_documentation` each return the *first* match
   from `_iter_files`, which walked `rglob` unsorted. `rglob` yields in
@@ -916,7 +916,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   findings it *should* produce, and `test_examples.py` asserts them. It now
   excludes both. The self-scan workflow already skipped `examples/`, so the
   three findings change nothing there.
-
 
 - **The published CVE-latency figure could only ever flatter itself.**
   `docs/cve-latency.md` had three coverage rows — measured, undated, adjudicated
@@ -2743,7 +2742,6 @@ release.
   The three NEW-RULE issues stay open and carry no `cve-deferred`, so they keep
   blocking the release gate until the rules merge. That is deliberate. Deferred
   work and today's work are not the same thing.
-
 
 - **The CVE watcher has a limit.** It filed one release-gating issue per CVE on a
   6-hour cron with no upper bound and opened 27 in five days, eight of them one

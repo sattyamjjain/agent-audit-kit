@@ -9193,6 +9193,25 @@
     },
     {
       "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-POLICY-IMPORT-FAILOPEN-001",
+      "severity": "high",
+      "title": "A failed import of a policy module leaves the gate open"
+    },
+    {
+      "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-73614"
       ],
@@ -9213,6 +9232,25 @@
       "rule_id": "AAK-POLICY-TRUNCATION-001",
       "severity": "high",
       "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
+    },
+    {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-POLICY-VERDICT-FAILOPEN-001",
+      "severity": "high",
+      "title": "A policy verdict blocks on one deny word and acts on anything else"
     },
     {
       "category": "agent-config",
@@ -11053,29 +11091,29 @@
       "taint-analysis": 14,
       "tool-poisoning": 32,
       "transport-security": 15,
-      "trust-boundary": 18
+      "trust-boundary": 20
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 230,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 19,
       "Art. 15 - Robustness & Security": 336,
-      "Art. 9 - Risk Management": 226
+      "Art. 9 - Risk Management": 228
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 230,
-      "Constrain and sandbox tool execution (p.11)": 209,
-      "Design for boundaries (p.10)": 320,
+      "Constrain and sandbox tool execution (p.11)": 211,
+      "Design for boundaries (p.10)": 322,
       "Filter and monitor output pipelines and chained execution (p.12)": 127,
       "Instrument for logging and detection (p.13)": 21,
       "Scan local network for open or vulnerable MCP servers (p.14)": 291,
       "Sign and verify MCP messages (p.12)": 301,
       "Track and patch MCP related vulnerabilities (p.13)": 235,
-      "Validate parameters (p.11)": 213
+      "Validate parameters (p.11)": 215
     },
     "by_owasp_agentic": {
       "ASI01": 17,
-      "ASI02": 104,
+      "ASI02": 106,
       "ASI03": 117,
       "ASI04": 228,
       "ASI05": 107,
@@ -11099,13 +11137,13 @@
     },
     "by_severity": {
       "critical": 102,
-      "high": 190,
+      "high": 192,
       "info": 5,
       "low": 19,
       "medium": 127
     },
     "total_cves_covered": 385,
-    "total_rules": 443
+    "total_rules": 445
   },
   "tool": "agent-audit-kit"
 }

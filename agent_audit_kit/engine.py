@@ -111,6 +111,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("approval_parser_desync", "Command-safety parser vs PowerShell stop-parsing token (CVE-2026-19591)", []),
     ("ufo_mobile_mcp", "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)", []),
     ("policy_truncation", "Deny policy evaluated on a truncated copy of the executed value (CVE-2026-73614 class)", []),
+    ("policy_failopen", "Policy gates that open on an unknown verdict or a missing policy module", []),
     ("mcp_sidecar_http", "MCP server binds an unauthenticated sidecar dashboard on loopback (2026-08 wave)", []),
     ("quoted_shell_interp", "Tool argument interpolated into a shell command despite quoting (CVE-2026-55157 class)", []),
     ("llm_sql_rce", "LLM-generated SQL on an RCE-capable DB role (CVE-2026-25879)", []),
