@@ -36,6 +36,8 @@ from agent_audit_kit.scanners import (
     agent_gates,
     agent_trust_surface,
     agent_server_noauth,
+    llm_call_shapes,
+    mcp_tool_names,
     websocket_server,
     agent_config,
     composition,
@@ -331,6 +333,15 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Group E, before it was released.
+    "prompt-fstrings": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n" + "    x = f'<q>{m}</q>'\n" * k}, 1_000, True),
+    "prompt-many-pieces": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "{m}<q>" * k + "'\n"}, 2_000, False),
+    "prompt-many-tags": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "<a>" * k + "{m}'\n"}, 5_000, False),
+    "prompt-if-handlers": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n" + "".join(
+        f"@app.post('/x')\ndef f{i}(m):\n    return c.chat.completions.create(model='m', max_tokens=1)\n" for i in range(k))}, 500, False),
+    "tool-names-one-stem": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {f"s{i}": {"command": "x", "tools": [{"name": "flight_search"}]} for i in range(k)}})}, 500, False),
+    "tool-names-distinct": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": f"tool_number_{i}_of_many"} for i in range(k)]}}})}, 1_000, False),
+    "tool-names-long": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": "a" * k}]}}})}, 50_000, False),
     # Group D, before it was released. An allow-list name is read and passed over each time, the
     # WebSocket reader looks at every call once, and a wildcard name is parsed once per word.
     "mapped-allow-list-tests": (ssrf_toctou.scan, lambda k: _mapped_guard(k, "    if ip in ALLOWED:\n        return 1\n"), 1_000, False),

@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New rules for gates that pass when they have nothing to say (`agent_gates`) (#1198). AAK-HOOK-FAILOPEN-001 (HIGH): a Claude Code PreToolUse hook whose script can exit with a code other than 2 on an error, read for Python, shell and Node, or a command line ending in `|| true`; only exit 2 blocks, so a gate that crashes opens. It also fires on settings that lean on `permissions.ask` while bypass mode stays available. On 152 public repositories with a PreToolUse hook, 59 of the 106 scripts that can refuse fire. AAK-POLICY-OPTIONAL-TRUST-001 (MEDIUM): `if x is False:` on a trust parameter that may be None, or a trust parameter whose default is the passing value, the shape the tool outcome attestation reference implementation fixed. AAK-AGENT-SUBAGENT-TOOLS-001 (MEDIUM): a project subagent with a wildcard or no `tools` line in a project whose MCP config connects servers that write.
 - AAK-SSRF-MAPPED-001 (HIGH): a URL guard that tests `ip_address(host)` against a deny list of IPv4 networks without unwrapping `.ipv4_mapped`, so `http://[::ffff:169.254.169.254]/` passes (#1199).
 - AAK-WEBSOCKET-SERVER-001 (MEDIUM): a Python `websockets` server for MCP, model or policy traffic with no `origins`, `max_size=None`, a 0.0.0.0 default with no authentication, or a traceback sent to the client (#1199).
+- AAK-TOOL-NEAR-DUPLICATE-001 (MEDIUM): tools on two configured servers whose names differ only in a flourish, in how they are written or by one character, read from the pin file and configs that list tools (#1200).
+- AAK-PROMPT-DELIMITER-001 (LOW): a parameter placed between prompt delimiters with the closing one unescaped (#1200).
+- AAK-LLM-NO-MAX-TOKENS-001 (LOW): a web route or an agent tool that calls a chat completion with no output cap (#1200).
 
 ### Changed
 

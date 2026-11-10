@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (459 total; 421 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (462 total; 424 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -126,6 +126,7 @@ Every AgentAuditKit rule (459 total; 421 mapped) against two agentic-security st
 | `AAK-LITELLM-CVE-2026-30623-PIN-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-LLM-001` | high | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-LLM-002` | info | tool-poisoning | — | — |
+| `AAK-LLM-NO-MAX-TOKENS-001` | low | trust-boundary | Instrument for logging and detection | ASI08 Cascading Failures |
 | `AAK-LLM-SQL-RCE-001` | critical | taint-analysis | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI02 Tool Misuse and Exploitation; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-LMDEPLOY-VL-SSRF-001` | high | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Track and patch MCP related vulnerabilities | ASI02 Tool Misuse and Exploitation |
 | `AAK-LOGINJ-001` | medium | taint-analysis | Instrument for logging and detection | ASI09 Human-Agent Trust Exploitation |
@@ -389,6 +390,7 @@ Every AgentAuditKit rule (459 total; 421 mapped) against two agentic-security st
 | `AAK-POLICY-TRUNCATION-001` | high | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-POLICY-VERDICT-FAILOPEN-001` | high | trust-boundary | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-PROJECT-DEAL-DRIFT-001` | high | agent-config | — | — |
+| `AAK-PROMPT-DELIMITER-001` | low | taint-analysis | — | ASI01 Agent Goal Hijack |
 | `AAK-PRTITLE-IPI-001` | high | taint-analysis | Validate parameters | ASI01 Agent Goal Hijack |
 | `AAK-ROUTINE-001` | high | agent-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Instrument for logging and detection | ASI02 Tool Misuse and Exploitation; ASI10 Rogue Agents |
 | `AAK-ROUTINE-002` | medium | agent-config | Instrument for logging and detection | ASI10 Rogue Agents |
@@ -458,6 +460,7 @@ Every AgentAuditKit rule (459 total; 421 mapped) against two agentic-security st
 | `AAK-TASKS-003` | medium | mcp-config | — | — |
 | `AAK-TASKS-004` | medium | mcp-config | Design for boundaries; Instrument for logging and detection | ASI08 Cascading Failures |
 | `AAK-TIKTOK-AGENT-HIJACK-001` | high | trust-boundary | — | ASI01 Agent Goal Hijack; ASI09 Human-Agent Trust Exploitation |
+| `AAK-TOOL-NEAR-DUPLICATE-001` | medium | tool-poisoning | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-TOXICFLOW-001` | high | tool-poisoning | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-TRANSPORT-001` | critical | transport-security | Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |
 | `AAK-TRANSPORT-002` | high | transport-security | Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |

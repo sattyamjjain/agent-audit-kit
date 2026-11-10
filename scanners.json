@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 117,
+  "count": 119,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -137,6 +137,10 @@
     {
       "module": "legal_compliance",
       "name": "Legal compliance"
+    },
+    {
+      "module": "llm_call_shapes",
+      "name": "Unescaped prompt delimiters and request handlers with no output cap"
     },
     {
       "module": "llm_sql_rce",
@@ -277,6 +281,10 @@
     {
       "module": "mcp_tasks",
       "name": "MCP Tasks leakage"
+    },
+    {
+      "module": "mcp_tool_names",
+      "name": "Near-duplicate tool names across configured MCP servers"
     },
     {
       "module": "mcp_tool_unsafe_eval",

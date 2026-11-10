@@ -2791,6 +2791,26 @@
       "title": "LLM analysis did not cover a tool"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "A function decorated as a web route or an agent tool calls a chat completion with no `max_tokens` or `max_completion_tokens`, so each request can spend up to the model's own limit and a caller can repeat it. A cost ceiling has to hold before the call. `**kwargs` on the call is taken to set the cap.",
+      "incident_references": [],
+      "limitations": "Reads a Python function decorated `get`, `post`, `put`, `patch`, `delete`, `route`, `api_route`, `websocket`, `tool`, `function_tool` or `call_tool` that itself calls `chat.completions.create`, `ChatCompletion.create` or `acreate`, or `litellm.completion` or `acompletion`. So a helper the handler calls and a script with no route are not read. Read on every call the rule fired on 105 of 194 public OpenAI callers, batch scripts included, and read this way on 4 of them. The Responses API, Gemini and LangChain are not read, and the Anthropic SDK requires the parameter. A budget or a rate limit elsewhere is not seen. Paths with a tests, fixtures, examples, samples or demos directory, and test_*.py and conftest.py, are skipped. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI08"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Pass `max_tokens` or `max_completion_tokens` on every call a request can reach, cap the length of the input as well, and check a per-request or per-caller budget before the call. Accounting after the call is useful for dashboards but stops nothing.",
+      "rule_id": "AAK-LLM-NO-MAX-TOKENS-001",
+      "sarif_name": "LlmCallNoOutputCap",
+      "severity": "low",
+      "title": "A web route or agent tool calls a model with no output cap"
+    },
+    {
       "adversa_references": [
         "ADV-INJECT-07"
       ],
@@ -10534,6 +10554,28 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A Python f-string puts a function's parameter straight between prompt delimiters (`<user_input>{message}</user_input>`, or a repeated fence such as three backticks, `###` or `---`), in a file that calls a model, with nothing done to the value. Delimiters beat bare concatenation, but text that contains the closing delimiter closes it itself and writes what comes after it as if the prompt's author had. A value run through a call in the braces, or rebound from a call first, does not fire.",
+      "incident_references": [],
+      "limitations": "Reads Python f-strings, one function at a time, in a file that mentions a model API (chat.completions, ChatCompletion, messages.create, responses.create, ChatOpenAI, ChatAnthropic, generate_content, litellm, ollama, openai, anthropic, langchain). The value must be a parameter, or an attribute or item of one, with the delimiter text right beside it on both sides. So a local from elsewhere, `.format`, `%`, `+` and `string.Template` are not read, and neither is another language. A tag from a list of HTML tags (div, span, p and the like) is left out. A call in the braces or a name rebound from a call counts as escaping, with nothing to show it handles the closing delimiter, so `{str(message)}` is missed. Whether the value can come from an attacker is not read, so an id passed as a parameter fires. Paths with a tests, fixtures, examples, samples or demos directory, and test_*.py and conftest.py, are skipped. A source file over 512 KB is not read.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Escape or strip the closing delimiter from the value before it goes in, or pass the text as a separate message or a structured field rather than inside the instruction string. Add a test whose input contains the closing delimiter and an instruction after it, and assert the output does not change.",
+      "rule_id": "AAK-PROMPT-DELIMITER-001",
+      "sarif_name": "PromptDelimiterUnescaped",
+      "severity": "low",
+      "title": "Untrusted text sits between prompt delimiters with the closing one unescaped"
+    },
+    {
+      "adversa_references": [
         "ADV-PROMPT-01"
       ],
       "aicm_references": [
@@ -12356,6 +12398,30 @@
       "sarif_name": "TikTokAgentHijack",
       "severity": "high",
       "title": "Social-agent auto-reply without human-in-loop gate"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A pin file or an MCP config that lists tools has two tools on different servers whose names differ only in a flourish (`flight_search_pro` beside `flight_search`), in how they are written (`readFile` beside `read_file`) or by one character. Selection is a model reading each description, which each server's author writes, so a similarly named tool with a stronger description can win calls meant for the other one, and no rule on either tool alone sees it.",
+      "incident_references": [],
+      "limitations": "Reads tool names from `.agent-audit-kit/tool-pins.json` and from a `tools` list in a JSON MCP config. A config with no list has nothing to read, and a server is never asked for its tools. On 442 public `.mcp.json` files that name Playwright or chrome-devtools-mcp the rule had nothing to report, so it has only fixtures behind it so far. The same exact name on two servers is left out, since clients namespace tools by server, and that may not hold for yours. A flourish is pro, plus, premium, new, official, enhanced, advanced, ultra, best, fast, secure, verified, better, improved, real, true, v2, v3, 2 or 3, at the start or the end of the name, so one in the middle is missed. One character apart counts for a name of 8 to 64 letters after joining its words, leaving out a plural `s`, so a shorter or a longer name, and two characters apart, are missed. A file reports at most 200 pairs.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Decide which tools this agent may bind at all, and keep the other server's tool out with an allowlist at the client. Rename your own tool if the overlap is yours. Pin tool definitions with `aak pin`, so a new near-duplicate shows up as a change.",
+      "rule_id": "AAK-TOOL-NEAR-DUPLICATE-001",
+      "sarif_name": "ToolNearDuplicateName",
+      "severity": "medium",
+      "title": "Two configured servers offer tools with nearly the same name"
     },
     {
       "adversa_references": [

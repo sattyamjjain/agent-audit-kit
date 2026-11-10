@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-10T08:57:37Z",
+  "last_updated": "2026-11-10T09:11:42Z",
   "aak_version": "0.6.32",
-  "rule_count": 459,
+  "rule_count": 462,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Agent Goal Hijack",
-      "rule_density": 17,
+      "rule_density": 18,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -112,6 +112,12 @@
           ]
         },
         {
+          "id": "AAK-PROMPT-DELIMITER-001",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-PRTITLE-IPI-001",
           "severity": "high",
           "cve_references": [],
@@ -156,7 +162,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 111,
+      "rule_density": 112,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -1208,6 +1214,12 @@
           "aicm_references": [
             "AIS-07"
           ]
+        },
+        {
+          "id": "AAK-TOOL-NEAR-DUPLICATE-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-TOXICFLOW-001",
@@ -6460,7 +6472,7 @@
     {
       "asi_id": "ASI08",
       "title": "Cascading Failures",
-      "rule_density": 10,
+      "rule_density": 11,
       "rules": [
         {
           "id": "AAK-A2A-009",
@@ -6486,6 +6498,12 @@
             "AIS-04",
             "IAM-05"
           ]
+        },
+        {
+          "id": "AAK-LLM-NO-MAX-TOKENS-001",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-JAVASDK-CVE-2026-108395-001",

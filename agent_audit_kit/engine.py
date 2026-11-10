@@ -125,6 +125,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_routing_desync", "MCP 2026-07-28 routable-header ↔ body desync (SEP-2243)", []),
     ("mcp_apps_ui", "MCP Apps UI iframe sandbox / sanitization (SEP-1865)", []),
     ("mcp_codeexec_sandbox", "Code-execution tool sandboxes with open runtime permissions (prefab-ui GenerativeUI, Deno)", []),
+    ("llm_call_shapes", "Unescaped prompt delimiters and request handlers with no output cap", []),
+    ("mcp_tool_names", "Near-duplicate tool names across configured MCP servers", []),
     ("websocket_server", "WebSocket servers for MCP, model and policy traffic with open defaults", []),
     ("agent_gates", "Gates that pass on nothing (optional trust inputs, fail-open PreToolUse hooks, wildcard subagents)", []),
     ("mcp_authz_code", "MCP authorization on caller input, across handlers, and the token audience", []),
