@@ -367,17 +367,29 @@ def _nested(depth: int, statements: int) -> str:
 
 
 def test_deepseek_v4_nested_functions_read_in_linear_time(tmp_path: Path) -> None:
-    """Nesting 95 deep costs about what nesting 10 deep does over the same lines,
-    and every level still reports: each is tainted, sends a description and
-    cleans none."""
+    """Nesting 95 deep costs a small multiple of nesting 10 deep over the same
+    statements, and every level still reports: each is tainted, sends a
+    description and cleans none.
+
+    Each level indents the 9,000 innermost lines four more spaces, so the deep
+    file is about 7.5 times the bytes of the shallow one and this linear reader
+    takes about 2.7 times as long. The bound was 3x + 0.5 s on one run each,
+    which a slow runner missed (the 0.6.33 tag run, 4.1x). It is the best of
+    three runs now, against 5x + 0.5 s. A reader that searches the levels inside
+    each function again, the shape this guards, took 17x when measured.
+    """
     timings = []
     for depth in (10, 95):
-        started = time.perf_counter()
-        findings = _read(tmp_path, _nested(depth, 9_000))
-        timings.append(time.perf_counter() - started)
-        assert len(findings) == depth
+        src = _nested(depth, 9_000)
+        best = float("inf")
+        for _ in range(3):
+            started = time.perf_counter()
+            findings = _read(tmp_path, src)
+            best = min(best, time.perf_counter() - started)
+            assert len(findings) == depth
+        timings.append(best)
     shallow, deep = timings
-    assert deep < 3 * shallow + 0.5, (shallow, deep)
+    assert deep < 5 * shallow + 0.5, (shallow, deep)
 
 
 _NESTED_CLEAN = '''import re
