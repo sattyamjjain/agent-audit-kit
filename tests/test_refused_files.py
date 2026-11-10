@@ -1179,12 +1179,15 @@ def test_a_package_lock_value_of_the_wrong_type_is_skipped_not_a_crash(tmp_path:
 
 def test_a_package_lock_entry_of_the_wrong_type_costs_that_entry_alone(tmp_path: Path) -> None:
     lockfile = _lock("packages", {"node_modules/axios": {"version": 7},
-                                  "node_modules/a/node_modules/axios": {"version": "1.7.2"}})
+                                  "node_modules/a/node_modules/axios": {"version": "1.14.1"}})
     _write(tmp_path, {"package-lock.json": lockfile})
     result = run_scan(tmp_path, strict_loading=True)
     assert result.scanner_failures == []
-    assert [f.evidence for f in result.findings if f.rule_id == "AAK-SUPPLY-002"] == [
-        "axios@1.7.2 — Claude Code supply chain compromise (March 31 2026)"]
+    # The feed finding on the same release stands AAK-SUPPLY-002 down, so the entry
+    # that could be read is the one reported.
+    assert [f.evidence.split(", a malicious release")[0] for f in result.findings
+            if f.rule_id == "AAK-MALICIOUS-RELEASE-001"] == ["package-lock.json resolves axios 1.14.1"]
+    assert [f for f in result.findings if f.rule_id == "AAK-SUPPLY-002"] == []
 
 
 @pytest.mark.parametrize("pipfile_lock", [

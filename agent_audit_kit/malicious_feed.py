@@ -3,21 +3,25 @@
 A malicious release is a published artifact, not a flaw in a version range, and
 nothing else in AAK knew one: litellm 1.107.0 (21 Oct 2026) sat above every
 pinned floor, so every rule passed it. This feed lists releases a source has
-called malicious, by package version (PyPI and npm) and by image digest.
+called malicious, by package version (PyPI, npm, crates.io and Go) and by image
+digest.
 
 Load order, as `vuln_db.load_database` reads its database: the cached feed at
 `~/.agent-audit-kit/malicious_releases.json` when it exists and parses, else the
 bundled `data/malicious_releases.json`. A scan never touches the network.
 `aak update` rebuilds the cached copy (`refresh`), from:
 
-* OSV's per-ecosystem exports for PyPI and npm (`<ECOSYSTEM>/all.zip`, the
-  location https://google.github.io/osv.dev/data/ gives), keeping only `MAL-`
-  records, the OpenSSF Malicious Packages data. On 2026-10-28 the PyPI export was
-  37 MB with 11,960 such records and the npm export 219 MB with 222,857. The
-  same walk over each export (`export_records`) hands every other record to
-  the advisory feed (`agent_audit_kit.advisory_feed`), so `aak update`
-  downloads and reads each export once for both.
-* GitHub's global advisories of type `malware` for npm and pip, with
+* OSV's per-ecosystem exports for PyPI, npm, crates.io and Go
+  (`<ECOSYSTEM>/all.zip`, the location https://google.github.io/osv.dev/data/
+  gives), keeping only `MAL-` records, the OpenSSF Malicious Packages data. On
+  2026-10-28 the PyPI export was 37 MB with 11,960 such records and the npm
+  export 219 MB with 222,857; on 2026-11-07 the crates.io export (3.8 MB) held 21
+  and the Go export (12.8 MB) 20. The same walk over each export
+  (`export_records`) hands every other record to the advisory feed
+  (`agent_audit_kit.advisory_feed`), so `aak update` downloads and reads each
+  export once for both: a crates.io or Go malware record (env-test-guard,
+  MAL-2026-18776, 9 Nov 2026) comes out of the archive the advisory feed reads.
+* GitHub's global advisories of type `malware` for npm, pip, rust and go, with
   `aak update --github-malware` and a token (`GITHUB_TOKEN` or `GH_TOKEN`). On
   2026-10-28 GitHub listed 109,402 for npm and 11,915 for pip, 1,215 pages of
   100 that took 16.5 minutes to page, so this is opt-in: a token is in the
@@ -70,8 +74,12 @@ FEED_FILE_NAME = "malicious_releases.json"
 OSV_EXPORT = "https://storage.googleapis.com/osv-vulnerabilities/{ecosystem}/all.zip"
 GITHUB_ADVISORIES = "https://api.github.com/advisories?type=malware&ecosystem={ecosystem}&per_page=100"
 #: The registries the feed covers, as OSV names them, and as GitHub does.
-ECOSYSTEMS = ("PyPI", "npm")
-_GITHUB_ECOSYSTEMS = {"npm": "npm", "pip": "PyPI"}
+ECOSYSTEMS = ("PyPI", "npm", "crates.io", "Go")
+# GitHub's REST names for them (GHSA-7w47-jmjx-gvm2 lists env-test-guard under "rust").
+_GITHUB_ECOSYSTEMS = {"npm": "npm", "pip": "PyPI", "rust": "crates.io", "go": "Go"}
+# The registries whose versions are semver, so a range is kept as intervals and read by
+# `version_order`. A PyPI range other than every version is read through its version list.
+_SEMVER_ECOSYSTEMS = frozenset({"npm", "crates.io", "Go"})
 _DOWNLOAD_CHUNK = 1 << 20
 
 
@@ -96,9 +104,15 @@ _SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A
 
 
 def canonical_name(ecosystem: str, name: str) -> str:
-    """A package name as its registry compares it: PEP 503 for PyPI, lower case for npm."""
+    """A package name as its registry compares it: PEP 503 for PyPI, lower case for npm,
+    lower case with `-` and `_` equal for crates.io, as cargo compares crate names, and as
+    written for Go, whose module paths are case-sensitive."""
     name = name.strip()
-    return _PEP503_RE.sub("-", name).lower() if ecosystem == "PyPI" else name.lower()
+    if ecosystem == "PyPI":
+        return _PEP503_RE.sub("-", name).lower()
+    if ecosystem == "Go":
+        return name
+    return name.lower().replace("_", "-") if ecosystem == "crates.io" else name.lower()
 
 
 def _digits(text: str | None) -> int:
@@ -182,7 +196,8 @@ def version_key(ecosystem: str, version: str) -> str:
 
 def version_order(ecosystem: str, version: str) -> tuple[Any, ...] | None:
     """A version as a tuple that orders as its registry orders versions: PEP 440
-    for PyPI, semver 2.0 for npm. None when the text is not such a version."""
+    for PyPI, semver 2.0 for npm, Go and crates.io, so a Go pseudo-version is a pre-release
+    and `+incompatible` is build metadata. None when the text is not such a version."""
     if ecosystem == "PyPI":
         return pep440_order(version)
     return _semver(version_key(ecosystem, version))
@@ -210,8 +225,8 @@ def _semver(version: str) -> tuple[Any, ...] | None:
 class Range:
     """One interval of an entry: from `introduced` (inclusive; "0" is the first
     release) to `fixed` (exclusive) or `last_affected` (inclusive), compared as
-    the entry's registry orders versions (`version_order`): semver for npm, the
-    malicious feed's only ranges, and PEP 440 for the advisory feed's PyPI ones."""
+    the entry's registry orders versions (`version_order`): semver for npm, crates.io
+    and Go, the malicious feed's ranges, and PEP 440 for the advisory feed's PyPI ones."""
 
     introduced: str
     fixed: str | None = None
@@ -441,10 +456,10 @@ def _strings(value: object) -> tuple[str, ...]:
 
 def _release(ecosystem: str, raw: dict[str, Any]) -> Release:
     ranges = tuple(
-        Range(str(r["introduced"]), _optional(r.get("fixed")), _optional(r.get("last_affected")))
+        Range(str(r["introduced"]), _optional(r.get("fixed")), _optional(r.get("last_affected")), ecosystem)
         for r in raw.get("ranges") or ()
         if isinstance(r, dict) and isinstance(r.get("introduced"), str)
-    ) if ecosystem == "npm" else ()
+    ) if ecosystem in _SEMVER_ECOSYSTEMS else ()
     return Release(
         id=str(raw["id"]),
         aliases=_strings(raw.get("aliases")),
@@ -636,9 +651,9 @@ def _intervals(events: object) -> tuple[bool, list[dict[str, str]]]:
 def osv_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
     """Feed entries for one OSV `MAL-` record's packages on `ecosystem`.
 
-    A withdrawn record gives none. An npm SEMVER range is kept as intervals; a
-    PyPI range other than "every version" is read through the record's version
-    list, which every `MAL-` record read on 2026-10-28 carried.
+    A withdrawn record gives none. A SEMVER range on npm, crates.io or Go is kept
+    as intervals; a PyPI range other than "every version" is read through the
+    record's version list, which every `MAL-` record read on 2026-10-28 carried.
     """
     if not isinstance(record, dict) or record.get("withdrawn"):
         return []
@@ -660,7 +675,7 @@ def osv_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
                 continue
             all_of_it, intervals = _intervals(found.get("events"))
             every = every or all_of_it
-            if ecosystem == "npm" and found.get("type") == "SEMVER":
+            if ecosystem in _SEMVER_ECOSYSTEMS and found.get("type") == "SEMVER":
                 ranges.extend(intervals)
         if not (versions or every or ranges):
             continue
@@ -770,7 +785,7 @@ def github_entries(advisories: Iterable[object]) -> list[dict[str, Any]]:
             if ecosystem is None or not isinstance(name, str) or not isinstance(spec, str):
                 continue
             every, versions, interval = _github_interval(spec)
-            if interval is not None and ecosystem != "npm":
+            if interval is not None and ecosystem not in _SEMVER_ECOSYSTEMS:
                 continue  # a PyPI range other than every version is not evaluated
             if not (every or versions or interval):
                 continue

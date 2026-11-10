@@ -33,6 +33,23 @@
       "name": "@samanhappy/mcphub",
       "reviewed": "2026-11-02",
       "checked": "npm's registry record for @samanhappy/mcphub, which its npmjs.com page renders (the page answers a script with a bot check), carries no repository field, so the page shows the project only in its README, which links github.com/samanhappy/mcphub; that repository's package.json is named @samanhappy/mcphub and its npm-publish.yml publishes it to registry.npmjs.org."
+    },
+    {
+      "vendor": "agentscope-ai",
+      "product": "AgentScope",
+      "repo": "https://github.com/agentscope-ai/agentscope",
+      "ecosystem": "PyPI",
+      "name": "agentscope",
+      "reviewed": "2026-11-07",
+      "checked": "pypi.org names https://github.com/agentscope-ai/agentscope as this package's Homepage and Repository, the repository NVD's record of CVE-2026-123022 references, and lists releases 2.0.0 to 2.0.11, the versions the record names."
+    },
+    {
+      "vendor": "@tsparticles",
+      "product": "mcp-server",
+      "ecosystem": "npm",
+      "name": "@tsparticles/mcp-server",
+      "reviewed": "2026-11-07",
+      "checked": "npm's registry record for @tsparticles/mcp-server, which its npmjs.com page renders (the page answers a script with a bot check), names git+https://github.com/tsparticles/tsparticles.git, directory integrations/mcp-server, the repository and path NVD's records of CVE-2026-76892 and CVE-2026-76893 name. This row carries no `repo` on purpose: that monorepo publishes other packages, and a CNA record naming only the repository must not map to this one. The same records' tsparticles/tsparticles block maps to nothing."
     }
   ],
   "launch": [

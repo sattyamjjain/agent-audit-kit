@@ -945,6 +945,48 @@ def host_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     return address
 
 
+_WILDCARD_DNS_ZONES = ("nip.io", "sslip.io", "xip.io")
+_LOOPBACK_DNS_ZONES = ("localtest.me", "lvh.me")
+_DASHED_IPV4_RE = re.compile(r"(?:^|-)(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,3})$")
+_HEX_IPV4_RE = re.compile(r"(?:^|-)([0-9a-f]{8})$")
+
+
+def wildcard_dns_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """The address a wildcard-DNS name answers with, read from the name itself.
+
+    `169.254.169.254.nip.io` looks like a public host and resolves to the cloud metadata
+    address, so a client reaches it and a text search of the host finds nothing to object
+    to. nip.io documents four spellings (`64.176.22.9.nip.io`, `64-176-22-9.nip.io`,
+    `40B01609.nip.io`, `2a01-4f8-c17-b8f--2.nip.io`), each after an optional prefix, and
+    sslip.io now redirects to it. `xip.io` is the older name of the same idea. `localtest.me`
+    and `lvh.me` answer 127.0.0.1 for the name and every name under it. A name that resolves
+    somewhere private with nothing in the name to say so needs a lookup, which a scan never does.
+    """
+    name = host.rstrip(".").lower()
+    for zone in _LOOPBACK_DNS_ZONES:
+        if name == zone or name.endswith("." + zone):
+            return ipaddress.IPv4Address("127.0.0.1")
+    for zone in _WILDCARD_DNS_ZONES:
+        if name.endswith("." + zone):
+            return _embedded_address(name[: -len(zone) - 1].split("."))
+    return None
+
+
+def _embedded_address(labels: list[str]) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    if len(labels) >= 4:
+        dotted = host_ip(".".join(labels[-4:]))
+        if dotted is not None:
+            return dotted
+    last = labels[-1]
+    dashed = _DASHED_IPV4_RE.search(last)
+    if dashed:
+        return host_ip(".".join(dashed.groups()))
+    hexed = _HEX_IPV4_RE.search(last)
+    if hexed:
+        return ipaddress.IPv4Address(int(hexed.group(1), 16))
+    return host_ip(last.replace("-", ":")) if "--" in last or last.count("-") == 7 else None
+
+
 def is_loopback_url(value: str) -> bool:
     """True for a URL on this machine: `localhost`, 127.0.0.0/8, `::1` or 0.0.0.0.
 
@@ -2040,6 +2082,16 @@ MANIFEST_MAX_BYTES = 2_000_000
 _READ_FLAGS = (
     os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOCTTY", 0) | getattr(os, "O_BINARY", 0)
 )
+
+
+def codex_home() -> Path:
+    """Where Codex keeps its user config and global AGENTS.md.
+
+    `$CODEX_HOME`, else `~/.codex`, as OpenAI's environment variable reference
+    states it. An empty value counts as unset.
+    """
+    value = os.environ.get("CODEX_HOME")
+    return Path(value) if value else Path.home() / ".codex"
 
 
 class FileNotRead(OSError):

@@ -33,9 +33,15 @@ import pytest
 from agent_audit_kit.scanners import (
     _helpers,
     a2a_protocol,
+    agent_gates,
+    agent_trust_surface,
     agent_server_noauth,
+    llm_call_shapes,
+    mcp_tool_names,
+    websocket_server,
     agent_config,
     composition,
+    dns_rebind,
     gha_hardening,
     hook_rce,
     ide_task_rce,
@@ -44,7 +50,9 @@ from agent_audit_kit.scanners import (
     known_vulns_launch,
     langchain_prompt_loader,
     malicious_extensions,
+    mcp_authz_code,
     mcp_codeexec_sandbox,
+    mcp_server_code,
     malicious_releases,
     mcp_config,
     mcp_cve_pins_2026_07,
@@ -53,9 +61,11 @@ from agent_audit_kit.scanners import (
     mcp_stdio_launcher,
     mcp_stdio_params,
     oauth_surface,
+    policy_failopen,
     runtime_advisories,
     secret_exposure,
     shared_resource_authz,
+    ssrf_patterns,
     ssrf_toctou,
     startup_hooks,
     supply_chain,
@@ -279,8 +289,146 @@ def _quoted_server_name(k: int) -> dict[str, str]:
                                     separators=(",", ":"))}
 
 
+def _mapped_guard(k: int, compare: str) -> dict[str, str]:
+    head = "import ipaddress\nfrom urllib.parse import urlparse\n\nNETS = [ipaddress.ip_network('10.0.0.0/8')]\n\n\n"
+    body = "def check_url(url):\n    ip = ipaddress.ip_address(urlparse(url).hostname)\n"
+    return {"g.py": head + body + compare * k}
+
+
+def _ws_servers(k: int) -> dict[str, str]:
+    return {"mcp_server.py": "import websockets\n\n\nasync def main():\n"
+            + "    await websockets.serve(h, '127.0.0.1', 80)\n" * k}
+def _hook_handlers(commands: list[str], script: str = "import sys\nsys.exit(2)\n") -> dict[str, str]:
+    """One hook script, and a settings file with a handler per command naming it."""
+    handlers = [{"type": "command", "command": c} for c in commands]
+    return {
+        ".claude/settings.json": json.dumps({"hooks": {"PreToolUse": [{"hooks": handlers}]}}),
+        ".claude/hooks/g.py": script,
+    }
+
+
+def _hook_script(name: str, text: str) -> dict[str, str]:
+    command = {"type": "command", "command": f"run .claude/hooks/{name}"}
+    return {
+        ".claude/settings.json": json.dumps({"hooks": {"PreToolUse": [{"hooks": [command]}]}}),
+        f".claude/hooks/{name}": text,
+    }
+
+
+def _third_party_jobs(k: int) -> dict[str, str]:
+    """Jobs that each run an agent with no write access, under one large workflow env."""
+    env = "".join(f"  V{i}: ${{{{ secrets.V{i} }}}}\n" for i in range(k))
+    jobs = "".join(f"  j{i}:\n    steps:\n      - uses: anthropics/claude-code-action@v1\n" for i in range(k))
+    head = "on: push\npermissions: {}\n"
+    fetch = "  f:\n    steps:\n      - run: gh api repos/a/b/compare/c\n"
+    return {".github/workflows/w.yml": f"{head}env:\n{env}jobs:\n{fetch}{jobs}"}
+
+
+def _run_step(body: str) -> dict[str, str]:
+    return {".github/workflows/w.yml": f"on: push\njobs:\n  j:\n    steps:\n      - run: {json.dumps(body)}\n"}
+
+
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
+_DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
+_DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
+
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Cargo.lock in AAK-KNOWN-VULN-001, before it was released: each block's `source` is looked
+    # for inside that block alone, however many blocks name a crate the feed lists.
+    # go.mod in AAK-KNOWN-VULN-001, before it was released: one pass over the lines whatever they
+    # hold, and each module looks its replacement up once. An unclosed quote costs one scan of its
+    # line; a quote pattern allowing `\\"` inside it rescanned the line per quote.
+    "go-mod-requires": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\tgithub.com/mark3labs/mcp-go v1.1.{i}\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-other-modules": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\nrequire (\n" + "".join(f"\texample.com/m{i} v1.0.0 // indirect\n" for i in range(k)) + ")\n"}, 1_000, False),
+    "go-mod-replaces": (known_vulns.scan, lambda k: {"go.mod": "module m\n\ngo 1.22\n\n" + "".join(f"require example.com/m{i} v1.0.0\nreplace example.com/m{i} => github.com/mark3labs/mcp-go v1.1.0\n" for i in range(k))}, 1_000, False),
+    "go-mod-unclosed-quotes": (known_vulns.scan, lambda k: {"go.mod": "require " + '"\\' * (20 * k) + "\n"}, 1_000, False),
+    "go-mod-slashes": (known_vulns.scan, lambda k: {"go.mod": "require " + "a/" * (20 * k) + " v1.0.0\n"}, 1_000, False),
+    "go-mod-spaces": (known_vulns.scan, lambda k: {"go.mod": (" " * 80 + "x\n") * k + "require github.com/mark3labs/mcp-go v1.1.0\n"}, 1_000, False),
+    "cargo-lock-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\n' * k}, 1_000, False),
+    "cargo-lock-sourced-blocks": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "surrealdb"\nversion = "3.2.1"\nsource = "registry+x"\n' * k}, 1_000, False),
+    "cargo-lock-other-crates": (known_vulns.scan, lambda k: {"Cargo.lock": '[[package]]\nname = "other"\nversion = "1.0.0"\nsource = "registry+x"\n' * k}, 1_000, False),
+    # Group E, before it was released.
+    "prompt-fstrings": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n" + "    x = f'<q>{m}</q>'\n" * k}, 1_000, True),
+    "prompt-many-pieces": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "{m}<q>" * k + "'\n"}, 2_000, False),
+    "prompt-many-tags": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n\n\ndef f(m):\n    return f'" + "<a>" * k + "{m}'\n"}, 5_000, False),
+    "prompt-if-handlers": (llm_call_shapes.scan, lambda k: {"p.py": "import openai\n" + "".join(
+        f"@app.post('/x')\ndef f{i}(m):\n    return c.chat.completions.create(model='m', max_tokens=1)\n" for i in range(k))}, 500, False),
+    "tool-names-one-stem": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {f"s{i}": {"command": "x", "tools": [{"name": "flight_search"}]} for i in range(k)}})}, 500, False),
+    "tool-names-distinct": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": f"tool_number_{i}_of_many"} for i in range(k)]}}})}, 1_000, False),
+    "tool-names-long": (mcp_tool_names.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"s": {"command": "x", "tools": [{"name": "a" * k}]}}})}, 50_000, False),
+    # Group D, before it was released. An allow-list name is read and passed over each time, the
+    # WebSocket reader looks at every call once, and a wildcard name is parsed once per word.
+    "mapped-allow-list-tests": (ssrf_toctou.scan, lambda k: _mapped_guard(k, "    if ip in ALLOWED:\n        return 1\n"), 1_000, False),
+    "mapped-functions": (ssrf_toctou.scan, lambda k: {"g.py": "from ipaddress import ip_address, ip_network\nfrom urllib.parse import urlparse\n"
+                         + "".join(f"def f{i}(u):\n    ip = ip_address(urlparse(u).hostname)\n    return ip in ALLOWED\n" for i in range(k))
+                         + "_ = ip_network\n"}, 500, False),
+    "websocket-calls": (websocket_server.scan, _ws_servers, 1_000, True),
+    "websocket-host-params": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\n" + "".join(
+        f"def f{i}(host{i}='0.0.0.{0}'):\n    return websockets.serve(h, host{i}, 80, origins=['x'])\n" for i in range(k))}, 500, False),
+    "websocket-tracebacks": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\nimport traceback\n"
+                             + "e = traceback.format_exc()\nw.send(e)\n" * k}, 1_000, False),
+    "ssrf-wildcard-words": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom mcp.server.fastmcp import FastMCP\n"
+                            "requests.get('" + "a.nip.io " * k + "')\n"}, 5_000, False),
+    "ssrf-wildcard-long-label": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom mcp.server.fastmcp import FastMCP\n"
+                                 "requests.get('http://" + "1-" * k + "1.nip.io/')\n"}, 5_000, False),
+    "ssrf-tool-classes": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom smolagents import Tool\n" + "".join(
+        f"class C{i}(Tool):\n    output_type = 's'\n    def forward(self, u):\n        return 1\n" for i in range(k))}, 500, False),
+    # The gate rules, before they were released. Written to stay linear, so these pin it: a test of
+    # many operands reads its branch once, a name is looked up in sets and not in a merged one, a
+    # script many handlers name is read once, the lines of swallowed commands are found in one pass,
+    # and a workflow's env is read once for all its jobs.
+    "gates-trust-params": (agent_gates.scan, lambda k: {"g.py": "def f(" + ", ".join(f"verified_{i}=None" for i in range(k))
+                           + "):\n" + "".join(f"    if verified_{i} is False:\n        return 1\n" for i in range(k))}, 500, True),
+    "gates-if-operands": (agent_gates.scan, lambda k: {"g.py": "def f(verified=None):\n    if "
+                          + " or ".join(f"a{i}" for i in range(k)) + ":\n" + "        return 1\n" * k}, 1_500, False),
+    "gates-handlers-one-script": (agent_gates.scan, lambda k: _hook_handlers([".claude/hooks/g.py"] * k,
+                                  "import sys\n" + "x = 1\n" * 20_000 + "sys.exit(2)\n"), 1_000, False),
+    "gates-swallowed-commands": (agent_gates.scan, lambda k: _hook_handlers(
+        [f"python3 .claude/hooks/g.py {i} || true" for i in range(k)]), 1_000, False),
+    "gates-shell-traps": (agent_gates.scan, lambda k: _hook_script("g.sh", "exit 2\nset -e\n" + "trap on_error ERR\nexit 0\n" * k), 3_000, False),
+    "gates-node-tokens": (agent_gates.scan, lambda k: _hook_script("g.mjs", "process.exit(2);\n" + "try { x(); } catch { y(); }\n" * k), 1_500, False),
+    "gates-node-usage-exits": (agent_gates.scan, lambda k: _hook_script("g.mjs", "process.exit(2);\n" + "// usage\nprocess.exit(1);\n" * k), 1_500, False),
+    "gates-python-handlers": (agent_gates.scan, lambda k: _hook_script("g.py", "import sys\n" + "".join(
+        f"def f{i}():\n    sys.exit(2)\n" for i in range(k)) + "try:\n    f0()\nexcept Exception:\n    f0()\n" * k), 700, False),
+    "gates-one-agent-many-servers": (agent_gates.scan, lambda k: {
+        ".mcp.json": json.dumps({"mcpServers": {f"mail{i}": {"command": "gmail-mcp"} for i in range(k)}}),
+        ".claude/agents/a.md": "---\nname: a\ndescription: b\ndisallowedTools: " + ", ".join(f"mcp__mail{i}" for i in range(k - 1)) + "\n---\n",
+    }, 1_000, False),
+    "gates-many-agents": (agent_gates.scan, lambda k: {
+        ".mcp.json": json.dumps({"mcpServers": {"gmail": {"command": "gmail-mcp"}}}),
+        **{f".claude/agents/a{i}.md": "---\nname: a\ndescription: b\n---\n" for i in range(k)},
+    }, 100, False),
+    "trust-third-party-jobs": (agent_trust_surface.scan, _third_party_jobs, 100, False),
+    "trust-api-lines": (agent_trust_surface.scan, lambda k: _run_step("gh api repos/${{ github.repository }}/commits\n" * k), 1_000, False),
+    "trust-api-repos-one-line": (agent_trust_surface.scan, lambda k: _run_step("gh api " + "repos/a/" * k), 5_000, False),
+    "trust-fetch-one-line": (agent_trust_surface.scan, lambda k: _run_step("git fetch origin " * k), 5_000, False),
+    "trust-copilot-words": (agent_trust_surface.scan, lambda k: {
+        ".github/workflows/w.yml": "on: push\npermissions: {contents: write}\njobs:\n  j:\n    steps:\n"
+        "      - run: git fetch upstream\n      - run: " + json.dumps("copilot " * k) + "\n"}, 5_000, False),
+    # The MCP authorization rules, before they were released: a contextvar read per function,
+    # tests of it in many blocks, and many handlers in one file are each read once.
+    "authz-handlers": (mcp_authz_code.scan, lambda k: {"s.py": "".join(f"@m.tool()\ndef t{i}(role):\n    if x:\n        return 1\n" for i in range(k))}, 400, False),
+    "authz-context-tests": (mcp_authz_code.scan, lambda k: {"s.py": "def f():\n    p = user.get(None)\n" + "    if q:\n        raise E\n" * k}, 2_000, False),
+    # The MCP server code rules, before they were released: one long word holding `state`
+    # many times backtracked quadratically in the first requestState pattern, and tool
+    # registrations are each read for their own stretch of the file.
+    "server-code-state-word": (mcp_server_code.scan, lambda k: {"s.py": "requestState = b64decode(x)\n" + "state" * k + " = 1\n"}, 4_000, False),
+    "server-code-js-tools": (mcp_server_code.scan, lambda k: {"s.ts": "s.tool('a', { readOnlyHint: true }, () => {});\n" * k}, 1_000, False),
+    "server-code-except-blocks": (mcp_server_code.scan, lambda k: {"s.py": "from mcp import x\n" + "try:\n    f()\nexcept E as e:\n    raise ToolError('fixed')\n" * k}, 500, False),
+    # AAK-POLICY-VERDICT-FAILOPEN-001 and AAK-POLICY-IMPORT-FAILOPEN-001, before they were
+    # released: each function is read for one scan of what follows its first check of a
+    # name, nested functions are not read again for the function around them, and the
+    # tests of a name left unset are found in one pass over the module.
+    "failopen-checks": (policy_failopen.scan, lambda k: {"g.py": "def run(verdict, tool):\n" + '    if verdict == "deny":\n        return\n' * k + "    tool()\n"}, 2_000, False),
+    "failopen-nested": (policy_failopen.scan, lambda k: {f"g{i}.py": "".join(" " * d + f"def f{d}(verdict, tool):\n" for d in range(40)) + " " * 40 + 'if verdict == "deny":\n' + " " * 41 + "return\n" + " " * 40 + "tool()\n" for i in range(k)}, 4, False),
+    "failopen-tries": (policy_failopen.scan, lambda k: {"g.py": "".join(f"try:\n    from policy_{i} import c{i}\nexcept ImportError:\n    c{i} = None\n" for i in range(k)) + "".join(f"if c{i} is None:\n    raise E\n" for i in range(k))}, 500, False),
+    # AAK-DNS-REBIND-001's SDK defaults, before they were released: an import with no
+    # closing parenthesis, `host=` tokens and half-written wildcard lists are each read
+    # once, and files below one deep directory share their walk to the root.
+    "dns-rebind-open-imports": (dns_rebind.scan, lambda k: {"s.py": "from mcp.server import (\n" * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-hosts": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'host="127.0.0.1"\n' * k + _DNS_SERVER}, 2_000, False),
+    "dns-rebind-wildcards": (dns_rebind.scan, lambda k: {"s.py": "TrustedHostMiddleware(app, allowed_hosts=[\n" * k + _DNS_SERVER}, 1_000, False),
+    "dns-rebind-deep-files": (dns_rebind.scan, lambda k: {f"{'d/' * 60}s{i}.py": _DNS_IMPORT + _DNS_SERVER for i in range(k)}, 40, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.
@@ -332,6 +480,11 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # Loops of one distinct key per item that the sweep's table did not list.
     "identifiers": (india_pii.scan, _identifiers, 1_000, True),
     "hook-commands": (hook_rce.scan, _hook_commands, 500, True),
+    # AAK-TRUST-009, before it was released: each profile selects its own provider on its
+    # own host, so each finding's line comes from the one pass over the file.
+    "codex-providers": (trust_boundary.scan, lambda k: {".codex/config.toml": "".join(
+        f'[model_providers.p{i}]\nbase_url = "https://g{i}.example.net/v1"\n[profiles.p{i}]\nmodel_provider = "p{i}"\n'
+        for i in range(k))}, 800, True),
     "base-url-variables": (trust_boundary.scan, lambda k: {".claude/settings.json": _js(
         {"env": {f"P{i}_BASE_URL": "https://x.example" for i in range(k)}})}, 1_000, True),
     "typosquat-lockfile": (supply_chain.scan, _typosquats, 1_000, True),
@@ -505,6 +658,10 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "deno-handoffs-and-revokes": (mcp_codeexec_sandbox.scan, lambda k: {"runner.js": 'spawn("deno", ["run", "-A"]);\n'
                                                                        + "p.runPython(`${c}`); Deno.permissions.revoke({name: 'net'});\n" * k},
                                   600, False),
+    # known_vulns' AAK-KNOWN-VULN-003, before it was released: one finding per server
+    # launching a package with an advisory, each described once from the bundled feed.
+    "unpinned-advisory-launches": (known_vulns.scan, lambda k: {".mcp.json": _js({"mcpServers": {
+        f"s{i}": {"command": "npx", "args": ["-y", "@modelcontextprotocol/inspector"]} for i in range(k)}})}, 300, True),
     "genui-registrations": (mcp_codeexec_sandbox.scan, lambda k: {
         "server.py": "from fastmcp.apps.generative import GenerativeUI\n" + "mcp.add_provider(GenerativeUI())\n" * k,
         "uv.lock": '[[package]]\nname = "prefab-ui"\nversion = "0.20.2"\n'}, 1_000, True),

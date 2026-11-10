@@ -20,7 +20,19 @@ A release that a source has published as malware, wherever the project names it:
   version in `pyproject.toml`, `Pipfile` or `package.json`, or a launch such as
   `uvx litellm==1.107.0` or `npx -y pkg@1.2.3` in an MCP config;
 - a lockfile that resolves it: `uv.lock`, `poetry.lock`, `Pipfile.lock`,
-  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` (v1);
+  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` (v1),
+  `Cargo.lock`, and a `go.mod`'s `require` lines (`go.sum` is not read, and a
+  `Cargo.toml` without its `Cargo.lock` resolves nothing). A `Cargo.lock` holding
+
+  ```toml
+  [[package]]
+  name = "env-test-guard"
+  version = "0.3.0"
+  source = "registry+https://github.com/rust-lang/crates.io-index"
+  ```
+
+  is reported at its `[[package]]` line, and so is the same crate spelled
+  `env_test_guard`: cargo treats `-` and `_` in a crate name alike;
 - an installed `litellm-1.107.0.dist-info` in a site-packages directory, a
   project's `.venv` and an unpacked image root filesystem included;
 - an image reference by digest, such as
@@ -53,7 +65,11 @@ SARIF run's `properties.dataFeeds` and the console summary say which copy was
 read and when it was generated.
 
 - The bundled copy lists OSV MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0),
-  OSV MAL-2026-18425 (local-commander-agent 0.3.52, GHSA-7j62-5j84-72fv) and
+  OSV MAL-2026-18425 (local-commander-agent 0.3.52, GHSA-7j62-5j84-72fv),
+  OSV MAL-2026-2307 (axios 0.30.4 and 1.14.1, GHSA-fw8c-xr5c-95f9), OSV MAL-2026-2306
+  (every release of plain-crypto-js, GHSA-2x9r-6wxq-hrr7), OSV MAL-2026-18776 (the
+  crate env-test-guard 0.2.0 and 0.3.0, which GitHub lists as GHSA-7w47-jmjx-gvm2: its
+  `GitEnv::detect()` sends CI tokens out from a runner) and
   the image index digest from LiteLLM's incident post. That post names the
   Docker Hub tags without the repository; `docker.io/litellm/litellm` carries
   them. Its GHCR digests are truncated, so none is listed.
@@ -63,18 +79,20 @@ read and when it was generated.
   part of the CAPTCHA field through `sh -c` as root before any credential
   check, and named no tag or digest. The six other namespaces it names as
   publishing an `artex` image are not called backdoored and are not listed.
-- `aak update` rebuilds the cached copy from OSV's exports for PyPI and npm
-  (about 260 MB), keeping only `MAL-` records, the OpenSSF Malicious Packages
-  data: 11,960 PyPI and 222,857 npm records on 2026-10-28, withdrawn ones dropped.
+- `aak update` rebuilds the cached copy from OSV's exports for PyPI, npm,
+  crates.io and Go (about 280 MB), keeping only `MAL-` records, the OpenSSF
+  Malicious Packages data: 11,960 PyPI and 222,857 npm records on 2026-10-28, and
+  21 crates.io and 20 Go records on 2026-11-07, withdrawn ones dropped. The
+  advisory feed AAK-KNOWN-VULN-001 reads comes out of the same downloads.
 - `aak update --github-malware`, with `GITHUB_TOKEN` or `GH_TOKEN` set, also
-  reads GitHub's malware advisories: 109,402 for npm and 11,915 for pip on
-  2026-10-28, about 1,200 API requests. A failed update keeps the cached copy as
+  reads GitHub's malware advisories for npm, pip, rust and go: 109,402 for npm
+  and 11,915 for pip on 2026-10-28, about 1,200 API requests. A failed update keeps the cached copy as
   it was and exits non-zero.
 
 ## How a version matches
 
 - Exactly: PEP 440 normalised for PyPI (`1.107` is `1.107.0`), as written for
-  npm. `litellm==1.107.0rc1` is not reported; OSV says the release candidates
+  npm and crates.io, and without its leading `v` for Go (`v0.3.0` is `0.3.0`). `litellm==1.107.0rc1` is not reported; OSV says the release candidates
   were clean.
 - A range, or a declaration with no version, matches only an entry that lists
   every release of a package (most typosquats). A range does not say which
@@ -92,7 +110,10 @@ read and when it was generated.
 
 ## How to fix
 
-Pin a version the feed does not list (for litellm, 1.106.2, the version LiteLLM
+Pin a version the feed does not list (for axios 1.14.1 or 0.30.4, 1.14.0 or 0.30.3,
+and delete `node_modules/plain-crypto-js`, as
+[the axios postmortem](https://github.com/axios/axios/issues/10636) advises; for
+litellm, 1.106.2, the version LiteLLM
 named), re-lock, and rebuild the environment or image from scratch. Treat every
 environment, host or cluster that installed or ran the release as compromised:
 rotate each credential it could reach and review its outbound traffic.

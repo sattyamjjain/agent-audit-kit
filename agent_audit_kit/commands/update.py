@@ -98,7 +98,7 @@ def _read_nvd(collector: Collector, nvd_days: int) -> bool:
     launch = sum(1 for entry in fetched.entries if "match" in entry)
     click.echo(
         f"NVD: {tally.records:,} records modified {fetched.window['start'][:10]} to {fetched.window['end'][:10]}. "
-        f"{tally.with_cna:,} carry CNA version data: {tally.mapped:,} name a PyPI or npm package or software a "
+        f"{tally.with_cna:,} carry CNA version data: {tally.mapped:,} name a PyPI, npm, Go or crates.io package or software a "
         f"launch row lists ({len(fetched.entries) - launch:,} package and {launch:,} launch entries), "
         f"{tally.unmapped:,} name none that maps and are dropped, "
         f"{tally.no_range:,} map but state no version range that can be read. {tally.no_cna:,} carry none "
@@ -130,11 +130,12 @@ def _read_nvd(collector: Collector, nvd_days: int) -> bool:
 def update_cmd(github_malware: bool, nvd_days: int) -> None:
     """Update the vulnerability database, the malicious-release feed and the advisory feed.
 
-    Both feeds are rebuilt from OSV's exports for PyPI and npm (about 260 MB,
-    downloaded once): the malicious-package records, plus GitHub's malware
-    advisories with --github-malware, and every other advisory record. The
-    advisory feed also takes NVD's records of CNA version data for CVEs OSV
-    has no package record of (--nvd-days). Scans never fetch them; they read
+    Both feeds are rebuilt from OSV's exports for PyPI, npm, crates.io and Go
+    (about 280 MB, each downloaded once): the malicious-package records, plus
+    GitHub's malware advisories with --github-malware, and every other advisory
+    record. The advisory feed also reads NVD's records of CNA version data for
+    CVEs OSV has no package record of (--nvd-days). Scans
+    never fetch them; they read
     the copies this writes, else the bundled ones. Any failure keeps what was
     cached before and exits non-zero.
     """
@@ -153,7 +154,8 @@ def update_cmd(github_malware: bool, nvd_days: int) -> None:
     else:
         click.echo("Update failed. Using bundled database.", err=True)
         failed = True
-    click.echo("Rebuilding the malicious-release and advisory feeds from OSV (about 260 MB)...")
+    click.echo("Rebuilding the malicious-release and advisory feeds from OSV's PyPI, npm, crates.io and Go "
+               "exports (about 280 MB)...")
     collector = advisory_feed.Collector()
     try:
         done = malicious_feed.refresh(github_token=token if github_malware else None, on_record=collector.add)
