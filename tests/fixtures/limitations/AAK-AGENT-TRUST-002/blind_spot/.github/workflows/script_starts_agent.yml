@@ -1,0 +1,13 @@
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - run: gh api "repos/${UPSTREAM}/compare/main...next" > TASK.md
+      - run: python3 .github/scripts/fire-agent.py
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}

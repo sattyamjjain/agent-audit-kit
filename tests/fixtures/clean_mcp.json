@@ -3,7 +3,7 @@
   "mcpServers": {
     "filesystem": {
       "command": "node",
-      "args": ["@modelcontextprotocol/server-filesystem@2025.1.1", "/home/user/allowed-dir"],
+      "args": ["@modelcontextprotocol/server-filesystem@2.1.0", "/home/user/allowed-dir"],
       "env": {}
     },
     "sqlite": {

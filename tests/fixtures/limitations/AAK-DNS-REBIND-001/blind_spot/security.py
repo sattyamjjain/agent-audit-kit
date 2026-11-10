@@ -1,0 +1,3 @@
+from mcp.server.transport_security import TransportSecuritySettings
+
+SETTINGS = TransportSecuritySettings(enable_dns_rebinding_protection=False)

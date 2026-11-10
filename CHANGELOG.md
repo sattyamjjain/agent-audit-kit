@@ -9,14 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New rule AAK-KNOWN-VULN-003: an MCP config launches a PyPI or npm package from its registry without pinning a release (no version, a tag such as `@latest`, or a range), and the advisory feed holds an advisory whose affected releases the launch admits. DBHub (`@bytebase/dbhub`), a database MCP server started as `npx -y @bytebase/dbhub`, let MySQL comment syntax past its read-only SQL validation below 0.22.6 (GHSA-j656-3hf2-fvjc, 2 Nov 2026; OSV lists it under CVE-2026-61789), and AAK-KNOWN-VULN-001 could not judge that launch, since it names no release. The finding takes the advisory's severity when every release the launch can fetch is affected, and is MEDIUM when the advisory names a fix, because the release that runs is whichever npx or uvx resolves or finds in its cache. It names the fix to pin (`npx -y @bytebase/dbhub@0.22.6`), and AAK-SUPPLY-001 and AAK-MCP-007 stand down on the same launch. A launch pinned to one release stays AAK-KNOWN-VULN-001's, and a git URL or local path launch is not judged.
+- `aak scan --include-user-config` also checks the launchers' caches against the advisory feed: a release in npm's npx cache or uv's tool environments that an advisory lists is AAK-KNOWN-VULN-001 at the advisory's severity, naming the cache path. The cache readers moved to `scanners/_launcher_caches.py`, which AAK-MALICIOUS-RELEASE-001 now reads through as well.
+- New rules for policy gates that open on the unexpected (`policy_failopen`) (#1193). AAK-POLICY-VERDICT-FAILOPEN-001 (HIGH): a function refuses only when a verdict equals a deny word and otherwise acts, so `denied`, `DENY`, `error`, an empty value and None all execute. It is a regression pattern from the Nobulex failopen corpus (github.com/arian-gogani/failopen, MIT, Arian Gogani), not an unresolved vulnerability in the project the case came from. AAK-POLICY-IMPORT-FAILOPEN-001 (HIGH): an `except ImportError` around a policy, auth, validator or guard import allows when the import fails.
+- New rule AAK-MCP-TSSDK-CVE-2026-111768-001 (HIGH): the MCP TypeScript SDK's HTTP servers could run out of memory validating one request inside the size limit (#1194). The remediation says what the advisory says: upgrading alone changes nothing, set `maxToolInputElements`.
+- New rule AAK-MCP-TOOLBOX-HOSTS-001 (MEDIUM, `mcp_toolbox_hosts`): `@toolbox-sdk/server` below 0.25.0 (CVE-2026-11624), and an MCP config that starts MCP Toolbox on a network listener with `--allowed-hosts` or `--allowed-origins` unset or `*` (#1194).
+- The bundled advisory feed holds anyio's two advisories below 4.14.2, CVE-2026-63374 and CVE-2026-64847, so a lockfile on 4.12.1 is reported without `aak update` (#1194). Where a uv.lock or poetry.lock shows a package pinning the affected release exactly, an AAK-KNOWN-VULN-001 finding says the fix needs an override, or, for the project's own pin, says to raise it.
+- New rules for MCP server code (`mcp_server_code`) (#1196). AAK-MCP-ENV-DUMP-001 (HIGH): a tool handler returns the whole process environment, or a config launches `server-everything` below 2.1.0, on its date line, or with `GET_ENV_INCLUDE_SECRETS`. AAK-MCP-ERROR-LEAK-001 (MEDIUM): raw exception text in a client-facing error or sent to a remote A2A peer. AAK-MCP-ANNOTATION-MISMATCH-001 (MEDIUM): a tool annotated read-only or non-destructive changes storage. AAK-MCP-REQUESTSTATE-001 (HIGH): an echoed `requestState` trusted as proof of approval or identity without an integrity check and a binding.
+- New rules for MCP authorization in server code (`mcp_authz_code`) (#1197). AAK-AUTHZ-CALLER-INPUT-001 (HIGH): a decision reads a tenant, user, role or scope from the tool's own arguments. AAK-MCP-AUTHZ-COVERAGE-001 (HIGH): tools/call checks scopes and resources/read, prompts/get or completion/complete do not, a check on one HTTP transport only, or a handler that goes ahead with no principal. AAK-MCP-TOKENVERIFIER-AUD-001 (MEDIUM): `resource_server_url=None` with a `token_verifier`, or a `verify_token` that never reads an audience.
+- New rules for gates that pass when they have nothing to say (`agent_gates`) (#1198). AAK-HOOK-FAILOPEN-001 (HIGH): a Claude Code PreToolUse hook whose script can exit with a code other than 2 on an error, read for Python, shell and Node, or a command line ending in `|| true`; only exit 2 blocks, so a gate that crashes opens. It also fires on settings that lean on `permissions.ask` while bypass mode stays available. On 152 public repositories with a PreToolUse hook, 59 of the 106 scripts that can refuse fire. AAK-POLICY-OPTIONAL-TRUST-001 (MEDIUM): `if x is False:` on a trust parameter that may be None, or a trust parameter whose default is the passing value, the shape the tool outcome attestation reference implementation fixed. AAK-AGENT-SUBAGENT-TOOLS-001 (MEDIUM): a project subagent with a wildcard or no `tools` line in a project whose MCP config connects servers that write.
 - AAK-SSRF-MAPPED-001 (HIGH): a URL guard that tests `ip_address(host)` against a deny list of IPv4 networks without unwrapping `.ipv4_mapped`, so `http://[::ffff:169.254.169.254]/` passes (#1199).
 - AAK-WEBSOCKET-SERVER-001 (MEDIUM): a Python `websockets` server for MCP, model or policy traffic with no `origins`, `max_size=None`, a 0.0.0.0 default with no authentication, or a traceback sent to the client (#1199).
 
 ### Changed
 
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's CVE-2026-104317, CVE-2026-18894 and CVE-2026-101288, which its 1.13.0 floor already reported (#1192). The n8n record CVE-2026-119408 gets no pin, since it is not on n8n's MCP surface, and `AAK-KNOWN-VULN-001` reports it after `aak update`. LM Studio's CVE-2026-119979 is out of scope. The ledger has the reasons.
+- AAK-MCP-STATELESS-004's text follows the 2026-07-28 tools section (#1195). It told clients to treat discovery as a hint that may differ between instances. The spec says the set must not vary per connection and may vary by authorization, so instances serving different sets to the same authorization now read as a server defect for the client to detect. What the rule fires on is unchanged.
+- AAK-AGENT-SHARED-RES-AUTHZ-001's remediation takes the actor from the authenticated principal; a parameter may only be checked against it (#1197).
+- AAK-AGENT-TRUST-002 also fires when the trigger is trusted and the data is not: a job gives an agent write access or a personal token in a workflow that fetches another project's commits or diff, with no egress block (#1198). It takes the finding AAK-AGENT-TRUST-001 would have reported on that workflow.
 - AAK-SSRF-002, AAK-SSRF-003 and AAK-MCP-009 read a wildcard-DNS name as the address it embeds: `169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`, `localtest.me` (#1199).
 - AAK-SSRF-004 also reports a URL the caller can set, fetched with a client that follows redirects by default, not only an explicit flag (#1199).
 - AAK-SSRF-001 to -005 read agent tool classes with no MCP marker: a LangChain `BaseTool` or `StructuredTool`, and a smolagents `Tool.forward` (#1199).
+
+### Fixed
+
+- AAK-SUPPLY-002 and AAK-SUPPLY-006 now name the axios compromise of 31 March 2026 by the releases it hit, 1.14.1 and 0.30.4, plus plain-crypto-js, the trojan they install (#1189). The row read `>=1.7.0 <1.7.4` under that label, a slice of CVE-2024-39338, an unrelated SSRF, so a lockfile with axios 1.14.1 got nothing and one with 1.7.2 got told it was compromised. The bundled malicious-release feed holds OSV MAL-2026-2307 and MAL-2026-2306 too, so AAK-MALICIOUS-RELEASE-001 reports those releases at CRITICAL, and the engine stands the two table rules down on a release it reports in the same file. `_version_in_range` no longer treats a token without an operator as a match; `"1.14.1"` used to match every version. AAK-SUPPLY-006 reads a cached `~/.agent-audit-kit/vuln_db.json` before the bundled copy, so its users see this after their next `aak update`.
+- AAK-MCP-007 and AAK-SUPPLY-001 no longer tell you to pin `@modelcontextprotocol/server-filesystem@2025.1.1` (#1190). npm never had that version, and npm now marks the whole date line of the four reference servers deprecated: they went back to semantic versioning at 1.0.0 on 2026-10-11. The remediation now uses a stand-in pin, says to pin those four to a SemVer release, and says what a launcher pin does not fix. AAK-KNOWN-VULN-001 says so when the fix it names is on that line: for server-filesystem 0.6.2, OSV's GHSA-hc55-p739-j48w names 2025.7.1, and every SemVer release is outside it. The new reviewed list is `data/date_line_packages.json`.
+- AAK-DNS-REBIND-001 follows what `mcp` actually does (#1191). The SDK's own FastMCP on its default loopback host no longer fires at CRITICAL when the project resolves `mcp` to 1.23.0 or later, since that release turns the protection on there (GHSA-9h52-p55h-vw2f); below it, it fires as before, and with no readable version it fires and says what would clear it. `enable_dns_rebinding_protection=False` now fires whatever allow-list sits beside it, and it used to fire nothing. An allow-list whose only entry is `*` no longer counts. `SseServerTransport` built directly and the SDK's 2.x `MCPServer` are read too. The next MCP Security Index snapshot may move grades.
 
 ## [0.6.32] - 2026-11-02
 
@@ -849,7 +868,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `resultsPerPage: 0` — so those rest on OSV, whose summaries and fix commit
   match the watcher's text.
 
-
 ### Added
 
 - **The 2026-09-15..18 CVE wave dispositioned** (issues #758-#767), one CRITICAL.
@@ -887,7 +905,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Latency figures are unchanged (median 1.0, p90 4, 96 rows) — Shipped is the
   section date, which this does not touch.
 
-
 - **The ADMT scanner's answer depended on the filesystem it ran on.**
   `_find_declaration` and `_find_documentation` each return the *first* match
   from `_iter_files`, which walked `rglob` unsorted. `rglob` yields in
@@ -913,7 +930,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   findings it *should* produce, and `test_examples.py` asserts them. It now
   excludes both. The self-scan workflow already skipped `examples/`, so the
   three findings change nothing there.
-
 
 - **The published CVE-latency figure could only ever flatter itself.**
   `docs/cve-latency.md` had three coverage rows — measured, undated, adjudicated
@@ -953,7 +969,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `min` returned whichever `gh` listed first — newest-first, so the reported
   "oldest" was the newest of the tied set. Issue numbers are monotonic with
   creation and now break the tie.
-
 
 ### Added
 
@@ -1236,7 +1251,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   markdown no agent loads by name is matched only against a known-payload
   corpus, and that AAK does not classify arbitrary prose as hostile. The
   English-only limit of that corpus is recorded as its own gap (#742).
-
 
 ## [0.6.5] - 2026-09-14
 
@@ -1946,7 +1960,6 @@ parallel sweep of the repository's own commitment surface.
 - `CLAUDE_PROMPT.md`'s note about the unregistered index domain rewritten to stop
   restating the dead hostname; it points at `SECURITY.md` instead.
 
-
 ## [0.3.98] - 2026-09-08
 
 Clears the standing backlog: both deferred rule tasks are built, and the four
@@ -2040,7 +2053,6 @@ release.
 
   `origin` now carries `main` and `gh-pages` and nothing else.
 
-
 ## [0.3.97] - 2026-09-08
 
 ### Fixed
@@ -2127,7 +2139,6 @@ release.
   to empty and is treated as allow-all. The repo calls it middleware asymmetry
   and empty-allowlist-as-allow-all, in `AAK-MCP-MIDDLEWARE-*`, README and
   `mcp_auth_patterns.py`. It is not described as a `0.0.0.0` binding anywhere.
-
 
 ## [0.3.96] - 2026-09-08
 
@@ -2254,7 +2265,6 @@ release.
 - `docs/cve-latency.md` regenerated: p90 2 → 4 days and slowest 7 → 12 days. That
   is what a five-week CRITICAL costs, and the number is published rather than
   smoothed.
-
 
 ## [0.3.95] - 2026-09-06
 
@@ -2747,7 +2757,6 @@ release.
   blocking the release gate until the rules merge. That is deliberate. Deferred
   work and today's work are not the same thing.
 
-
 - **The CVE watcher has a limit.** It filed one release-gating issue per CVE on a
   6-hour cron with no upper bound and opened 27 in five days, eight of them one
   product's advisory batch in a single run. At most 5 new issues per run, most
@@ -2847,7 +2856,6 @@ release.
   checking. Third occurrence of this pattern in the repo, so it is now commented
   where the next person will read it.
 
-
 ## [0.3.91] - 2026-08-31
 
 ### Added
@@ -2894,7 +2902,6 @@ release.
   ledger rather than in the SARIF property.
 - The new rule fires zero times on the 536-server benign slice (`make fp-check`), so
   the published false-positive figure is unchanged and needed no re-adjudication.
-
 
 ## [0.3.90] - 2026-08-26
 
@@ -2943,7 +2950,6 @@ release.
   the 0.6.0 fix), Coroot (Go binary, on neither registry) and the MCP PHP SDK
   (Composer).
 
-
 ## [0.3.89] - 2026-08-25
 
 ### Added
@@ -2989,7 +2995,6 @@ release.
 - Retired one more expired promise: the README said the frozen security baseline's "re-measure is scheduled for **2026-08-11**". That date passed. The comparison command was run (corpus 1,374 → 2,303 configs; `AAK-MCP-001` 482 → 1,203) and the README now states a reproducible fact instead of a date that expires.
 - **`sync_repo_metadata.py` rewrote `@vX.Y.Z` inside dated artifacts on every release.** Its docstring has always stated that historical artifacts "should pin the version they documented", but that was implemented for exactly one filename pattern (`release-notes-v*.md`), so each release quietly edited `docs/launch/` collateral and dated `docs/presets/` docs — rewriting a published social thread to quote a version it never quoted. `scripts/check_counts.py` already treated those same paths as frozen, so two guards disagreed about what "frozen" meant. They agree now, and `tests/test_repo_metadata_sync.py` asserts both the predicate and that the file selector actually applies it. The already-rewritten pins cannot be recovered, so they hold at v0.3.87 and stop moving from here.
 - The State of MCP Security report numbers moved as a direct consequence of the `AAK-MCP-001` fix, which is the intended kind of movement: no-auth 1205 → 1203 of 2,303 (52.3% → 52.2%), configs with a critical finding 1,217 → 1,215, grade A 632 → 634 and B 1,426 → 1,424. Two servers that authenticate with a vendor token header are no longer graded down for it. `results.json` and REPORT.md were regenerated together, and `make report-check` is clean.
-
 
 ## [0.3.87] - 2026-08-22
 
