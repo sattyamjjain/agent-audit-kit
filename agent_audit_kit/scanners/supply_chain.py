@@ -45,13 +45,41 @@ from agent_audit_kit.scanners._manifest_deps import (
 )
 from agent_audit_kit.scanners._versions import parse_range, parse_version
 
-# Known vulnerable packages: ecosystem -> name -> affected version range
-# Covers npm, Python (PyPI), and Rust (crates.io)
-KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, str]]] = {
+# Known vulnerable packages: ecosystem -> name -> entry. Covers npm, Python
+# (PyPI), and Rust (crates.io); `agent_audit_kit/data/vuln_db.json` holds the same
+# npm entries for AAK-SUPPLY-006, and a test keeps the two identical.
+#
+# `aak update` on every installed release downloads that file from main, and
+# those releases read each entry through `vuln_info["affected"]` alone, so an
+# entry keeps a range they can read, whatever else it carries. `versions`, read
+# first by `_entry_lists`, is the exact list a range cannot express: on 0.6.30's
+# parser a bare version matched everything, and one range cannot name two release
+# lines, so older clients see axios 1.14.1 through `affected` and not 0.30.4.
+#
+# axios: the two releases published from the lead maintainer's hijacked npm account
+# on 2026-03-31, live about three hours (https://github.com/axios/axios/issues/10636,
+# OSV MAL-2026-2307). This row used to read `>=1.7.0 <1.7.4` under the same label,
+# which is a slice of CVE-2024-39338, an unrelated SSRF, so it never reported either
+# malicious release. plain-crypto-js: the trojan they pull in (OSV MAL-2026-2306,
+# every version). `>=0.0.0` matches its numeric releases and not npm's
+# `0.0.1-security` holding package, whose version does not parse.
+KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, Any]]] = {
     "npm": {
         "axios": {
-            "affected": ">=1.7.0 <1.7.4",
-            "description": "Claude Code supply chain compromise (March 31 2026)",
+            "versions": ["0.30.4", "1.14.1"],
+            "affected": ">=1.14.1 <=1.14.1",
+            "description": (
+                "malicious release, published from the lead maintainer's hijacked npm account "
+                "on 2026-03-31; it installs plain-crypto-js 4.2.1, a remote access trojan "
+                "(OSV MAL-2026-2307, https://github.com/axios/axios/issues/10636)"
+            ),
+        },
+        "plain-crypto-js": {
+            "affected": ">=0.0.0",
+            "description": (
+                "malicious package, the remote access trojan the compromised axios 1.14.1 and "
+                "0.30.4 install (OSV MAL-2026-2306, https://github.com/axios/axios/issues/10636)"
+            ),
         },
         # No `openclaw` entry. It listed `<2.1.0` as "104 CVEs catalogued by
         # Adversa AI", but OpenClaw publishes calendar versions on npm (2026.1.29
@@ -144,9 +172,17 @@ _make_finding = make_finding
 
 
 def _version_in_range(version: str, affected: str) -> bool:
-    """Simple version range check. Handles >=X.Y.Z <A.B.C and <X.Y.Z patterns."""
+    """Does `version` satisfy every comparison in `affected` (`>=X.Y.Z <A.B.C`)?
+
+    A token with no operator makes the answer False, and so does an empty range.
+    Through 0.6.32 such a token was skipped, so nothing was compared and `"1.14.1"`,
+    `"==1.14.1"` or `"1.14.1 || 0.30.4"` matched every version of the package. An
+    exact list of releases goes in an entry's `versions` (`_entry_lists`).
+    """
     try:
         parts = affected.split()
+        if not parts:
+            return False
         ver_tuple = tuple(int(x) for x in version.split("."))
 
         i = 0
@@ -168,10 +204,42 @@ def _version_in_range(version: str, affected: str) -> bool:
                 max_ver = tuple(int(x) for x in token[1:].split("."))
                 if ver_tuple >= max_ver:
                     return False
+            else:
+                return False
             i += 1
         return True
     except (ValueError, IndexError):
         return False
+
+
+def _entry_lists(entry: Any, version: str) -> bool:
+    """Does a table or `vuln_db.json` entry list `version`?
+
+    An exact `versions` list wins over `affected`, the range older clients read. A
+    cached database is whatever `aak update` last wrote, so an entry of another
+    shape lists nothing.
+    """
+    if not isinstance(entry, dict):
+        return False
+    versions = entry.get("versions")
+    if isinstance(versions, list):
+        return version in versions
+    affected = entry.get("affected")
+    return isinstance(affected, str) and _version_in_range(version, affected)
+
+
+# The evidence of a table finding: `axios@1.14.1 — ...` (AAK-SUPPLY-002) or
+# `Server 'x' uses axios@1.14.1 — ...` (AAK-SUPPLY-006); `name==version` from a
+# Python manifest. The server name is free text, hence the greedy prefix.
+_TABLE_EVIDENCE_RE = re.compile(r"^(?:Server '.*' uses )?(@?[^@\s=]+)(?:@|==)(\S+) — ", re.S)
+
+
+def table_release(evidence: str) -> tuple[str, str] | None:
+    """The (name, version) a table finding reports, or None for one that names
+    no release, such as `Potential typosquat: ...`. `engine.run_scan` reads it to
+    stand a finding down on a release AAK-MALICIOUS-RELEASE-001 reports."""
+    match = _TABLE_EVIDENCE_RE.match(evidence)
+    return (match.group(1), match.group(2)) if match else None
 
 
 def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
@@ -278,7 +346,7 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
         npm_vulns = KNOWN_VULNERABLE_PACKAGES.get("npm", {})
         if pkg_name in npm_vulns and isinstance(version, str) and version:
             vuln_info = npm_vulns[pkg_name]
-            if _version_in_range(version, vuln_info["affected"]):
+            if _entry_lists(vuln_info, version):
                 findings.append(_make_finding(
                     "AAK-SUPPLY-002", rel_path,
                     f"{pkg_name}@{version} — {vuln_info['description']}",
@@ -677,7 +745,7 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
             pkg_name, version = _extract_python_package_version(line)
             if pkg_name in python_vulns and version:
                 vuln_info = python_vulns[pkg_name]
-                if _version_in_range(version, vuln_info["affected"]):
+                if _entry_lists(vuln_info, version):
                     findings.append(_make_finding(
                         "AAK-SUPPLY-002", rel_path,
                         f"{pkg_name}=={version} — {vuln_info['description']}",
@@ -706,7 +774,7 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
                         name_lower = pkg_name.lower()
                         if name_lower in python_vulns and version:
                             vuln_info = python_vulns[name_lower]
-                            if _version_in_range(version, vuln_info["affected"]):
+                            if _entry_lists(vuln_info, version):
                                 findings.append(_make_finding(
                                     "AAK-SUPPLY-002", rel_path,
                                     f"{pkg_name}=={version} — {vuln_info['description']}",
@@ -759,7 +827,7 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
             # Check previous package
             if current_name and current_version and current_name in rust_vulns:
                 vuln_info = rust_vulns[current_name]
-                if _version_in_range(current_version, vuln_info["affected"]):
+                if _entry_lists(vuln_info, current_version):
                     findings.append(_make_finding(
                         "AAK-SUPPLY-002", rel_path,
                         f"{current_name}@{current_version} — {vuln_info['description']}",
@@ -780,7 +848,7 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
     # Check last package
     if current_name and current_version and current_name in rust_vulns:
         vuln_info = rust_vulns[current_name]
-        if _version_in_range(current_version, vuln_info["affected"]):
+        if _entry_lists(vuln_info, current_version):
             findings.append(_make_finding(
                 "AAK-SUPPLY-002", rel_path,
                 f"{current_name}@{current_version} — {vuln_info['description']}",
@@ -1570,7 +1638,7 @@ def _vulnerable_launches(
             pkg_name, version = arg.split("@", 1)
         if pkg_name in npm_vulns and version:
             vuln_info = npm_vulns[pkg_name]
-            if _version_in_range(version, vuln_info["affected"]):
+            if _entry_lists(vuln_info, version):
                 findings.append(_make_finding(
                     "AAK-SUPPLY-006", rel_path,
                     f"Server '{server_name}' uses {pkg_name}@{version} — {vuln_info['description']}",

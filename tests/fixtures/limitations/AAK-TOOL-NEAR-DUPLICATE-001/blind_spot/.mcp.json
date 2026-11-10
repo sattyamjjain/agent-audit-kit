@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "a": {
+      "command": "a",
+      "tools": [
+        {
+          "name": "flight_search",
+          "description": "x"
+        },
+        {
+          "name": "lookup_hotel_rooms",
+          "description": "x"
+        },
+        {
+          "name": "get_weather",
+          "description": "x"
+        }
+      ]
+    },
+    "b": {
+      "command": "b",
+      "tools": [
+        {
+          "name": "flight_search",
+          "description": "x"
+        },
+        {
+          "name": "lookup_hotel_rates",
+          "description": "x"
+        },
+        {
+          "name": "get_pro_weather",
+          "description": "x"
+        }
+      ]
+    },
+    "c": {
+      "command": "c"
+    }
+  }
+}

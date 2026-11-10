@@ -24,6 +24,7 @@ from agent_audit_kit.scanners._helpers import (
     read_text_capped,
     strip_vscode_variables,
     url_hosts,
+    wildcard_dns_ip,
     zcode_workspace_configs,
 )
 from agent_audit_kit.scanners._launchers import launch_evidence
@@ -68,12 +69,15 @@ def _is_internal_url(url: str) -> bool:
     reach 10.0.0.x, and so does 10.0.0.5 written with ideographic full stops
     (U+3002), which Node maps to dots. Each host `url_hosts` reads is now
     tested as well, as an address or a `.local` name; the regex still answers
-    first, so nothing it reported is lost.
+    first, so nothing it reported is lost. A wildcard-DNS name reads as the
+    address it embeds (`10-0-0-5.nip.io`).
     """
     if INTERNAL_URL_PATTERNS.search(url):
         return True
     for host in url_hosts(url):
         address = host_ip(host)
+        if address is None:
+            address = wildcard_dns_ip(host)
         if address is None:
             if host.rstrip(".").endswith(".local"):
                 return True
