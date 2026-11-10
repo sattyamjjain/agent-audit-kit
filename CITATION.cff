@@ -53,8 +53,8 @@ preferred-citation:
   institution:
     name: "AgentAuditKit"
   year: 2026
-  month: 10
-  version: "1.2"
+  month: 11
+  version: "1.3"
   license: Apache-2.0
   url: "https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/"
   abstract: >-

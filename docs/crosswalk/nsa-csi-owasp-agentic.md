@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (465 total; 427 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (466 total; 428 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -9,7 +9,7 @@ Every AgentAuditKit rule (465 total; 427 mapped) against two agentic-security st
 
 **Composition** — three rules in this table (`AAK-COMPOSE-001/002/003`) hold over a *graph* of components rather than one artifact, because a chain can cross a control boundary while every component on it satisfies the control individually. Source results: CompoSkill ([arXiv:2608.16246](https://arxiv.org/abs/2608.16246)), which assembles a risk chain from skills that each pass an individual scanner and reports attack success falling off past three skills, and ColluSkill ([arXiv:2608.09732](https://arxiv.org/abs/2608.09732)), whose skills cooperate through a medium neither declares. Read the CSI controls below as per-component requirements; these three are what checks the joins between them.
 
-**Evidence** — for how often these controls actually fail in the wild, see *The State of MCP Security, 2026* (v1.2): a scan of 2,303 distinct public MCP configs. [Report](https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md) · this crosswalk says what the controls are; the report says how often they are met.
+**Evidence** — for how often these controls actually fail in the wild, see *The State of MCP Security, 2026* (v1.3): a scan of 2,303 distinct public MCP configs. [Report](https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md) · this crosswalk says what the controls are; the report says how often they are met.
 
 | AAK rule | Severity | Category | NSA MCP CSI control(s) | OWASP Agentic Top-10 (2026) |
 |----------|----------|----------|------------------------|------------------------------|
@@ -186,6 +186,7 @@ Every AgentAuditKit rule (465 total; 427 mapped) against two agentic-security st
 | `AAK-MCP-AWSSECAGENT-CVE-2026-87913-001` | medium | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-BETTERAUTH-CVE-2026-53512-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-BROWSEMCP-CVE-2026-55557-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-MCP-BROWSER-ATTACH-001` | medium | mcp-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-MCP-CARD-001` | critical | mcp-server-card | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-CARD-002` | high | mcp-server-card | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-MCP-CARD-003` | high | mcp-server-card | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |

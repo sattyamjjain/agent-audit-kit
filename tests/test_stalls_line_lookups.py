@@ -36,6 +36,7 @@ from agent_audit_kit.scanners import (
     agent_gates,
     agent_trust_surface,
     agent_server_noauth,
+    mcp_browser_attach,
     llm_call_shapes,
     mcp_tool_names,
     websocket_server,
@@ -333,6 +334,10 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # The browser rule, before it was released.
+    "browser-args": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"chrome": {"command": "x", "args": ["--x"] * k + ["--no-sandbox"]}}})}, 5_000, False),
+    "browser-servers": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {f"chrome-{i}": {"command": "x", "args": ["--no-sandbox"]} for i in range(k)}})}, 1_000, True),
+    "browser-env": (mcp_browser_attach.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {"chrome": {"command": "x", "env": {f"V{i}": "1" for i in range(k)}}}})}, 2_000, False),
     # Cargo.lock in AAK-KNOWN-VULN-001, before it was released: each block's `source` is looked
     # for inside that block alone, however many blocks name a crate the feed lists.
     # go.mod in AAK-KNOWN-VULN-001, before it was released: one pass over the lines whatever they

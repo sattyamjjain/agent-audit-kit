@@ -7,7 +7,7 @@ with score-calibration detail in
 **Nothing here auto-posts.** Copy, sanity-check the links, post one surface at a
 time, reply to comments.
 
-**Canonical numbers (from `results.json`, report version 1.2 — do not round):**
+**Canonical numbers (from `results.json`, report version 1.3 — do not round):**
 2,303 distinct configs · 51.5% (1,185) with a critical finding · median grade B
 (top 10% A) · top misconfig = remote server with **no authentication**
 (`AAK-MCP-001`, critical, 50.6%) · 50.6% (1,166) no-auth remote · 19.5% (450)
