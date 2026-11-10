@@ -58,16 +58,18 @@ def test_fastmcp_stdio_does_not_fire() -> None:
     assert RULE not in {f.rule_id for f in findings}
 
 
-def test_loopback_bind_is_not_treated_as_mitigation() -> None:
-    """The vulnerable fixture binds 127.0.0.1 and must still fire.
-
-    CVE-2026-81102 was loopback-bound. If binding were read as a mitigation the
-    rule would miss the exact shape it was widened for.
+def test_loopback_clears_the_rule_only_on_1_23_0_or_later() -> None:
+    """The vulnerable fixture binds 127.0.0.1 with the uv.lock Dash really had: `mcp`
+    1.15.0 at commit b82aa2a4 of Dropbox's server (its `mcp` entry, cut from the
+    file). It must still fire, since that is the shape CVE-2026-81102 names. From 1.23.0
+    the SDK turns the protection on for a loopback host, and the rule stands down.
+    `tests/test_dns_rebind_sdk_defaults.py` holds the rest.
     """
-    src = (FIXTURES / "python-fastmcp-unguarded" / "server.py").read_text()
-    assert 'host="127.0.0.1"' in src
-    findings, _ = scan(FIXTURES / "python-fastmcp-unguarded")
-    assert RULE in {f.rule_id for f in findings}
+    root = FIXTURES / "python-fastmcp-unguarded"
+    assert 'host="127.0.0.1"' in (root / "server.py").read_text()
+    assert 'name = "mcp"\nversion = "1.15.0"' in (root / "uv.lock").read_text()
+    hit = next(f for f in scan(root)[0] if f.rule_id == RULE)
+    assert "resolves `mcp` below 1.23.0" in hit.evidence
 
 
 def test_still_one_rule_with_the_cve_recorded() -> None:

@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 112,
+  "count": 114,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -112,7 +112,7 @@
     },
     {
       "module": "known_vulns",
-      "name": "Locked, pinned and installed packages against OSV advisories (offline feed)"
+      "name": "Locked, pinned, installed and launched packages against OSV advisories (offline feed)"
     },
     {
       "module": "known_vulns_launch",
@@ -275,6 +275,10 @@
       "name": "Unsafe eval/exec inside @mcp.tool handler (CVE-2026-44717 class)"
     },
     {
+      "module": "mcp_toolbox_hosts",
+      "name": "MCP Toolbox launches with an open Host or Origin check (CVE-2026-11624)"
+    },
+    {
       "module": "mcp_toolgate_asymmetry",
       "name": "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)"
     },
@@ -313,6 +317,10 @@
     {
       "module": "pin_drift",
       "name": "Pin drift"
+    },
+    {
+      "module": "policy_failopen",
+      "name": "Policy gates that open on an unknown verdict or a missing policy module"
     },
     {
       "module": "policy_truncation",

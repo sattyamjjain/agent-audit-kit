@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-07T12:09:28Z",
+  "last_updated": "2026-11-10T08:36:25Z",
   "aak_version": "0.6.32",
-  "rule_count": 446,
+  "rule_count": 451,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 105,
+      "rule_density": 107,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -1037,6 +1037,18 @@
           "aicm_references": [
             "AIS-07"
           ]
+        },
+        {
+          "id": "AAK-POLICY-IMPORT-FAILOPEN-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-POLICY-VERDICT-FAILOPEN-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-ROUTINE-001",
@@ -2446,7 +2458,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 227,
+      "rule_density": 229,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2656,6 +2668,14 @@
         {
           "id": "AAK-KNOWN-VULN-002",
           "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-KNOWN-VULN-003",
+          "severity": "medium",
           "cve_references": [],
           "aicm_references": [
             "STA-08"
@@ -3636,7 +3656,9 @@
           "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-101288",
             "CVE-2026-101861",
+            "CVE-2026-104317",
             "CVE-2026-104339",
             "CVE-2026-105697",
             "CVE-2026-105699",
@@ -3650,6 +3672,7 @@
             "CVE-2026-12940",
             "CVE-2026-17623",
             "CVE-2026-17626",
+            "CVE-2026-18894",
             "CVE-2026-7646",
             "CVE-2026-78575",
             "CVE-2026-81941",
@@ -4485,6 +4508,16 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111768"
+          ],
+          "aicm_references": [
             "STA-08"
           ]
         },
@@ -5502,7 +5535,9 @@
           "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-101288",
             "CVE-2026-101861",
+            "CVE-2026-104317",
             "CVE-2026-104339",
             "CVE-2026-105697",
             "CVE-2026-105699",
@@ -5516,6 +5551,7 @@
             "CVE-2026-12940",
             "CVE-2026-17623",
             "CVE-2026-17626",
+            "CVE-2026-18894",
             "CVE-2026-7646",
             "CVE-2026-78575",
             "CVE-2026-81941",
@@ -6119,7 +6155,7 @@
     {
       "asi_id": "ASI07",
       "title": "Insecure Inter-Agent Communication",
-      "rule_density": 25,
+      "rule_density": 26,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -6309,6 +6345,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-TOOLBOX-HOSTS-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-11624"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TUNNEL-002",
           "severity": "high",
           "cve_references": [],
@@ -6365,7 +6412,7 @@
     {
       "asi_id": "ASI08",
       "title": "Cascading Failures",
-      "rule_density": 9,
+      "rule_density": 10,
       "rules": [
         {
           "id": "AAK-A2A-009",
@@ -6453,6 +6500,16 @@
             "CVE-2026-84289"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TSSDK-CVE-2026-111768-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111768"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-TASKS-004",
