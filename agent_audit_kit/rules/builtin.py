@@ -734,7 +734,10 @@ _r(
     "Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
     Severity.LOW,
     Category.MCP_CONFIG,
-    "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin with an exact @x.y.z suffix, for example `npx -y some-mcp-server@1.4.2`. "
+    "The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic "
+    "versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image "
+    "digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
     sarif_name="McpUnpinnedPackageVersion",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2003,7 +2006,10 @@ _r(
     "Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+    "Pin to an exact version, for example `npx -y some-mcp-server@1.4.2`. "
+    "The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic "
+    "versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image "
+    "digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
     sarif_name="McpPackageNotPinned",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -17853,7 +17859,8 @@ _r(
     Category.SUPPLY_CHAIN,
     "Upgrade to the release the finding names as fixed on that line, re-lock, and "
     "rebuild the environment or image; for a manifest range, raise its lower bound past "
-    "the fix. Where the advisory lists no fixed release, remove or replace the package, "
+    "the fix. Where the finding says the fix is on a date line npm has deprecated, take a "
+    "current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, "
     "or keep the component the advisory names unreachable until one ships; where an NVD "
     "entry names only the last affected release, upgrade past it to the release the "
     "vendor's advisory names as fixed. Run `aak update` so the scan reads the current "

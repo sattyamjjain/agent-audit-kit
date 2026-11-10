@@ -2380,7 +2380,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few.",
+      "remediation": "Upgrade to the release the finding names as fixed on that line, re-lock, and rebuild the environment or image; for a manifest range, raise its lower bound past the fix. Where the finding says the fix is on a date line npm has deprecated, take a current SemVer release instead. Where the advisory lists no fixed release, remove or replace the package, or keep the component the advisory names unreachable until one ships; where an NVD entry names only the last affected release, upgrade past it to the release the vendor's advisory names as fixed. Run `aak update` so the scan reads the current advisories rather than the bundled few.",
       "rule_id": "AAK-KNOWN-VULN-001",
       "sarif_name": "KnownVulnerableRelease",
       "severity": "critical",
@@ -3167,7 +3167,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "remediation": "Pin with an exact @x.y.z suffix, for example `npx -y some-mcp-server@1.4.2`. The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
       "rule_id": "AAK-MCP-007",
       "sarif_name": "McpUnpinnedPackageVersion",
       "severity": "low",
@@ -11524,7 +11524,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+      "remediation": "Pin to an exact version, for example `npx -y some-mcp-server@1.4.2`. The four npm reference servers (@modelcontextprotocol/server-filesystem, -memory, -everything and -sequential-thinking) left their date-based releases for semantic versioning in October 2026, so pin a SemVer release of them, never a 2025.x or 2026.x one. A launcher pin fixes only the top-level package; a lockfile install or an image digest fixes the whole tree. The launch arguments are part of what was reviewed too: mongodb-mcp-server serves different tools with and without `--readOnly`.",
       "rule_id": "AAK-SUPPLY-001",
       "sarif_name": "McpPackageNotPinned",
       "severity": "medium",

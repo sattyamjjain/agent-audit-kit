@@ -60,6 +60,10 @@ MCP config's launch: one that pins no release (no version, a tag or a range) is
 
 The finding names the advisory, its CVE ids, its score, the release and the
 release that fixes it; a sample is under [Related advisories](#related-advisories).
+When the fix is on a date line npm has since deprecated, the finding says so, for the
+packages `agent_audit_kit/data/date_line_packages.json` names: the four npm reference
+servers went back to SemVer at 1.0.0 in October 2026, so 2025.7.1, the fix an older
+advisory names for server-filesystem, is not where to go any more.
 
 ## The feed
 
