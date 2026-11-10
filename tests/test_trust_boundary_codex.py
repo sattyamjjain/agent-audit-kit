@@ -310,6 +310,8 @@ def test_a_codex_home_that_is_the_project_reads_its_agents_md_once(
 @pytest.mark.parametrize("rule", ["AAK-MCP-007", "AAK-SUPPLY-001"])
 def test_the_pin_example_is_a_maintained_release(rule: str) -> None:
     remediation = get_rule(rule).remediation
-    assert "@2025." not in remediation
-    assert "@modelcontextprotocol/server-filesystem@2.2.0" in remediation
-    assert "date-style" in remediation
+    # #1190 rewrote both texts first: they pin an ordinary SemVer example and send the
+    # reference servers to a SemVer release, never a date-based one.
+    assert "@2025." not in remediation and "@2026." not in remediation
+    assert "some-mcp-server@1.4.2" in remediation
+    assert "never a 2025.x or 2026.x one" in remediation

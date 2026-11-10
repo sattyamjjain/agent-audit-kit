@@ -102,8 +102,8 @@ AAK-MALICIOUS-RELEASE-001, with evidence such as
 - A pre-release beside a listed release counts as it when a range is read,
   since ranges are read on release triples.
 - More than ten listed versions per entry are counted, not named.
-- The bundled feed lists two packages with version-specific entries (litellm
-  and local-commander-agent), so without `aak update` nothing else is known.
+- The bundled feed lists three packages with version-specific entries (litellm,
+  local-commander-agent and axios), so without `aak update` nothing else is known.
 - A config over 2 MB.
 
 ## How to fix
@@ -122,6 +122,7 @@ entries.
 |---|---|---|---|
 | local-commander-agent (npm) | MAL-2026-18425, GHSA-7j62-5j84-72fv | 0.3.52 | yes |
 | litellm (PyPI) | MAL-2026-2144 | 1.82.7, 1.82.8, 1.107.0 | yes |
+| axios (npm) | MAL-2026-2307, GHSA-fw8c-xr5c-95f9 | 0.30.4, 1.14.1 | yes |
 
 A finding on the first reads:
 
@@ -132,5 +133,5 @@ local-commander-agent: MAL-2026-18425 (GHSA-7j62-5j84-72fv) lists local-commande
 0.3.52 (https://osv.dev/vulnerability/MAL-2026-18425). An unpinned launch runs whichever
 release the registry or the launcher's cache hands it. Pin a release outside the list,
 and check the launcher cache (`aak scan --include-user-config` reads npx's and uv's).
-Feed: the bundled copy generated 2026-11-01T10:12:39Z.
+Feed: the bundled copy generated 2026-11-10T06:55:20Z.
 ```

@@ -18,7 +18,7 @@ Nothing here was cut; it is the same content with a home of its own.
 | `agent-audit-kit suggest run.sarif --pr` | Markdown remediation body for `gh pr create --body-file -` |
 | `agent-audit-kit suggest run.sarif --auto-pr` | Apply allow-listed mechanical fixes on a branch and open a **draft** PR |
 | `agent-audit-kit score .` | Security grade (A-F) + SVG badge |
-| `agent-audit-kit update` | Update the vulnerability database and rebuild the malicious-release feed from OSV (`--github-malware` adds GitHub's malware advisories; needs a token) |
+| `agent-audit-kit update` | Update the vulnerability database, rebuild the malicious-release feed from OSV (`--github-malware` adds GitHub's malware advisories; needs a token), and rebuild the advisory feed from OSV's PyPI, npm, Go and crates.io exports and NVD's CNA records (`--nvd-days`) |
 | `agent-audit-kit proxy --port 8765 --target URL` | Start MCP interception proxy |
 | `agent-audit-kit kill` | Terminate running proxy |
 | `agent-audit-kit export-rules --out rules.json` | Write deterministic rule bundle + SHA-256 (Sigstore-signable) |
@@ -41,7 +41,7 @@ Nothing here was cut; it is the same content with a home of its own.
 | `--rules` | all | Comma-separated rule IDs to include |
 | `--exclude-rules` | | Comma-separated rule IDs to skip |
 | `--ignore-paths` | | Comma-separated paths to exclude |
-| `--include-user-config` | | Also read this user's state outside the project: `~/.claude.json`, `~/.claude/settings.json`, `config.toml` (AAK-TRUST-009), `AGENTS.md` and `AGENTS.override.md` (the AAK-AGENT rules) under `$CODEX_HOME`, by default `~/.codex`, the npx and uv launcher caches ([AAK-MALICIOUS-RELEASE-001](rules/AAK-MALICIOUS-RELEASE-001.md)), and the editor extension folders such as `~/.cursor/extensions` ([AAK-MALICIOUS-EXTENSION-001](rules/AAK-MALICIOUS-EXTENSION-001.md)) |
+| `--include-user-config` | | Also read this user's state outside the project: `~/.claude.json`, `~/.claude/settings.json`, `config.toml` (AAK-TRUST-009), `AGENTS.md` and `AGENTS.override.md` (the AAK-AGENT rules) under `$CODEX_HOME`, by default `~/.codex`, the npx and uv launcher caches ([AAK-MALICIOUS-RELEASE-001](rules/AAK-MALICIOUS-RELEASE-001.md), [AAK-KNOWN-VULN-001](rules/AAK-KNOWN-VULN-001.md)), and the editor extension folders such as `~/.cursor/extensions` ([AAK-MALICIOUS-EXTENSION-001](rules/AAK-MALICIOUS-EXTENSION-001.md)) |
 | `--score` | | Show security score and grade |
 | `--owasp-report` | | Generate OWASP coverage matrix |
 | `--compliance FRAMEWORK` | | Compliance report: `eu-ai-act`, `soc2`, `iso27001`, `hipaa`, `nist-ai-rmf`, `mcp-2026-roadmap` |
@@ -113,7 +113,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.6.33
+  - uses: sattyamjjain/agent-audit-kit@v0.6.32
     id: scan
     with:
       fail-on: high

@@ -6,7 +6,9 @@ scan knew a vulnerable release only through a hand-written pin, the bundled
 `vuln_db.json` held no Python entries, and `aak update` downloaded OSV's complete
 PyPI and npm exports for the malicious-release feed and kept nothing but their
 `MAL-` records. This feed keeps the advisory records from the same downloads,
-and AAK-KNOWN-VULN-001 matches them against every version a scan resolves.
+and AAK-KNOWN-VULN-001 matches them against every version a scan resolves. The
+same downloads include OSV's crates.io and Go exports, so a Cargo.lock and a go.mod
+are judged the same way.
 
 Load order, as `malicious_feed` reads its feed: the cached feed at
 `~/.agent-audit-kit/advisories.json` when it exists and parses, else the bundled
@@ -18,7 +20,11 @@ What is kept
 ------------
 A record that is not `MAL-`, not withdrawn, and has, for the export's registry,
 an `ECOSYSTEM` or `SEMVER` range or a list of affected versions (a GIT range
-names commits, which no lockfile records). For each package a record names:
+names commits, which no lockfile records). A package block RustSec marks as
+informational (`database_specific.informational`: `unmaintained`, `unsound` or
+`notice`, 521 of the 3,055 crates.io records on 2026-11-07) is left out: RustSec
+files those as notices, cargo-audit reports them as warnings, and this feed lists
+vulnerabilities. For each package a record names:
 
 * `id`, `aliases` (CVE, GHSA and PYSEC ids), `modified` and the osv.dev `url`;
 * `ranges`: every range's events sorted by version, as OSV's specification
@@ -96,6 +102,9 @@ from agent_audit_kit.malicious_feed import (
     version_key,
     version_order,
 )
+
+#: Every registry this feed reads: the malicious-release feed's, from the same exports.
+ADVISORY_ECOSYSTEMS = ECOSYSTEMS
 
 BUNDLED_FEED: Path = Path(__file__).parent / "data" / "advisories.json"
 FEED_FILE_NAME = "advisories.json"
@@ -248,6 +257,12 @@ def _interval(row: Range) -> dict[str, str]:
     return out
 
 
+def _is_informational(affected: dict[str, Any]) -> bool:
+    """Does RustSec mark this block as a notice rather than a vulnerability?"""
+    specific = affected.get("database_specific")
+    return isinstance(specific, dict) and bool(specific.get("informational"))
+
+
 def advisory_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
     """Feed entries, one per package, for one OSV advisory record on `ecosystem`.
 
@@ -269,7 +284,7 @@ def advisory_entries(record: object, ecosystem: str) -> list[dict[str, Any]]:
         name = package.get("name") if isinstance(package, dict) else None
         if not isinstance(package, dict) or package.get("ecosystem") != ecosystem:
             continue
-        if not isinstance(name, str) or not name.strip():
+        if not isinstance(name, str) or not name.strip() or _is_informational(affected):
             continue
         _, found, listed = packages.setdefault(canonical_name(ecosystem, name), (name.strip(), [], set()))
         for spec in _dicts(affected.get("ranges")):
@@ -467,7 +482,7 @@ def without_osv_twins(
     named: set[tuple[str, str, str]] = set()
     for row in osv_rows:
         ecosystem, name = row.get("ecosystem"), row.get("name")
-        if ecosystem not in ECOSYSTEMS or not isinstance(name, str):
+        if ecosystem not in ADVISORY_ECOSYSTEMS or not isinstance(name, str):
             continue
         key = canonical_name(ecosystem, name)
         for ident in (row.get("id"), *_strings(row.get("aliases"))):
@@ -475,7 +490,7 @@ def without_osv_twins(
                 named.add((ecosystem, key, ident))
     kept = [
         row for row in nvd_rows
-        if not (row.get("ecosystem") in ECOSYSTEMS and isinstance(row.get("name"), str)
+        if not (row.get("ecosystem") in ADVISORY_ECOSYSTEMS and isinstance(row.get("name"), str)
                 and (row["ecosystem"], canonical_name(row["ecosystem"], row["name"]), row.get("id")) in named)
     ]
     return kept, len(nvd_rows) - len(kept)
@@ -559,7 +574,7 @@ def parse_feed(data: object, origin: str, path: Path, fallback: dict[str, Any] |
     if isinstance(data.get("entries"), list):
         rows = [row for row in data["entries"] if isinstance(row, dict)]
     elif isinstance(data.get("records"), list):
-        rows = [row for record in data["records"] for e in ECOSYSTEMS for row in advisory_entries(record, e)]
+        rows = [row for record in data["records"] for e in ADVISORY_ECOSYSTEMS for row in advisory_entries(record, e)]
     else:
         raise FeedError("no `entries` or `records` list")
     nvd = data.get("nvd")
@@ -567,7 +582,7 @@ def parse_feed(data: object, origin: str, path: Path, fallback: dict[str, Any] |
     index: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for raw in rows:
         ecosystem, name = raw.get("ecosystem"), raw.get("name")
-        if ecosystem not in ECOSYSTEMS or not isinstance(name, str) or not name.strip():
+        if ecosystem not in ADVISORY_ECOSYSTEMS or not isinstance(name, str) or not name.strip():
             continue
         if not isinstance(raw.get("id"), str) or not raw["id"]:
             continue
@@ -729,7 +744,7 @@ class Collector:
             return e["ecosystem"], canonical_name(e["ecosystem"], e["name"]), e["id"]
 
         entries = sorted(self.entries, key=order)
-        nvd, twins = without_osv_twins(entries, [e for e in self.nvd if e.get("ecosystem") in ECOSYSTEMS
+        nvd, twins = without_osv_twins(entries, [e for e in self.nvd if e.get("ecosystem") in ADVISORY_ECOSYSTEMS
                                                  and isinstance(e.get("name"), str) and isinstance(e.get("id"), str)])
         nvd.sort(key=order)
         launch = sorted((e for e in self.launch if e.get("ecosystem") == LAUNCH and isinstance(e.get("name"), str)
@@ -766,13 +781,14 @@ class Collector:
             temporary.unlink(missing_ok=True)
             raise
         kept_entries = document["entries"]
-        counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ECOSYSTEMS}
+        counts = {e: sum(1 for row in kept_entries if row["ecosystem"] == e) for e in ADVISORY_ECOSYSTEMS}
         packages = len({(row["ecosystem"], canonical_name(row["ecosystem"], row["name"])) for row in kept_entries})
         return Written(target, generated, counts, packages, len(body), full_size, document["severity_floor"],
                        nvd=len(document["nvd"]), nvd_twins=twins, launch=len(document["launch"]))
 
 
 __all__ = [
+    "ADVISORY_ECOSYSTEMS",
     "Advisory",
     "AdvisoryFeed",
     "BUNDLED_FEED",
