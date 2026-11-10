@@ -86,7 +86,9 @@ def badge_markup(slice_n: int, false_positives: int, adjudicated: int) -> str:
         f"positives ({rate * 100:.1f}%)"
     )
     return (
-        f'{START}<a href="benchmarks/false_positive/RESULTS.md">'
+        # Absolute, because README.md is also the PyPI page, which resolves no
+        # repository-relative path (tests/test_readme_contract.py).
+        f'{START}<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md">'
         f'<img src="{src}" alt="{alt}"></a>{END}'
     )
 
