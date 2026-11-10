@@ -6,7 +6,7 @@
 |---|---|
 | Severity | CRITICAL |
 | Category | `SUPPLY_CHAIN` |
-| Shipped | v0.6.32 |
+| Shipped | v0.6.33 |
 | Scanner | `agent_audit_kit/scanners/mcp_codeexec_sandbox.py` |
 | CVE | CVE-2026-120338 |
 | OWASP MCP | MCP04:2025 (Software Supply Chain Attacks & Dependency Tampering), MCP05:2025 (Command Injection & Execution) |
