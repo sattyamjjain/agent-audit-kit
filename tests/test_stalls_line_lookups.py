@@ -36,6 +36,7 @@ from agent_audit_kit.scanners import (
     agent_gates,
     agent_trust_surface,
     agent_server_noauth,
+    websocket_server,
     agent_config,
     composition,
     dns_rebind,
@@ -62,6 +63,7 @@ from agent_audit_kit.scanners import (
     runtime_advisories,
     secret_exposure,
     shared_resource_authz,
+    ssrf_patterns,
     ssrf_toctou,
     startup_hooks,
     supply_chain,
@@ -285,6 +287,15 @@ def _quoted_server_name(k: int) -> dict[str, str]:
                                     separators=(",", ":"))}
 
 
+def _mapped_guard(k: int, compare: str) -> dict[str, str]:
+    head = "import ipaddress\nfrom urllib.parse import urlparse\n\nNETS = [ipaddress.ip_network('10.0.0.0/8')]\n\n\n"
+    body = "def check_url(url):\n    ip = ipaddress.ip_address(urlparse(url).hostname)\n"
+    return {"g.py": head + body + compare * k}
+
+
+def _ws_servers(k: int) -> dict[str, str]:
+    return {"mcp_server.py": "import websockets\n\n\nasync def main():\n"
+            + "    await websockets.serve(h, '127.0.0.1', 80)\n" * k}
 def _hook_handlers(commands: list[str], script: str = "import sys\nsys.exit(2)\n") -> dict[str, str]:
     """One hook script, and a settings file with a handler per command naming it."""
     handlers = [{"type": "command", "command": c} for c in commands]
@@ -320,6 +331,23 @@ _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
+    # Group D, before it was released. An allow-list name is read and passed over each time, the
+    # WebSocket reader looks at every call once, and a wildcard name is parsed once per word.
+    "mapped-allow-list-tests": (ssrf_toctou.scan, lambda k: _mapped_guard(k, "    if ip in ALLOWED:\n        return 1\n"), 1_000, False),
+    "mapped-functions": (ssrf_toctou.scan, lambda k: {"g.py": "from ipaddress import ip_address, ip_network\nfrom urllib.parse import urlparse\n"
+                         + "".join(f"def f{i}(u):\n    ip = ip_address(urlparse(u).hostname)\n    return ip in ALLOWED\n" for i in range(k))
+                         + "_ = ip_network\n"}, 500, False),
+    "websocket-calls": (websocket_server.scan, _ws_servers, 1_000, True),
+    "websocket-host-params": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\n" + "".join(
+        f"def f{i}(host{i}='0.0.0.{0}'):\n    return websockets.serve(h, host{i}, 80, origins=['x'])\n" for i in range(k))}, 500, False),
+    "websocket-tracebacks": (websocket_server.scan, lambda k: {"mcp_server.py": "import websockets\nimport traceback\n"
+                             + "e = traceback.format_exc()\nw.send(e)\n" * k}, 1_000, False),
+    "ssrf-wildcard-words": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom mcp.server.fastmcp import FastMCP\n"
+                            "requests.get('" + "a.nip.io " * k + "')\n"}, 5_000, False),
+    "ssrf-wildcard-long-label": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom mcp.server.fastmcp import FastMCP\n"
+                                 "requests.get('http://" + "1-" * k + "1.nip.io/')\n"}, 5_000, False),
+    "ssrf-tool-classes": (ssrf_patterns.scan, lambda k: {"t.py": "import requests\nfrom smolagents import Tool\n" + "".join(
+        f"class C{i}(Tool):\n    output_type = 's'\n    def forward(self, u):\n        return 1\n" for i in range(k))}, 500, False),
     # The gate rules, before they were released. Written to stay linear, so these pin it: a test of
     # many operands reads its branch once, a name is looked up in sets and not in a merged one, a
     # script many handlers name is read once, the lines of swallowed commands are found in one pass,

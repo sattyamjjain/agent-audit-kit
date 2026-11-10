@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-10T08:51:33Z",
+  "last_updated": "2026-11-10T08:57:37Z",
   "aak_version": "0.6.32",
-  "rule_count": 457,
+  "rule_count": 459,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 109,
+      "rule_density": 111,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -1151,6 +1151,12 @@
           ]
         },
         {
+          "id": "AAK-SSRF-MAPPED-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-SSRF-TOCTOU-001",
           "severity": "medium",
           "cve_references": [
@@ -1235,6 +1241,12 @@
           "aicm_references": [
             "IAM-16"
           ]
+        },
+        {
+          "id": "AAK-WEBSOCKET-SERVER-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
         }
       ]
     },

@@ -795,7 +795,8 @@ _r(
         "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a "
         "`.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1, and reads "
         "its host as a client does, so `http://10.1/`, `http://0xa.0.0.5/` and "
-        "`http://%31%30.0.0.5/` are 10.x too; a URL whose own host is loopback "
+        "`http://%31%30.0.0.5/` are 10.x too, as is a wildcard-DNS name that embeds one "
+        "(`10-0-0-5.nip.io`, `0a000005.nip.io`); a URL whose own host is loopback "
         "(localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. "
         "A URL that Node, requests and Rust's `url` crate read differently from curl, "
         "httpx and urlsplit, which keep a backslash inside the authority, is judged "
@@ -3820,8 +3821,10 @@ _r(
 _r(
     "AAK-SSRF-001",
     "Unvalidated outbound HTTP in MCP tool handler",
-    "An MCP tool handler fetches a URL provided by the caller with no "
-    "host/scheme validation. This is the classic SSRF shape (CWE-918).",
+    "An MCP or agent tool handler fetches a URL provided by the caller with no "
+    "host/scheme validation. This is the classic SSRF shape (CWE-918). A smolagents `forward` "
+    "or a LangChain `_run` counts the same as an MCP tool, since the model chooses the URL "
+    "either way.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
     "Validate the scheme (https only), resolve the host, and reject "
@@ -3832,7 +3835,8 @@ _r(
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. In Python a fetch's URL counts as "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). In Python a fetch's URL counts as "
         "caller input only inside a function read as a tool the way AAK-TAINT-001 reads "
         "one (decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, "
         "`@crewai.tool` or `@autogen.tool`, or a low-level `@<server>.call_tool()` "
@@ -3840,7 +3844,9 @@ _r(
         "`func=` or to `from_function(...)`, or the `_run`, `_arun`, `run` or `arun` "
         "method of a class whose bases reach `BaseTool` or `StructuredTool` in the same "
         "file (through the file's own classes, a name it imports or assigns the base "
-        "as, or a subscripted base; a base another file defines is not followed), or a "
+        "as, or a subscripted base; a base another file defines is not followed), or the "
+        "`forward` method of a class on a `Tool` or `PipelineTool` base, when the file imports "
+        "from smolagents or the class sets `inputs` and `output_type`, or a "
         "function or method called `call_tool` or ending in `_call_tool` (where only "
         "`arguments`, `args`, `params`, `input`, `tool_input`, `kwargs`, `payload`, "
         "`body`, `query`, `request`, `req` and `event` count), when one of its "
@@ -3903,7 +3909,8 @@ _r(
     "public host, or read the target from configuration. The rule matches `localhost` "
     "and names under `.localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to "
     "`172.31.x` and `192.168.x`, also in a URL that writes the address another way "
-    "(`http://2130706433/` is 127.0.0.1). "
+    "(`http://2130706433/` is 127.0.0.1) or in a wildcard-DNS name that embeds it "
+    "(`10-0-0-5.nip.io`, `localtest.me`). "
     "Where the URL can also come from the caller, resolve the host and refuse loopback, "
     "private and link-local results before connecting.",
     sarif_name="SsrfLoopbackReachable",
@@ -3912,10 +3919,15 @@ _r(
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It reads each string that reaches "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It reads each string that reaches "
         "a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, "
         "::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a "
-        "client reads as one (`http://2130706433/`, `http://0x7f.1/`). A string with no "
+        "client reads as one (`http://2130706433/`, `http://0x7f.1/`), or a wildcard-DNS name "
+        "embedding one: the dot, dash, hex and IPv6 forms under `nip.io` and `sslip.io`, the dot "
+        "and dash forms under `xip.io`, and `localtest.me` and `lvh.me`. A name that resolves "
+        "there with nothing in the name to say so (a rebinding service, your own domain) needs a "
+        "lookup, which a scan does not do. A string with no "
         "scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, "
         "`[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with "
         "`HOST = \"2130706433\"`, is missed. Other loopback and private addresses "
@@ -3942,9 +3954,12 @@ _r(
     adversa_references=["ADV-SSRF-03"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254`, "
-        "in any spelling a client reads as it (`http://0xa9fea9fe/`), and "
-        "`metadata.google.internal` only. Other cloud credential endpoints "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It recognises `169.254.169.254`, "
+        "in any spelling a client reads as it (`http://0xa9fea9fe/`) or a wildcard-DNS name "
+        "embedding it (`169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`), "
+        "and `metadata.google.internal` only. A name that resolves there with nothing in the "
+        "name to say so needs a lookup, which a scan does not do. Other cloud credential endpoints "
         "(`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one "
         "finding, for the first matching call (in `ast.walk` order in Python), so a "
         "metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 "
@@ -3955,9 +3970,10 @@ _r(
 _r(
     "AAK-SSRF-004",
     "Redirect chains followed without re-validation",
-    "An MCP tool follows HTTP redirects using the default client settings. "
-    "An attacker can bypass initial host checks by returning a 3xx to an "
-    "internal address. DNS rebinding works the same way.",
+    "An MCP or agent tool fetches a URL the caller can set with a client that follows redirects, "
+    "by default or by an explicit flag. A check before the call covers only the first hop, so "
+    "a public URL that answers with a 3xx to an internal address gets past it. DNS rebinding works "
+    "the same way.",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Disable automatic redirects, or re-run host validation on every hop. "
@@ -3968,10 +3984,19 @@ _r(
     adversa_references=["ADV-SSRF-04"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It fires on an explicit "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It fires on an explicit "
         "`follow_redirects=True`, `allow_redirects=True` or `redirect: \"follow\"` in "
-        "a file with a recognised fetch call. A client left at its default, which "
-        "follows redirects (`requests.get(url)`), is not reported."
+        "a file with a recognised fetch call, and on a call whose URL the caller can set, read as "
+        "AAK-SSRF-001 reads it, made with a client that follows by default: requests, "
+        "`urllib.request.urlopen`, `aiohttp.request` or something called `session` in Python, and "
+        "every TS/JS client AAK-SSRF-001 recognises. httpx does not follow by default, so `httpx.get` "
+        "and something called `client` count only with the flag. `allow_redirects=` with anything "
+        "but a literal True on the call stands it down, and in TS/JS `redirect: \"manual\"` or "
+        "`\"error\"`, `maxRedirects: 0` or `.redirects(0)` anywhere in the file does. A value handed "
+        "to a helper that fetches is not followed, a hand-written check of every hop still fires "
+        "unless it turns redirects off, and a file gets one finding, for the first such call. A "
+        "call that fires this usually fires AAK-SSRF-001 and AAK-SSRF-005 as well."
     ),
 )
 
@@ -3993,7 +4018,8 @@ _r(
     adversa_references=["ADV-SSRF-05"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It fires on a recognised fetch "
+        "`mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` "
+        "and `output_type` with a class on a `Tool` base (a smolagents tool). It fires on a recognised fetch "
         "call whose URL caller input reaches, read as AAK-SSRF-001 reads it, in a file "
         "that never writes "
         "ALLOW_HOST, ALLOW_HOSTS, ALLOWED_HOST, ALLOWED_HOSTS or URL_ALLOW_LIST (upper "
@@ -11802,6 +11828,77 @@ _r(
     ),
 )
 
+
+_r(
+    "AAK-SSRF-MAPPED-001",
+    "A URL guard tests an address against IPv4 networks, and IPv4-mapped IPv6 passes",
+    "A URL or host guard parses the host with `ipaddress.ip_address` and tests membership in a deny "
+    "list of networks (`ip in ip_network(\"169.254.0.0/16\")`, `any(ip in n for n in BLOCKED)`) without "
+    "unwrapping `.ipv4_mapped`. `http://[::ffff:169.254.169.254]/` parses as an IPv6 address, which is in "
+    "no IPv4 network, so it passes, and a dual-stack socket connects to the metadata address. `.is_private` "
+    "is not the same bug: it unwraps a mapped address on every CPython tried from 3.9.0 to 3.13.11, so "
+    "a guard that also reads it does not fire.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Unwrap before the test: on an IPv6 address, use its `ipv4_mapped` when that is set. Adding "
+    "`::ffff:0:0/96` to the deny list or also testing `.is_private` closes it too. Add a test that "
+    "`http://[::ffff:169.254.169.254]/` is refused. Check the resolved address again at connect time, "
+    "since a check at load cannot see a name that later resolves elsewhere.",
+    sarif_name="SsrfGuardPassesMappedAddress",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reads Python, one function at a time, in a file that mentions `ip_network` and one of ssrf, "
+        "urlparse, urlsplit, `.hostname` or getaddrinfo. The test must be `in` on `ip_address(...)` or "
+        "a name bound from it in that function, so an address passed in as a parameter, `subnet_of` and "
+        "an integer range check are not read. A deny list is known by the name of the function or of the "
+        "networks (private, block, deny, internal, metadata, link_local, loopback, reserved, ssrf, forbid, "
+        "unsafe, disallow, banned, restricted) or a private `ip_network(...)` literal, so a list under "
+        "another name is missed, and one named for allow, trust, scope, whitelist or permit fails closed "
+        "on a mapped address and is left out. `ipv4_mapped`, `IPv4Address`, `IPv6Address`, `.version`, "
+        "`::ffff`, `AF_INET` or `gethostbyname` anywhere in the file stands the rule down, without checking "
+        "that it guards this test. `.is_private` or `.is_global` in the function stands it down too: that "
+        "closes the metadata and RFC 1918 cases and not `::ffff:100.64.0.1`. A guard testing only "
+        "`.is_loopback` or `.is_link_local` is not read, though older CPython patch releases do not unwrap "
+        "those (3.12.3 for both, 3.13.0 for link-local). Whether the result gates a fetch is not read, so "
+        "an IP filter that is no URL guard, in a file with one of those words, fires. A source file over "
+        "1 MB is not read."
+    ),
+)
+
+_r(
+    "AAK-WEBSOCKET-SERVER-001",
+    "A WebSocket server for MCP, model or policy traffic leaves its defaults open",
+    "A Python `websockets` server for MCP, model or policy traffic has no `origins`, `max_size=None`, "
+    "or a 0.0.0.0 default with no authentication, or sends `traceback.format_exc()` to the client. In "
+    "`websockets` the origin check is opt-in: `origins` defaults to None, which accepts every Origin, "
+    "and a WebSocket handshake is not subject to the same-origin policy, so any page open on that "
+    "machine can connect to `ws://127.0.0.1:8000`. Binding to loopback does not close that. `max_size=None` "
+    "takes a frame of any size from whoever connected, and a traceback hands them the server's internals.",
+    Severity.MEDIUM,
+    Category.TRANSPORT_SECURITY,
+    "Pass `origins=` with the origins you expect, or require a credential in the handshake through "
+    "`process_request`, which a page cannot set on a WebSocket. Leave `max_size` at its 1 MiB default or "
+    "set a bound. Send a fixed error string to the client and log the traceback on the server. Default "
+    "the host to 127.0.0.1, and make listening on every interface an explicit choice.",
+    sarif_name="WebSocketServerOpenDefaults",
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `serve` from the Python `websockets` package, under any import name, and `.send(...)` of "
+        "`traceback.format_exc`, `format_exception` or `format_tb`, or of a name assigned from one, in a "
+        "file with `mcp`, `policy`, `model`, `inference`, `agent` or `llm` as a word of its path, or that "
+        "imports mcp or fastmcp. So a `websockets` server anywhere else is not read, and neither is a "
+        "FastAPI or Starlette WebSocket or `unix_serve`. Paths with a tests, fixtures, examples, samples "
+        "or demos directory are skipped. A file that reads `origin` anywhere, or mentions authorization, "
+        "basic_auth, api_key, bearer, token or auth as a word, is taken to check it, with nothing to "
+        "show the check is applied. `**options` on the call stands the origin arm down, since it may set "
+        "`origins`. A host is read as a literal, or as a name matching a parameter with `host` in its "
+        "name and a literal default in the same file, so one from an environment variable or a "
+        "config object is not. A source file over 512 KB is not read."
+    ),
+)
 
 _r(
     "AAK-POLICY-OPTIONAL-TRUST-001",
