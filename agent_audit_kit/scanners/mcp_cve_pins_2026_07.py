@@ -1583,6 +1583,29 @@ _PINS: tuple[_Pin, ...] = (
          ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 24, 0),
          fix_label="1.32.0 (affected from 1.24.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-07 ---
+    # The same SDK's HTTP servers put no limit on how many array elements and object
+    # keys they validated in one request, so one request inside the default 4 MiB limit
+    # could exhaust server memory (CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453).
+    # Its range starts at 1.3.0 and reaches the 2.x server package, and 1.31.0 is
+    # affected by the two pins above as well, so it is its own rule. `latest` is fixed,
+    # so a stated version is required.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111768-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 3, 0),
+         fix_label="1.32.0 (affected from 1.3.0), and set maxToolInputElements",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111768-001", "@modelcontextprotocol/server",
+         ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0), and set maxToolInputElements",
+         requires_version=True, ecosystem="js"),
+    # MCP Toolbox for Databases before 0.25.0 had no way to validate the Host a request
+    # names (CVE-2026-11624, GHSA-76g7-m3xw-x9gr, CWE-346). OSV lists the Go module
+    # only; the npm `@toolbox-sdk/server` runs the binary of its own version, from
+    # 0.21.0. The launch side of the same rule, both flags still defaulting to `*`
+    # after the fix, is `mcp_toolbox_hosts`.
+    _Pin("AAK-MCP-TOOLBOX-HOSTS-001", "@toolbox-sdk/server",
+         ("@toolbox-sdk/server",), (0, 25, 0), fix_label="0.25.0, then set --allowed-hosts",
+         requires_version=True, ecosystem="js"),
     # mcp-ripgrep builds its rg command line as a string and runs it through
     # `spawn(program, args, {shell: true})`. The advanced-search and list-files
     # tools append ` -t ${fileType}` as given, where every pattern, path and glob

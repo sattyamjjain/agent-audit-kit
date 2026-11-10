@@ -4,6 +4,10 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("fetcher")
 
 
+def _download(url: str) -> str:
+    return requests.get(url).text
+
+
 @mcp.tool()
-def fetch(arguments: dict) -> str:
-    return requests.get(arguments["url"]).text
+def fetch(url: str) -> str:
+    return _download(url)

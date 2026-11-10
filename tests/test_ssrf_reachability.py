@@ -775,7 +775,7 @@ def _analyze_in_child(source: str, timeout: float = 60) -> tuple[list[tuple[obje
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     sites, seconds = json.loads(proc.stdout)
-    return [tuple(site) for site in sites], seconds
+    return [tuple(site)[:4] for site in sites], seconds
 
 
 _CYCLES = {
@@ -1225,7 +1225,7 @@ def _js_arg(length: int) -> str:
     ("const base = '169.254.169.254/latest';\nfetch(base);\n", [("fetch", 2, False, "169.254.169.254")]),
 ])
 def test_js_backend_call_shapes_keep_their_result(source: str, sites: list[tuple[object, ...]]) -> None:
-    assert [tuple(s) for s in analyze_js(source)] == sites
+    assert [tuple(s)[:4] for s in analyze_js(source)] == sites
 
 
 _CRAFTED_JS = {
@@ -1329,16 +1329,16 @@ def test_a_deep_fanout_still_reaches_its_source() -> None:
         + "const src = req.query.url + '169.254.169.254';\n"
         + "const top = n0 + n5;\nfetch(top);\n"
     )
-    assert [tuple(s)[2:] for s in analyze_js(js)] == [(True, "169.254.169.254")]
+    assert [tuple(s)[2:4] for s in analyze_js(js)] == [(True, "169.254.169.254")]
     py = (
         _fanout_tool(12, 0).replace("n0 = ", "n0 = n11 + ", 1).replace("n11 = ", "n11 = src + ", 1)
         + "    src = request.json['u'] + '169.254.169.254'\n"
         + "    top = n0 + n5\n    requests.get(top)\n"
     )
-    assert [tuple(s)[2:] for s in analyze_python(py)] == [(True, "169.254.169.254")]
+    assert [tuple(s)[2:4] for s in analyze_python(py)] == [(True, "169.254.169.254")]
     # One more assignment between the call and the request field is past the walk.
     deeper = py.replace("    top = n0 + n5\n", "    top = mid + n5\n    mid = n0\n")
-    assert [tuple(s)[2:] for s in analyze_python(deeper)] == [(False, "169.254.169.254")]
+    assert [tuple(s)[2:4] for s in analyze_python(deeper)] == [(False, "169.254.169.254")]
 
 
 @pytest.mark.parametrize("arg", [
@@ -1703,9 +1703,9 @@ def test_a_verdict_the_nesting_bound_cut_is_not_reused_where_it_is_not_cut() -> 
 
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
     js = "let a = b + c;\nlet b = a;\nlet c = req.body.target;\nfetch(a);\n"
-    assert [tuple(s) for s in analyze_js(js)] == [("fetch", 4, True, None)]
+    assert [tuple(s)[:4] for s in analyze_js(js)] == [("fetch", 4, True, None)]
     py = "import requests\na = b + c\nb = a\nc = '127.0.0.1'\nrequests.get(a)\n"
-    assert [tuple(s) for s in analyze_python(py)] == [("requests.get", 5, False, "127.0.0.1")]
+    assert [tuple(s)[:4] for s in analyze_python(py)] == [("requests.get", 5, False, "127.0.0.1")]
 
 
 def test_call_lines_are_counted_in_linear_time() -> None:

@@ -61,10 +61,12 @@ SARIF run's `properties.dataFeeds` and the console summary say which copy was
 read and when it was generated.
 
 - The bundled copy lists OSV MAL-2026-2144 (litellm 1.82.7, 1.82.8 and 1.107.0),
-  OSV MAL-2026-18425 (local-commander-agent 0.3.52, GHSA-7j62-5j84-72fv), OSV
-  MAL-2026-18776 (the crate env-test-guard 0.2.0 and 0.3.0, which GitHub lists as
-  GHSA-7w47-jmjx-gvm2: its `GitEnv::detect()` sends CI tokens out from a runner)
-  and the image index digest from LiteLLM's incident post. That post names the
+  OSV MAL-2026-18425 (local-commander-agent 0.3.52, GHSA-7j62-5j84-72fv),
+  OSV MAL-2026-2307 (axios 0.30.4 and 1.14.1, GHSA-fw8c-xr5c-95f9), OSV MAL-2026-2306
+  (every release of plain-crypto-js, GHSA-2x9r-6wxq-hrr7), OSV MAL-2026-18776 (the
+  crate env-test-guard 0.2.0 and 0.3.0, which GitHub lists as GHSA-7w47-jmjx-gvm2: its
+  `GitEnv::detect()` sends CI tokens out from a runner) and
+  the image index digest from LiteLLM's incident post. That post names the
   Docker Hub tags without the repository; `docker.io/litellm/litellm` carries
   them. Its GHCR digests are truncated, so none is listed.
 - `aak update` rebuilds the cached copy from OSV's exports for PyPI, npm,
@@ -92,7 +94,10 @@ read and when it was generated.
 
 ## How to fix
 
-Pin a version the feed does not list (for litellm, 1.106.2, the version LiteLLM
+Pin a version the feed does not list (for axios 1.14.1 or 0.30.4, 1.14.0 or 0.30.3,
+and delete `node_modules/plain-crypto-js`, as
+[the axios postmortem](https://github.com/axios/axios/issues/10636) advises; for
+litellm, 1.106.2, the version LiteLLM
 named), re-lock, and rebuild the environment or image from scratch. Treat every
 environment, host or cluster that installed or ran the release as compromised:
 rotate each credential it could reach and review its outbound traffic.

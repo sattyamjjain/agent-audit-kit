@@ -179,6 +179,100 @@ _PIN_MARKERS_RE = re.compile(
 )
 
 
+# AAK-SSRF-MAPPED-001. `ip_address("::ffff:169.254.169.254") in ip_network("169.254.0.0/16")` is
+# False on every Python: an IPv6 address is in no IPv4 network, and that is the only spelling of
+# the metadata address such a guard lets through. `.is_private` is not the same bug. It unwraps a
+# mapped address on every CPython tag tried from 3.9.0 to 3.13.11, so it is not reported.
+_MAPPED_HINT_RE = re.compile(r"\bip_network\b")
+# An answer to it: unwrapping, keeping to IPv4, or blocking the mapped range itself. A name that
+# resolves through gethostbyname or AF_INET comes back as IPv4 only.
+_MAPPED_ANSWER_RE = re.compile(r"ipv4_mapped|IPv4Address|IPv6Address|\.version\b|::ffff|\bAF_INET\b|gethostbyname")
+_URL_GUARD_RE = re.compile(r"\bssrf\b|urlparse|urlsplit|\.hostname\b|getaddrinfo", re.I)
+
+
+# A deny list, by the name of the function or of the networks. An allow list fails closed on a
+# mapped address (`target_in_scope`, `should_bypass_proxies`), so it is not the bug.
+_DENY_WORD_RE = re.compile(
+    r"private|block|deny|denied|internal|metadata|link_?local|loopback|reserved|ssrf|forbid|unsafe|disallow|banned|restricted",
+    re.I,
+)
+_ALLOW_WORD_RE = re.compile(r"trust|allow|whitelist|permit|scope", re.I)
+_PRIVATE_NETWORK_RE = re.compile(r"^(?:10\.|127\.|169\.254|192\.168|172\.(?:1[6-9]|2\d|3[01])\.|0\.0\.0\.0|100\.64)")
+
+
+def _parses_ip(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and _attr_name(node.func) == "ip_address"
+
+
+def _dotted_name(node: ast.AST) -> str:
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _names_private_network(node: ast.AST) -> bool:
+    """`ip_network("169.254.0.0/16")` written in place."""
+    return (
+        isinstance(node, ast.Call) and _attr_name(node.func) == "ip_network" and bool(node.args)
+        and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)
+        and bool(_PRIVATE_NETWORK_RE.match(node.args[0].value))
+    )
+
+
+def _mapped_compare(func: ast.FunctionDef | ast.AsyncFunctionDef) -> ast.Compare | None:
+    """The first deny-list test of `ip_address(...)` in this function, unless `.is_private` or
+    `.is_global` also reads an address here: those unwrap a mapped address, which closes the bypass."""
+    bound: set[str] = set()
+    loops: dict[str, str] = {}
+    compares: list[ast.Compare] = []
+    stack: list[ast.AST] = list(reversed(func.body))
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        stack.extend(reversed(list(ast.iter_child_nodes(node))))
+        if isinstance(node, ast.Attribute) and node.attr in ("is_private", "is_global"):
+            return None
+        if isinstance(node, ast.Assign) and _parses_ip(node.value):
+            bound.update(t.id for t in node.targets if isinstance(t, ast.Name))
+        elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)) and isinstance(node.target, ast.Name):
+            loops[node.target.id] = _dotted_name(node.iter)
+        elif isinstance(node, ast.Compare) and isinstance(node.ops[0], (ast.In, ast.NotIn)):
+            compares.append(node)
+    for compare in compares:
+        if not (_parses_ip(compare.left) or (isinstance(compare.left, ast.Name) and compare.left.id in bound)):
+            continue
+        right = compare.comparators[0]
+        name = _dotted_name(right)
+        networks = loops.get(name, name)
+        if _ALLOW_WORD_RE.search(networks):
+            continue
+        if _names_private_network(right) or _DENY_WORD_RE.search(f"{func.name} {networks}"):
+            return compare
+    return None
+
+
+def _mapped_findings(tree: ast.AST, rel: str) -> list[Finding]:
+    """One finding per function that tests `ip_address(...)` against a deny list and never unwraps it."""
+    findings: list[Finding] = []
+    for func in ast.walk(tree):
+        if isinstance(func, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            compare = _mapped_compare(func)
+            if compare is not None:
+                findings.append(make_finding(
+                    "AAK-SSRF-MAPPED-001",
+                    rel,
+                    f"{func.name}() tests an address against IPv4 networks and never unwraps "
+                    f"`.ipv4_mapped`: `::ffff:169.254.169.254` is in no IPv4 network, so it passes",
+                    line_number=compare.lineno,
+                ))
+    return findings
+
+
 def _attr_name(node: ast.AST) -> str | None:
     if isinstance(node, ast.Attribute):
         return node.attr
@@ -203,6 +297,12 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         return []
     findings: list[Finding] = []
     body_guards = _guard_functions(tree, text)
+    if _MAPPED_HINT_RE.search(text) and _URL_GUARD_RE.search(text) and not _MAPPED_ANSWER_RE.search(text):
+        rel = str(path.relative_to(project_root))
+        mapped = walk_tree(_mapped_findings, tree, rel)
+        if mapped:
+            scanned.add(rel)
+            findings.extend(mapped)
 
     class FuncVisitor(ast.NodeVisitor):
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:

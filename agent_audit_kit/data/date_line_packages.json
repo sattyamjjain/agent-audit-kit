@@ -1,0 +1,46 @@
+{
+  "read_on": "2026-11-07",
+  "source": "https://registry.npmjs.org/<package>: `versions[].deprecated`, `time` and `dist-tags`, read for each package on read_on and reviewed by hand. Add a package only after reading its registry record the same way.",
+  "packages": [
+    {
+      "ecosystem": "npm",
+      "name": "@modelcontextprotocol/server-everything",
+      "semver_from": "1.0.0",
+      "semver_published": "2026-10-11",
+      "date_line_from": "2025.1.14",
+      "date_line_top": "2026.8.31",
+      "latest_read": "2.2.1",
+      "npm_deprecation": "Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version."
+    },
+    {
+      "ecosystem": "npm",
+      "name": "@modelcontextprotocol/server-filesystem",
+      "semver_from": "1.0.0",
+      "semver_published": "2026-10-11",
+      "date_line_from": "2025.1.14",
+      "date_line_top": "2026.8.31",
+      "latest_read": "2.2.0",
+      "npm_deprecation": "Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version."
+    },
+    {
+      "ecosystem": "npm",
+      "name": "@modelcontextprotocol/server-memory",
+      "semver_from": "1.0.0",
+      "semver_published": "2026-10-11",
+      "date_line_from": "2025.4.25",
+      "date_line_top": "2026.8.31",
+      "latest_read": "2.1.0",
+      "npm_deprecation": "Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version."
+    },
+    {
+      "ecosystem": "npm",
+      "name": "@modelcontextprotocol/server-sequential-thinking",
+      "semver_from": "1.0.0",
+      "semver_published": "2026-10-11",
+      "date_line_from": "2025.7.1",
+      "date_line_top": "2026.8.31",
+      "latest_read": "2.1.1",
+      "npm_deprecation": "Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version."
+    }
+  ]
+}

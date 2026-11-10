@@ -276,7 +276,7 @@ def test_the_engine_drops_this_rule_only_where_a_rule_reports_its_cves(known: ob
 
 def test_the_bundled_feed_is_osv_s_records_unedited() -> None:
     data = json.loads(advisory_feed.BUNDLED_FEED.read_text())
-    assert [r["id"] for r in data["records"]] == [VLLM, MLFLOW]
+    assert [r["id"] for r in data["records"]] == [VLLM, MLFLOW, "GHSA-82r6-8w77-94w6", "GHSA-5p39-cfhj-2xmp"]
     for record in data["records"]:
         assert record["schema_version"] and record["details"] and record["published"]  # as OSV returns it
     feed = advisory_feed.load_feed()
@@ -417,7 +417,7 @@ def test_aak_update_reports_both_feeds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 4 entries" in result.output  # MAL-2026-9001 and the three bundled ones
+    assert "Malicious-release feed updated: 6 entries" in result.output  # MAL-2026-9001 and the five bundled ones
     assert "Advisory feed updated: 1 entries for 1 packages (PyPI 1, npm 0, crates.io 0, Go 0)" in result.output
     assert len(calls) == 4  # PyPI, npm, crates.io and Go, each once, read by both feeds
 
@@ -492,3 +492,146 @@ def test_a_rule_citing_the_cve_on_another_line_does_not_drop_the_finding() -> No
     assert known in _drop_known_vulns_a_rule_reports([elsewhere, known])  # type: ignore[list-item]
     unplaced = dataclasses.replace(_pin("uv.lock", Severity.CRITICAL), line_number=None)
     assert known in _drop_known_vulns_a_rule_reports([unplaced, known])  # type: ignore[list-item]
+
+
+# ---- AAK-KNOWN-VULN-003: an MCP launch that pins no release ------------------------------------
+# DBHub (`@bytebase/dbhub`) is started straight from an MCP config, and below 0.22.6 MySQL comment
+# syntax slipped past its read-only SQL validation (GHSA-j656-3hf2-fvjc, 2 Nov 2026; OSV lists it
+# under CVE-2026-61789). The launch names no release, so -001 could not judge it.
+
+from agent_audit_kit.scanners.known_vulns import RULE_LAUNCH  # noqa: E402
+
+DBHUB = "GHSA-j656-3hf2-fvjc"
+LAUNCH_RULES = {RULE, RULE_LAUNCH, "AAK-SUPPLY-001", "AAK-MCP-007"}
+
+
+def _mcp(root: Path, *args: str, command: str = "npx", name: str = ".mcp.json", servers: tuple[str, ...] = ("dbhub",)) -> None:
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"mcpServers": {s: {"command": command, "args": list(args)} for s in servers}}, indent=2))
+
+
+def _launches(root: Path, **kwargs: object) -> list[tuple[str, Severity, str, int | None, str]]:
+    findings, _ = scan(root, **kwargs)  # type: ignore[arg-type]
+    return sorted((f.rule_id, f.severity, f.file_path, f.line_number, _ID_RE.search(f.evidence).group(0))  # type: ignore[union-attr]
+                  for f in findings)
+
+
+def test_an_unpinned_dbhub_launch_is_reported_at_medium(feed: Path) -> None:
+    root = FIXTURES / "launch"
+    assert _launches(root) == [(RULE_LAUNCH, Severity.MEDIUM, ".mcp.json", 5, DBHUB)]
+    (finding,), _ = scan(root)
+    for part in ("Server 'dbhub' arg: @bytebase/dbhub is launched by `npx @bytebase/dbhub`", "with no version pinned",
+                 "GHSA-j656-3hf2-fvjc (CVE-2026-61789", "below 0.22.6", "fixed in 0.22.6",
+                 "`npx -y @bytebase/dbhub@0.22.6` or later", "`aak scan --include-user-config`"):
+        assert part in finding.evidence, part
+    assert evidence_cves(finding.evidence) == {"CVE-2026-61789"}
+
+
+def test_the_launch_is_reported_once(feed: Path) -> None:
+    """AAK-SUPPLY-001 ("no version pin") and AAK-MCP-007 stand down on the launch -003 reports."""
+    result = run_scan(project_root=FIXTURES / "launch")
+    assert [f.rule_id for f in result.findings if f.rule_id in LAUNCH_RULES] == [RULE_LAUNCH]
+    alone = run_scan(project_root=FIXTURES / "launch", exclude_rules=[RULE_LAUNCH])
+    assert [f.rule_id for f in alone.findings if f.rule_id in LAUNCH_RULES] == ["AAK-SUPPLY-001"]
+
+
+@pytest.mark.parametrize("spec, expected", [
+    ("@bytebase/dbhub@latest", [(RULE_LAUNCH, Severity.MEDIUM, DBHUB)]),   # a tag is today's newest
+    ("@bytebase/dbhub@^0.22.0", [(RULE_LAUNCH, Severity.MEDIUM, DBHUB)]),  # admits 0.22.0 to 0.22.5 and the fix
+    ("@bytebase/dbhub@0.22.6", []),
+    ("@bytebase/dbhub@0.22.5", [(RULE, Severity.MEDIUM, DBHUB)]),          # one release: -001, as before
+    ("@bytebase/dbhub@^0.23.0", []),                                       # admits no affected release
+    ("github:bytebase/dbhub", []),                                         # not the registry
+    ("left-pad", []),                                                       # no advisory
+])
+def test_what_an_npx_launch_is_judged_as(tmp_path: Path, feed: Path, spec: str,
+                                         expected: list[tuple[str, Severity, str]]) -> None:
+    _mcp(tmp_path, "-y", spec)
+    assert [(rule, severity, ident) for rule, severity, _, _, ident in _launches(tmp_path)] == expected
+
+
+def test_an_advisory_with_no_fixed_release_takes_its_own_severity(tmp_path: Path, feed: Path) -> None:
+    _mcp(tmp_path, "-y", "aak-test-nofix-mcp")
+    (finding,), _ = scan(tmp_path)
+    assert (finding.rule_id, finding.severity) == (RULE_LAUNCH, Severity.HIGH)
+    assert "names no fixed release" in finding.evidence and "every release" in finding.evidence
+
+
+@pytest.mark.parametrize("spec, severity", [
+    ("lodash", Severity.MEDIUM),           # the fix may be what npx fetches
+    ("lodash@<4.17.0", Severity.HIGH),     # every release it admits is affected
+])
+def test_a_range_that_admits_only_affected_releases_takes_the_advisory_s_severity(
+        tmp_path: Path, feed: Path, spec: str, severity: Severity) -> None:
+    _mcp(tmp_path, "-y", spec)
+    assert [(rule, sev) for rule, sev, *_ in _launches(tmp_path)] == [(RULE_LAUNCH, severity)]
+
+
+def test_a_uvx_launch_names_the_pinned_form_for_its_launcher(tmp_path: Path, feed: Path) -> None:
+    _mcp(tmp_path, "vllm", command="uvx", servers=("llm",))
+    (finding,), _ = scan(tmp_path)
+    assert finding.rule_id == RULE_LAUNCH and "`uvx vllm==0.32.0` or later" in finding.evidence
+
+
+def test_each_server_is_its_own_launch_and_vs_code_s_map_is_read(tmp_path: Path, feed: Path) -> None:
+    _mcp(tmp_path, "-y", "@bytebase/dbhub", servers=("a", "b"))
+    _mcp(tmp_path, "-y", "@bytebase/dbhub", name=".vscode/mcp.json")
+    found = [(path, rule) for rule, _, path, _, _ in _launches(tmp_path)]
+    assert found == [(".mcp.json", RULE_LAUNCH), (".mcp.json", RULE_LAUNCH), (".vscode/mcp.json", RULE_LAUNCH)]
+
+
+# ---- cached releases (--include-user-config) -------------------------------------------------------
+
+
+def _npx_cache(root: Path, name: str, version: str) -> Path:
+    cache = root / "npm-cache"
+    package = cache / "_npx" / "0123456789abcdef" / "node_modules" / name
+    package.mkdir(parents=True)
+    (package / "package.json").write_text(json.dumps({"name": name, "version": version}, indent=2))
+    return cache
+
+
+@pytest.mark.parametrize("version, fires", [("0.22.4", True), ("0.22.6", False)])
+def test_a_cached_dbhub_is_read_only_when_asked(tmp_path: Path, feed: Path, monkeypatch: pytest.MonkeyPatch,
+                                               version: str, fires: bool) -> None:
+    cache = _npx_cache(tmp_path, "@bytebase/dbhub", version)
+    monkeypatch.setenv("npm_config_cache", str(cache))
+    project = tmp_path / "project"
+    project.mkdir()
+    assert scan(project)[0] == []
+    findings, _ = scan(project, include_user_config=True)
+    assert bool(findings) is fires
+    if fires:
+        (finding,) = findings
+        where = cache / "_npx" / "0123456789abcdef" / "node_modules" / "@bytebase" / "dbhub"
+        assert (finding.rule_id, finding.severity) == (RULE, Severity.MEDIUM)
+        assert finding.file_path == (where / "package.json").as_posix() and finding.line_number == 3
+        assert finding.evidence.startswith(f"npx cache at {where.as_posix()} holds @bytebase/dbhub 0.22.4, which {DBHUB}")
+        assert "it is fixed in 0.22.6" in finding.evidence
+
+
+def test_a_cached_uvx_environment_is_read(tmp_path: Path, feed: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cache = tmp_path / "uv-cache"
+    env = cache / "environments-v2" / "253c7120a97b53a1" / "b2ea1928ed61d84d"
+    dist = env / "lib" / "python3.12" / "site-packages" / "vllm-0.31.0.dist-info"
+    dist.mkdir(parents=True)
+    (dist / "METADATA").write_text("Metadata-Version: 2.1\nName: vllm\nVersion: 0.31.0\n")
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    project = tmp_path / "project"
+    project.mkdir()
+    (finding,), _ = scan(project, include_user_config=True)
+    assert (finding.rule_id, finding.severity, finding.line_number) == (RULE, Severity.HIGH, 3)
+    assert finding.evidence.startswith(f"uvx cache at {dist.as_posix()} holds vllm 0.31.0, which {VLLM}")
+
+
+def test_aak_scan_include_user_config_reaches_known_vulns(tmp_path: Path, feed: Path,
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("npm_config_cache", str(_npx_cache(tmp_path, "@bytebase/dbhub", "0.22.4")))
+    project = tmp_path / "project"
+    project.mkdir()
+    args = ["scan", str(project), "--format", "json", "--severity", "info", "--fail-on", "none"]
+    plain = json.loads(CliRunner().invoke(cli, args).output)
+    asked = json.loads(CliRunner().invoke(cli, args + ["--include-user-config"]).output)
+    assert RULE not in {f["ruleId"] for f in plain["findings"]}
+    assert RULE in {f["ruleId"] for f in asked["findings"]}

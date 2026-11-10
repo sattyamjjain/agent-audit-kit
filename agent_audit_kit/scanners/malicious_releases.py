@@ -55,12 +55,13 @@ import re
 from pathlib import Path
 from typing import Callable, Iterator
 
-from agent_audit_kit.malicious_feed import Feed, Release, canonical_name, load_feed, version_order
+from agent_audit_kit.malicious_feed import Feed, Release, load_feed, version_order
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import read_manifest, read_text
-from ._helpers import MCP_SERVER_KEYS, SKIP_DIRS, loads_json, make_finding, read_text_capped, strip_jsonc
-from ._launchers import launch_head, npm_spec, py_spec
+from ._helpers import MCP_SERVER_KEYS, SKIP_DIRS, make_finding, read_text_capped, strip_jsonc
+from ._launcher_caches import metadata_version_line, npm_cache_dir, npx_cached, resolved, uv_cache_dir, uv_cached
+from ._launchers import is_registry_spec, launch_head
 from ._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
@@ -77,8 +78,6 @@ _RULE = "AAK-MALICIOUS-RELEASE-001"
 _RULE_UNPINNED = "AAK-MALICIOUS-RELEASE-002"
 # How many listed versions an AAK-MALICIOUS-RELEASE-002 finding names per entry.
 _SHOWN_VERSIONS = 10
-_PACKAGE_JSON_BYTES = 1_000_000
-_VERSION_KEY_RE = re.compile(r'^\s*"version"\s*:')
 
 _MANIFEST_NAMES = frozenset({"pyproject.toml", "pipfile", "package.json", ".mcp.json", "mcp.json",
                              "claude_desktop_config.json"})
@@ -104,6 +103,9 @@ _LINE_COMMENT_RE = re.compile(_COMMENT_RE.pattern, re.M)
 # How far before a digest the reference it ends is looked for, and quoted from.
 _REF_WINDOW = 256
 _OPERATOR_RE = re.compile(r"^\s*(?:===|==|=)?\s*")
+# How `Release.describe` words what an entry lists.
+_LISTS = "which lists "
+_EVERY_RELEASE = "every release of "
 
 
 def _is_manifest(name: str) -> bool:
@@ -136,6 +138,25 @@ def exact_pin(declaration: Declaration) -> str | None:
     if spans is None or exact_version(spans) is None:
         return None
     return _OPERATOR_RE.sub("", declaration.version).strip() or None
+
+
+def listed_release(evidence: str) -> tuple[str, str | None] | None:
+    """The (name, version) an AAK-MALICIOUS-RELEASE-001 finding reports, version
+    None for an entry listing every release; None for a finding that names no
+    package, such as an image digest. Every package finding ends in
+    `Release.describe` and `_feed_note`, after the free text of a declaration, so
+    the last `which lists` is the feed's own. `engine.run_scan` reads this to stand
+    the older table rules down on a release this rule reports."""
+    start = evidence.rfind(_LISTS)
+    if start < 0:
+        return None
+    tail = evidence[start + len(_LISTS):]
+    ends = [i for i in (tail.find(" ("), tail.find(". Feed:")) if i >= 0]
+    listed = tail[:min(ends)] if ends else tail
+    if listed.startswith(_EVERY_RELEASE):
+        return listed[len(_EVERY_RELEASE):], None
+    name, _, version = listed.rpartition(" ")
+    return (name, version) if name else None
 
 
 def _feed_note(feed: Feed, release_url: str) -> str:
@@ -206,11 +227,7 @@ def _manifest_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
 
 def _is_registry_launch(declaration: Declaration) -> bool:
     """Does the launch fetch from the registry, not a git URL or a path?"""
-    if not declaration.spec:
-        return True
-    if declaration.ecosystem == "js":
-        return npm_spec(declaration.spec).kind == "registry"
-    return py_spec(declaration.spec).kind == "registry"
+    return is_registry_spec(declaration.ecosystem, declaration.spec)
 
 
 def _unpinned_risk(declaration: Declaration, releases: tuple[Release, ...]) -> list[Release]:
@@ -307,16 +324,8 @@ def _lockfile_findings(path: Path, rel: str, feed: Feed) -> list[Finding]:
     return findings
 
 
-def _version_line(metadata: Path) -> int | None:
-    text = read_text(metadata, 1_000_000)
-    if text is None:
-        return None
-    for number, line in enumerate(text.splitlines(), 1):
-        if line.startswith("Version:"):
-            return number
-        if not line.strip():
-            break  # the headers end at the first blank line
-    return None
+# The `Version:` line of a dist-info METADATA (known_vulns and mcp_codeexec_sandbox import it).
+_version_line = metadata_version_line
 
 
 def _listed_dist_infos(site_dir: Path, feed: Feed) -> Iterator[tuple[Path, str, str, list[Release]]]:
@@ -337,7 +346,7 @@ def _installed_findings(project_root: Path, feed: Feed, scanned: set[str], repor
     findings: list[Finding] = []
     for site_dir in site_package_dirs(project_root):
         for directory, name, version, releases in _listed_dist_infos(site_dir, feed):
-            reported.add(_resolved(directory))
+            reported.add(resolved(directory))
             metadata = directory / "METADATA"
             where = metadata if metadata.is_file() else directory
             rel = where.relative_to(project_root).as_posix()
@@ -355,106 +364,29 @@ def _installed_findings(project_root: Path, feed: Feed, scanned: set[str], repor
 
 
 # ---- the launchers' caches on this host (include_user_config) --------------------------
-
-
-def _resolved(path: Path) -> Path:
-    try:
-        return path.resolve()
-    except (OSError, RuntimeError):
-        return path
-
-
-def npm_cache_dir() -> Path:
-    """npm's cache directory, as npm 7+ picks it: the `cache` setting from an
-    `npm_config_cache` environment variable (any case), else `~/.npm`, or
-    `%LocalAppData%\\npm-cache` on Windows. An `.npmrc` `cache=` line is not read."""
-    for key, value in os.environ.items():
-        if key.lower() == "npm_config_cache" and value:
-            return Path(value).expanduser()
-    if os.name == "nt":
-        base = os.environ.get("LOCALAPPDATA")
-        return (Path(base) if base else Path.home()) / "npm-cache"
-    return Path.home() / ".npm"
-
-
-def uv_cache_dir() -> Path:
-    """uv's cache directory, as uv documents it: `UV_CACHE_DIR`, else
-    `$XDG_CACHE_HOME/uv` or `~/.cache/uv`, or `%LOCALAPPDATA%\\uv\\cache` on Windows.
-    `--cache-dir` and a `tool.uv.cache-dir` setting are not read."""
-    value = os.environ.get("UV_CACHE_DIR")
-    if value:
-        return Path(value).expanduser()
-    if os.name == "nt":
-        base = os.environ.get("LOCALAPPDATA")
-        return (Path(base) if base else Path.home() / "AppData" / "Local") / "uv" / "cache"
-    xdg = os.environ.get("XDG_CACHE_HOME")
-    return (Path(xdg) if xdg and os.path.isabs(xdg) else Path.home() / ".cache") / "uv"
-
-
-def _subdirs(directory: Path) -> list[os.DirEntry[str]]:
-    """The directories directly inside one, sorted, symlinks left out; none when unreadable."""
-    try:
-        with os.scandir(directory) as it:
-            return sorted((e for e in it if e.is_dir(follow_symlinks=False)), key=lambda e: e.name)
-    except OSError:
-        return []
-
-
-def _npx_packages(modules: Path) -> Iterator[tuple[str, Path]]:
-    """(name, directory) for every package at the top of one node_modules, scoped ones included."""
-    for entry in _subdirs(modules):
-        if entry.name.startswith("@"):
-            for scoped in _subdirs(Path(entry.path)):
-                yield f"{entry.name}/{scoped.name}", Path(scoped.path)
-        elif not entry.name.startswith("."):
-            yield entry.name, Path(entry.path)
-
-
-def _package_version(package_json: Path) -> tuple[str, int | None] | None:
-    """A package.json's `version` and the line it is on, or None."""
-    text = read_text(package_json, _PACKAGE_JSON_BYTES)
-    if text is None:
-        return None
-    try:
-        data = loads_json(text, package_json)
-    except ValueError:
-        return None
-    version = data.get("version") if isinstance(data, dict) else None
-    if not isinstance(version, str) or not version.strip():
-        return None
-    line = next((n for n, row in enumerate(text.splitlines(), 1) if _VERSION_KEY_RE.match(row)), None)
-    return version.strip(), line
+#
+# Where npx and uv keep what they fetched, and how a cache is walked, live in
+# `_launcher_caches`, shared with AAK-KNOWN-VULN-001; this module decides what a
+# cached release means against the malicious-release feed.
 
 
 def _npx_cache_findings(feed: Feed, scanned: set[str]) -> list[Finding]:
     """Releases the feed lists in npm's npx cache: npx installs a launched package
     and its dependencies into `<cache>/_npx/<hash>/node_modules/` and runs it from there."""
-    wanted = feed.names("npm")
-    npx = npm_cache_dir() / "_npx"
-    if not wanted or not npx.is_dir():
-        return []
     findings: list[Finding] = []
-    for install in _subdirs(npx):
-        for name, directory in _npx_packages(Path(install.path) / "node_modules"):
-            if canonical_name("npm", name) not in wanted:
-                continue
-            package_json = directory / "package.json"
-            found = _package_version(package_json)
-            if found is None:
-                continue
-            version, line = found
-            releases = feed.match("npm", name, version)
-            if not releases:
-                continue
-            shown = package_json.as_posix()
-            scanned.add(shown)
-            for release in releases:
-                findings.append(make_finding(
-                    _RULE, shown,
-                    f"npx cache at {directory.as_posix()} holds {name} {version}, a malicious "
-                    f"release: {release.describe(version)}{_feed_note(feed, release.url)}",
-                    line,
-                ))
+    for cached in npx_cached(feed.names("npm")):
+        releases = feed.match("npm", cached.name, cached.version)
+        if not releases:
+            continue
+        shown = cached.where.as_posix()
+        scanned.add(shown)
+        for release in releases:
+            findings.append(make_finding(
+                _RULE, shown,
+                f"npx cache at {cached.directory.as_posix()} holds {cached.name} {cached.version}, a malicious "
+                f"release: {release.describe(cached.version)}{_feed_note(feed, release.url)}",
+                cached.line,
+            ))
     return findings
 
 
@@ -462,42 +394,22 @@ def _uv_cache_findings(feed: Feed, scanned: set[str], reported: set[Path]) -> li
     """Releases the feed lists in uv's cached tool environments: `uvx` runs a tool
     in a venv it keeps at `<cache>/environments-v*/<hash>/<hash>`, a link into
     the cache's `archive-v0/` on uv 0.9."""
-    root = uv_cache_dir()
-    if not feed.names("PyPI") or not root.is_dir():
-        return []
     findings: list[Finding] = []
-    seen: set[Path] = set()
-    for bucket in _subdirs(root):
-        if not bucket.name.startswith("environments-v"):
+    for cached in uv_cached(feed.names("PyPI")):
+        if cached.real in reported:
+            continue  # the scan root holds this environment, and reported it
+        releases = feed.match("PyPI", cached.name, cached.version)
+        if not releases:
             continue
-        for interpreter in _subdirs(Path(bucket.path)):
-            try:
-                with os.scandir(interpreter.path) as it:
-                    links = sorted(Path(e.path) for e in it)
-            except OSError:
-                continue
-            for link in links:
-                target = _resolved(link)
-                if target in seen or not target.is_dir():
-                    continue
-                seen.add(target)
-                for site_dir in site_package_dirs(target):
-                    for directory, name, version, releases in _listed_dist_infos(site_dir, feed):
-                        if _resolved(directory) in reported:
-                            continue  # the scan root holds this environment, and reported it
-                        shown_dir = link / directory.relative_to(target)
-                        metadata = directory / "METADATA"
-                        where = (shown_dir / "METADATA") if metadata.is_file() else shown_dir
-                        scanned.add(where.as_posix())
-                        line = _version_line(metadata) if metadata.is_file() else None
-                        for release in releases:
-                            findings.append(make_finding(
-                                _RULE, where.as_posix(),
-                                f"uvx cache at {shown_dir.as_posix()} holds {name} {version}, a "
-                                f"malicious release: {release.describe(version)}"
-                                f"{_feed_note(feed, release.url)}",
-                                line,
-                            ))
+        shown = cached.where.as_posix()
+        scanned.add(shown)
+        for release in releases:
+            findings.append(make_finding(
+                _RULE, shown,
+                f"uvx cache at {cached.directory.as_posix()} holds {cached.name} {cached.version}, a "
+                f"malicious release: {release.describe(cached.version)}{_feed_note(feed, release.url)}",
+                cached.line,
+            ))
     return findings
 
 
@@ -587,4 +499,4 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
     return findings, scanned
 
 
-__all__ = ["scan", "exact_pin", "npm_cache_dir", "uv_cache_dir"]
+__all__ = ["scan", "exact_pin", "listed_release", "npm_cache_dir", "uv_cache_dir"]

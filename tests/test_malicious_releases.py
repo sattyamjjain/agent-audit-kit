@@ -290,7 +290,7 @@ def test_refresh_reads_a_crates_io_mal_record_from_one_download() -> None:
 
 def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
-    litellm, local_commander, env_test_guard = data["entries"]
+    litellm, local_commander, axios, plain_crypto, env_test_guard = data["entries"]
     assert (litellm["id"], litellm["ecosystem"], litellm["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
     assert litellm["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
     assert litellm["modified"] == "2026-10-21T22:01:01.881791175Z"
@@ -300,6 +300,14 @@ def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     assert malicious_feed.osv_entries(record, "npm") == [local_commander]
     assert local_commander["versions"] == ["0.3.52"] and local_commander["aliases"] == ["GHSA-7j62-5j84-72fv"]
     assert "MAL-2026-2144" in data["source"] and "MAL-2026-18425" in data["source"]
+    # The axios compromise of 31 March 2026, saved unedited from
+    # https://api.osv.dev/v1/vulns/<id> on 2026-11-07.
+    for entry, ident in ((axios, "MAL-2026-2307"), (plain_crypto, "MAL-2026-2306")):
+        record = json.loads((FIXTURES / "osv" / f"{ident}.json").read_text())
+        assert malicious_feed.osv_entries(record, "npm") == [entry]
+        assert ident in data["source"]
+    assert axios["versions"] == ["0.30.4", "1.14.1"] and "all_versions" not in axios
+    assert plain_crypto["all_versions"] is True and "0.0.1-security" in plain_crypto["versions"]
     # MAL-2026-18776 the same way, from https://api.osv.dev/v1/vulns/MAL-2026-18776 on
     # 2026-11-10. The record names no alias: GitHub's GHSA-7w47-jmjx-gvm2 lists the same two
     # releases, but OSV does not link it, so the entry does not either.
@@ -401,10 +409,11 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
     data = json.loads(done.path.read_text())
     assert data["generated_at"] == "2026-10-28T12:00:00Z"
     assert sorted(e["id"] for e in data["entries"]) == [
-        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18776", "MAL-2026-2144", "MAL-2026-3", "MAL-2026-4",
+        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18776", "MAL-2026-2144", "MAL-2026-2306", "MAL-2026-2307",
+        "MAL-2026-3", "MAL-2026-4",
     ]
     assert data["oci"][0]["digests"] == [DIGEST]
-    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 3}
+    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 5}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
     assert feed.match("npm", "aak-squat", "9.9.9") and feed.match("npm", "aak-ranged", "1.2.5")
@@ -460,7 +469,7 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 6 entries" in result.output
+    assert "Malicious-release feed updated: 8 entries" in result.output
     assert "GitHub: skipped" in result.output
 
 
