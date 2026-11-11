@@ -2268,9 +2268,21 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 # arrived in 2.1.14 (the CHANGELOG's "Added support for pinning plugins to
 # specific git commit SHAs"), so every release from the old floor up is
 # affected. The evidence names each bug only in the range it applies to.
+#
+# Floor raised 2.1.179 -> 2.1.251 on 2026-11-11 for CVE-2026-88968 (HIGH, CVSS
+# 4.0 7.7, GHSA-5xjx-9qx6-jcrv): the Edit tool validated its target by pathname
+# and symlink resolution not bound to the directory's inode or file descriptor,
+# so code running in the macOS Bash sandbox could swap an in-workspace parent
+# directory for a symlink after the check and have the unsandboxed Edit write a
+# file outside the workspace. The same class as CVE-2026-103435, at the same
+# severity, and a higher fix, so the floor moves. The advisory gives every
+# release below 2.1.251, with no lower bound, and the 2.1.251 CHANGELOG lists
+# the fix ("following a symlink swapped inside the working directory after the
+# permission check").
 # ---------------------------------------------------------------------------
 
-_CLAUDECODE_PATCHED = (2, 1, 179)
+_CLAUDECODE_PATCHED = (2, 1, 251)
+_CLAUDECODE_PLUGIN_PIN_PATCHED = (2, 1, 179)
 _CLAUDECODE_SYMLINK_PATCHED = (2, 1, 129)
 _CLAUDECODE_TRUST_INTRODUCED = (2, 1, 63)
 _CLAUDECODE_TRUST_PATCHED = (2, 1, 84)
@@ -2308,12 +2320,16 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
             defects.append(
                 "CVE-2026-103435 write-time symlink following (fixed in 2.1.129)"
             )
-        if version >= _CLAUDECODE_PLUGIN_PIN_INTRODUCED:
+        if _CLAUDECODE_PLUGIN_PIN_INTRODUCED <= version < _CLAUDECODE_PLUGIN_PIN_PATCHED:
             defects.append(
                 "CVE-2026-86063 plugin commit-pin bypass (fixed in 2.1.179)"
             )
-        # Below the floor a release is either below 2.1.129 or has commit pins,
-        # so the list is never empty.
+        # The advisory gives no lower bound, so every release below the floor
+        # carries this one and the list is never empty.
+        defects.append(
+            "CVE-2026-88968 Edit tool symlink race out of the workspace "
+            "(fixed in 2.1.251)"
+        )
         listed = defects[-1] if len(defects) == 1 else (
             ", ".join(defects[:-1]) + " and " + defects[-1]
         )

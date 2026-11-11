@@ -34,7 +34,10 @@ other projects. NetBox MCP Server is on neither registry either: its README runs
 app whose kernel serves MCP, ships as desktop installers and the Docker Hub image
 `b3log/siyuan`, tagged `vX.Y.Z` by release; npm's `siyuan` is its plugin API
 typings and PyPI's a third-party client, so the image tag is the one place a
-deployment states its release.
+deployment states its release. OpenHuman, an agent harness, ships as desktop
+installers and the image `ghcr.io/tinyhumansai/openhuman-core`; its Rust crate
+is not on crates.io, where `openhuman` is a 2023 crate of OpenHuman-ai's, and
+npm's and PyPI's `openhuman` are 2023 packages of other projects as well.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -475,6 +478,23 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-SIYUAN-CVE-2026-116168-001", "SiYuan", "b3log/siyuan",
         (3, 8, 7), "from 3.7.0 below 3.8.7", "Fixed in 3.8.7.",
         ("CVE-2026-116168",), introduced=(3, 7, 0),
+    ),
+    # CVE-2026-54140 (#1219): OpenHuman's MCP client put the names, descriptions and
+    # parameter definitions a configured server returned into the model's context
+    # unchecked. The image is the core server; its labels name the commit of each
+    # tag. `src/openhuman/mcp_client/` is absent at v0.53.43 (2b64ea8a) and present
+    # at v0.54.0 (c25fc8e5), with McpRemoteTool and a tool that hands the model
+    # each tool's description. The fix, 00b8a669 (sanitize.rs, `apply_safety_filter`),
+    # is not in v0.57.11 (8476248e) and is in v0.57.12 (c903227e), so the range ends
+    # there, one release below the advisory's 0.57.13: no git tag or GitHub release
+    # names 0.57.12, but the image does. GHCR tags each release as `vX.Y.Z` and
+    # `X.Y.Z`, and `latest` was the v0.64.15 digest on 2026-11-11.
+    _ImagePin(
+        "AAK-MCP-OPENHUMAN-CVE-2026-54140-001", "OpenHuman",
+        "ghcr.io/tinyhumansai/openhuman-core",
+        (0, 57, 12), "from 0.54.0 below 0.57.12",
+        "Fixed in the 0.57.12 image; the advisory names 0.57.13.",
+        ("CVE-2026-54140",), introduced=(0, 54, 0),
     ),
 )
 

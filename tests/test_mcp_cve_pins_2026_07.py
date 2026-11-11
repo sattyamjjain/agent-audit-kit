@@ -487,14 +487,15 @@ def test_healthomics_below_floor_fires(tmp_path: Path) -> None:
     )
 
 
-def test_openclaw_rule_cites_all_five_cves() -> None:
+def test_openclaw_rule_cites_all_six_cves() -> None:
     # CVE-2026-100585 (#809) joined the pin that already carried the first two
     # and raised its floor to 2026.7.1. CVE-2026-100587 (#839) and CVE-2026-100596
     # (#840) are both `< 2026.7.1` per their GHSAs, so they join at that floor.
+    # CVE-2026-62197 (#1128) is `< 2026.6.6`, under it.
     rule = RULES["AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
     assert set(rule.cve_references) == {
         "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
-        "CVE-2026-100587", "CVE-2026-100596",
+        "CVE-2026-100587", "CVE-2026-100596", "CVE-2026-62197",
     }
 
 

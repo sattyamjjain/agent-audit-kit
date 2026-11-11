@@ -20,12 +20,16 @@ available) before shipping:
   - mcp-server-kubernetes          >= 3.9.0   (CVE-2026-61459)
   - astrbot                        >  4.25.2  (CVE-2026-15501; NVD "up to 4.25.2")
   - awslabs.healthlake-mcp-server  >= 0.0.14  (CVE-2026-15643)
-  - praisonai                      >= 4.6.78  (CVE-2026-61427)
+  - praisonai                      >= 4.6.78  (CVE-2026-61427; CVE-2026-61438 names the
+    same floor, which no published release reaches: PyPI has no 4.6.78, and every
+    later release still ships its job-workflow executor, from 4.6.103 through the
+    required `praisonai-code`. The rule's limitations say so)
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
   - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
     CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound;
-    CVE-2026-100587 and CVE-2026-100596 sit at the same floor)
+    CVE-2026-100587 and CVE-2026-100596 sit at the same floor, and CVE-2026-62197,
+    the browser tool's CDP discovery, under it at 2026.6.6)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
   - mcp (MCP Python SDK)            >= 1.29.1, and 2.0.x below 2.1.0  (CVE-2026-52869,
@@ -181,7 +185,7 @@ available) before shipping:
   - @anthropic-ai/claude-code      2.0.68 <= v < 2.1.260  (CVE-2026-103012; a stored API
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
     a stated version is required, and its own rule beside the HIGH folder-trust pin
-    in `supply_chain`, whose floor is 2.1.179)
+    in `supply_chain`, whose floor is 2.1.251)
   - @anthropic-ai/claude-code      < 1.0.111  (CVE-2025-59536; project code ran before
     the startup trust dialog. AAK-HOOK-RCE-003, which read settings.local.json
     commands until 2026-10-17. A stated version is required)
@@ -228,6 +232,10 @@ available) before shipping:
   - network-ai                     4.0.0 <= v < 5.15.2  (CVE-2026-109332; the MCP SSE
     transport answers other origins. LOW, its own rule beside the HIGH pin, and a
     stated version is required)
+  - network-ai                     5.0.0 <= v < 5.15.5  (CVE-2026-120311 and
+    CVE-2026-120312; FileJobStore job ids and AgentVCR cassette names escape their
+    directory. HIGH, its own rule; the records' 5.13.4 lower bound is too high, the
+    tarballs carry the flaw from 5.0.0. A stated version is required)
   - claude-agent-sdk               >= 0.2.121, and
     @anthropic-ai/claude-agent-sdk >= 0.3.208  (CVE-2026-96620; `resume` reaches the
     Claude CLI as its own argv token, so a session id starting with `-` injects a
@@ -291,6 +299,43 @@ available) before shipping:
   - mcp-ffmpeg                     >= 1.0.3, presence-only  (CVE-2026-117568; video
     paths reach a double-quoted `child_process.exec` string. No fixed release, and
     1.0.0 to 1.0.2 had no MCP tools. npm only: PyPI's `mcp-ffmpeg` is another project)
+  - @ai-sdlc/plugin-mcp-server     <  0.32.0  (CVE-2026-117558; `check_issue` and
+    `check_pr_status` put the `repo` argument into a `gh` command string for
+    `execSync`. Every release from 0.8.1, the first. A stated version is required)
+  - droidmind                      presence-only  (CVE-2026-117559; the shell
+    allowlist reads only the first word, so `$()` and backticks pass, and
+    `list_directory` takes its path unchecked. Every release, 0.2.0 to 0.4.0)
+  - sf-mcp                         presence-only  (CVE-2026-117561; flag values reach
+    `execSync` through an `escapeValue` that only quotes values with spaces. Every
+    release, 1.1.0 to 1.3.2. npm only: PyPI's `sf-mcp` is another project)
+  - langgraph-api                  0.1.2 <= v < 0.15.0  (CVE-2026-118668; a JS or TS
+    custom-auth Store handler's rewritten namespace is dropped at the runtime
+    boundary. Its own HIGH rule beside the MEDIUM 0.10.0 row. A stated version is
+    required)
+  - functype-mcp-server            <  1.4.4  (CVE-2026-59176; `set_functype_version`
+    installs `functype@<version>` for any string, an alias included, then imports
+    it. Every release from 0.47.0, the first. A stated version is required)
+  - @sylphx/pdf-reader-mcp         2.2.0 <= v < 3.0.1  (CVE-2026-62264; the HTTP
+    transport reads MCP_API_KEY and never checks the X-API-Key header. A stated
+    version is required)
+  - langgraph-sdk                  0.4.0 <= v < 0.4.6  (CVE-2026-118667; the v3 stream
+    helpers put raw assistant and thread ids in authenticated GET paths. MEDIUM, its
+    own rule beside the HIGH 104873 pin, and a stated version is required)
+  - djust                          0.9.0 <= v < 1.0.10, and 1.1.0-1.1.6 and 1.2.0-1.2.3
+    (CVE-2026-113731; the find_handlers_for_template MCP tool reads any existing
+    absolute path. LOW, a stated version required; the 1.3.0 release candidates
+    before rc8 read as 1.3.0, which is fixed)
+  - trigger.dev                    4.0.0 <= v < 4.5.4  (CVE-2026-114090; `trigger dev
+    --mcp` serves MCP on every interface with no authentication, and its tools act
+    with the developer's access token. The 3.x releases have no `--mcp`; a stated
+    version is required)
+  - flowise                        >= 1.4.6, presence-only  (CVE-2026-119978; the custom
+    function sandbox allowlists `langchain` and `mammoth`, so a caller writes a file
+    into mammoth's folder and requires it. The route arrives in 1.4.6; the project
+    ended after 3.1.4, so there is no fixed release. Not an MCP surface)
+  - mcp-chrome-bridge              presence-only  (CVE-2026-102878; the native server's
+    HTTP MCP endpoint answers web pages: every origin through 1.0.29, and an origin
+    that only starts with `http://127.0.0.1` in 1.0.30 and 1.0.31. No fixed release)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -488,7 +533,7 @@ _PINS: tuple[_Pin, ...] = (
     # with OpenClaw; unscoped, `openclaw==2.0.2` read as an OpenClaw below the floor.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
          fix_label="2026.7.1 (CVE-2026-100585, CVE-2026-100587, CVE-2026-100596; "
-                   "CVE-2026-62195 alone was fixed in 2026.6.6)",
+                   "CVE-2026-62195 and CVE-2026-62197 alone were fixed in 2026.6.6)",
          ecosystem="js"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
@@ -610,7 +655,10 @@ _PINS: tuple[_Pin, ...] = (
     # CVE-2026-107329 (code execution, 9.9), through 1.12.4 and fixed in 1.12.5
     # (bulletin 7293016). The three Hono CVEs bulletin 7294467 also lists are npm
     # `hono`'s records, not Langflow's. No bulletin or CNA record names
-    # `langflow-base` or `lfx`, so their rows stay at 1.12.0.
+    # `langflow-base` or `lfx`, so their rows stay at 1.12.0. IBM's other 52
+    # Langflow OSS records of 7 Oct to 8 Nov (bulletins 7290694, 7293015, 7293016)
+    # are fixed in 1.12.3, 1.12.4 or 1.12.5, under this floor, so they only join
+    # the rule's references.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
          (1, 13, 0), introduced=(1, 0, 0),
          fix_label="1.13.0 (affected 1.0.0–1.12.8: CVE-2026-110186, CVE-2026-93680, CVE-2026-110193, "
@@ -1332,7 +1380,8 @@ _PINS: tuple[_Pin, ...] = (
     # copy (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, GHSA-gfvf-j8jh-jxxw). Local
     # access only, and auto-update has delivered the fix. LOW, so its own rule
     # beside the HIGH folder-trust pin in `supply_chain` (below 2.1.83 then, below
-    # 2.1.129 once CVE-2026-103435 joined it, below 2.1.179 since CVE-2026-86063).
+    # 2.1.129 once CVE-2026-103435 joined it, below 2.1.179 since CVE-2026-86063,
+    # below 2.1.251 since CVE-2026-88968).
     _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
@@ -1531,6 +1580,18 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-NETWORKAI-CVE-2026-109332-001", "network-ai", ("network-ai",), (5, 15, 2),
          introduced=(4, 0, 0), fix_label="5.15.2 (affected from 4.0.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 (#1179, #1180) ---
+    # Network-AI's FileJobStore (behind JobQueue) and AgentVCR join a caller's job id
+    # or cassette name onto their directory with no containment check, so a name
+    # with `..` segments reads, writes or deletes any `.json` file the process can
+    # reach (CVE-2026-120311, CVE-2026-120312, both HIGH). The records say from
+    # 5.13.4; the npm tarballs carry both modules, with the same unchecked join,
+    # from 5.0.0, and 4.15.3 has neither. 5.15.5 checks every name. HIGH and a
+    # different flaw from the two rows above, so its own rule; `latest` (6.0.1) is
+    # fixed, so a stated version is required.
+    _Pin("AAK-NETWORKAI-CVE-2026-120311-001", "network-ai", ("network-ai",), (5, 15, 5),
+         introduced=(5, 0, 0), fix_label="5.15.5 (affected from 5.0.0)",
+         requires_version=True, ecosystem="js"),
     # --- 2026-10-16 (#1026) ---
     # The Claude Agent SDK passed `resume` to the Claude CLI as two argv tokens,
     # `["--resume", value]`. The CLI declares `--resume` with an optional value, so a
@@ -1589,7 +1650,10 @@ _PINS: tuple[_Pin, ...] = (
     # could exhaust server memory (CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453).
     # Its range starts at 1.3.0 and reaches the 2.x server package, and 1.31.0 is
     # affected by the two pins above as well, so it is its own rule. `latest` is fixed,
-    # so a stated version is required.
+    # so a stated version is required. GHSA-f897-62hf-6gxq (no CVE id: no limit on a
+    # POST body's size or a JSON-RPC batch's length, sdk 1.10.0 up to 1.30.1, server
+    # 2.0.0) sits inside both rows and joined the rule on 2026-11-11; the node and
+    # hono adapters it also names are left to AAK-KNOWN-VULN-001.
     _Pin("AAK-MCP-TSSDK-CVE-2026-111768-001", "@modelcontextprotocol/sdk",
          ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 3, 0),
          fix_label="1.32.0 (affected from 1.3.0), and set maxToolInputElements",
@@ -1770,6 +1834,148 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="no fixed release (1.0.5, 2025-03-13, is the newest and "
                    "bitscorp-mcp/mcp-ffmpeg#8 is open); keep it away from agents that read "
                    "untrusted text",
+         ecosystem="js"),
+    # --- 2026-11-11 batch (#1103 to #1139, group kw_a) ---
+    # ai-sdlc's MCP server: `check_issue` and `check_pr_status` built
+    # `gh issue view ${issueNumber} --repo ${repo} ...` strings for `execSync`
+    # (CVE-2026-117558). Checked in the npm tarballs: 0.8.1, the first release, to
+    # 0.31.2 do; 0.32.0 calls `execFileSync('gh', [...])` and checks `repo` against
+    # owner/name (ai-sdlc-framework/ai-sdlc#1982, 717d7ecf). `latest` is 0.42.0, so a
+    # stated version is required.
+    _Pin("AAK-MCP-AISDLC-CVE-2026-117558-001", "@ai-sdlc/plugin-mcp-server",
+         ("@ai-sdlc/plugin-mcp-server",), (0, 32, 0), fix_label="0.32.0",
+         requires_version=True),
+    # DroidMind: `validate_shell_command` checks only the first word of a command
+    # against its allowlist, so `$()` and backticks run what it blocks, and
+    # `list_directory` puts its path into `ls -la {path}` unchecked
+    # (CVE-2026-117559). The PyPI wheels of 0.2.0, the first release, and 0.4.0, the
+    # newest (2026-01-07), both do; hyperb1iss/droidmind#17 is open. Presence-only.
+    _Pin("AAK-MCP-DROIDMIND-CVE-2026-117559-001", "droidmind", ("droidmind",), None,
+         fix_label="no fixed release (0.4.0, 2026-01-07, is the newest and "
+                   "hyperb1iss/droidmind#17 is open); keep it away from agents that read "
+                   "untrusted text"),
+    # sf-mcp (codefriar/sf-mcp): Salesforce CLI flag values pass through an
+    # `escapeValue` that only wraps values holding a space in double quotes, and the
+    # command string goes to `execSync` (CVE-2026-117561). The npm tarballs of 1.1.0,
+    # the first release, and 1.3.2, the newest (2025-05-27), both do; issue #17 is
+    # open. Presence-only, npm only: PyPI's `sf-mcp` is Signal Found's server.
+    _Pin("AAK-MCP-SFMCP-CVE-2026-117561-001", "sf-mcp", ("sf-mcp",), None,
+         fix_label="no fixed release (1.3.2, 2025-05-27, is the newest and "
+                   "codefriar/sf-mcp#17 is open); keep it away from agents that read "
+                   "untrusted text",
+         ecosystem="js"),
+    # langgraph-api: a JavaScript or TypeScript custom-auth handler's changes to a
+    # request were applied back only to its `metadata`, so a Store handler that
+    # rewrote the namespace to the caller's own changed nothing (CVE-2026-118668).
+    # Checked in the PyPI wheels: 0.1.0 has no JS auth bridge, 0.1.2 has
+    # `handle_js_auth_event` applying metadata only, and 0.15.0 adds
+    # `_apply_auth_mutations`. The newest 0.12.x, 0.13.x and 0.14.x releases
+    # (0.12.12, 0.13.8, 0.14.10 of 2026-11-06) lack it. Its own HIGH rule beside the
+    # MEDIUM 0.10.0 row above. `latest` is 0.17.1, so a stated version is required.
+    _Pin("AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001", "langgraph-api", ("langgraph-api",),
+         (0, 15, 0), introduced=(0, 1, 2),
+         fix_label="0.15.0 (affected from 0.1.2; the 0.12, 0.13 and 0.14 lines have no fix)",
+         requires_version=True),
+    # functype-mcp-server: `set_functype_version` took any string, ran
+    # `pnpm add functype@<version>` (a `file:`, `npm:` or URL alias installs another
+    # package as functype) and then imported it (CVE-2026-59176). Checked in the npm
+    # tarballs: 0.47.0, the first release, to 1.4.3 do; 1.4.4 refuses alias syntax
+    # and passes `--ignore-scripts`. `latest` is 1.26.0, so a stated version is
+    # required.
+    _Pin("AAK-MCP-FUNCTYPE-CVE-2026-59176-001", "functype-mcp-server",
+         ("functype-mcp-server",), (1, 4, 4), fix_label="1.4.4",
+         requires_version=True),
+    # --- 2026-11-11 batch (kw_b: #1145 to #1188) ---
+    # PDF Reader MCP (npm `@sylphx/pdf-reader-mcp`, now SylphxAI/anymd): the opt-in
+    # HTTP transport, first shipped in 2.2.0, read MCP_API_KEY and logged that
+    # X-API-Key authentication was on, but never passed the key to the transport, so
+    # `/mcp` answered any client on the default 0.0.0.0 bind (CVE-2026-62264,
+    # GHSA-q344-5v34-gm84). Checked in the published dist/index.js: 2.1.0 has no HTTP
+    # transport, 2.2.0 and 3.0.0 only log the key, 3.0.1 checks it (`isApiKeyValid`)
+    # and binds 127.0.0.1 by default. `latest` is a later alias release, so a stated
+    # version is required. PyPI's `pdf-reader-mcp` is zixma13's, another project.
+    _Pin("AAK-MCP-PDFREADER-CVE-2026-62264-001", "@sylphx/pdf-reader-mcp",
+         ("@sylphx/pdf-reader-mcp",), (3, 0, 1), introduced=(2, 2, 0),
+         fix_label="3.0.1 (affected from 2.2.0, over the opt-in HTTP transport)",
+         requires_version=True, ecosystem="js"),
+    # langgraph-sdk's v3 stream helpers, new in 0.4.0, built `/assistants/{id}/graph`
+    # and `/threads/{id}/state` from raw identifiers, so `..` or `#` in a
+    # caller-supplied id sent the client's authenticated GET to another path on the
+    # same server (CVE-2026-118667, GHSA-3fx2-cqw9-xr3c). Checked in the wheels:
+    # 0.3.15 has no stream module, 0.4.0 and 0.4.5 interpolate the ids, 0.4.6 passes
+    # them through `_quote_path_param` (langgraph#9213). MEDIUM, so its own rule
+    # beside the HIGH 104873 row on the same name. The advisory also lists `langgraph`
+    # 1.2.3 to 1.2.13, whose RemoteGraph reaches the flaw only through the SDK it
+    # resolves; the code is the SDK's, so only the SDK is pinned. `latest` is fixed.
+    _Pin("AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001", "langgraph-sdk", ("langgraph-sdk",),
+         (0, 4, 6), introduced=(0, 4, 0),
+         fix_label="0.4.6 (affected from 0.4.0; with RemoteGraph, langgraph 1.2.14, "
+                   "which requires it)",
+         requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 batch (#1066, #1067) ---
+    # djust's `find_handlers_for_template` MCP tool took an existing absolute
+    # template_path and read it with no check that it lies under the project or a
+    # template directory (CVE-2026-113731, CVSS 3.1 3.3, CWE-22, GHSA-r57g-mc79-8hj2).
+    # Checked in the PyPI sdists: 0.4.4 has no such tool and 0.9.0, the next release,
+    # reads the path; 1.0.9, 1.1.6, 1.2.3 and 1.3.0rc7 still do, and 1.0.10, 1.1.7,
+    # 1.2.4 and 1.3.0rc8 resolve it inside the template roots (`_path_within`). 1.1.x
+    # and 1.2.x sort above the 1.0.10 floor, so they are `also` ranges. The 1.3.0
+    # release candidates rc4 to rc7 read as 1.3.0 (a pre-release folds into its
+    # release), which is fixed, so they cannot be a range here. `latest` is 1.3.2,
+    # fixed, so a stated version is required.
+    _Pin("AAK-MCP-DJUST-CVE-2026-113731-001", "djust", ("djust",), (1, 0, 10),
+         introduced=(0, 9, 0), also=(((1, 1, 0), (1, 1, 7)), ((1, 2, 0), (1, 2, 4))),
+         fix_label="1.0.10, 1.1.7, 1.2.4 or 1.3.0 (affected from 0.9.0)",
+         requires_version=True, ecosystem="py"),
+    # The Trigger.dev CLI (npm `trigger.dev`, published from packages/cli-v3) starts an
+    # MCP server for `trigger dev --mcp` that listens with no host argument, so on
+    # every interface, with no token or Origin check, and whose tools call Trigger.dev
+    # with the developer's stored access token (CVE-2026-114090, CVSS 3.1 7.1,
+    # CWE-306, GHSA-pqmg-rq46-vm4m). Checked in the npm tarballs: 3.0.0 and 3.3.17,
+    # the newest 3.x, have no `--mcp` option; 4.0.0-v4-beta.0 and 4.0.0 ship
+    # `dist/esm/dev/mcpServer.js` calling `app.listen(options.port, ...)`, as 4.5.3
+    # still does; 4.5.4 drops the option and the file. The advisory names
+    # `@trigger.dev/cli-v3` from 3.0.0, which npm does not carry. `latest` is 4.8.4,
+    # fixed, so a stated version is required.
+    _Pin("AAK-MCP-TRIGGERDEV-CVE-2026-114090-001", "trigger.dev", ("trigger.dev",),
+         (4, 5, 4), introduced=(4, 0, 0), fix_label="4.5.4 (affected from 4.0.0)",
+         requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 (#847, #1168) ---
+    # Flowise (npm `flowise`): POST /api/v1/node-custom-function runs a caller's
+    # JavaScript in vm2's NodeVM with `require.external.modules` set from
+    # flowise-components' `availableDependencies`, which lists `langchain` and
+    # `mammoth`. vm2 matches an allowed name as the whole package folder and loads it
+    # in the host, so langchain's LocalFileStore writes a file into mammoth's folder
+    # and the code requires it (CVE-2026-119978). Checked in the npm tarballs: the
+    # route first ships in flowise 1.4.6 (2023-12-18), a minute after
+    # flowise-components 1.4.7 added the CustomFunction node; 1.4.5 has neither.
+    # Every components release from 1.4.7 to 3.1.4 lists both names, with no setting
+    # until 3.0.7 and behind ALLOW_BUILTIN_DEP=true from 3.0.8. 3.1.4 is the last
+    # release: FlowiseAI archived the repository on 2026-08-13 and ended the project
+    # on 2026-08-31, so the pin is presence-only from 1.4.6. The CVE record names
+    # Flowise alone; `flowise-components`, which ships the allowlist, is named only
+    # by the finder's write-up and is not pinned. No MCP code is involved, so the id
+    # has no MCP area.
+    _Pin("AAK-FLOWISE-CVE-2026-119978-001", "flowise", ("flowise",), None,
+         introduced=(1, 4, 6),
+         fix_label="no fixed release (3.1.4 is the last; FlowiseAI ended the project on "
+                   "2026-08-31); leave ALLOW_BUILTIN_DEP unset and keep the API off "
+                   "networks you do not trust",
+         ecosystem="js"),
+    # mcp-chrome-bridge (npm), the native server of hangwin/mcp-chrome: its Fastify
+    # HTTP API on 127.0.0.1 serves the MCP endpoints (/mcp, /sse, /messages) that
+    # drive the Chrome extension's tools. Through 1.0.29 it registered @fastify/cors
+    # with `origin: true`, so every web page could call them; 1.0.30 and 1.0.31
+    # (2025-12-30, the newest) check the Origin against `'http://127.0.0.1'` with
+    # `startsWith`, with credentials allowed, so a page on a host such as
+    # `127.0.0.1.<attacker domain>` still can (CVE-2026-102878). Checked in every
+    # tarball from 1.0.0 to 1.0.31. hangwin/mcp-chrome#384 is open with no reply and
+    # nothing has been committed since 2026-01-06, so the pin is presence-only.
+    _Pin("AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001", "mcp-chrome-bridge",
+         ("mcp-chrome-bridge",), None,
+         fix_label="no fixed release (1.0.31, 2025-12-30, is the newest and "
+                   "hangwin/mcp-chrome#384 is open); stop the native server while you "
+                   "browse untrusted sites",
          ecosystem="js"),
 )
 
