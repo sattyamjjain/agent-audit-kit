@@ -181,7 +181,7 @@ available) before shipping:
   - @anthropic-ai/claude-code      2.0.68 <= v < 2.1.260  (CVE-2026-103012; a stored API
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
     a stated version is required, and its own rule beside the HIGH folder-trust pin
-    in `supply_chain`, whose floor is 2.1.179)
+    in `supply_chain`, whose floor is 2.1.251)
   - @anthropic-ai/claude-code      < 1.0.111  (CVE-2025-59536; project code ran before
     the startup trust dialog. AAK-HOOK-RCE-003, which read settings.local.json
     commands until 2026-10-17. A stated version is required)
@@ -311,6 +311,12 @@ available) before shipping:
   - functype-mcp-server            <  1.4.4  (CVE-2026-59176; `set_functype_version`
     installs `functype@<version>` for any string, an alias included, then imports
     it. Every release from 0.47.0, the first. A stated version is required)
+  - @sylphx/pdf-reader-mcp         2.2.0 <= v < 3.0.1  (CVE-2026-62264; the HTTP
+    transport reads MCP_API_KEY and never checks the X-API-Key header. A stated
+    version is required)
+  - langgraph-sdk                  0.4.0 <= v < 0.4.6  (CVE-2026-118667; the v3 stream
+    helpers put raw assistant and thread ids in authenticated GET paths. MEDIUM, its
+    own rule beside the HIGH 104873 pin, and a stated version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1355,7 +1361,8 @@ _PINS: tuple[_Pin, ...] = (
     # copy (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, GHSA-gfvf-j8jh-jxxw). Local
     # access only, and auto-update has delivered the fix. LOW, so its own rule
     # beside the HIGH folder-trust pin in `supply_chain` (below 2.1.83 then, below
-    # 2.1.129 once CVE-2026-103435 joined it, below 2.1.179 since CVE-2026-86063).
+    # 2.1.129 once CVE-2026-103435 joined it, below 2.1.179 since CVE-2026-86063,
+    # below 2.1.251 since CVE-2026-88968).
     _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
@@ -1856,6 +1863,33 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-FUNCTYPE-CVE-2026-59176-001", "functype-mcp-server",
          ("functype-mcp-server",), (1, 4, 4), fix_label="1.4.4",
          requires_version=True),
+    # --- 2026-11-11 batch (kw_b: #1145 to #1188) ---
+    # PDF Reader MCP (npm `@sylphx/pdf-reader-mcp`, now SylphxAI/anymd): the opt-in
+    # HTTP transport, first shipped in 2.2.0, read MCP_API_KEY and logged that
+    # X-API-Key authentication was on, but never passed the key to the transport, so
+    # `/mcp` answered any client on the default 0.0.0.0 bind (CVE-2026-62264,
+    # GHSA-q344-5v34-gm84). Checked in the published dist/index.js: 2.1.0 has no HTTP
+    # transport, 2.2.0 and 3.0.0 only log the key, 3.0.1 checks it (`isApiKeyValid`)
+    # and binds 127.0.0.1 by default. `latest` is a later alias release, so a stated
+    # version is required. PyPI's `pdf-reader-mcp` is zixma13's, another project.
+    _Pin("AAK-MCP-PDFREADER-CVE-2026-62264-001", "@sylphx/pdf-reader-mcp",
+         ("@sylphx/pdf-reader-mcp",), (3, 0, 1), introduced=(2, 2, 0),
+         fix_label="3.0.1 (affected from 2.2.0, over the opt-in HTTP transport)",
+         requires_version=True, ecosystem="js"),
+    # langgraph-sdk's v3 stream helpers, new in 0.4.0, built `/assistants/{id}/graph`
+    # and `/threads/{id}/state` from raw identifiers, so `..` or `#` in a
+    # caller-supplied id sent the client's authenticated GET to another path on the
+    # same server (CVE-2026-118667, GHSA-3fx2-cqw9-xr3c). Checked in the wheels:
+    # 0.3.15 has no stream module, 0.4.0 and 0.4.5 interpolate the ids, 0.4.6 passes
+    # them through `_quote_path_param` (langgraph#9213). MEDIUM, so its own rule
+    # beside the HIGH 104873 row on the same name. The advisory also lists `langgraph`
+    # 1.2.3 to 1.2.13, whose RemoteGraph reaches the flaw only through the SDK it
+    # resolves; the code is the SDK's, so only the SDK is pinned. `latest` is fixed.
+    _Pin("AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001", "langgraph-sdk", ("langgraph-sdk",),
+         (0, 4, 6), introduced=(0, 4, 0),
+         fix_label="0.4.6 (affected from 0.4.0; with RemoteGraph, langgraph 1.2.14, "
+                   "which requires it)",
+         requires_version=True, ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

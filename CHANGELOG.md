@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New rule AAK-MCP-PDFREADER-CVE-2026-62264-001 (HIGH): `@sylphx/pdf-reader-mcp` from 2.2.0 below 3.0.1, whose opt-in HTTP transport read `MCP_API_KEY`, logged that the key was on and never checked the `X-API-Key` header, so `/mcp` answered any client on the default 0.0.0.0 bind (CVE-2026-62264, #1187). A stated version is required, since `latest` is a fixed alias release.
+- New rule AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001 (MEDIUM): `langgraph-sdk` from 0.4.0 below 0.4.6, whose v3 stream helpers put raw assistant and thread ids into authenticated GET paths (CVE-2026-118667, #1146). The advisory also lists `langgraph` 1.2.3 to 1.2.13, which carries none of the code, so a project that names only `langgraph` is reported where it also states an affected SDK.
 - `AAK-MCP-AISDLC-CVE-2026-117558-001` (HIGH): `@ai-sdlc/plugin-mcp-server`, the ai-sdlc plugin's MCP server, below 0.32.0 (CVE-2026-117558, #1103). Its `check_issue` and `check_pr_status` tools put the `repo` argument into `gh` command strings run with `execSync`, from 0.8.1, the first release. `latest` is fixed, so only a stated version is reported.
 - `AAK-MCP-DROIDMIND-CVE-2026-117559-001` (HIGH): `droidmind` on PyPI, every version (CVE-2026-117559, #1104). Its shell allowlist reads only a command's first word, so command substitution runs what it blocks, and `list_directory` takes its path unchecked. There is no fixed release.
 - `AAK-MCP-SFMCP-CVE-2026-117561-001` (HIGH): `sf-mcp` on npm, every version (CVE-2026-117561, #1106). Salesforce CLI flag values reach `execSync` through an escape that only quotes values with a space. There is no fixed release, and PyPI's `sf-mcp` is another project.
@@ -18,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- AAK-CLAUDECODE-CVE-2026-40068-PIN-001 reports `@anthropic-ai/claude-code` below 2.1.251, up from 2.1.179, for CVE-2026-88968: the Edit tool checked its target in a way code in the macOS Bash sandbox could race with a symlink, and wrote outside the workspace (#1185). Its evidence now names CVE-2026-86063 only below that bug's 2.1.179 fix.
 - Five VulnCheck records for n8n, CVE-2026-118643, CVE-2026-118644, CVE-2026-118645, CVE-2026-118647 and CVE-2026-118649, get no pin: none is on n8n's MCP surface, so `AAK-MCP-N8N-CVE-2026-72768-001` keeps its 2.41.4 floor, and `AAK-KNOWN-VULN-001` reports them after `aak update`. The ledger has the reasons.
 - `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's other 49 Langflow OSS records on NVD (7 Oct to 8 Nov 2026), #1157 to #1161, #1165, #1166 and #1183 among them. Each lists 1.0.0 through 1.12.2, 1.12.3 or 1.12.4 and is fixed in 1.12.3, 1.12.4 or 1.12.5, under the rule's 1.13.0 floor, so no release is reported that was not before. After `aak update`, AAK-KNOWN-VULN-001 no longer repeats these records beside the rule's finding: a uv.lock on langflow 1.12.2 got 49 such findings on 0.6.34. The ledger has the reasons.
 

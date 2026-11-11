@@ -385,6 +385,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-SFMCP-CVE-2026-117561-001": ["AIS-07", "STA-08"],
     "AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001": ["IAM-01", "STA-08"],
     "AAK-MCP-FUNCTYPE-CVE-2026-59176-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-PDFREADER-CVE-2026-62264-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -8984,7 +8986,7 @@ _r(
 
 _r(
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
-    "Anthropic Claude Code below 2.1.179: folder-trust bypass (CVE-2026-40068), write-time symlink following (CVE-2026-103435) and plugin commit-pin bypass (CVE-2026-86063)",
+    "Anthropic Claude Code below 2.1.251: folder-trust bypass (CVE-2026-40068), write-time symlink following (CVE-2026-103435, CVE-2026-88968) and plugin commit-pin bypass (CVE-2026-86063)",
     "Claude Code 2.1.63 → before 2.1.84 derives folder-trust from the "
     "git worktree `commondir` file without validating its contents. A "
     "malicious repo with a crafted `commondir` pointing to a previously-"
@@ -9003,31 +9005,43 @@ _r(
     "equalled the pinned SHA, so a plugin repository on a Git host that "
     "allows SHA-shaped branch names can name a branch after the reviewed "
     "commit and have its tip installed instead (CVE-2026-86063, CVSS 4.0 "
-    "7.5, CWE-494, GHSA-pq7j-f95f-qfcv). This pin-only rule fires on the "
-    "scoped npm package `@anthropic-ai/claude-code` < 2.1.179 in any "
+    "7.5, CWE-494, GHSA-pq7j-f95f-qfcv). Before 2.1.251, the Edit tool "
+    "validated its target by pathname and symlink resolution that was not "
+    "bound to the directory's inode or file descriptor, so on macOS code "
+    "running in the Bash sandbox, such as a malicious repository's or a "
+    "dependency's script, could swap an in-workspace parent directory for a "
+    "symlink after the check and have the unsandboxed Edit overwrite a "
+    "user-writable file outside the workspace (CVE-2026-88968, CVSS 4.0 "
+    "7.7, CWE-59/CWE-367, GHSA-5xjx-9qx6-jcrv). This pin-only rule fires on "
+    "the scoped npm package `@anthropic-ai/claude-code` < 2.1.251 in any "
     "consumer manifest, and its evidence names each bug only where it "
     "applies. Rule name was pre-allocated in the v0.3.15 triage of issue "
     "#181 and shipped in v0.3.16; the floor rose from 2.1.83 on "
-    "2026-10-08 and from 2.1.129 on 2026-10-16.",
+    "2026-10-08, from 2.1.129 on 2026-10-16 and from 2.1.179 on "
+    "2026-11-11.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Bump `@anthropic-ai/claude-code` to >=2.1.179 in any npm "
+    "Bump `@anthropic-ai/claude-code` to >=2.1.251 in any npm "
     "manifest pinning Claude Code. The rule fires only on the pin "
     "shape; an unpinned global install is in no file AAK reads, and "
-    "auto-update has delivered all three fixes to installs that keep it on.",
+    "auto-update has delivered all four fixes to installs that keep it on.",
     sarif_name="ClaudeCodeFolderTrustBypass",
-    cve_references=["CVE-2026-40068", "CVE-2026-103435", "CVE-2026-86063"],
+    cve_references=["CVE-2026-40068", "CVE-2026-103435", "CVE-2026-86063", "CVE-2026-88968"],
     owasp_agentic_references=["ASI04", "ASI09"],
     incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
     limitations=(
         "Reads `@anthropic-ai/claude-code` in the root package.json, "
         "package-lock.json, yarn.lock and pnpm-lock.yaml and reports a version it "
-        "can parse below 2.1.179, so `latest` and other tags state no version and "
+        "can parse below 2.1.251, so `latest` and other tags state no version and "
         "are not reported. In package-lock.json it reads only a listed dependency "
         "(`\"@anthropic-ai/claude-code\": \"<version>\"`): an entry that only a "
         "transitive dependency adds under `node_modules/@anthropic-ai/claude-code` "
         "is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory "
-        "package.json or a versioned `npx` reference in .mcp.json. Claude "
+        "package.json or a versioned `npx` reference in .mcp.json. It reads the "
+        "version, not the platform or settings: the advisory describes "
+        "CVE-2026-88968 for code running in the Bash sandbox on macOS, and from "
+        "2.1.179 to 2.1.250 it is the only bug named, so a release there that "
+        "runs on Linux or Windows, or without the sandbox, is reported too. Claude "
         "Desktop, which shares the plugin install flow, is in no file AAK reads."
         " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
@@ -18550,6 +18564,99 @@ _r(
         "functype-mcp-server` is not reported. The `functype` library itself is not "
         "affected and not matched. A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-11 batch (kw_b: #1145 to #1188).
+
+_r(
+    "AAK-MCP-PDFREADER-CVE-2026-62264-001",
+    "PDF Reader MCP 2.2.0 to 3.0.0: the HTTP transport never checks the configured API key",
+    "PDF Reader MCP (npm `@sylphx/pdf-reader-mcp`; SylphxAI/pdf-reader-mcp, now "
+    "SylphxAI/anymd) is an MCP server that reads PDF files. From 2.2.0, setting "
+    "`MCP_TRANSPORT=http` starts an HTTP server on `/mcp`, bound to `0.0.0.0` by "
+    "default. Before 3.0.1 the server read `MCP_API_KEY` and logged that `X-API-Key` "
+    "authentication was enabled, but never passed the key to the transport or checked "
+    "the header, so any client that could reach the port could call every PDF tool and "
+    "read any PDF the server process can open, and URL sources gave a limited "
+    "server-side request forgery (CVE-2026-62264, CVSS 3.1 7.5, CWE-306/CWE-287, "
+    "GHSA-q344-5v34-gm84). The default stdio transport is not affected. Checked in the "
+    "published dist/index.js: 2.1.0 has no HTTP transport, 2.2.0 and 3.0.0 only log "
+    "the key, and 3.0.1 rejects a missing or wrong `X-API-Key` with 401 and binds "
+    "127.0.0.1 by default.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@sylphx/pdf-reader-mcp` to 3.0.1 or later and pin it, or move to "
+    "`@sylphx/anymd`, which the package now aliases. Until then run it over stdio, or "
+    "bind `MCP_HTTP_HOST=127.0.0.1` and keep the port behind an authenticating proxy: "
+    "on an affected release `MCP_API_KEY` protects nothing.",
+    sarif_name="PdfReaderMcpHttpApiKeyUnchecked",
+    cve_references=["CVE-2026-62264"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01", "ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@sylphx/pdf-reader-mcp` from 2.2.0 below 3.0.1 where a package.json, "
+        "lockfile or MCP config states the version, reporting a range that admits an "
+        "affected version. It reads the version, not the transport: a server run over "
+        "stdio, the default, is reported too, and `MCP_TRANSPORT`, `MCP_HTTP_HOST` and "
+        "`MCP_API_KEY` in an MCP config's `env` are not read. `latest` was 8.5.11 on "
+        "2026-11-11, an alias that runs anymd, and states no version, so an unversioned "
+        "`npx @sylphx/pdf-reader-mcp` launch, or a config that runs a global install by "
+        "its bare name, is not reported. `@sylphx/anymd` first shipped at 7.0.0, after the "
+        "fix, and is not read; PyPI's `pdf-reader-mcp` (zixma13/pdf-reader-mcp) is "
+        "another project and is not matched. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001",
+    "LangGraph SDK 0.4.0 to 0.4.5: v3 stream helpers put raw ids in authenticated request paths",
+    "`langgraph-sdk` (PyPI) is the Python client for LangGraph API servers. Its v3 "
+    "streaming module, new in 0.4.0, built two request paths from raw identifiers: "
+    "`get_tree` requested `/assistants/{assistant_id}/graph` and the state fetch behind "
+    "a thread's output requested `/threads/{thread_id}/state`, in the sync and async "
+    "clients, without the `_quote_path_param` encoding the SDK's other endpoints use. "
+    "httpx collapses `..` segments and treats `#` as a fragment, so an application that "
+    "streams with a caller-supplied assistant or thread id sends its authenticated GET "
+    "to another readable path on the same server and returns the answer to the caller; "
+    "through `thread_id` the query string is the caller's too (CVE-2026-118667, CVSS "
+    "3.1 4.3, CWE-22, GHSA-3fx2-cqw9-xr3c). The requests are reads, and the LangGraph "
+    "Platform is not exposed. Checked in the wheels: 0.3.15 has no stream module, "
+    "0.4.0 and 0.4.5 interpolate both ids, and 0.4.6 encodes them (langgraph#9213).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `langgraph-sdk` to 0.4.6 or later and pin it; with `RemoteGraph`, upgrade "
+    "`langgraph` to 1.2.14, which requires that SDK. Until then, accept only "
+    "server-issued assistant and thread ids for streaming, never text a user or a model "
+    "supplies.",
+    sarif_name="LangGraphSdkStreamPathIds",
+    cve_references=["CVE-2026-118667"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports `langgraph-sdk` from 0.4.0 below 0.4.6 where a requirements*.txt (at any "
+        "depth), or at the project root a pyproject.toml, Pipfile, Pipfile.lock, "
+        "poetry.lock or uv.lock, or an MCP config's `uvx` launch states the version, "
+        "reporting a range that admits an affected version. It reads the version, not the "
+        "code, so a project that never streams through the v3 module, or passes only "
+        "server-issued ids, is reported too. `latest` was 0.4.14 on 2026-11-11 and states "
+        "no version, so a bare `langgraph-sdk` is not reported. The advisory also lists "
+        "`langgraph` 1.2.3 to 1.2.13, whose `RemoteGraph` reaches the flaw only through "
+        "the SDK it resolves (those releases accept `langgraph-sdk` from 0.4.2); the code "
+        "is the SDK's, so a project that names only `langgraph` is reported where a "
+        "lockfile or requirements file also states an affected `langgraph-sdk`, and not "
+        "otherwise. The JavaScript `@langchain/langgraph-sdk` is a different package and "
+        "is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

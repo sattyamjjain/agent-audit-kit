@@ -383,6 +383,153 @@ CVSS 3.1 score where it has one: VulnCheck's for its four records (their CVSS 4.
 8.5) and GitHub's for Gearboy and functype-mcp-server. GitHub scored CVE-2026-118668 and
 CVE-2026-61546 in CVSS 4.0 only.
 
+## 2026-11-11 (unreleased): ten keyword-feed matches, two new pins, one floor raised, one advisory-feed record, six out of scope
+
+The watcher filed these ten from NVD's keyword feed between 29 Oct and 3 Nov, and each
+was deferred with no scope claimed so 0.6.30 to 0.6.33 could ship. Each is read here
+against NVD's API record, its CVE record, OSV and the published artifacts, all on
+2026-11-11, and NVD text is quoted from the API record. Every coverage claim below was
+measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_11_kw_b.py).
+
+### CVE-2026-62264 (#1187): new pin 2026-11-11
+
+**PDF Reader MCP gets `AAK-MCP-PDFREADER-CVE-2026-62264-001`: npm
+`@sylphx/pdf-reader-mcp` from 2.2.0 below 3.0.1, HIGH.** NVD: "when `MCP_TRANSPORT=http`
+enables the opt-in HTTP server, `@sylphx/pdf-reader-mcp` reads `MCP_API_KEY` and logs
+that `X-API-Key` authentication is enabled but never validates the `X-API-Key` header on
+incoming requests." GHSA-q344-5v34-gm84 and OSV give the same range. Checked in the
+published dist/index.js: 2.1.0 has no HTTP transport; 2.2.0 and 3.0.0 read the key and
+pass it to nothing but a log line, with the listener on 0.0.0.0 by default; 3.0.1 hands
+it to the transport, which answers a missing or wrong header with 401, and binds
+127.0.0.1 by default. The repository is now SylphxAI/anymd, and npm's `latest` for this
+name is 8.5.11, an alias that runs anymd, so an unversioned launch installs a fixed
+release and the pin needs a stated version. `@sylphx/anymd` first shipped at 7.0.0,
+after the fix. PyPI's `pdf-reader-mcp` is zixma13's, another project, and a negative
+test. The pin reads the version, not `MCP_TRANSPORT`, so a server on stdio, the
+default, is reported too, and the limitations say so.
+
+### CVE-2026-118667 (#1146): new pin 2026-11-11
+
+**LangGraph SDK gets `AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001`: `langgraph-sdk` from
+0.4.0 below 0.4.6, MEDIUM.** NVD: "the synchronous and asynchronous v3 stream get_tree
+and _fetch_state helpers interpolate caller-controlled assistant_id and thread_id values
+into authenticated GET request paths without using _quote_path_param." Checked in the
+wheels: 0.3.15 has no stream module, 0.4.0 and 0.4.5 build `/assistants/{id}/graph` and
+`/threads/{id}/state` from the raw ids, and 0.4.6 encodes both (langgraph#9213,
+d89c7e10). It is its own rule beside `AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001`, which is
+HIGH and an auth-decorator flaw, so 0.4.0 to 0.4.3 get both findings. Non-MCP LangGraph
+records with an artifact have been pinned, as the CLI and checkpointer rows of
+2026-10-24 were. The advisory and NVD also list `langgraph` 1.2.3 to 1.2.13 "when
+RemoteGraph v3 streaming uses an affected langgraph-sdk version". Those releases carry
+none of the code: they accept `langgraph-sdk` from 0.4.2, and 1.2.14 raises that to
+0.4.6. So only the SDK is pinned. A lockfile or requirements file that states an
+affected SDK beside langgraph is reported, and a bare `langgraph==1.2.13`, which
+resolves today's 0.4.14, is not. `latest` is 0.4.14, so a stated version is required.
+
+### CVE-2026-88968 (#1185): floor raised 2026-11-11
+
+**Claude Code raises `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` from 2.1.179 to 2.1.251.**
+NVD: "Prior to 2.1.251, the Edit tool validates a target using pathname and symlink
+resolution that is not bound to the underlying directory inode or file descriptor." On
+macOS, code running in the Bash sandbox swaps an in-workspace parent directory for a
+symlink after the check, and the unsandboxed Edit writes a file outside the workspace.
+GHSA-5xjx-9qx6-jcrv names `@anthropic-ai/claude-code` below 2.1.251 with no lower bound,
+OSV holds it for 2.1.250 and not for 2.1.251, and the 2.1.251 CHANGELOG has the fix
+("following a symlink swapped inside the working directory after the permission
+check"). It is CVE-2026-103435's class, write-time symlink following, and HIGH like the
+rule (CVSS 4.0 7.7), so the floor rises and the CVE joins the rule, as 103435 and 86063
+did. The evidence still names each bug only in its range: CVE-2026-86063 now stops at
+its 2.1.179 fix, and CVE-2026-88968 is named on every release below 2.1.251, as the
+vendor gives it, so from 2.1.179 to 2.1.250 it is the only bug named. The limitations
+add that the pin reads neither the platform nor the sandbox setting. The three older
+safe fixtures moved from 2.1.179 to 2.1.251. npm's `stable` (2.1.311) and `latest`
+(2.1.322) are both above the floor, and the LOW pin,
+`AAK-MCP-CLAUDECODE-CVE-2026-103012-001`, is unchanged.
+
+### CVE-2026-62331 (#1171): advisory feed 2026-11-11
+
+**praktor gets no pin: `AAK-KNOWN-VULN-001` reports it from a go.mod after `aak update`,
+HIGH.** NVD: "Prior to 0.9.1, both Telegram upload sites in `internal/telegram/bot.go`
+concatenate the attacker-controlled document filename into a destination path without
+sanitization". The file lands in the persistent agent workspace, where it can replace
+the instruction files the Claude agent reads on later runs. Checked in the source at the
+tags: every release from v0.0.1 to v0.9.0 builds the upload path from the raw name, and
+v0.9.1 takes `path.Base` of it (praktor#228). praktor is a Go application that runs from
+its image, `ghcr.io/mtzanidakis/praktor`, which its compose file pulls at `latest`. The
+build workflow's cleanup step keeps the five newest package versions, and the registry
+lists only `latest` and `v0.10.1` today, both fixed, so no tag a project could pull
+holds the flaw and there is no image pin, as for Agent Mesh (#1047, #1048). The Go
+module is where a project can still state an affected release, through a `require` and a
+`tool` line. OSV holds GHSA-48v2-6jcm-fc99 and GO-2026-6908 for
+`github.com/mtzanidakis/praktor`, introduced 0 and fixed 0.9.1, and the feed has read Go
+since 0.6.34. Measured with the scanner on a feed holding both records as OSV returns
+them (saved unedited under tests/fixtures/cves/cve-2026-62331-praktor/osv): a go.mod
+requiring v0.9.0 fires once at HIGH and names 0.9.1, and v0.9.1 does not. The records
+are not bundled, so without `aak update` nothing is reported.
+
+### Six out of scope 2026-11-11
+
+**Royal MCP (CVE-2026-111960, CVE-2026-111961; #1145, #1147).** NVD: "The Royal MCP
+WordPress plugin before 1.5.10 does not perform object-level or post-type authorisation
+checks in one of its search tools" (111960), and it "does not perform an object-level
+permission check before duplicating a requested page" (111961). WPScan's CVE records
+give 1.4.38 below 1.5.10, and every release below 1.5.10. It is the wordpress.org plugin
+`royal-mcp` (1.5.16 on 2026-11-11), installed into a WordPress site. npm and PyPI have no
+`royal-mcp`, and no file AAK reads states its version, the basis of the WordPress-plugin
+rows of 2026-10-16 and 2026-10-17.
+
+**AI Engine (CVE-2026-110732, #1186), as #1115 was.** NVD: the plugin "is vulnerable to
+Missing Authorization in all versions up to, and including, 3.8.6", because the MCP
+module's OAuth dynamic client registration endpoint is registered with `__return_true`
+as its permission callback. It is the wordpress.org plugin `ai-engine` again, on neither
+npm nor PyPI. The changeset Wordfence cites runs from 3.8.6 to 3.8.7, and 3.9.3 is
+current.
+
+**Claude Desktop (CVE-2026-88066, #1188).** NVD: "Prior to 1.8089.0, Claude Desktop on
+Windows invokes git.exe through uv_spawn without an absolute path". GHSA-4p2j-qj3c-6x84
+names the package "Claude Desktop" in the ecosystem "anthropic": the desktop app, which
+ships from Anthropic and on no registry, like LM Studio (#1154). The CVE record's CNA
+data names vendor `anthropics` and product `claude-code`, the repository the advisory
+sits in, the same pair CVE-2026-88968 uses for the npm CLI. So `data/cna_package_map.json`
+must not map that pair to `@anthropic-ai/claude-code`: the desktop range, below
+1.8089.0, would report every 1.x CLI release. A test holds that NVD's record (saved
+unedited under tests/fixtures/nvd_cna) maps to no package.
+
+**Zuke (CVE-2026-119287, #1174).** NVD: "Prior to 1.51.0, the @zuke/core MCP registry
+mode accepts command-form registry descriptors without applying the
+ZUKE_REGISTRY_LAUNCH_HOSTS authorization enforced for remote module descriptors."
+`@zuke/core` is published on JSR only (1.81.0 on 2026-11-11), and GHSA-2rmh-5cw4-33gr
+names no ecosystem. npm has no `@zuke/core`, and PyPI's `zuke` is the Python SDK
+(zuke-build/zuke-python), which the advisory does not name. A project names the core in
+deno.json or a `jsr:` import, and AAK reads neither; the MCP config `zuke setup --mcp`
+writes runs `deno run -A zuke.ts mcp` or the compiled `zuke mcp`, and neither states a
+version. A test holds that a deno.json naming 1.50.0 is not read. A JSR reader would
+make it pinnable.
+
+**The Linux kernel (CVE-2026-99164, #1181), an unrelated match.** It fixes slab
+corruption from undersized DMA bounce buffers in the i.MX SPI driver. The record's only
+text containing "mcp" is `mcp251xfd`, a Microchip CAN controller driver, and
+`__pi_memcpy_generic`, and its description passed the watcher's relevance check only on
+"an LLM was used to identify the size mismatch". No MCP or agent software is involved.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-62264 | 7.5 | `@sylphx/pdf-reader-mcp` (npm) | **New pin** `AAK-MCP-PDFREADER-CVE-2026-62264-001` (HIGH): 2.2.0 up to 3.0.1, a stated version required. | #1187 |
+| CVE-2026-118667 | 4.3 | `langgraph-sdk` (PyPI) | **New pin** `AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001` (MEDIUM): 0.4.0 up to 0.4.6, a stated version required. | #1146 |
+| CVE-2026-88968 | 7.7 (4.0) | `@anthropic-ai/claude-code` (npm) | **Floor raised** on `AAK-CLAUDECODE-CVE-2026-40068-PIN-001`: 2.1.179 to 2.1.251, and the CVE joins the rule. | #1185 |
+| CVE-2026-62331 | 8.2 | `github.com/mtzanidakis/praktor` (Go) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports a go.mod requiring it below v0.9.1, HIGH. No pin. | #1171 |
+| CVE-2026-111960 | 4.3 | Royal MCP (wordpress.org plugin `royal-mcp`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected 1.4.38 up to 1.5.10. | #1145 |
+| CVE-2026-111961 | 3.8 | Royal MCP (wordpress.org plugin `royal-mcp`) | **Out of scope**, non-pinnable, on the same basis. Affected below 1.5.10. | #1147 |
+| CVE-2026-110732 | 7.5 | AI Engine (wordpress.org plugin `ai-engine`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 3.8.6; fixed in 3.8.7. | #1186 |
+| CVE-2026-88066 | 7.5 (4.0) | Claude Desktop (desktop app) | **Out of scope**: the app is on no registry, and its record maps to no package. Fixed in 1.8089.0. | #1188 |
+| CVE-2026-119287 | 8.0 | `@zuke/core` (JSR) | **Out of scope**: published on JSR only, which AAK does not read. Fixed in 1.51.0. | #1174 |
+| CVE-2026-99164 | 7.8 | Linux kernel (`spi-imx`) | **Out of scope**: an unrelated match on `mcp251xfd` and "LLM". | #1181 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that, marked
+(4.0): GitHub's for the six GitHub records, Wordfence's for AI Engine, the kernel CNA's
+for CVE-2026-99164, and CISA-ADP's for the two Royal MCP records, whose CNA gave none.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
