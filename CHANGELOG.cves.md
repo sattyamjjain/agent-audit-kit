@@ -530,6 +530,151 @@ CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that, mar
 (4.0): GitHub's for the six GitHub records, Wordfence's for AI Engine, the kernel CNA's
 for CVE-2026-99164, and CISA-ADP's for the two Royal MCP records, whose CNA gave none.
 
+## 2026-11-11 (unreleased): #1066, #1067 and #1215 to #1219, three new pins, one in the advisory feed, three out of scope
+
+The watcher opened five `cve-response` issues at 19:44Z on 2026-11-10 (#1215 to #1219).
+#1066 and #1067 date from 2026-10-21, deferred then as pins scoped but not written. Three
+get new pins, each measured with the scanner on a firing fixture and a negative one after
+its range was read in the published artifacts. One is reported by `AAK-KNOWN-VULN-001`
+after `aak update`, as it has been since 0.6.34, and three are out of scope. Each title and
+`sev/` label matches the record's score, so nothing was corrected first. NVD text is quoted
+from the API records, read on 2026-11-11.
+
+### CVE-2026-113731 (#1066): new pin 2026-11-11
+
+**djust gets `AAK-MCP-DJUST-CVE-2026-113731-001`: PyPI `djust` from 0.9.0 below 1.0.10,
+from 1.1.0 below 1.1.7 and from 1.2.0 below 1.2.4, LOW.** NVD: "From 0.9.0 until 1.0.10,
+1.1.7, 1.2.4, and 1.3.0rc8, the find_handlers_for_template MCP tool in
+python/djust/mcp/server.py accepts an existing absolute template_path and reads it without
+restricting the resolved path to the project or configured template directories."
+Checked in the PyPI sdists: 0.4.4 has no such tool, and 0.9.0, the next release, reads an
+absolute path as given; 1.0.9, 1.1.6, 1.2.3, 1.3.0rc4 and 1.3.0rc7 still do, and 1.0.10,
+1.1.7, 1.2.4, 1.3.0rc8 and 1.3.0 resolve the path and keep it inside the template roots
+(`_path_within`). The 1.1 and 1.2 lines sort above the 1.0.10 floor, so they are `also`
+ranges on one row. 1.3.0rc4 to 1.3.0rc7 are affected but read as 1.3.0, which is fixed,
+since a pre-release folds into its release, so the pin cannot report them; the rule says
+so and a test pins it, the same limit as LiteLLM's 1.104.0rc1 (#1081). `latest` is 1.3.2,
+fixed, so a stated version is required. OSV's GHSA-r57g-mc79-8hj2 carries all four ranges
+for PyPI `djust`, so after `aak update` `AAK-KNOWN-VULN-001` reports the same releases and
+1.3.0rc4 to rc7 too, at MEDIUM, since the feed puts any score below 7.0 at MEDIUM: a
+lockfile on 1.0.9 then gets both findings. NVD's CNA record names no package.
+
+### CVE-2026-114090 (#1067): new pin 2026-11-11
+
+**The Trigger.dev CLI gets `AAK-MCP-TRIGGERDEV-CVE-2026-114090-001`: npm `trigger.dev`
+from 4.0.0 below 4.5.4, HIGH.** NVD: "Trigger.dev cli-v3 from 3.0.0 before 4.5.4 contains
+a missing authentication vulnerability in the trigger dev --mcp server, which binds all
+network interfaces and exposes the /sse and /messages endpoints." The package npm carries
+from packages/cli-v3 is `trigger.dev`. GHSA-pqmg-rq46-vm4m and the CNA's packageURL name
+`@trigger.dev/cli-v3`, which npm does not have, so `aak update` files the record under a
+name no project declares, and OSV holds it only as a git range. Checked in the npm
+tarballs: 3.0.0 and 3.3.17, the newest 3.x release, have no `--mcp` option, so the range
+starts at 4.0.0 and not at the advisory's 3.0.0; 4.0.0-v4-beta.0, 4.0.0 and 4.5.3 ship
+`dist/esm/dev/mcpServer.js`, which serves `/sse` and `/messages` with no check and calls
+`app.listen(options.port, ...)` with no host; 4.5.4 drops the option and the file. Its
+stdio `trigger.dev mcp` command stays. Snapshot builds published as `0.0.0-<name>-<date>`
+read as 0.0.0 and are not reported, though some carry the server
+(0.0.0-re2-20250815162450 does). `latest` is 4.8.4, fixed, so a stated version is
+required.
+
+### CVE-2026-54140 (#1219): new image pin 2026-11-11
+
+**OpenHuman's core image gets `AAK-MCP-OPENHUMAN-CVE-2026-54140-001`:
+`ghcr.io/tinyhumansai/openhuman-core` from v0.54.0 below v0.57.12, HIGH.** NVD: "Before
+0.57.13, OpenHuman places names, descriptions, titles, and parameter definitions returned
+by configured external MCP servers into the agent model context without neutralizing
+instructions or bounding the descriptive fields." OpenHuman (tinyhumansai/openhuman) ships
+as desktop installers and as that GHCR image, tagged by release. Its Rust crate is named
+`openhuman` but is not on crates.io, whose `openhuman` is a 2023 crate of OpenHuman-ai's,
+and npm's and PyPI's `openhuman` are 2023 packages of other projects. NVD's CNA data names
+no package, GHSA-g6j9-89xv-v752 gives the ecosystem as "other", and OSV holds the CVE only
+as a git range, so the advisory feed cannot reach it, and the image tag is the version a
+deployment states. Checked in the source at the commit each image's label names:
+`src/openhuman/mcp_client/` is absent at v0.53.43 and ships in v0.54.0, with
+`McpRemoteTool` and a tool that hands the model each remote tool's description. The fix,
+00b8a669 (tinyhumansai/openhuman#3215, `sanitize.rs`), is not in v0.57.11 (8476248e) and
+is in v0.57.12 (c903227e), one release below the advisory's 0.57.13: no git tag or GitHub
+release names 0.57.12, but the image does, so the range ends there. `latest` was the
+v0.64.15 digest on 2026-11-11, fixed. The desktop builds state no version AAK reads.
+
+### CVE-2026-76892 (#1218): in the advisory feed since 0.6.34, after `aak update`
+
+**`@tsparticles/mcp-server` gets no pin: `AAK-KNOWN-VULN-001` reports it after `aak
+update`, as 0.6.34 already did.** NVD: "Prior to 4.3.1, the HTTP mode of
+@tsparticles/mcp-server calls JSON.parse outside a request-local error boundary in the
+POST /mcp handler in integrations/mcp-server/src/index.ts." 0.6.34 shipped a reviewed row
+in data/cna_package_map.json that maps NVD's record, whose CNA data names no package, to
+npm's `@tsparticles/mcp-server`, and OSV's npm export has carried GHSA-4p8p-pjpq-2w7h since
+9 Nov, so `aak update` brings it in either way. Measured with the scanner on both records
+as saved: a lockfile on 0.1.0 or 4.3.0 fires at HIGH and names 4.3.1, and 4.3.1 and 4.5.3
+do not. There is no pin because no project can install an affected release: npm's
+registry record lists 0.1.0, 4.1.3, 4.2.0, 4.2.1 and 4.3.0 among its publish times and
+serves none of them (each version and tarball answers 404, on unpkg and jsDelivr too), so
+4.3.1, which wraps the parse and answers 400, is the oldest release npm serves. The Docker
+Hub image `tsparticles/mcp-server` starts on 10 Jul 2026, after 4.3.1, with the tags `v4`,
+`v4.4.0` and `latest`. The source at the v4.2.0, v4.2.1 and v4.3.0 tags parses the body
+with a bare `JSON.parse`. The record is not bundled, so a lockfile written before those
+releases went is reported only after `aak update`. CVE-2026-76893 (one shared transport for
+every client, fixed in 4.3.2) maps the same way and reports 4.3.1, which npm still serves;
+no issue has named it.
+
+### CVE-2026-121576, CVE-2026-112136 and CVE-2026-109492 (#1215, #1216, #1217): out of scope 2026-11-11
+
+**MCP Server for WordPress (AtlasMCP) is out of scope, non-pinnable.** NVD: "Incorrect
+Privilege Assignment vulnerability in AtlasAiDev MCP Server for WordPress
+ai-workflow-automation-ai-agent-hub allows Privilege Escalation.This issue affects MCP
+Server for WordPress: from n/a through 2.0.1." It is the wordpress.org plugin
+`ai-workflow-automation-ai-agent-hub`, installed into a WordPress site, like DoubleScale
+CRM (#1013) and xSpeed Cache (#1036). npm and PyPI have no package by that name or by
+`mcp-server-for-wordpress`, and AAK reads no composer manifest, so a wpackagist
+requirement is not read either. The plugin's 2.0.2 changelog (3 Nov 2026) says a
+Subscriber could change their own role through an AI app and that this is fixed, crediting
+Patchstack; wordpress.org lists 2.0.4 as the newest release.
+
+**Mendix Studio Pro is out of scope, non-pinnable.** NVD: "The affected products MCP Server
+does not properly restrict its HTTP listener to the loopback interface, leaving it
+potentially exposed to remote systems." The MCP server is part of Studio Pro, Mendix's
+desktop IDE, and Siemens' SSA-710379 names Studio Pro 11 from 11.15.0 below 11.16.0 and
+Studio Pro 11.12 from 11.12.6 below 11.12.7, with port 7782 in its mitigation. No file AAK
+reads states the IDE's version. npm's `mendix` follows Studio Pro's numbering (11.15.0,
+11.16.0) but holds the pluggable-widgets API's type definitions, and its `index.js` only
+throws if loaded at runtime, so a widget project that declares it states which API it
+builds against, not which IDE runs; a pin on it would report widget projects for a flaw
+their dependency does not have. The same advisory lists CVE-2026-112137 for the same
+releases; no issue has named it.
+
+**Microsoft MCP Gateway is out of scope, non-pinnable: no tag a project can name holds the
+flaw.** NVD: "Authorization bypass through user-controlled key in Microsoft MCP Gateway
+allows an authorized attacker to elevate privileges over a network." The gateway
+(microsoft/mcp-gateway) ships from source and as the GHCR images `ghcr.io/microsoft/mcp-gateway`
+and `ghcr.io/microsoft/tool-gateway`; NuGet's `ManagedCode.MCPGateway` is another project.
+MSRC's affected-product record names `ghcr.io/microsoft/mcp-gateway:1.0.0` as the fixed
+build, and the CNA's range (1.0.0.0 below 1.0.0) bounds nothing. Each image has two tags:
+`1.0.0`, built on 14 Oct 2026 minutes after f57c4f04 ("Verify deployment ownership for
+adapters and tools", the commit tagged v1.0.0), and `latest`, rebuilt from main on every
+push and last built on 4 Nov 2026. Both name fixed builds, so a reference by tag cannot
+name an affected one, and AAK keeps no list of the earlier builds' digests. A cluster still
+running a `latest` pulled before 14 Oct runs an affected build that no file shows. MSRC's
+FAQ says an authenticated caller could read another user's workload logs or disrupt that
+user's workloads.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-113731 | 3.3 | `djust` (PyPI) | **New pin** `AAK-MCP-DJUST-CVE-2026-113731-001` (LOW): 0.9.0 up to 1.0.10, 1.1.0 up to 1.1.7 and 1.2.0 up to 1.2.4, a stated version required. 1.3.0rc4 to rc7 read as 1.3.0 and are not reported. | #1066 |
+| CVE-2026-114090 | 7.1 | `trigger.dev` (npm) | **New pin** `AAK-MCP-TRIGGERDEV-CVE-2026-114090-001` (HIGH): 4.0.0 up to 4.5.4, a stated version required. | #1067 |
+| CVE-2026-54140 | 8.3 | `ghcr.io/tinyhumansai/openhuman-core` (image) | **New image pin** `AAK-MCP-OPENHUMAN-CVE-2026-54140-001` (HIGH): v0.54.0 up to v0.57.12. | #1219 |
+| CVE-2026-76892 | 8.7 (4.0) | `@tsparticles/mcp-server` (npm) | **Advisory feed, after `aak update`**, since 0.6.34: `AAK-KNOWN-VULN-001` reports below 4.3.1, HIGH. No pin: npm serves no affected release. | #1218 |
+| CVE-2026-121576 | 8.8 | MCP Server for WordPress (wordpress.org plugin `ai-workflow-automation-ai-agent-hub`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 2.0.1; fixed in 2.0.2. | #1215 |
+| CVE-2026-112136 | 8.8 | Mendix Studio Pro (desktop IDE) | **Out of scope**, non-pinnable: no file AAK reads states the IDE's version, and npm's `mendix` is the widgets API's type definitions. Fixed in 11.16.0 and 11.12.7. | #1216 |
+| CVE-2026-109492 | 8.8 | Microsoft MCP Gateway (`ghcr.io/microsoft/mcp-gateway`) | **Out of scope**, non-pinnable: both tags the images carry, `1.0.0` and `latest`, are fixed builds. | #1217 |
+
+CVSS is each record's CVSS 3.1 score: GitHub's for djust and OpenHuman, VulnCheck's for
+Trigger.dev, and Patchstack's, Siemens' and Microsoft's for the three out of scope.
+CVE-2026-76892 has only GitHub's CVSS 4.0 score. Siemens also scores CVE-2026-112136 9.2
+in CVSS 4.0, and VulnCheck CVE-2026-114090 7.6.
+
+Dispositioned at 2026-11-11T05:34:00Z.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as

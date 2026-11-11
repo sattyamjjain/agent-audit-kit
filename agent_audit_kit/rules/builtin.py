@@ -387,6 +387,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-FUNCTYPE-CVE-2026-59176-001": ["AIS-07", "STA-08"],
     "AAK-MCP-PDFREADER-CVE-2026-62264-001": ["IAM-01", "STA-08"],
     "AAK-MCP-LANGGRAPHSDK-CVE-2026-118667-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-DJUST-CVE-2026-113731-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-TRIGGERDEV-CVE-2026-114090-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-OPENHUMAN-CVE-2026-54140-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -19536,6 +19539,149 @@ _r(
         "workflow carries a published Gheist marker: the file `sync-check.yml` with the step "
         "`toJSON(secrets) }}' | base32 -w 120`, or the string `===== gdmp-pivot:`. A workflow "
         "file over 1 MB is not read."
+    ),
+)
+
+
+# 2026-11-11 batch, group "new" (#1066, #1067, #1215 to #1219). Three new pins below:
+# djust and the Trigger.dev CLI in the pin table, OpenHuman's core image in
+# container_image_pins. The WordPress plugin (#1215), Mendix Studio Pro (#1216) and
+# Microsoft MCP Gateway (#1217) are out of scope, and @tsparticles/mcp-server (#1218)
+# is in the advisory feed after `aak update` since 0.6.34; the ledger has the reasons.
+
+_r(
+    "AAK-MCP-DJUST-CVE-2026-113731-001",
+    "djust 0.9.0 to 1.2.3: the find_handlers_for_template MCP tool reads any absolute path",
+    "djust (PyPI `djust`), a server-side rendering framework for Django, ships an MCP "
+    "server (`python manage.py djust_mcp`) whose `find_handlers_for_template` tool takes a "
+    "`template_path` and, when it is an existing absolute path, reads it without checking "
+    "that it lies under the project or a configured template directory. A client of the "
+    "server can use the tool to learn whether a file the djust process can read exists, "
+    "and to get back the parts of it that match the tool's `dj-click`, `dj-submit`, "
+    "`dj-change`, `dj-input`, `dj-keydown` or `dj-keyup` attribute pattern "
+    "(CVE-2026-113731, CVSS 3.1 3.3, CWE-22, GHSA-r57g-mc79-8hj2). The maintainer's "
+    "assessment is that the server speaks stdio as the same user, with no network "
+    "listener, and that the tool returns no raw file contents. Checked in the PyPI "
+    "sdists: the tool first ships in 0.9.0 (0.4.4, the release before it, has none), and "
+    "1.0.10, 1.1.7, 1.2.4 and 1.3.0rc8 resolve the path and keep it inside the template "
+    "roots, which 1.0.9, 1.1.6, 1.2.3 and 1.3.0rc7 do not.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `djust` to 1.0.10, 1.1.7, 1.2.4 or 1.3.0 or later, on the line you run, and "
+    "pin it. Until then, connect the djust MCP server only to clients and agents you "
+    "would let read the files its process can read.",
+    sarif_name="DjustMcpTemplatePathRead",
+    cve_references=["CVE-2026-113731"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `djust` from 0.9.0 below 1.0.10, from 1.1.0 below 1.1.7 and from 1.2.0 "
+        "below 1.2.4 where a version is stated: a requirements*.txt entry at any depth, a "
+        "pyproject.toml, Pipfile or lockfile entry at the project root, or a `uvx` launch in "
+        ".mcp.json, mcp.json or claude_desktop_config.json, reporting a range that admits an "
+        "affected version. `latest` was 1.3.2 on 2026-11-11 and states no version, so an "
+        "unversioned `djust` is not reported. A pre-release reads as its release: 1.3.0rc4 "
+        "to 1.3.0rc7, which are affected, read as 1.3.0, which is fixed, and are not "
+        "reported, while 1.2.1rc1 and 1.2.1rc2 read as 1.2.1 and are. It reads the version, "
+        "not whether the project runs `djust_mcp`, so a site that never starts the MCP "
+        "server is reported too. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-TRIGGERDEV-CVE-2026-114090-001",
+    "Trigger.dev CLI 4.0.0 to 4.5.3: `trigger dev --mcp` serves MCP on every interface with no authentication",
+    "The Trigger.dev CLI (npm `trigger.dev`, published from packages/cli-v3 of "
+    "triggerdotdev/trigger.dev) starts an MCP server when `trigger dev` runs with `--mcp`. "
+    "Before 4.5.4 that server answered `/sse` and `/messages` with no token, Origin or "
+    "host check, and listened on port 3333 (or `--mcp-port`) with no host argument, so "
+    "on every interface. Its tools (`trigger-task`, `cancel-run`, `list-runs`, `get-run`, "
+    "`get-run-logs`, `list-all-tasks`) call Trigger.dev with the developer's stored "
+    "access token, so a caller on the network, or a web page the developer opens, can "
+    "start and cancel runs and read run payloads and logs in the developer's project "
+    "(CVE-2026-114090, CVSS 3.1 7.1, CWE-306, GHSA-pqmg-rq46-vm4m). Checked in the npm "
+    "tarballs: 3.0.0 and 3.3.17, the newest 3.x release, have no `--mcp` option; 4.0.0, "
+    "and every 4.0.0 beta, ships `dist/esm/dev/mcpServer.js` calling "
+    "`app.listen(options.port, ...)`, as 4.5.3 does; 4.5.4 removes the option and the "
+    "server. The advisory names `@trigger.dev/cli-v3` from 3.0.0, a name npm does not "
+    "carry.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `trigger.dev` to 4.5.4 or later and pin it. Until then, do not pass `--mcp` "
+    "to `trigger dev`: a firewall keeps other hosts off port 3333 (or the `--mcp-port`), "
+    "but not a web page in the developer's own browser. The `trigger.dev mcp` command, "
+    "which 4.5.4 keeps, speaks stdio.",
+    sarif_name="TriggerDevCliMcpServerNoAuth",
+    cve_references=["CVE-2026-114090"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports an npm reference to `trigger.dev` from 4.0.0 below 4.5.4 that states a "
+        "version: a package.json or lockfile entry, or the package in an MCP config or a "
+        "package.json script, reporting a range that admits an affected version. `latest` "
+        "was 4.8.4 on 2026-11-11 and states no version, so `npx trigger.dev@latest dev` is "
+        "not reported. A pre-release reads as its release, so the 4.0.0 betas read as 4.0.0 "
+        "and the 4.5.0 release candidates as 4.5.0, and both are reported, as both carry the "
+        "server. Snapshot builds published as `0.0.0-<name>-<date>` read as 0.0.0 and are "
+        "not reported, though some carry the server (0.0.0-re2-20250815162450 does). It "
+        "reads the version, not whether `trigger dev` runs with `--mcp`, so a project that "
+        "never passes the flag, or that runs only the stdio `trigger.dev mcp` command, is "
+        "reported too. `@trigger.dev/cli-v3`, the name the advisory gives, is not on npm "
+        "and is not matched. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-OPENHUMAN-CVE-2026-54140-001",
+    "OpenHuman core image 0.54.0 to 0.57.11: remote MCP tool descriptions reach the model unfiltered",
+    "OpenHuman (tinyhumansai/openhuman), an agent harness shipped as a desktop app and as "
+    "the core-server image `ghcr.io/tinyhumansai/openhuman-core`, connects to the MCP "
+    "servers a user configures and placed the names, titles, descriptions and parameter "
+    "definitions they returned into the model's context with no screening and no length "
+    "bound. The advisory notes that the tool filter read only names and the "
+    "prompt-injection detector only user messages, so a malicious or compromised MCP "
+    "server could carry instructions in a tool description that the model read on every "
+    "turn, steering it to call other tools or disclose data without any message from "
+    "the user (CVE-2026-54140, CVSS 3.1 8.3, GHSA-g6j9-89xv-v752). Checked in the source "
+    "at the commit each image's label names: the MCP client (`src/openhuman/mcp_client/`) "
+    "first ships in 0.54.0 and is absent at 0.53.43, and the fix, 00b8a669 (#3215), which "
+    "screens and bounds remote tool definitions, is in the 0.57.12 image and not in "
+    "0.57.11. The advisory names 0.57.13, the first GitHub release after it.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/tinyhumansai/openhuman-core` at 0.57.13 or later, pinned by version, and "
+    "update the desktop app. Configure only MCP servers you trust: a filter can catch "
+    "known injection patterns in a description, but it cannot prove one safe.",
+    sarif_name="OpenHumanMcpToolDescriptionInjection",
+    cve_references=["CVE-2026-54140"],
+    owasp_mcp_references=["MCP03:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI01", "ASI04"],
+    adversa_references=["ADV-POISON-02"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/tinyhumansai/openhuman-core:TAG` in YAML (compose files, Kubernetes "
+        "manifests, MCP configs), a Helm values mapping of `repository` and `tag`, "
+        "Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` "
+        "and `claude_desktop_config.json`. Tags from v0.54.0 below v0.57.12 are reported, "
+        "with or without the `v`; tags below v0.54.0 predate the MCP client and are not. "
+        "The range ends at 0.57.12, whose image carries the fix, though the advisory names "
+        "0.57.13. `latest` was the v0.64.15 image on 2026-11-11, so an untagged reference is "
+        "not reported. The rule reads the tag, not whether any MCP server is configured, so "
+        "a deployment that connects none is reported too. The desktop app (`.dmg`, "
+        "`.AppImage`, `.deb`, Homebrew), a core built from source and the Rust crate taken "
+        "as a git dependency state no version AAK reads, and crates.io's, npm's and PyPI's "
+        "`openhuman` are other projects. Mirrors under another registry are not matched, "
+        "and commented-out lines are skipped."
     ),
 )
 

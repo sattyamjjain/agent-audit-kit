@@ -317,6 +317,14 @@ available) before shipping:
   - langgraph-sdk                  0.4.0 <= v < 0.4.6  (CVE-2026-118667; the v3 stream
     helpers put raw assistant and thread ids in authenticated GET paths. MEDIUM, its
     own rule beside the HIGH 104873 pin, and a stated version is required)
+  - djust                          0.9.0 <= v < 1.0.10, and 1.1.0-1.1.6 and 1.2.0-1.2.3
+    (CVE-2026-113731; the find_handlers_for_template MCP tool reads any existing
+    absolute path. LOW, a stated version required; the 1.3.0 release candidates
+    before rc8 read as 1.3.0, which is fixed)
+  - trigger.dev                    4.0.0 <= v < 4.5.4  (CVE-2026-114090; `trigger dev
+    --mcp` serves MCP on every interface with no authentication, and its tools act
+    with the developer's access token. The 3.x releases have no `--mcp`; a stated
+    version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1890,6 +1898,34 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="0.4.6 (affected from 0.4.0; with RemoteGraph, langgraph 1.2.14, "
                    "which requires it)",
          requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 batch (#1066, #1067) ---
+    # djust's `find_handlers_for_template` MCP tool took an existing absolute
+    # template_path and read it with no check that it lies under the project or a
+    # template directory (CVE-2026-113731, CVSS 3.1 3.3, CWE-22, GHSA-r57g-mc79-8hj2).
+    # Checked in the PyPI sdists: 0.4.4 has no such tool and 0.9.0, the next release,
+    # reads the path; 1.0.9, 1.1.6, 1.2.3 and 1.3.0rc7 still do, and 1.0.10, 1.1.7,
+    # 1.2.4 and 1.3.0rc8 resolve it inside the template roots (`_path_within`). 1.1.x
+    # and 1.2.x sort above the 1.0.10 floor, so they are `also` ranges. The 1.3.0
+    # release candidates rc4 to rc7 read as 1.3.0 (a pre-release folds into its
+    # release), which is fixed, so they cannot be a range here. `latest` is 1.3.2,
+    # fixed, so a stated version is required.
+    _Pin("AAK-MCP-DJUST-CVE-2026-113731-001", "djust", ("djust",), (1, 0, 10),
+         introduced=(0, 9, 0), also=(((1, 1, 0), (1, 1, 7)), ((1, 2, 0), (1, 2, 4))),
+         fix_label="1.0.10, 1.1.7, 1.2.4 or 1.3.0 (affected from 0.9.0)",
+         requires_version=True, ecosystem="py"),
+    # The Trigger.dev CLI (npm `trigger.dev`, published from packages/cli-v3) starts an
+    # MCP server for `trigger dev --mcp` that listens with no host argument, so on
+    # every interface, with no token or Origin check, and whose tools call Trigger.dev
+    # with the developer's stored access token (CVE-2026-114090, CVSS 3.1 7.1,
+    # CWE-306, GHSA-pqmg-rq46-vm4m). Checked in the npm tarballs: 3.0.0 and 3.3.17,
+    # the newest 3.x, have no `--mcp` option; 4.0.0-v4-beta.0 and 4.0.0 ship
+    # `dist/esm/dev/mcpServer.js` calling `app.listen(options.port, ...)`, as 4.5.3
+    # still does; 4.5.4 drops the option and the file. The advisory names
+    # `@trigger.dev/cli-v3` from 3.0.0, which npm does not carry. `latest` is 4.8.4,
+    # fixed, so a stated version is required.
+    _Pin("AAK-MCP-TRIGGERDEV-CVE-2026-114090-001", "trigger.dev", ("trigger.dev",),
+         (4, 5, 4), introduced=(4, 0, 0), fix_label="4.5.4 (affected from 4.0.0)",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
