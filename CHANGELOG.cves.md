@@ -18,6 +18,89 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-11 (unreleased): #1223 and two held MCP TypeScript SDK records, three new rules
+
+The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769
+behind its back-pressure cap. All three are GitHub's records for the official MCP TypeScript
+SDK, published on 5 Nov from advisories GitHub had published in October. Each gets a rule of
+its own: none of the three SDK rules already shipped reports the same flaw over every release a
+record affects. Every range was read in the npm tarballs and measured with the scanner on a
+firing fixture and a negative one. `latest` of every package named here is fixed, so each pin
+needs a stated version. NVD text is quoted from the API records, read on 2026-11-11.
+
+### CVE-2026-111770 (#1223): new pin 2026-11-11
+
+**The 2.x server gets `AAK-MCP-TSSDK-CVE-2026-111770-001`: npm `@modelcontextprotocol/server`
+from 2.0.0 below 2.3.0, HIGH.** NVD: "From 2.0.0 until 2.3.0 in @modelcontextprotocol/server,
+applications that shared one stateless HTTP transport or one McpServer or Server instance among
+multiple clients could deliver responses and notifications to the wrong client." Messages were
+matched to a connection by JSON-RPC id alone, and SDK clients number their requests from 0.
+Checked in the npm tarballs: 2.0.0 and 2.2.0 have neither guard, and 2.3.0 refuses a second
+`connect()` and a stateless transport's second request (typescript-sdk#2918, merged to the 2.x
+branch only). The CNA data also lists the repository, `typescript-sdk`, below 1.32.0, but
+GHSA-jm63-cq47-j5jp names only `@modelcontextprotocol/server` and says
+`@modelcontextprotocol/sdk` 1.26.0 and later are not affected; the sdk tarballs at 1.26.0 and
+1.31.0 already refuse both, so the rule does not read the sdk, and its limitations say why.
+`AAK-MCP-TSSDK-CVE-2026-111768-001` reads the same server releases for another flaw, so a server
+on 2.2.0 gets both findings. The fix makes a shared instance fail its requests, so the
+remediation says how to build one per request or per session; the rule reads the version and
+cannot tell an application that already does.
+
+### CVE-2026-111771 (not filed): new pin 2026-11-11
+
+**Server bearer authentication gets `AAK-MCP-TSSDK-CVE-2026-111771-001`, MEDIUM, on four npm
+packages: `@modelcontextprotocol/sdk` from 1.6.0 below 1.32.0, `@modelcontextprotocol/server`
+from 2.0.0 below 2.3.0, `@modelcontextprotocol/express` from 2.0.0 below 2.0.2 and
+`@modelcontextprotocol/server-legacy` from 2.0.0 below 2.3.1.** NVD: "server-side bearer
+authentication could accept a valid access token issued for a different service because the
+SDK did not enforce the token audience." Only a server whose `verifyAccessToken()` does not
+check the audience itself is exposed. Checked in the npm tarballs: sdk 1.5.0 has no bearer
+middleware and 1.6.0 adds `requireBearerAuth()`, so the record's lower bound holds; sdk 1.31.0,
+server 2.2.0, express 2.0.1 and server-legacy 2.3.0 take no audience, and sdk 1.32.0, server
+2.3.0, express 2.0.2 and server-legacy 2.3.1 add `expectedResource`. All four packages are on
+npm; the three 2.x ones released 2.0.0 on 27 Jul 2026. The express adapter peer-depends on
+the server, so a fixed server can run beside an affected adapter, and each package is a pin of
+its own on the one rule. NVD: "Upgrading alone leaves the new audience validation disabled."
+The remediation names both changes the advisory asks for, and the limitations say a fixed
+release without them is not reported. `AAK-MCP-TSSDK-CVE-2026-111768-001`'s range holds the
+sdk and server rows, but it is a memory-exhaustion rule at HIGH and reads neither express nor
+server-legacy, so this is its own rule.
+
+### CVE-2026-111769 (not filed): new pin 2026-11-11
+
+**The SDK's HTTP client gets `AAK-MCP-TSSDK-CVE-2026-111769-001`, MEDIUM: every
+`@modelcontextprotocol/sdk` release before 1.32.0, and `@modelcontextprotocol/client` from
+2.0.0 below 2.3.0.** NVD: "the HTTP client transports and OAuth client requests followed
+redirects to a different origin while retaining custom request headers and, for HTTP 307 or 308
+responses, request bodies." The record gives the sdk no lower bound. Checked in the npm
+tarballs: 0.4.0, the first release, already posts through `fetch` with its default redirect
+handling; the SSE client takes custom headers from 1.1.0 and the OAuth client ships in 1.6.0,
+so before 1.1.0 a 307 or 308 re-sends only a message body. Those releases are reported, as the
+advisory scopes them, and the rule says what they lack. sdk 1.31.0 and client 2.2.0 follow any
+redirect, and 1.32.0 and 2.3.0 follow one only within the origin.
+`AAK-MCP-TSSDK-CVE-2026-104850-001`, the OAuth client's issuer pin, is HIGH and stops at 1.31.0
+and client 2.2.0, both affected here, so this is a rule of its own rather than a raised floor.
+Setting `redirectPolicy: 'follow'` after upgrading restores the exposure; the rule reads the
+version, not that option.
+
+**All three are in OSV, and none is in the bundled feed.** OSV's GHSA-jm63-cq47-j5jp,
+GHSA-rvq5-wwqv-78pq and GHSA-6prh-2h8m-c8cw carry the same npm ranges, queried by package and
+version on 2026-11-11, so before `aak update` only the rules report these releases. After it,
+`AAK-KNOWN-VULN-001` reports each advisory on the line its rule reports, at a severity no higher
+than the rule's, and the engine drops the feed's finding: measured on each firing fixture with a
+feed built from the three records. NVD's CNA data names no packageURL and no reviewed row maps
+the SDK, so the feed's NVD half does not read them.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-111770 | 7.7 | `@modelcontextprotocol/server` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111770-001` (HIGH): 2.0.0 up to 2.3.0, a stated version required. The 1.x `@modelcontextprotocol/sdk` is not read. | #1223 |
+| CVE-2026-111771 | 6.8 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/server`, `@modelcontextprotocol/express`, `@modelcontextprotocol/server-legacy` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111771-001` (MEDIUM): sdk 1.6.0 up to 1.32.0, server 2.0.0 up to 2.3.0, express 2.0.0 up to 2.0.2, server-legacy 2.0.0 up to 2.3.1, a stated version required. | not filed |
+| CVE-2026-111769 | 6.5 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/client` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-111769-001` (MEDIUM): sdk below 1.32.0, client 2.0.0 up to 2.3.0, a stated version required. | not filed |
+
+CVSS is each record's CVSS 3.1 score, GitHub's.
+
+Dispositioned at 2026-11-11T09:10:00Z.
+
 ## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
 
 Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are

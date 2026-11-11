@@ -366,6 +366,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CHATCHAT-CVE-2026-75128-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-111767-001": ["IAM-01", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-111768-001": ["STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111770-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111771-001": ["IAM-01", "IAM-16", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-111769-001": ["DSP-17", "STA-08"],
     "AAK-MCP-TOOLBOX-HOSTS-001": ["IAM-01", "STA-08"],
     "AAK-MCP-RIPGREP-CVE-2026-113378-001": ["AIS-07", "STA-08"],
     "AAK-MCP-D365FO-CVE-2026-114123-001": ["IAM-01", "STA-08"],
@@ -17764,6 +17767,147 @@ _r(
         "project on either adapter with a fixed `@modelcontextprotocol/server` gets no finding from the "
         "bundled data. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-11 wave (#1223, and two records the watcher held). Three more MCP
+# TypeScript SDK records, each its own rule beside the three above: none of
+# them reports the same flaw over every release a record affects. The
+# dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-TSSDK-CVE-2026-111770-001",
+    "MCP TypeScript SDK server 2.0.0 to 2.2.0: a shared transport or server delivers one HTTP client's "
+    "messages to another",
+    "The official MCP TypeScript SDK's 2.x server package (`@modelcontextprotocol/server` on npm) matched "
+    "each response and notification to a connection by its JSON-RPC request id alone. SDK clients number "
+    "their requests from 0, so ids collide in normal use, and an application that built one stateless "
+    "HTTP transport, or one `McpServer` or `Server`, at startup and shared it among several clients could "
+    "deliver one client's responses and notifications to another (CVE-2026-111770, CVSS 3.1 7.7, CWE-362, "
+    "GHSA-jm63-cq47-j5jp). Until 2.3.0 the README examples of the `hono`, `express`, `fastify` and `node` "
+    "adapters showed that pattern. 2.3.0 refuses to be shared: a second `connect()` rejects with "
+    "`ALREADY_CONNECTED`, a stateless transport rejects its second request, and `createMcpHandler()` "
+    "rejects a factory that returns an instance still serving another request "
+    "(modelcontextprotocol/typescript-sdk#2918). stdio servers, and a `createMcpHandler()` factory that "
+    "builds a new server on every call, are not affected. The advisory names only this package: the 1.x "
+    "`@modelcontextprotocol/sdk` refuses a second connect and a reused stateless transport from 1.26.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@modelcontextprotocol/server` to 2.3.0 or later and pin it, and change the code that shares "
+    "an instance, since from 2.3.0 a shared instance fails its requests: pass `createMcpHandler()` a "
+    "factory that builds a new `McpServer` on every call, build a new `McpServer` and transport inside "
+    "each request handler, or set `sessionIdGenerator` and keep one server and one transport per session. "
+    "The same change fixes an affected version if you cannot upgrade yet.",
+    sarif_name="McpTypeScriptSdkSharedServerCrossClient",
+    cve_references=["CVE-2026-111770"],
+    owasp_mcp_references=["MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/server` from 2.0.0 up to 2.3.0 where a package.json, lockfile or "
+        "MCP config states the version, reporting a range that admits an affected version. `latest` is "
+        "fixed and states no version, so it is not reported. It reads the version, not the code, so a "
+        "server that builds its transport and server per request or per session, or one that speaks only "
+        "stdio, is reported without being exposed. The 1.x `@modelcontextprotocol/sdk` is not read: the "
+        "CVE record also lists the `typescript-sdk` repository below 1.32.0, but the advisory names only "
+        "the 2.x server, and the sdk refuses a second connect and a reused stateless transport from "
+        "1.26.0 (checked in the npm tarballs at 1.26.0 and 1.31.0). A file over 2 MB, or a lockfile over "
+        "32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
+    "AAK-MCP-TSSDK-CVE-2026-111771-001",
+    "MCP TypeScript SDK: server bearer authentication accepts a token issued for another service",
+    "The official MCP TypeScript SDK's server-side bearer authentication (`requireBearerAuth()`, and "
+    "`verifyBearerToken()` on 2.x) had no way to check a token's audience. Where one authorization server "
+    "issues tokens for several services, a valid token for another service was accepted by the MCP "
+    "server, and its holder got what an authenticated caller can read and do (CVE-2026-111771, CVSS 3.1 "
+    "6.8, CWE-863, GHSA-rvq5-wwqv-78pq). A server is exposed only when its `verifyAccessToken()` does not "
+    "check `aud` itself. It affects `@modelcontextprotocol/sdk` from 1.6.0, where `requireBearerAuth()` "
+    "first ships, up to 1.32.0; `@modelcontextprotocol/server` 2.0.0 up to 2.3.0; "
+    "`@modelcontextprotocol/express` 2.0.0 up to 2.0.2; and `@modelcontextprotocol/server-legacy` 2.0.0 "
+    "up to 2.3.1. The fixed releases add an `expectedResource` option that is off by default "
+    "(modelcontextprotocol/typescript-sdk#2929, #2930 and #2952).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to `@modelcontextprotocol/sdk` 1.32.0, `@modelcontextprotocol/server` 2.3.0 together with "
+    "`@modelcontextprotocol/express` 2.0.2 where you use it, or `@modelcontextprotocol/server-legacy` "
+    "2.3.1, or later, and pin it. The advisory says upgrading alone changes nothing: pass "
+    "`expectedResource`, the audience your authorization server puts in tokens for your server, to "
+    "`requireBearerAuth()`, and return the token's audience from `verifyAccessToken()` as "
+    "`AuthInfo.resource`. Make both changes together; with only the first, every request gets 401. If "
+    "you cannot upgrade yet, reject any token whose `aud` does not include your server inside "
+    "`verifyAccessToken()`, which closes the issue on every version.",
+    sarif_name="McpTypeScriptSdkBearerAudience",
+    cve_references=["CVE-2026-111771"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` from 1.6.0 up to 1.32.0, `@modelcontextprotocol/server` from "
+        "2.0.0 up to 2.3.0, `@modelcontextprotocol/express` from 2.0.0 up to 2.0.2 and "
+        "`@modelcontextprotocol/server-legacy` from 2.0.0 up to 2.3.1 where a package.json, lockfile or "
+        "MCP config states the version, reporting a range that admits an affected version. `latest` of "
+        "each is fixed and states no version, so it is not reported. It reads the version, not the code: "
+        "a fixed release without `expectedResource` set, which the advisory says is still exposed, is not "
+        "reported, and a server whose `verifyAccessToken()` checks `aud`, one with no bearer "
+        "authentication, or an application that uses the SDK only as a client, is reported without being "
+        "exposed. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+_r(
+    "AAK-MCP-TSSDK-CVE-2026-111769-001",
+    "MCP TypeScript SDK client: HTTP transports and OAuth requests send headers and bodies across a "
+    "cross-origin redirect",
+    "The official MCP TypeScript SDK's HTTP client transports (`StreamableHTTPClientTransport`, "
+    "`SSEClientTransport`) and its OAuth client requests, such as `auth()`, followed a redirect to any "
+    "origin. That origin received the custom request headers, such as an API key set in "
+    "`requestInit.headers`, and `mcp-session-id`, and on a 307 or 308 the request body, which for an "
+    "OAuth token request holds the `refresh_token` and `client_secret`. A malicious or compromised MCP or "
+    "authorization server could collect them (CVE-2026-111769, CVSS 3.1 6.5, CWE-200, "
+    "GHSA-6prh-2h8m-c8cw). Current runtimes already drop the `Authorization` header across origins, and "
+    "stdio clients are not affected. It affects every `@modelcontextprotocol/sdk` release before 1.32.0 "
+    "and `@modelcontextprotocol/client` 2.0.0 up to 2.3.0. Checked in the npm tarballs: 0.4.0, the first "
+    "release, already posts through `fetch` with its default redirect handling, the SSE client takes "
+    "custom headers from 1.1.0, and the OAuth client ships in 1.6.0. 1.32.0 and 2.3.0 follow a redirect "
+    "only within the origin, and not at all in browsers (modelcontextprotocol/typescript-sdk#2901 and "
+    "#2902).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@modelcontextprotocol/sdk` to 1.32.0 or later, or on 2.x `@modelcontextprotocol/client` to "
+    "2.3.0 or later, and pin it. Do not set `redirectPolicy: 'follow'` on a transport, which restores the "
+    "exposure; if a server redirects to another origin on purpose, configure the final URL instead. If "
+    "you cannot upgrade yet, pass the transports a `fetch` that refuses redirects (one that calls `fetch` "
+    "with `redirect: 'error'`). If a redirect may have reached a host you do not control, rotate the API "
+    "keys and `client_secret` the application held and revoke its tokens.",
+    sarif_name="McpTypeScriptSdkCrossOriginRedirect",
+    cve_references=["CVE-2026-111769"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` below 1.32.0 and `@modelcontextprotocol/client` from 2.0.0 up "
+        "to 2.3.0 where a package.json, lockfile or MCP config states the version, reporting a range that "
+        "admits an affected version. `latest` of each is fixed and states no version, so it is not "
+        "reported. Releases before 1.1.0 send no custom headers and have no OAuth client, so there only a "
+        "307 or 308 re-sends a message body; they are reported, as the advisory scopes it. It reads the "
+        "version, not the code: an MCP server built on the SDK, or a client that speaks only stdio, is "
+        "reported without being exposed, and a fixed release with `redirectPolicy: 'follow'` set, which "
+        "restores the exposure, is not reported. A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

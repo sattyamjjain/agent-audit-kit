@@ -251,6 +251,16 @@ available) before shipping:
     session's tasks. Its own HIGH rule beside the 1.31.0 OAuth pin above, since
     1.31.0 is fixed for that bug and affected by this one. A stated version is
     required, and only a server that configures the SDK's task store is exposed)
+  - @modelcontextprotocol/server   2.0.0 <= v < 2.3.0  (CVE-2026-111770; a transport or
+    server shared by several HTTP clients delivers one client's messages to another.
+    HIGH, its own rule; the 1.x sdk refuses sharing from 1.26.0 and is not read)
+  - @modelcontextprotocol/sdk      1.6.0 <= v < 1.32.0, and the 2.x server, express and
+    server-legacy below 2.3.0, 2.0.2 and 2.3.1  (CVE-2026-111771; server bearer auth
+    accepts a token issued for another service. MEDIUM, one rule, four pins)
+  - @modelcontextprotocol/sdk      < 1.32.0, and
+    @modelcontextprotocol/client   2.0.0 <= v < 2.3.0  (CVE-2026-111769; the HTTP client
+    transports and OAuth requests send custom headers and 307/308 bodies across a
+    cross-origin redirect. MEDIUM, one rule, two pins)
   - mcp-ripgrep                    presence-only  (CVE-2026-113378; the advanced-search
     and list-files tools append `-t ${fileType}` unescaped to a command line run
     through a shell. Every release, 0.1.0 to 0.4.0, the newest, has it, and there
@@ -1661,6 +1671,63 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-TSSDK-CVE-2026-111768-001", "@modelcontextprotocol/server",
          ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
          fix_label="2.3.0 (affected from 2.0.0), and set maxToolInputElements",
+         requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 wave (#1223, and two records the watcher held) ---
+    # Three more records on the same SDK, each its own rule: none of the rules above
+    # reports the same flaw, and their ranges do not hold these. `latest` of every
+    # package below is fixed, so each pin needs a stated version.
+    #
+    # The 2.x server matched a response or notification to its connection by JSON-RPC
+    # id alone, so a stateless transport, or a server instance, shared by several
+    # HTTP clients delivered one client's messages to another (CVE-2026-111770, CVSS
+    # 3.1 7.7, CWE-362, GHSA-jm63-cq47-j5jp). Checked in the npm tarballs: 2.0.0 and
+    # 2.2.0 have neither guard, and 2.3.0 refuses a second connect and a stateless
+    # transport's second request (typescript-sdk#2918, merged to main only). The
+    # advisory names only this package. The CVE record also lists the repository
+    # (`typescript-sdk`) below 1.32.0, but `@modelcontextprotocol/sdk` refuses both
+    # from 1.26.0 (checked at 1.26.0 and 1.31.0), so the 1.x sdk is not read here.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111770-001", "@modelcontextprotocol/server",
+         ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0), and build a server and transport per request or session",
+         requires_version=True, ecosystem="js"),
+    # Server-side bearer authentication had no audience check, so a valid token issued
+    # for another service passed (CVE-2026-111771, CVSS 3.1 6.8, CWE-863,
+    # GHSA-rvq5-wwqv-78pq). Checked in the npm tarballs: sdk 1.5.0 has no bearer
+    # middleware and 1.6.0 adds requireBearerAuth; sdk 1.31.0, server 2.2.0, express
+    # 2.0.1 and server-legacy 2.3.0 take no audience; sdk 1.32.0, server 2.3.0,
+    # express 2.0.2 and server-legacy 2.3.1 add `expectedResource`, off by default.
+    # MEDIUM, one rule, four pins.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 6, 0),
+         fix_label="1.32.0 (affected from 1.6.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/server",
+         ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/express",
+         ("@modelcontextprotocol/express",), (2, 0, 2), introduced=(2, 0, 0),
+         fix_label="2.0.2 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/server-legacy",
+         ("@modelcontextprotocol/server-legacy",), (2, 3, 1), introduced=(2, 0, 0),
+         fix_label="2.3.1 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    # The HTTP client transports and OAuth client requests followed a redirect to any
+    # origin, keeping custom headers and the session id and, on a 307 or 308, the body
+    # (CVE-2026-111769, CVSS 3.1 6.5, CWE-200, GHSA-6prh-2h8m-c8cw). Checked in the npm
+    # tarballs: 0.4.0, the first release, posts through fetch's default redirect
+    # handling, its SSE client takes custom headers from 1.1.0 and the OAuth client
+    # ships in 1.6.0; sdk 1.31.0 and client 2.2.0 follow any redirect, and 1.32.0 and
+    # 2.3.0 follow one only within the origin (`redirectPolicy`). MEDIUM, and the
+    # OAuth pin above stops at 1.31.0 and 2.2.0, so its own rule.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111769-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0),
+         fix_label="1.32.0 (every release before it)",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111769-001", "@modelcontextprotocol/client",
+         ("@modelcontextprotocol/client",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0)",
          requires_version=True, ecosystem="js"),
     # MCP Toolbox for Databases before 0.25.0 had no way to validate the Host a request
     # names (CVE-2026-11624, GHSA-76g7-m3xw-x9gr, CWE-346). OSV lists the Go module
