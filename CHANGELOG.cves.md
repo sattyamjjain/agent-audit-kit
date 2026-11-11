@@ -69,7 +69,7 @@ CVE-2026-107326 is code execution through an OS command, CVE-2026-107328 code ex
 endpoints with no ownership check, two path traversals, secrets kept in cleartext or left in
 exports, information exposed through improper authentication, and a denial of service.
 
-**Bulletin 7290694 (fixed in 1.12.3): 25 records, none filed.** NVD published 24 on 7 Oct and
+**Bulletin 7290694 (fixed in 1.12.3): 25 records, one filed.** NVD published 24 on 7 Oct and
 CVE-2026-97677 on 8 Nov: "IBM Langflow OSS 1.0.0 through 1.12.2 An authenticated flow author could
 write attacker-controlled file content into any directory writable by the service account,
 bypassing the platform's local file access isolation safeguard." Fourteen are code or command
@@ -81,7 +81,8 @@ the server secret and write access to Redis, and a denial of service through ZIP
 The watcher's NVD source arrived with #1149 on 30 Oct and reads seven days back, so it never saw
 the records of 7 and 20 Oct. Of the 26 published on 29 Oct that had no row, it filed the eleven
 scored 7.7 and above (#1152, #1153, #1156 and the eight here) and none of the fifteen scored 7.5
-and below before they left its window on 5 Nov. CVE-2026-97677 has no issue.
+and below before they left its window on 5 Nov. It filed CVE-2026-97677 as #1222 on 11 Nov, after
+this section was written; the second 2026-11-11 batch records it in the row below.
 
 Measured with the scanner (tests/test_cve_batch_2026_11_11_langflow.py): a requirements.txt
 pinning langflow 1.0.0, 1.12.2, 1.12.3 or 1.12.4, the oldest release and the last each bulletin
@@ -91,7 +92,7 @@ with a feed holding all 59 records as `nvd_feed` converts them, a uv.lock resolv
 for each record missing from the rule's references; 1.12.4 got eleven. With the references in
 place the engine stands each of them down, as it does where a rule on the same line names the CVE
 at or above the finding's severity, and the rule's finding is the only one. The bundled feed holds
-none of the 49. The NVD records of the eight filed issues are saved unedited under
+none of the 49. The NVD records of the nine filed issues are saved unedited under
 tests/fixtures/nvd_cna.
 
 | CVE | CVSS | Package | What changed | Issue |
@@ -112,7 +113,7 @@ tests/fixtures/nvd_cna.
 | CVE-2026-97673 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
 | CVE-2026-97674 | 8.1 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
 | CVE-2026-97676 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
-| CVE-2026-97677 | 8.1 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97677 | 8.1 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | #1222 |
 | CVE-2026-97678 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
 | CVE-2026-97679 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
 | CVE-2026-97680 | 8.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |

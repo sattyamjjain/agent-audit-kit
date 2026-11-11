@@ -1,11 +1,11 @@
-"""#1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow OSS records.
+"""#1157 to #1161, #1165, #1166, #1183 and #1222, and IBM's other Langflow OSS records.
 
 NVD holds 59 records whose CNA data names IBM's "Langflow OSS", published from
 7 Oct to 8 Nov 2026 and read from NVD's API on 2026-11-11. Ten were already in
 AAK-MCP-LANGFLOW-CVE-2026-12940-001's references; the 49 here join it. Each record's
 range is 1.0.0 through 1.12.2, 1.12.3 or 1.12.4, and IBM's bulletin names the fix
 (7290694: 1.12.3, 7293015: 1.12.4, 7293016: 1.12.5), all under the rule's 1.13.0
-floor, so only the references and the ledger change. The NVD records of the eight
+floor, so only the references and the ledger change. The NVD records of the nine
 filed issues are saved unedited under tests/fixtures/nvd_cna. `CHANGELOG.cves.md`
 holds the reasoning.
 """
@@ -46,7 +46,7 @@ RECORDS = (
     ("CVE-2026-97673", "1.12.2", "1.12.3", None),
     ("CVE-2026-97674", "1.12.2", "1.12.3", None),
     ("CVE-2026-97676", "1.12.2", "1.12.3", None),
-    ("CVE-2026-97677", "1.12.2", "1.12.3", None),
+    ("CVE-2026-97677", "1.12.2", "1.12.3", 1222),
     ("CVE-2026-97678", "1.12.2", "1.12.3", None),
     ("CVE-2026-97679", "1.12.2", "1.12.3", None),
     ("CVE-2026-97680", "1.12.2", "1.12.3", None),
@@ -96,7 +96,7 @@ def _langflow_pin() -> mcp_cve_pins_2026_07._Pin:
 def test_the_table_holds_49_records_on_three_fixed_releases() -> None:
     assert len(RECORDS) == len({cve for cve, _, _, _ in RECORDS}) == 49
     assert LINES == [("1.12.2", "1.12.3"), ("1.12.3", "1.12.4"), ("1.12.4", "1.12.5")]
-    assert sorted(issue for _, issue in FILED) == [1157, 1158, 1159, 1160, 1161, 1165, 1166, 1183]
+    assert sorted(issue for _, issue in FILED) == [1157, 1158, 1159, 1160, 1161, 1165, 1166, 1183, 1222]
 
 
 @pytest.mark.parametrize("cve", [cve for cve, _, _, _ in RECORDS])
@@ -147,11 +147,11 @@ def _uv_lock(root: Path, version: str) -> None:
 
 
 def test_after_update_the_pin_reports_the_filed_records_alone(tmp_path: Path) -> None:
-    """With the eight records in the cached feed, a uv.lock on 1.12.3 gets the CRITICAL
+    """With the nine records in the cached feed, a uv.lock on 1.12.2 gets the CRITICAL
     pin and no AAK-KNOWN-VULN-001 finding: the engine stands one down where a rule on the
     same line names its CVE at or above its severity."""
     _cache_filed_records()
-    _uv_lock(tmp_path, "1.12.3")
+    _uv_lock(tmp_path, "1.12.2")
     findings = run_scan(tmp_path).findings
     (pin,) = [f for f in findings if f.rule_id == LANGFLOW]
     assert pin.severity is Severity.CRITICAL
@@ -161,14 +161,14 @@ def test_after_update_the_pin_reports_the_filed_records_alone(tmp_path: Path) ->
 
 def test_without_the_references_the_feed_repeats_each_filed_record(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The control: the same scan with the eight ids taken out of the rule gives one
+    """The control: the same scan with the nine ids taken out of the rule gives one
     AAK-KNOWN-VULN-001 finding per record, which is what 0.6.34 reported after `aak update`."""
     filed = {cve for cve, _ in FILED}
     rule = RULES[LANGFLOW]
     monkeypatch.setitem(RULES, LANGFLOW, dataclasses.replace(
         rule, cve_references=[c for c in rule.cve_references if c not in filed]))
     _cache_filed_records()
-    _uv_lock(tmp_path, "1.12.3")
+    _uv_lock(tmp_path, "1.12.2")
     findings = run_scan(tmp_path).findings
     assert [f for f in findings if f.rule_id == LANGFLOW]
     named = {cve for f in findings if f.rule_id == "AAK-KNOWN-VULN-001" for cve in filed if cve in f.evidence}
