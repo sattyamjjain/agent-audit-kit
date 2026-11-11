@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's other 49 Langflow OSS records on NVD (7 Oct to 8 Nov 2026), #1157 to #1161, #1165, #1166 and #1183 among them. Each lists 1.0.0 through 1.12.2, 1.12.3 or 1.12.4 and is fixed in 1.12.3, 1.12.4 or 1.12.5, under the rule's 1.13.0 floor, so no release is reported that was not before. After `aak update`, AAK-KNOWN-VULN-001 no longer repeats these records beside the rule's finding: a uv.lock on langflow 1.12.2 got 49 such findings on 0.6.34. The ledger has the reasons.
+
 ## [0.6.34] - 2026-11-10
 
 ### Fixed

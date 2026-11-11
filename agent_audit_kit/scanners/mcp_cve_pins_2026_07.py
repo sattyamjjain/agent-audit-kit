@@ -610,7 +610,10 @@ _PINS: tuple[_Pin, ...] = (
     # CVE-2026-107329 (code execution, 9.9), through 1.12.4 and fixed in 1.12.5
     # (bulletin 7293016). The three Hono CVEs bulletin 7294467 also lists are npm
     # `hono`'s records, not Langflow's. No bulletin or CNA record names
-    # `langflow-base` or `lfx`, so their rows stay at 1.12.0.
+    # `langflow-base` or `lfx`, so their rows stay at 1.12.0. IBM's other 52
+    # Langflow OSS records of 7 Oct to 8 Nov (bulletins 7290694, 7293015, 7293016)
+    # are fixed in 1.12.3, 1.12.4 or 1.12.5, under this floor, so they only join
+    # the rule's references.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
          (1, 13, 0), introduced=(1, 0, 0),
          fix_label="1.13.0 (affected 1.0.0–1.12.8: CVE-2026-110186, CVE-2026-93680, CVE-2026-110193, "

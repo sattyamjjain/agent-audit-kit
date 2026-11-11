@@ -18,6 +18,141 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
+
+Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are
+IBM's NVD CNA records for Langflow OSS. They close a debt the 2026-10-30 section left open: of
+IBM's Langflow OSS records past the old 1.12.0 floor, ten had a row. NVD's records whose CNA
+data names IBM's "Langflow OSS", searched by IBM's CNA and by keyword over everything published
+from 1 Oct to 11 Nov 2026, number 59: the 58 that section counted and CVE-2026-97677, published
+on 8 Nov. The 49 with no row are read here against NVD's API records and IBM's bulletins
+7290694, 7293015 and 7293016, all read on 2026-11-11. NVD text is quoted from the API records.
+
+**All 49 join `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, with no floor change.** Each CNA record
+names one interval, from 1.0.0 to `lessThanOrEqual` 1.12.2, 1.12.3 or 1.12.4, with no fixed
+release and no packageURL, and cites one IBM bulletin as its only reference. The bulletin names
+the fix: 7290694 (2 Oct) lists 25 records for 1.0.0 to 1.12.2, fixed in 1.12.3; 7293015 (19 Oct)
+lists 16 for 1.0.0 to 1.12.3, fixed in 1.12.4; 7293016 (19 Oct) lists 14 for 1.0.0 to 1.12.4,
+fixed in 1.12.5. NVD's own analysis ends each range at the same release. The rule has reported
+`langflow` 1.0.0 to below 1.13.0 since 0.6.30 (31 Oct), so it already reports every release the
+49 list, and only its references change. The latency page dates a CVE from its ledger section,
+so it counts these from 11 Nov, not from 0.6.30. No record names `langflow-base` or `lfx`, whose
+rows stay at 1.12.0. The records name no code and no commit, so the ranges are IBM's. Three fixes were matched
+to a record by its description and read in the source at the tags: the administrator-only gate on
+built-in code execution (langflow-ai/langflow#15531, CVE-2026-110196) is absent at v1.12.4 and
+present at v1.12.5 and v1.13.0; the vertex result cache scoped to the caller
+(langflow-ai/langflow#15191, CVE-2026-97680) is absent at v1.12.2 and present at v1.12.3 and
+v1.13.0; and stored flow credentials hidden from shared readers (langflow-ai/langflow#15343,
+CVE-2026-104314) are absent at v1.12.3 and present at v1.12.4 and v1.13.0. OSV holds 48 of the 49
+under their CVE ids as NVD imports with only git commit ranges, which AAK's OSV reader does not
+read, has no record for PyPI `langflow` at 1.12.2, 1.12.3 or 1.12.4, and has none of
+CVE-2026-97677.
+
+**#1157, #1158, #1159 and #1183 (bulletin 7293015, fixed in 1.12.4).** NVD, CVE-2026-103092:
+"IBM Langflow OSS 1.0.0 through 1.12.3 could allow a remote authenticated attacker to execute
+arbitrary SQL commands due to improper access control." CVE-2026-104324 is code execution "due to
+deserialization of untrusted data", CVE-2026-104328 code execution through "improper
+neutralization of special elements used in an OS command", and CVE-2026-102590 information
+disclosure through "a server-side request forgery vulnerability". The bulletin's nine other
+records with no row are three more server-side request forgeries, three path traversals (one
+overwriting files, one a ZIP export whose entries leave the extraction directory), stored
+credentials returned to a user with a read or share grant, another user's background job
+cancelled, and a denial of service.
+
+**#1160, #1161, #1165 and #1166 (bulletin 7293016, fixed in 1.12.5).** NVD, CVE-2026-110196:
+"IBM Langflow OSS 1.0.0 through 1.12.4 could allow a remote attacker with a low-privileged
+authenticated account to bypass the administrator-only restriction and execute arbitrary code on
+the server by configuring a built-in code-execution component with attacker-supplied inputs."
+CVE-2026-107326 is code execution through an OS command, CVE-2026-107328 code execution through
+"improper neutralization of code in eval/exec", and CVE-2026-110309 arbitrary commands through
+"improper control of code generation". The bulletin's seven other records with no row are message
+endpoints with no ownership check, two path traversals, secrets kept in cleartext or left in
+exports, information exposed through improper authentication, and a denial of service.
+
+**Bulletin 7290694 (fixed in 1.12.3): 25 records, none filed.** NVD published 24 on 7 Oct and
+CVE-2026-97677 on 8 Nov: "IBM Langflow OSS 1.0.0 through 1.12.2 An authenticated flow author could
+write attacker-controlled file content into any directory writable by the service account,
+bypassing the platform's local file access isolation safeguard." Fourteen are code or command
+execution, four of them (CVE-2026-93674, CVE-2026-93675, CVE-2026-97655 and CVE-2026-104334) by a
+remote attacker the record does not describe as signed in. The rest are path traversals and file
+writes, credentials and other data exposed to a signed-in user, a cache deserialization that needs
+the server secret and write access to Redis, and a denial of service through ZIP extraction.
+
+The watcher's NVD source arrived with #1149 on 30 Oct and reads seven days back, so it never saw
+the records of 7 and 20 Oct. Of the 26 published on 29 Oct that had no row, it filed the eleven
+scored 7.7 and above (#1152, #1153, #1156 and the eight here) and none of the fifteen scored 7.5
+and below before they left its window on 5 Nov. CVE-2026-97677 has no issue.
+
+Measured with the scanner (tests/test_cve_batch_2026_11_11_langflow.py): a requirements.txt
+pinning langflow 1.0.0, 1.12.2, 1.12.3 or 1.12.4, the oldest release and the last each bulletin
+lists, fires, and 1.13.0 does not; `langflow-base` and `lfx` 1.12.4 do not. After `aak update`,
+with a feed holding all 59 records as `nvd_feed` converts them, a uv.lock resolving langflow
+1.12.2 got the rule's CRITICAL finding and, on the same line, 49 AAK-KNOWN-VULN-001 findings, one
+for each record missing from the rule's references; 1.12.4 got eleven. With the references in
+place the engine stands each of them down, as it does where a rule on the same line names the CVE
+at or above the finding's severity, and the rule's finding is the only one. The bundled feed holds
+none of the 49. The NVD records of the eight filed issues are saved unedited under
+tests/fixtures/nvd_cna.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-88962 | 8.8 | `langflow` (PyPI) | **Joins** `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93443 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93445 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93447 | 7.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93448 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93449 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93674 | 9.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93675 | 9.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93677 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93678 | 7.6 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-93679 | 4.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97655 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97671 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97673 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97674 | 8.1 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97676 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97677 | 8.1 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97678 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97679 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-97680 | 8.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-101329 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-101331 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-103360 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-104334 | 9.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-104335 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.2, fixed in 1.12.3. | not filed |
+| CVE-2026-77819 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-102590 | 7.7 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1183 |
+| CVE-2026-103092 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1157 |
+| CVE-2026-104308 | 4.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104309 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104310 | 4.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104312 | 6.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104314 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104315 | 4.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104316 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-104324 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1158 |
+| CVE-2026-104328 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1159 |
+| CVE-2026-104331 | 5.4 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | not filed |
+| CVE-2026-77817 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-90991 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-107326 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | #1160 |
+| CVE-2026-107328 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | #1161 |
+| CVE-2026-107366 | 8.3 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-110190 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-110196 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | #1165 |
+| CVE-2026-110200 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-110244 | 6.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-110245 | 7.5 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | not filed |
+| CVE-2026-110309 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.4, fixed in 1.12.5. | #1166 |
+
+CVSS is NVD's own CVSS 3.1 score where NVD has scored the record, as the issues give it, and IBM's
+otherwise. Where both exist they differ for twelve: CVE-2026-93443 (IBM 7.5), CVE-2026-93445
+(8.1), CVE-2026-93449 (8.5), CVE-2026-93675 (8.8), CVE-2026-93677 (7.7), CVE-2026-101331 (7.7),
+CVE-2026-103360 (8.1), CVE-2026-102590 (5.0), CVE-2026-103092 (8.5), CVE-2026-104312 (3.5),
+CVE-2026-107328 (9.9) and CVE-2026-110244 (8.8). The rule stays CRITICAL: the releases these list
+are the ones it already reported for IBM's 9.8 records of 29 Oct.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as

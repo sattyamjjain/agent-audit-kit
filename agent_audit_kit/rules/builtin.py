@@ -13118,7 +13118,11 @@ _r(
     "affect 1.0.0 through 1.12.8 and are fixed in 1.13.0; CVE-2026-104339 (CVSS "
     "9.8, OS command injection) affects 1.0.0 through 1.12.3, fixed in 1.12.4, and "
     "CVE-2026-107327 and CVE-2026-107329 (CVSS 9.9 each, code execution by an "
-    "authenticated user) 1.0.0 through 1.12.4, fixed in 1.12.5. Treat `langflow` < "
+    "authenticated user) 1.0.0 through 1.12.4, fixed in 1.12.5. IBM's other "
+    "Langflow OSS records, published from 7 Oct to 8 Nov 2026 with bulletins "
+    "7290694, 7293015 and 7293016, affect 1.0.0 through 1.12.2, 1.12.3 or 1.12.4 "
+    "and are fixed in 1.12.3, 1.12.4 or 1.12.5, under that floor, so they are in "
+    "the references and move nothing. Treat `langflow` < "
     "1.13.0 (and unpinned) as exposed. The same code ships as `langflow-base` and "
     "`lfx`, which reached 1.12.0 in the same release as `langflow`, so both are "
     "read at that floor; no IBM bulletin or CNA record names either package for "
@@ -13141,6 +13145,23 @@ _r(
         "CVE-2026-110186", "CVE-2026-93680", "CVE-2026-110193", "CVE-2026-110192",
         "CVE-2026-104339", "CVE-2026-107327", "CVE-2026-107329",
         "CVE-2026-104317", "CVE-2026-18894", "CVE-2026-101288",
+        # IBM's other Langflow OSS records (2026-11-11 ledger), each fixed under the
+        # 1.13.0 floor: bulletin 7290694, 1.0.0-1.12.2, fixed in 1.12.3 ...
+        "CVE-2026-88962", "CVE-2026-93443", "CVE-2026-93445", "CVE-2026-93447", "CVE-2026-93448",
+        "CVE-2026-93449", "CVE-2026-93674", "CVE-2026-93675", "CVE-2026-93677", "CVE-2026-93678",
+        "CVE-2026-93679", "CVE-2026-97655", "CVE-2026-97671", "CVE-2026-97673", "CVE-2026-97674",
+        "CVE-2026-97676", "CVE-2026-97677", "CVE-2026-97678", "CVE-2026-97679", "CVE-2026-97680",
+        "CVE-2026-101329", "CVE-2026-101331", "CVE-2026-103360", "CVE-2026-104334",
+        "CVE-2026-104335",
+        # ... bulletin 7293015, 1.0.0-1.12.3, fixed in 1.12.4 ...
+        "CVE-2026-77819", "CVE-2026-102590", "CVE-2026-103092", "CVE-2026-104308",
+        "CVE-2026-104309", "CVE-2026-104310", "CVE-2026-104312", "CVE-2026-104314",
+        "CVE-2026-104315", "CVE-2026-104316", "CVE-2026-104324", "CVE-2026-104328",
+        "CVE-2026-104331",
+        # ... and bulletin 7293016, 1.0.0-1.12.4, fixed in 1.12.5.
+        "CVE-2026-77817", "CVE-2026-90991", "CVE-2026-107326", "CVE-2026-107328",
+        "CVE-2026-107366", "CVE-2026-110190", "CVE-2026-110196", "CVE-2026-110200",
+        "CVE-2026-110244", "CVE-2026-110245", "CVE-2026-110309",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI04", "ASI05"],
