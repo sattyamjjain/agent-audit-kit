@@ -101,6 +101,161 @@ CVSS is each record's CVSS 3.1 score, GitHub's.
 
 Dispositioned at 2026-11-11T09:10:00Z.
 
+## 2026-11-11 (unreleased): #1226 and five held records, three new pins, three out of scope
+
+The watcher filed #1226 at 06:20Z on 11 Nov and held the other five behind its
+back-pressure cap, so they have no issue yet. Each is read here against NVD's API record,
+its CVE record, OSV and the published packages, all on 2026-11-11, and NVD text is quoted
+from the API records. Three get new pins, each measured with the scanner on a firing
+fixture and a negative one (tests/test_cve_batch_2026_11_11_wave_misc.py) after its range
+was read in the artifacts. Three are out of scope: an Elixir library on Hex, a Java
+web-services framework whose MCP catalog is one of eight leaking routes, and a stream
+processor the watcher matched on its credit line.
+
+### CVE-2026-123022 (#1226): new pin 2026-11-11
+
+**AgentScope gets `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001`: PyPI `agentscope`, every
+release from 2.0.0, HIGH.** NVD: "A vulnerability was detected in agentscope-ai AgentScope
+up to 2.0.11. The impacted element is the function subprocess.Popen of the file
+src/agentscope/mcp/_config.py of the component MCP Workspace API." VulDB's CNA record lists
+2.0.0 to 2.0.11 one by one, names no fixed release, and cites agentscope-ai/agentscope#3312
+and #3448. Checked in the PyPI wheels of 2.0.0 (2026-05-25), 2.0.4.post1, 2.0.7.post1 and
+2.0.11 (2026-10-27, the newest): each serves `POST /workspace/mcp`, which takes the
+caller's MCP client config. A stdio config's `command` is a plain string, `add_mcp`
+connects a stateful client at once, and the only identity is the `X-User-ID` header the
+caller sets, which the code calls a temporary header-based identity. 1.0.21, the last 1.x
+release, ships no `agentscope.app`. #3312 is open, #3448 (an opt-in command allowlist that
+keeps today's default) is unmerged, and `main` on 2026-11-11 still has the same route and
+header, so the pin is presence-only from 2.0.0, as Chatchat's was (#1055). The same shape
+in praisonai's `POST /api/mcp/connect`, CVE-2026-57124, joined a pin on 2026-09-16. The
+finder's issue scores it 9.8; the record's CVSS 3.1 7.3 sets HIGH. npm's `agentscope`
+(0.1.1) is another project and a negative fixture. The rule reads the version, not whether
+a project runs the service (`create_app`, which takes FastAPI from the `service` extra), so
+a project that uses AgentScope only as a library is reported too, and the limitations say
+so.
+
+0.6.34 shipped a reviewed `agentscope` row in data/cna_package_map.json (#1205), so after
+`aak update` the advisory feed holds this record. Measured with the scanner on the record as
+`nvd_feed` converts it: the feed lists the twelve releases by number, so
+`AAK-KNOWN-VULN-001` reports 2.0.0 to 2.0.11 and misses 2.0.4.post1, 2.0.7.post1 and any
+later release, and the bundled feed does not hold the record. With the pin in place, a
+uv.lock on 2.0.0 or 2.0.11 gets the pin's HIGH finding, and the engine drops the feed's
+HIGH finding on the same line. OSV holds the CVE only as an NVD import with git commit
+ranges, and nothing for PyPI `agentscope` at 2.0.11.
+
+### CVE-2026-18484 (not filed): new pin 2026-11-11
+
+**IBM ContextForge gets `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001`: PyPI
+`mcp-contextforge-gateway` and the `ghcr.io/ibm/mcp-context-forge` image from 0.7.0 below
+1.1.0, MEDIUM.** NVD: "IBM ContextForge MCP Gateway 1.0.0 through 1.0.11 could allow a
+remote authenticated attacker to cause a denial of service due to improper slug
+normalization causing tool name collisions." IBM's bulletin (node 7294233, 27 Oct) gives
+CVSS 3.1 6.5 and the fix as v1.1.0. A user allowed to create gateways registers one whose
+computed tool name equals an existing public tool's in the same team, and `tools/call` for
+that tool then fails with an ambiguity error for every team member until an administrator
+renames or removes one of the two. The fix is IBM/mcp-context-forge#6534, merged on 30 Sep
+after 1.0.11, which rejects a colliding name at registration, refresh, OAuth discovery,
+reactivation, rename and visibility changes. Checked in the PyPI wheels: 1.1.0 has
+`build_gateway_tool_invocation_name` and the conflict check, and 1.0.11,
+1.0.7.post20260921 (the 1.0.7 support line) and 1.0.0 do not.
+
+The bulletin starts at 1.0.0, IBM's supported line, and the wheels show the same flaw
+from 0.7.0. The slug normalization is the same code: `slugify` in
+`mcpgateway/utils/create_slug.py` has the same body at 0.6.0, 0.7.0, 0.9.0, 1.0.0 and
+1.0.11, and so does the `Tool.name` property in `db.py`. The insert and update listener
+builds `slugify(gateway.name)`, the separator and `slugify(custom_name)` from 0.7.0 on;
+1.0.0 only adds a fallback that reads the gateway's name by id when the relationship is not
+loaded. From 0.7.0 a tool name is unique only per team and owner
+(`uq_team_owner_email_name_tool`), gateway registration checks gateway slugs and URLs but
+not the tool names they produce, and `invoke_tool` looks a tool up by name alone. On a
+duplicate it fails through `scalar_one_or_none()` in 0.7.0, 0.8.0 and 0.9.0, and with the
+explicit ambiguity error from 1.0.0. 0.1.0 and 0.6.0 keep tool names unique across the
+database, so there a colliding registration fails instead. The rule therefore starts at
+0.7.0. The fix sits above the 1.0.9 floor of `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001`, a
+CRITICAL rule whose nine references are all fixed by 1.0.9, so raising that floor would
+report 1.0.9 to 1.0.11 under them; this MEDIUM record gets its own rule, as Penpot's bridge
+CVE did. An image row reads tags from 0.7.0 below 1.1.0, and on 2026-11-11 `latest` was the
+v1.1.1 digest, fixed. PyPI's `latest` is 1.1.1 too, so a stated version is required. IBM
+notes that 1.1.0 keeps duplicate rows that already exist, which an administrator has to
+clear, and the remediation says so. OSV has no record of the CVE and none for the package
+at 1.0.11.
+
+### CVE-2026-124503 (not filed): new pin 2026-11-11
+
+**mcp-atlassian gets `AAK-MCP-ATLASSIAN-CVE-2026-124503-001`: PyPI `mcp-atlassian` from
+0.22.0 below 0.24.1, HIGH.** NVD: "A vulnerability was identified in sooperset
+mcp-atlassian up to 0.24.0. This issue affects the function validate_safe_path of the file
+src/mcp_atlassian/utils/io.py. The manipulation of the argument path leads to path
+traversal." The CVE record (VulDB, requested by the vendor) scores it CVSS 3.1 4.3. The
+project's own advisory, GHSA-qh7q-jmc7-rc7j (8 Nov), scores it 7.7 and gives the mechanism:
+the upload guard 0.22.0 added confines a source path to the process's working directory,
+which is `/` for a systemd system unit with no `WorkingDirectory=` and the home directory
+for a user unit or a shell launch. An authenticated caller of an SSE or streamable-HTTP
+server can then upload `/proc/self/environ`, which holds the server's Atlassian tokens, or
+any other readable file, to their own Confluence. Checked in the source at the tags: at
+v0.21.1 the upload paths have no guard; at v0.22.0 and v0.24.0 the Confluence and Jira
+upload call sites call `validate_safe_path(file_path)` with no base directory, which
+defaults to `os.getcwd()`; v0.24.1 (8 Nov) takes the boundary from `get_file_root`, which
+reads `MCP_ATLASSIAN_FILES_DIR`, uses `~/.mcp-atlassian/files` on a remote transport, and
+refuses a filesystem root or home directory.
+
+The rule starts at 0.22.0 because below it `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` already
+reports the unguarded read. That rule's 0.22.0 floor carries 22 other references, all
+fixed in 0.22.0, so raising it would report 0.22.0 to 0.24.0 under them, and this record
+gets its own rule. The rule takes HIGH from the project's advisory, which GitHub files
+under this CVE id and scores 7.7 because the file a caller reads can hold the server's own
+Atlassian tokens (confidentiality high and scope changed, where VulDB's 4.3 has the impact
+low); 7.7 is also CVE-2026-73498's score for the same read below 0.22.0. The
+Dockerfile sets `WORKDIR /app` at v0.22.0 and v0.24.0, which the advisory lists as
+protected, so the rule does not read the image, and its limitations say a container
+started from another working directory is missed. PyPI's `latest` is 0.24.1, so a stated
+version is required. OSV holds the CVE only as an NVD import with git commit ranges and has
+no record for `mcp-atlassian` at 0.24.0.
+
+### CVE-2026-119613, CVE-2026-123779 and CVE-2026-82436 (not filed): out of scope 2026-11-11
+
+**ash_ai is out of scope, non-pinnable.** NVD: "Generation of Error Message Containing
+Sensitive Information vulnerability in ash-project ash_ai allows a caller of an AshAi tool
+to read internal error details, including module names and data values, by making a tool
+call fail." It affects 1.5.0 only and is fixed in 1.5.1 (7 Nov). ash_ai is an Elixir
+library on Hex, the CNA names `pkg:hex/ash_ai`, and OSV holds the record as
+EEF-CVE-2026-119613 (GHSA-vhmw-fwrr-r6c6). AAK reads no `mix.exs` or `mix.lock`, and the
+advisory feed reads OSV's PyPI, npm, Go and crates.io exports, not Hex, the basis beam_mcp
+took (#928, #929). Upgrade to 1.5.1 or later.
+
+**Apache Axis2/Java is out of scope, non-pinnable.** NVD: "The exposeServiceMetadata
+service parameter was enforced only on the ?wsdl, ?wsdl2 and ?xsd queries." Through 2.0.1
+a service with metadata turned off still disclosed it on eight other routes, among them
+"the OpenAPI, Swagger UI and MCP catalog endpoints". Axis2 is a SOAP and REST web-services
+framework. Its MCP support arrived in 2.0.1 (AXIS2-6103), the WSDL, XSD, services-listing,
+WS-MetadataExchange and ping routes predate it, and the CNA names the framework's
+`axis2-transport-http` and `axis2-openapi` Maven modules. AAK reads Maven manifests only for
+MCP SDK coordinates (`jvm_mcp_sdk_pins`), and the flaw is in the framework's metadata
+routes, of which the MCP catalog is one. The ASF rates it low and gives no score. Fixed in
+2.0.2. The watcher matched "MCP catalog" in the description.
+
+**Apache Storm is out of scope.** Its record describes `DefaultStateSerializer` restoring
+stateful bolt checkpoints with Kryo class registration disabled, so a party that can write
+to the topology's keyspace in a Redis state store runs code in the worker JVM; it affects
+`org.apache.storm:storm-client` 3.0.0 below 3.1.0. Storm is a distributed stream processor
+with no MCP or agent surface. The watcher matched "Claude agents" in the credit line, "found
+using Claude agents to study the security of open-source projects", the same collision as
+CVE-2026-82427, CVE-2026-82428, CVE-2026-82429 and CVE-2026-82439 on 2026-09-16.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123022 | 7.3 | `agentscope` (PyPI) | **New pin** `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001` (HIGH): every release from 2.0.0, 2.0.0 to 2.0.11 today. No fixed release. | #1226 |
+| CVE-2026-18484 | 6.5 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **New pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM): 0.7.0 up to 1.1.0, beside the CRITICAL 1.0.9 pin, a stated version required. | not filed |
+| CVE-2026-124503 | 4.3 | `mcp-atlassian` (PyPI) | **New pin** `AAK-MCP-ATLASSIAN-CVE-2026-124503-001` (HIGH): 0.22.0 up to 0.24.1, beside the 0.22.0 pin, a stated version required. | not filed |
+| CVE-2026-119613 | 5.3 (4.0) | `ash_ai` (Hex) | **Out of scope**, non-pinnable. Upgrade to 1.5.1 or later. | not filed |
+| CVE-2026-123779 | n/a | Apache Axis2/Java (`org.apache.axis2`, Maven) | **Out of scope**, non-pinnable: a web-services framework whose MCP catalog is one of eight leaking metadata routes. Fixed in 2.0.2. | not filed |
+| CVE-2026-82436 | n/a | Apache Storm (`org.apache.storm:storm-client`, Maven) | **Out of scope**: no MCP or agent surface. Fixed in 3.1.0. | not filed |
+
+CVSS is each record's CVSS 3.1 score where it has one: VulDB's for CVE-2026-123022 and
+CVE-2026-124503, whose GitHub advisory scores it 7.7, and IBM's for CVE-2026-18484. The
+ash_ai record has only a CVSS 4.0 score, and the ASF rates Axis2's record low and Storm's
+important, with no number.
+
 ## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
 
 Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are

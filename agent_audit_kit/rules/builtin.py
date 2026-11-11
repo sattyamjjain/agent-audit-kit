@@ -395,6 +395,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OPENHUMAN-CVE-2026-54140-001": ["AIS-07", "STA-08"],
     "AAK-FLOWISE-CVE-2026-119978-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
+    "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -19984,6 +19987,163 @@ _r(
         "as a git dependency state no version AAK reads, and crates.io's, npm's and PyPI's "
         "`openhuman` are other projects. Mirrors under another registry are not matched, "
         "and commented-out lines are skipped."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-11 wave, group "misc" (#1226 and three held records). Three new pins:
+# AgentScope's 2.x service (presence-only), IBM ContextForge's tool-name collision
+# (MEDIUM, beside the CRITICAL 1.0.9 pin) and mcp-atlassian's working-directory
+# upload guard (beside the 0.22.0 pin). ash_ai (Hex), Apache Axis2/Java and Apache
+# Storm are out of scope; the ledger has the reasons.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
+    "AgentScope 2.x: the service's workspace API starts any stdio MCP command a caller sends (no fixed release)",
+    "AgentScope (PyPI `agentscope`, agentscope-ai/agentscope) ships from 2.0.0 an agent "
+    "service, `agentscope.app`, whose `POST /workspace/mcp` route takes an MCP client "
+    "configuration from the caller. A stdio configuration's `command` is a free string "
+    "and a stateful client connects as soon as it is added, so the server starts that "
+    "program, with the caller's arguments and environment, as its own user. The route's "
+    "only identity is the `X-User-ID` header the caller sets, which the code calls a "
+    "temporary header-based identity, so anyone who reaches the API runs programs on the "
+    "host, or inside the Docker or E2B sandbox where the workspace runs there "
+    "(CVE-2026-123022, CVSS 3.1 7.3, CWE-78). Checked in the PyPI wheels: 1.0.21, the "
+    "last 1.x release, has no `agentscope.app`; 2.0.0 (2026-05-25) and 2.0.11 "
+    "(2026-10-27), the newest, have the route and the header. agentscope-ai/agentscope#3312 "
+    "is open, and #3448, an opt-in allowlist of stdio commands that leaves the default as "
+    "it is, is unmerged, so there is no fixed release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Keep an AgentScope 2.x service's API off networks you do "
+    "not trust: bind it to 127.0.0.1, or put authentication in front of it that sets "
+    "`X-User-ID` itself, and block `POST /workspace/mcp` at the proxy where callers need "
+    "not add MCP servers. The Docker and E2B workspace backends contain the started "
+    "program but still run it.",
+    sarif_name="AgentScopeWorkspaceStdioCommand",
+    cve_references=["CVE-2026-123022"],
+    owasp_mcp_references=["MCP05:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
+    limitations=(
+        "Reports a PyPI reference to `agentscope` from 2.0.0: a requirements*.txt entry at "
+        "any depth, a pyproject.toml, Pipfile or lockfile entry at the project root, or the "
+        "package a `uvx` launch in an MCP config names. Presence-only from 2.0.0: every 2.x "
+        "release is reported, a future fixed one included, until the pin gets a floor, and "
+        "so is a reference that states no version, which installs 2.0.11; 1.x releases, which "
+        "have no service, are not. It reads the name and version, not whether the project "
+        "runs the service (`create_app`, whose FastAPI and uvicorn come with the `service` "
+        "extra), so a project that uses AgentScope only as a library is reported too. npm's "
+        "`agentscope` is another project and is not matched. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001",
+    "IBM ContextForge MCP Gateway 0.7.0 to 1.0.11: a colliding federated tool name makes tools/call fail for everyone",
+    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
+    "`ghcr.io/ibm/mcp-context-forge` image) names each tool a federated gateway brings in "
+    "by the gateway's slug and the tool's, and before 1.1.0 nothing checked that name "
+    "against the tools already registered. A user allowed to create gateways registers "
+    "one whose tool name equals an existing tool's (gateway `a` with tool `b-c` beside "
+    "gateway `a-b` with tool `c`), and from then on an MCP `tools/call` for that name "
+    "fails for every caller until an administrator renames or removes one of the two "
+    "(CVE-2026-18484, CVSS 3.1 6.5 from IBM, CWE-706). IBM's bulletin names 1.0.0 through "
+    "1.0.11 and the fix as 1.1.0, whose #6534 rejects a colliding name at registration, "
+    "refresh, rename and visibility changes. Checked in the PyPI wheels: 1.1.0 has the "
+    "check, and 1.0.11, 1.0.7.post20260921 and 1.0.0 do not. 0.7.0 builds the name with "
+    "the same `slugify` and the same gateway-slug, separator and tool-slug composition as "
+    "1.0.11, a tool name is unique only per team and owner from 0.7.0, and `invoke_tool` "
+    "looks a tool up by name alone and fails on a duplicate, with `scalar_one_or_none()` "
+    "before 1.0.0 and an explicit ambiguity error from 1.0.0, so 0.7.0 to 0.9.0 are "
+    "reported too. 0.1.0 to 0.6.0 kept tool names unique across the database, so a "
+    "colliding registration failed instead.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-contextforge-gateway` to 1.1.0 or later and pin it, or run the "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.0 or later. 1.1.0 refuses new "
+    "collisions but keeps duplicate rows that already exist: its release notes give the "
+    "SQL that lists them, and an administrator must rename or remove one of each pair "
+    "before the name answers again. Until you upgrade, grant gateway creation only to "
+    "users you trust.",
+    sarif_name="ContextForgeToolNameCollision",
+    cve_references=["CVE-2026-18484"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads `mcp-contextforge-gateway` from 0.7.0 below 1.1.0 where a requirements*.txt "
+        "entry at any depth, or at the project root a pyproject.toml, Pipfile, lockfile or "
+        "MCP config entry, states the version, judging a range by the versions it admits. "
+        "`latest` is 1.1.1, fixed, so a reference that states no version is not reported. "
+        "The 1.0.0 betas and release candidates read as 1.0.0 and 1.0.7.post20260921 as "
+        "1.0.7, all inside the range. IBM's bulletin starts at 1.0.0, its supported line; "
+        "the range starts at 0.7.0, where the wheels show the precondition. It reads the "
+        "version, not who may create gateways, so a deployment where only an administrator "
+        "can is reported too. It also reads `ghcr.io/ibm/mcp-context-forge` tags from 0.7.0 "
+        "below 1.1.0, with or without the `v`, in compose files, Kubernetes manifests, Helm "
+        "values, Dockerfiles and MCP configs; `latest` was the v1.1.1 digest on 2026-11-11, "
+        "fixed, so an untagged or `latest` reference is not reported. A file over 2 MB, or "
+        "a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-ATLASSIAN-CVE-2026-124503-001",
+    "mcp-atlassian 0.22.0 to 0.24.0: the attachment upload guard is the working directory, so a wide one passes any file",
+    "MCP Atlassian (`mcp-atlassian`, sooperset/mcp-atlassian) 0.22.0 confined the source "
+    "path of the Confluence and Jira attachment uploads with `validate_safe_path`, but "
+    "the guard's boundary is the process's working directory. A server on the SSE or "
+    "streamable-HTTP transport started from `/` (a systemd system unit with no "
+    "`WorkingDirectory=`) or from a home directory (a systemd user unit, or the "
+    "documented `uvx` launch from a shell) therefore accepts any file below it, so an "
+    "authenticated remote caller of `confluence_upload_attachment` reads files such as "
+    "`/proc/self/environ`, which holds the server's Atlassian tokens, and receives them "
+    "as an attachment in their own Confluence (CVE-2026-124503, GHSA-qh7q-jmc7-rc7j; "
+    "CVSS 3.1 4.3 in the CVE record, 7.7 in the project's advisory, CWE-22). Checked in "
+    "the source at the release tags: the upload call sites pass no base directory from "
+    "0.22.0 to 0.24.0, and 0.24.1 confines file paths to `MCP_ATLASSIAN_FILES_DIR`, or "
+    "on a remote transport to `~/.mcp-atlassian/files`, and refuses a filesystem root or "
+    "home directory. The project's image sets `WORKDIR /app`, which holds, and it treats "
+    "stdio reads of local files as intended.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-atlassian` to 0.24.1 or later and pin it, and on an SSE or "
+    "streamable-HTTP deployment set `MCP_ATLASSIAN_FILES_DIR` to a dedicated directory. "
+    "Until you upgrade, start a remote server from a dedicated, empty working directory "
+    "(`WorkingDirectory=` in a systemd unit), never `/` or a home directory.",
+    sarif_name="McpAtlassianUploadGuardWorkingDirectory",
+    cve_references=["CVE-2026-124503"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reads `mcp-atlassian` from 0.22.0 below 0.24.1 where a requirements*.txt entry at "
+        "any depth, or at the project root a pyproject.toml, Pipfile, lockfile or `uvx` "
+        "launch in an MCP config, states the version, judging a range by the versions it "
+        "admits. `latest` is 0.24.1, fixed, so a reference that states no version is not "
+        "reported. It reads the version, not the transport or the working directory, so a "
+        "stdio launch, which the project treats as reading local files by design, and a "
+        "remote server started from a dedicated directory are reported too. The "
+        "`ghcr.io/sooperset/mcp-atlassian` image is not read for this rule: it sets "
+        "`WORKDIR /app`, so a container started with another working directory "
+        "(`docker run -w /`) is not reported. Releases below 0.22.0 had no upload guard at "
+        "all, which AAK-MCP-ATLASSIAN-CVE-2026-73498-001 reports. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 

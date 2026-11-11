@@ -962,13 +962,15 @@ def test_contextforge_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -
 def test_a_chart_with_two_image_blocks_is_reported_on_the_first(tmp_path: Path) -> None:
     """ContextForge's chart runs the image twice, for the gateway and for its
     migration job. The Helm walk pops from the end of the document, so it met the
-    migration block first; the finding belongs on the gateway's own block."""
+    migration block first; the finding belongs on the gateway's own block. v1.0.5 is
+    inside CVE-2026-18484's range too (2026-11-11), and that rule's row lands there as well."""
     block = "  image:\n    repository: ghcr.io/ibm/mcp-context-forge\n    tag: v1.0.5\n"
     (tmp_path / "values.yaml").write_text(
         "mcpContextForge:\n" + block + "migration:\n" + block, encoding="utf-8",
     )
     findings = scan(tmp_path)[0]
-    assert [(f.rule_id, f.line_number) for f in findings] == [(CONTEXTFORGE, 3)]
+    assert sorted((f.rule_id, f.line_number) for f in findings) == [
+        ("AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", 3), (CONTEXTFORGE, 3)]
 
 
 # --- 2026-10-20 (#1055): Langchain-Chatchat's images (CVE-2026-75128) ---

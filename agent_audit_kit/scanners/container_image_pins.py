@@ -419,6 +419,17 @@ _PINS: tuple[_ImagePin, ...] = (
          "CVE-2026-53710", "CVE-2026-78573", "CVE-2026-53709", "CVE-2026-53711",
          "CVE-2026-8355"),
     ),
+    # CVE-2026-18484 (MEDIUM): a federated tool whose computed name collides with an
+    # existing tool's makes `tools/call` fail for everyone, fixed in 1.1.0 (#6534). The
+    # pin table's row reads the package from 0.7.0, where tool names became unique per
+    # team and owner only; the image carries 0.7.0 and v0.7.0 tags. On 2026-11-11
+    # `latest` was the v1.1.1 digest, fixed.
+    _ImagePin(
+        "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "IBM ContextForge MCP Gateway",
+        "ghcr.io/ibm/mcp-context-forge",
+        (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.", ("CVE-2026-18484",),
+        introduced=(0, 7, 0),
+    ),
     # CVE-2026-75128: Langchain-Chatchat's API runs any registered tool, the
     # always-registered `shell` tool included, for an unauthenticated caller on
     # 0.0.0.0:7861. The pin table's presence-only row reads the PyPI package. The

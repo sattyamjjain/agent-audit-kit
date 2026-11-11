@@ -346,6 +346,18 @@ available) before shipping:
   - mcp-chrome-bridge              presence-only  (CVE-2026-102878; the native server's
     HTTP MCP endpoint answers web pages: every origin through 1.0.29, and an origin
     that only starts with `http://127.0.0.1` in 1.0.30 and 1.0.31. No fixed release)
+  - agentscope                     >= 2.0.0, presence-only  (CVE-2026-123022; the 2.x
+    service's `POST /workspace/mcp` starts any stdio command a caller sends, behind
+    only a caller-set `X-User-ID` header. No fixed release; 1.x has no service. PyPI
+    only: npm's `agentscope` is another project)
+  - mcp-contextforge-gateway       0.7.0 <= v < 1.1.0  (CVE-2026-18484; a federated tool
+    whose computed name collides with an existing one makes `tools/call` fail for
+    everyone. MEDIUM, its own rule beside the CRITICAL 1.0.9 row. A stated version is
+    required)
+  - mcp-atlassian                  0.22.0 <= v < 0.24.1  (CVE-2026-124503; the upload
+    guard's boundary is the working directory, so an SSE or HTTP server started from
+    `/` or a home directory reads any file there. Its own rule beside the 0.22.0
+    row. A stated version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -2044,6 +2056,41 @@ _PINS: tuple[_Pin, ...] = (
                    "hangwin/mcp-chrome#384 is open); stop the native server while you "
                    "browse untrusted sites",
          ecosystem="js"),
+    # --- 2026-11-11 wave (#1226 and three held records, group misc) ---
+    # AgentScope (PyPI `agentscope`) 2.x ships an agent service (`agentscope.app`)
+    # whose `POST /workspace/mcp` takes the caller's MCP client config; a stdio
+    # config's `command` is a free string, a stateful client connects on add, and the
+    # only identity is the caller's own `X-User-ID` header (CVE-2026-123022). Checked
+    # in the PyPI wheels: 1.0.21, the last 1.x, has no `agentscope.app`; 2.0.0 and
+    # 2.0.11, the newest, have the route and the header. Issue #3312 is open and
+    # #3448, an opt-in allowlist, is unmerged, so the pin is presence-only from 2.0.0.
+    # npm's `agentscope` is another project.
+    _Pin("AAK-MCP-AGENTSCOPE-CVE-2026-123022-001", "agentscope", ("agentscope",), None,
+         introduced=(2, 0, 0),
+         fix_label="no fixed release (2.0.11, 2026-10-27, is the newest and "
+                   "agentscope-ai/agentscope#3312 is open); keep the service's API off "
+                   "networks you do not trust",
+         ecosystem="py"),
+    # IBM ContextForge: a federated gateway's tool is named by the gateway's slug and
+    # the tool's, and before 1.1.0 nothing checked that name against existing tools,
+    # so a colliding registration makes `tools/call` fail for everyone
+    # (CVE-2026-18484, MEDIUM). Fixed in 1.1.0 (#6534), above the CRITICAL row's
+    # 1.0.9 floor, so it is its own rule. IBM names 1.0.0 to 1.0.11; the PyPI wheels
+    # show the precondition from 0.7.0, where tool names became unique per team and
+    # owner only, and 0.6.0 kept them unique across the database. `latest` is 1.1.1.
+    _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "mcp-contextforge-gateway",
+         ("mcp-contextforge-gateway",), (1, 1, 0), introduced=(0, 7, 0),
+         fix_label="1.1.0 (affected from 0.7.0; IBM names 1.0.0 to 1.0.11)",
+         requires_version=True, ecosystem="py"),
+    # mcp-atlassian 0.22.0 confined attachment upload sources with
+    # `validate_safe_path`, whose boundary is `os.getcwd()`, so an SSE or HTTP server
+    # started from `/` or a home directory still reads any file there
+    # (CVE-2026-124503, GHSA-qh7q-jmc7-rc7j). Checked at the tags: 0.22.0 to 0.24.0
+    # pass no base directory; 0.24.1 adds MCP_ATLASSIAN_FILES_DIR. Its own rule beside
+    # the 0.22.0 row, whose other references are fixed at 0.22.0. `latest` is 0.24.1.
+    _Pin("AAK-MCP-ATLASSIAN-CVE-2026-124503-001", "mcp-atlassian", ("mcp-atlassian",),
+         (0, 24, 1), introduced=(0, 22, 0), fix_label="0.24.1 (affected from 0.22.0)",
+         requires_version=True, ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (
