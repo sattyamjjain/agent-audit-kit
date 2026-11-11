@@ -390,6 +390,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DJUST-CVE-2026-113731-001": ["AIS-07", "STA-08"],
     "AAK-MCP-TRIGGERDEV-CVE-2026-114090-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-OPENHUMAN-CVE-2026-54140-001": ["AIS-07", "STA-08"],
+    "AAK-FLOWISE-CVE-2026-119978-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -18703,6 +18705,119 @@ _r(
         "lockfile or requirements file also states an affected `langgraph-sdk`, and not "
         "otherwise. The JavaScript `@langchain/langgraph-sdk` is a different package and "
         "is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# 2026-11-11 (#847, #1168). Two deferrals whose vendors will not ship a fix get
+# presence-only pins: Flowise, whose project ended after 3.1.4, and
+# mcp-chrome-bridge, untouched upstream since January. Flowise's flaw is in its
+# custom function sandbox, with no MCP code involved, so its id has no MCP area
+# and the rule no MCP id.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-FLOWISE-CVE-2026-119978-001",
+    "Flowise from 1.4.6, every release (no fix, the project has ended): the custom function sandbox lets a caller write a file into an allowed package and run it",
+    "Flowise (`flowise` on npm), a low-code builder for LLM apps and agents, runs the "
+    "JavaScript a caller posts to `/api/v1/node-custom-function` in vm2's NodeVM, and "
+    "lets that code `require` the packages on flowise-components' "
+    "`availableDependencies` list. vm2 matches an allowed name as the whole package "
+    "folder and loads the package in the host process, so the code can use "
+    "langchain's `LocalFileStore` (`langchain/storage/file_system`) to write a file "
+    "into the folder of `mammoth`, another allowed package with no exports map, and "
+    "then `require` that file, which Node runs as JavaScript: OS commands as the "
+    "Flowise process user (CVE-2026-119978, CVSS 8.5, CWE-749). It takes credentials "
+    "that may create or update chatflows. Checked in the npm tarballs: the route "
+    "first ships in 1.4.6 (2023-12-18), beside flowise-components 1.4.7, which added "
+    "the CustomFunction node a minute earlier, and 1.4.5 has neither. Every "
+    "flowise-components release from 1.4.7 to 3.1.4 puts both packages on the list, "
+    "with no setting needed through 3.0.7 and only with `ALLOW_BUILTIN_DEP=true` from "
+    "3.0.8. There is no fixed release and FlowiseAI will not ship one: 3.1.4 "
+    "(2026-07-29) is the last, the repository was archived on 2026-08-13 and the "
+    "project ended on 2026-08-31. The flaw is in the custom function sandbox, not in "
+    "Flowise's MCP nodes.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed version, and FlowiseAI will ship none. On 3.0.8 or later leave "
+    "`ALLOW_BUILTIN_DEP` unset or `false`, which takes the package list out of the "
+    "sandbox, and add nothing to `TOOL_FUNCTION_EXTERNAL_DEP` that can write files; "
+    "before 3.0.8 no setting closes it. Give the permissions that create or update "
+    "chatflows and agentflows only to people you would trust with a shell on the "
+    "server, keep the Flowise API off networks you do not trust, and plan the move off "
+    "Flowise, or onto a fork that removes the package list from the custom function "
+    "sandbox.",
+    sarif_name="FlowiseCustomFunctionAllowlistWrite",
+    cve_references=["CVE-2026-119978"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports an npm reference to `flowise` from 1.4.6, with or without a version, "
+        "since every later release is affected and none is fixed: `flowise` in "
+        "package.json, .mcp.json, mcp.json and claude_desktop_config.json, and the "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, at the project root "
+        "only, reporting a range that admits 1.4.6 or later. 1.4.5 and earlier had no "
+        "custom function route and are not reported. The dependency is not read when it "
+        "is declared in a sub-directory manifest (`packages/app/package.json`). "
+        "`flowise-components`, which ships the allowlist, is not read: the CVE record "
+        "names Flowise alone, and only the finder's write-up names the components "
+        "package. Releases before 1.6.1 declare `flowise-components` as `*`, so their "
+        "own version does not say which components release runs beside them. The "
+        "`flowiseai/flowise` image tag is not read, in a compose file or in an MCP config "
+        "that starts it with `docker run`. It reads the version, not the server's "
+        "settings, so from 3.0.8 a server without `ALLOW_BUILTIN_DEP=true` is reported "
+        "too. PyPI's `flowise` (FlowiseAI's Python SDK) is not matched. A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001",
+    "mcp-chrome-bridge, every release (no fix): the native server's HTTP MCP endpoint answers web pages",
+    "mcp-chrome-bridge (`mcp-chrome-bridge` on npm), the native server of "
+    "hangwin/mcp-chrome, connects a Chrome extension to MCP clients and serves the "
+    "extension's tools, which navigate, run script in pages, read page content and "
+    "take screenshots, over HTTP on 127.0.0.1 (`/mcp`, `/sse`, `/messages`). Its CORS "
+    "check lets web pages call those endpoints (CVE-2026-102878, CVSS 8.1, CWE-346): "
+    "through 1.0.29 it registers `@fastify/cors` with `origin: true`, which accepts "
+    "every origin, and 1.0.30 and 1.0.31 compare the Origin with "
+    "`startsWith('http://127.0.0.1')` and allow credentials, so a page served from a "
+    "host such as `127.0.0.1.example.com` passes. A page the user opens can then call "
+    "the tools in the user's browser. Checked in every npm tarball from 1.0.0 to "
+    "1.0.31 (2025-12-30, the newest). There is no fixed release: "
+    "hangwin/mcp-chrome#384 is open with no reply, and nothing has been committed "
+    "upstream since 2026-01-06.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed version. Remove `mcp-chrome-bridge` and the extension where "
+    "they are not needed. Where they are, do not leave the native server running while "
+    "you browse sites you do not trust, and do not run it in a browser profile signed "
+    "in to accounts that matter. A fork closes the hole by matching the Origin exactly "
+    "against the extension's own origin.",
+    sarif_name="McpChromeBridgeCorsOriginBypass",
+    cve_references=["CVE-2026-102878"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports an npm reference to `mcp-chrome-bridge`, with or without a version, "
+        "since every release is affected and none is fixed: a package.json or lockfile "
+        "entry at the project root, the package an `npx` launch in an MCP config names, "
+        "or a config that runs a global install by that bare name. The upstream README "
+        "installs it globally and connects a client by URL "
+        "(`http://127.0.0.1:12306/mcp`) or by the path of `mcp-server-stdio.js` inside "
+        "the global install; neither names the package, so neither is reported, and "
+        "neither is a config that runs the package's other commands, "
+        "`mcp-chrome-stdio` and `chrome-mcp-bridge`, by name. It reads the name and "
+        "version, not whether the server is running. A file over "
+        "2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

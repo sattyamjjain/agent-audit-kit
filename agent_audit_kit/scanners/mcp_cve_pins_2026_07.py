@@ -329,6 +329,13 @@ available) before shipping:
     --mcp` serves MCP on every interface with no authentication, and its tools act
     with the developer's access token. The 3.x releases have no `--mcp`; a stated
     version is required)
+  - flowise                        >= 1.4.6, presence-only  (CVE-2026-119978; the custom
+    function sandbox allowlists `langchain` and `mammoth`, so a caller writes a file
+    into mammoth's folder and requires it. The route arrives in 1.4.6; the project
+    ended after 3.1.4, so there is no fixed release. Not an MCP surface)
+  - mcp-chrome-bridge              presence-only  (CVE-2026-102878; the native server's
+    HTTP MCP endpoint answers web pages: every origin through 1.0.29, and an origin
+    that only starts with `http://127.0.0.1` in 1.0.30 and 1.0.31. No fixed release)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1933,6 +1940,43 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-TRIGGERDEV-CVE-2026-114090-001", "trigger.dev", ("trigger.dev",),
          (4, 5, 4), introduced=(4, 0, 0), fix_label="4.5.4 (affected from 4.0.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 (#847, #1168) ---
+    # Flowise (npm `flowise`): POST /api/v1/node-custom-function runs a caller's
+    # JavaScript in vm2's NodeVM with `require.external.modules` set from
+    # flowise-components' `availableDependencies`, which lists `langchain` and
+    # `mammoth`. vm2 matches an allowed name as the whole package folder and loads it
+    # in the host, so langchain's LocalFileStore writes a file into mammoth's folder
+    # and the code requires it (CVE-2026-119978). Checked in the npm tarballs: the
+    # route first ships in flowise 1.4.6 (2023-12-18), a minute after
+    # flowise-components 1.4.7 added the CustomFunction node; 1.4.5 has neither.
+    # Every components release from 1.4.7 to 3.1.4 lists both names, with no setting
+    # until 3.0.7 and behind ALLOW_BUILTIN_DEP=true from 3.0.8. 3.1.4 is the last
+    # release: FlowiseAI archived the repository on 2026-08-13 and ended the project
+    # on 2026-08-31, so the pin is presence-only from 1.4.6. The CVE record names
+    # Flowise alone; `flowise-components`, which ships the allowlist, is named only
+    # by the finder's write-up and is not pinned. No MCP code is involved, so the id
+    # has no MCP area.
+    _Pin("AAK-FLOWISE-CVE-2026-119978-001", "flowise", ("flowise",), None,
+         introduced=(1, 4, 6),
+         fix_label="no fixed release (3.1.4 is the last; FlowiseAI ended the project on "
+                   "2026-08-31); leave ALLOW_BUILTIN_DEP unset and keep the API off "
+                   "networks you do not trust",
+         ecosystem="js"),
+    # mcp-chrome-bridge (npm), the native server of hangwin/mcp-chrome: its Fastify
+    # HTTP API on 127.0.0.1 serves the MCP endpoints (/mcp, /sse, /messages) that
+    # drive the Chrome extension's tools. Through 1.0.29 it registered @fastify/cors
+    # with `origin: true`, so every web page could call them; 1.0.30 and 1.0.31
+    # (2025-12-30, the newest) check the Origin against `'http://127.0.0.1'` with
+    # `startsWith`, with credentials allowed, so a page on a host such as
+    # `127.0.0.1.<attacker domain>` still can (CVE-2026-102878). Checked in every
+    # tarball from 1.0.0 to 1.0.31. hangwin/mcp-chrome#384 is open with no reply and
+    # nothing has been committed since 2026-01-06, so the pin is presence-only.
+    _Pin("AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001", "mcp-chrome-bridge",
+         ("mcp-chrome-bridge",), None,
+         fix_label="no fixed release (1.0.31, 2025-12-30, is the newest and "
+                   "hangwin/mcp-chrome#384 is open); stop the native server while you "
+                   "browse untrusted sites",
+         ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

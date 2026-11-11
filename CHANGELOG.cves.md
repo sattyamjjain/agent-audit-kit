@@ -849,6 +849,73 @@ A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is eac
 PraisonAI, and GitHub's for LiteLLM and the MCP SDK. GitHub scores the three Next.js advisories
 in CVSS 4.0 only.
 
+## 2026-11-11 (unreleased): presence-only pins for Flowise and mcp-chrome-bridge, whose vendors will ship no fix
+
+Two issues deferred until a fixed release are read again here, on 2026-11-11, against
+NVD's API records, their CNA records and every published npm tarball, read through unpkg.
+Neither vendor will ship a fix, so each becomes a presence-only pin, as mcp-ffmpeg (#1112)
+and Langchain-Chatchat (#1055) did. NVD text is quoted from the API records.
+
+### CVE-2026-119978 (#1168): new presence-only pin 2026-11-11
+
+**Flowise gets `AAK-FLOWISE-CVE-2026-119978-001` (HIGH): npm `flowise` from 1.4.6, every
+release.** NVD: "Flowise through 3.1.4 contains a sandbox escape vulnerability that allows
+authenticated users to execute OS commands by abusing allowlisted langchain and mammoth
+modules when ALLOW_BUILTIN_DEP=true." The custom function route runs a caller's JavaScript
+in vm2's NodeVM and lets it require the packages on flowise-components'
+`availableDependencies` list. vm2 treats an allowed name as the whole package folder and
+loads the package in the host, so langchain's `LocalFileStore` can write a file into
+mammoth's folder and the code can then require it. Bisected in the tarballs: the
+`/api/v1/node-custom-function` route first ships in flowise 1.4.6 (2023-12-18), a minute
+after flowise-components 1.4.7 added the CustomFunction node, and flowise 1.4.5 has
+neither. Every flowise-components release from 1.4.7 to 3.1.4 lists both `langchain` and
+`mammoth`; through 3.0.7 the list applies with no setting, and from 3.0.8 only with
+`ALLOW_BUILTIN_DEP=true`. vm2 3.9.19 (components 1.4.7), `@flowiseai/nodevm` 3.9.25
+(3.0.4) and vm2 3.11.2 (3.1.4) build the same folder matcher and load external packages in
+the host by default, langchain 0.0.196 (components 1.4.7) already exports
+`./storage/file_system`, and no mammoth 1.x release publishes an exports map. 3.1.4
+(2026-07-29) is the last release: FlowiseAI archived the repository on 2026-08-13 and ended
+the project on 2026-08-31 (FlowiseAI/Flowise discussion #6727), and the finder's write-up
+the record cites expects no patch. The pin reads the same npm name and the same files as
+`AAK-MCP-FLOWISE-CVE-2026-91931-001`, which reads no `flowiseai/flowise` image, so neither
+does this one. The CVE record names Flowise alone (`pkg:github/FlowiseAI/Flowise`), so
+`flowise-components`, which the write-up also names, is a stated limitation with a fixture
+and not a second pin. The flaw is in the custom function sandbox, not in an MCP node, so
+the id has no MCP area and the rule no MCP id. Measured with the scanner: a lockfile
+resolving flowise 1.4.6 or 3.1.4 fires at HIGH, 1.4.5 does not, and a lockfile holding only
+flowise-components 3.1.4 does not.
+
+### CVE-2026-102878 (#847): new presence-only pin 2026-11-11
+
+**mcp-chrome-bridge gets `AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001` (HIGH): npm
+`mcp-chrome-bridge`, every release.** NVD: "mcp-chrome-bridge through 1.0.31 contains an
+origin validation error in the native-server HTTP API that allows attackers to bypass CORS
+restrictions." Read in every tarball from 1.0.0 to 1.0.31: the native server listens on
+127.0.0.1 and serves `/mcp`, `/sse` and `/messages`. Through 1.0.29 it registers
+`@fastify/cors` with `origin: true`, which accepts every origin; 1.0.30 and 1.0.31
+(2025-12-30) compare the Origin with `startsWith('http://127.0.0.1')` and allow
+credentials, which a host such as `127.0.0.1.example.com` passes (hangwin/mcp-chrome#384).
+That issue is open with no reply, the newest upstream commit is from 2026-01-06, and no
+release has followed 1.0.31, so the pin covers every release. The upstream README installs
+the package globally and points a client at `http://127.0.0.1:12306/mcp` or at a path
+inside the global install, neither of which names the package; the rule says so and a
+limitation fixture holds both. Measured with the scanner: a package.json on 1.0.31 and a
+lockfile on 1.0.0 fire at HIGH, and Google's `chrome-devtools-mcp` does not.
+
+**designer-mcp (#1094) and Kali-GPT (#1109) are closed without a pin.** Both were deferred
+until a release a project could name (the 2026-10-26 and 2026-10-28 sections). No
+published package or tag ever carried either flaw, and each fix now sits where any future
+release starts from: designer-mcp's c8c2951 is in its only tag, v3.0.0 (2026-10-31), and
+Kali-GPT fixed `kali_gpt/tools/mcp_server.py` on main in f8abc1cf (2026-11-05). Neither has
+a row.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-119978 | 8.5 | `flowise` (npm) | **New pin** `AAK-FLOWISE-CVE-2026-119978-001` (HIGH): every version from 1.4.6, presence-only. No fixed release; the project has ended. | #1168 |
+| CVE-2026-102878 | 8.1 | `mcp-chrome-bridge` (npm) | **New pin** `AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001` (HIGH): every version, presence-only. No fixed release. | #847 |
+
+CVSS is each record's CVSS 3.1 score, VulnCheck's. Their CVSS 4.0 scores are 9.0 and 8.6.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
@@ -981,6 +1048,54 @@ SDK, and npm `lmstudio` is the setup tool, so no project declares the app for a 
 | CVE-2026-101288 | 8.8 | `langflow` (PyPI) | **Joins** the same rule, no floor change: 1.0.0 through 1.12.3, fixed in 1.12.4. | #1156 |
 | CVE-2026-119408 | 8.8 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.42.6, 2.43.0 to 2.43.3 and 3.0.0 to 3.0.1. No pin. | #1155 |
 | CVE-2026-119979 | 8.8 | LM Studio (desktop app) | Out of scope: the app is on no registry. | #1154 |
+
+## 2026-11-02 (v0.6.34): prefab-ui's NVD record by collectionURL, two sandbox rules, and the MCPHub floor
+
+#1175 merged on 2026-11-02 and shipped without a ledger section; this one was written on
+2026-11-11. It was cut for 0.6.32, which was tagged and never reached PyPI, and so was
+0.6.33, so 0.6.34 (2026-11-10) is the first published release that carries it. NVD text is
+quoted from the API records, read on 2026-11-11.
+
+### CVE-2026-120338 (#1170): advisory feed and two new rules 2026-11-02
+
+**`AAK-KNOWN-VULN-001` reports PyPI `prefab-ui` 0.14.0 up to 0.21.0 from the bundled
+advisory feed, CRITICAL, and two new rules read how such a sandbox is used.** NVD: "From
+prefab-ui 0.14.0 through 0.20.2 the launcher starts Deno with unrestricted --allow-read,
+--allow-write, and --allow-net, and the runner leaves the Deno API on the JavaScript global
+object." JFrog's CNA record names the package only by `collectionURL`
+(`https://pypi.org/project/prefab-ui/`) and `packageName`, with no packageURL, so
+`aak update` dropped it until #1175 taught `nvd_feed` to map a package's own registry page;
+the record is bundled, saved unedited under tests/fixtures/nvd_cna.
+`AAK-MCP-CODEEXEC-SANDBOX-001` (CRITICAL) reports Python that registers FastMCP's
+Generative UI provider, whose `generate_prefab_ui` tool hands its `code` argument to that
+sandbox, in a project that resolves prefab-ui 0.14.0 up to 0.21.0 or pins it nowhere.
+`AAK-MCP-CODEEXEC-SANDBOX-002` (HIGH) reports a Deno launch with all permissions or an
+unscoped one whose script hands the runtime code that is not a fixed literal and never
+revokes the permission. Measured with the 0.6.34 wheel from PyPI in a clean venv: a uv.lock
+resolving prefab-ui 0.20.2 or 0.14.0 gets the CRITICAL advisory finding naming 0.21.0, and
+0.21.0 and 0.13.0 get nothing; a server.py that registers the provider beside 0.20.2 adds
+`AAK-MCP-CODEEXEC-SANDBOX-001`, and the same files on 0.21.0 get nothing.
+
+### CVE-2026-120323: floor raised 2026-11-02
+
+**`AAK-MCP-MCPHUB-CVE-2026-79748-001` reports npm `@samanhappy/mcphub` below 1.1.8, up
+from 1.0.32.** NVD: "A security flaw has been discovered in samanhappy MCPHub up to
+1.0.45/1.1.7. Impacted is an unknown function of the file src/utils/passthroughHeaders.ts."
+VulDB's record lists every 1.0.x through 1.0.45 and 1.1.x through 1.1.7 as affected, names
+1.1.8 as the fix and no 1.0.x fix, and carries no packageURL or repository, so a reviewed
+map row names npm `@samanhappy/mcphub` and the record is bundled. The floor moved for a
+MEDIUM record (CVSS 4.3), so 1.0.32 to 1.1.7 are reported at the rule's CRITICAL, as the
+langflow floor raise of 2026-10-05 did. Measured with the scanner: a package.json on 1.1.7
+fires and one on 1.1.8 does not. The watcher filed no issue for it.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-120338 | 10.0 | `prefab-ui` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports 0.14.0 up to 0.21.0 from the bundled NVD entry, CRITICAL, fixed in 0.21.0. **New rules** `AAK-MCP-CODEEXEC-SANDBOX-001` (CRITICAL) and `AAK-MCP-CODEEXEC-SANDBOX-002` (HIGH). | #1170 |
+| CVE-2026-120323 | 4.3 | `@samanhappy/mcphub` (npm) | **Floor raised** on `AAK-MCP-MCPHUB-CVE-2026-79748-001`: 1.0.32 to 1.1.8, reported at the rule's CRITICAL. | not filed |
+
+CVSS is each record's CVSS 3.1 score: JFrog's for prefab-ui, VulDB's for MCPHub.
+
+Dispositioned at 2026-11-02T09:48:28Z.
 
 ## 2026-10-31 (v0.6.30): lmdeploy's NVD record in the bundled advisory feed
 
