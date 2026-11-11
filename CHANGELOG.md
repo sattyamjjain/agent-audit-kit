@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `AAK-MCP-AISDLC-CVE-2026-117558-001` (HIGH): `@ai-sdlc/plugin-mcp-server`, the ai-sdlc plugin's MCP server, below 0.32.0 (CVE-2026-117558, #1103). Its `check_issue` and `check_pr_status` tools put the `repo` argument into `gh` command strings run with `execSync`, from 0.8.1, the first release. `latest` is fixed, so only a stated version is reported.
+- `AAK-MCP-DROIDMIND-CVE-2026-117559-001` (HIGH): `droidmind` on PyPI, every version (CVE-2026-117559, #1104). Its shell allowlist reads only a command's first word, so command substitution runs what it blocks, and `list_directory` takes its path unchecked. There is no fixed release.
+- `AAK-MCP-SFMCP-CVE-2026-117561-001` (HIGH): `sf-mcp` on npm, every version (CVE-2026-117561, #1106). Salesforce CLI flag values reach `execSync` through an escape that only quotes values with a space. There is no fixed release, and PyPI's `sf-mcp` is another project.
+- `AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001` (HIGH): `langgraph-api` from 0.1.2 below 0.15.0 (CVE-2026-118668, #1133). A JavaScript or TypeScript custom-auth Store handler that rewrote the namespace changed nothing, so one user could reach another's Store items. The 0.12, 0.13 and 0.14 lines have no fix. It is its own rule beside the MEDIUM 0.10.0 one, and only a stated version is reported.
+- `AAK-MCP-FUNCTYPE-CVE-2026-59176-001` (HIGH): `functype-mcp-server` below 1.4.4 (CVE-2026-59176, #1139). `set_functype_version` installed any version string, an alias to another package included, and then imported it. `latest` is fixed, so only a stated version is reported.
 - New rule AAK-NETWORKAI-CVE-2026-120311-001 (HIGH): npm `network-ai` from 5.0.0 below 5.15.5, whose `FileJobStore` (behind `JobQueue`) and `AgentVCR` join a caller's job id or cassette name onto their directory with no check that it stays there, so any `.json` file the process can reach is read, written or deleted (CVE-2026-120311, CVE-2026-120312). Both records start at 5.13.4, but the npm tarballs carry the same code from 5.0.0, so the rule starts there. A stated version is required, since `latest` (6.0.1) is fixed.
 
 ### Changed

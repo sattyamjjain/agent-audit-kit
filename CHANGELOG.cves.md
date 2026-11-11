@@ -230,6 +230,159 @@ rule reports. OSV holds neither record: its nine network-ai records are all fixe
 
 CVSS is each record's CVSS 3.1 score, VulnCheck's.
 
+## 2026-11-11 (unreleased): nine keyword-feed records, five new pins, three out of scope, one deferred
+
+The watcher filed these from NVD's keyword feed between 27 and 29 Oct (#1103 to #1107,
+#1131 to #1133, #1139), and each was deferred with no scope claimed. Each is read here
+against NVD's API record, its CNA record, OSV and the published packages, all on
+2026-11-11. Five get new pins, each measured with the scanner on a firing fixture and a
+negative one after its range was read in the published artifacts. Three are out of scope:
+a Gemini CLI extension, an Anki add-on and a desktop emulator, none on a registry. One,
+esp-mcp, ships only from a git repository with no release and is deferred. NVD text is
+quoted from the API records. OSV holds nothing for `@ai-sdlc/plugin-mcp-server`,
+`droidmind` or `sf-mcp`; it holds the GHSA records of `langgraph-api` and
+`functype-mcp-server`, and none of the five is in the bundled advisory feed.
+
+### CVE-2026-117558 (#1103): new pin 2026-11-11
+
+**The ai-sdlc MCP server gets `AAK-MCP-AISDLC-CVE-2026-117558-001`: npm
+`@ai-sdlc/plugin-mcp-server` below 0.32.0, HIGH.** NVD: "The ai-sdlc plugin MCP server
+through 0.31.2 contains an OS command injection vulnerability that allows attackers to
+execute commands by supplying shell metacharacters in the repo argument." VulnCheck's CNA
+data names `pkg:npm/%40ai-sdlc/plugin-mcp-server` through 0.31.2. Checked in the published
+packages: 0.8.1, the first release (2026-04-30), and 0.31.2 build the `gh issue view` and
+`gh pr view` commands of `check_issue` and `check_pr_status` as strings holding `--repo
+${repo}` and run them with `execSync`; 0.32.0 (2026-10-27) calls `execFileSync('gh', [...])`
+and accepts only an owner/name `repo` (ai-sdlc-framework/ai-sdlc#1982, 717d7ecf), and
+0.42.0, the newest, does the same. `latest` is 0.42.0, so a stated version is required.
+The project's Claude Code plugin runs the server from its own `node_modules` by path and
+names the version in `plugin.json` `runtimeDependencies`, which AAK does not read; on the
+main branch that file named 0.9.2 on 2026-11-11, and the limitations say so.
+
+### CVE-2026-117559 (#1104): new pin 2026-11-11
+
+**DroidMind gets `AAK-MCP-DROIDMIND-CVE-2026-117559-001`: PyPI `droidmind`, every version,
+HIGH.** NVD: "DroidMind through 0.4.0 contains a command injection vulnerability that
+allows MCP clients to bypass the shell command allowlist by using $(...) or backtick
+substitution." Checked in the PyPI wheels of 0.2.0, the first release, and 0.4.0, the
+newest (2026-01-07): `validate_shell_command` checks only the first word of a command
+against `ALLOWED_SHELL_COMMANDS`, beside a pattern list that has neither substitution form,
+and `Device.list_directory` runs `ls -la {path}` with no check. hyperb1iss/droidmind#17 is
+open and the repository's newest commit is the 0.4.0 release, so the pin is presence-only,
+like `mcp-ffmpeg`. The README's own launch, `uvx --from
+git+https://github.com/hyperb1iss/droidmind droidmind`, names no release and is not
+reported; the limitations say so and a fixture holds the miss.
+
+### CVE-2026-117561 (#1106): new pin 2026-11-11
+
+**sf-mcp gets `AAK-MCP-SFMCP-CVE-2026-117561-001`: npm `sf-mcp`, every version, HIGH.**
+NVD: "Codefriar sf-mcp through 1.3.2 contains an OS command injection vulnerability that
+allows attackers to execute shell commands by supplying crafted Salesforce CLI tool flag
+values." Checked in all four npm packages, 1.1.0 (2025-03-28) to 1.3.2 (2025-05-27):
+`escapeValue` in `build/utils.js` wraps a value in double quotes only when it holds a
+space, and `build/sfCommands.js` runs the assembled command string with `execSync`. 1.3.2
+is the newest release and the repository's newest commit, and codefriar/sf-mcp#17 is open,
+so the pin is presence-only and npm only: PyPI's `sf-mcp` (0.1.x) is Signal Found's
+server, another project and the second negative fixture. The README's `npx -y
+codefriar/sf-mcp` is a GitHub reference rather than the npm name, and the package's
+executable is `sfmcp`, so neither is reported.
+
+### CVE-2026-118668 (#1133): new pin 2026-11-11
+
+**langgraph-api gets `AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001`: PyPI `langgraph-api` from
+0.1.2 below 0.15.0, HIGH.** NVD: "From 0.1.2 until 0.15.0, JavaScript or TypeScript custom
+authentication Store authorization handlers can return a rewritten namespace that is not
+carried across the runtime boundary and applied before the Store operation."
+GHSA-4hm6-w6qq-w73v gives `>= 0.1.2, < 0.15.0`. Checked in the PyPI wheels: 0.1.0 has no
+JS auth bridge; 0.1.2's `handle_js_auth_event` copies back only the handler's `metadata`;
+0.15.0 (2026-09-25) adds `_apply_auth_mutations` and the sidecar's `collectMutations`.
+langgraph-api keeps older lines alive, and 0.12.12, 0.13.8 and 0.14.10, the newest of
+each (0.14.10 published 2026-11-06), do not carry the fix, so every release below 0.15.0
+from 0.1.2 is reported; 0.15.13 carries it. It is its own HIGH rule beside
+`AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001` (MEDIUM, floor 0.10.0), a different flaw, so a
+declaration from 0.1.2 to 0.9.x gets both findings. `latest` is 0.17.1, so a stated version
+is required. The rule reads the version, not `langgraph.json`, so a deployment with Python
+custom auth is reported too; the limitations say so.
+
+### CVE-2026-59176 (#1139): new pin 2026-11-11
+
+**functype-mcp-server gets `AAK-MCP-FUNCTYPE-CVE-2026-59176-001`: npm `functype-mcp-server`
+below 1.4.4, HIGH.** NVD: "Prior to 1.4.4, the `set_functype_version` MCP tool in
+`functype-mcp-server` accepts an unconstrained `version` string using only `z.string()`
+validation in `packages/mcp-server/src/index.ts` and interpolates it into
+`functype@<version>` for `pnpm add`." GHSA-wcjj-9m6g-2fr2 (published 2026-06-20) gives
+`<= 1.4.3`. Checked in the published packages: 0.47.0, the first release (2026-02-23), and
+1.4.3 pass the string to `execFileSync("pnpm", ["add", spec])` as given; 1.4.4 refuses
+`file:`, `npm:`, `git+` and URL aliases and adds `--ignore-scripts`. The `functype`
+library, published from the same repository, is not affected and is the second negative
+fixture. `latest` is 1.26.0, so a stated version is required, and the README's own `npx
+functype-mcp-server` is not reported.
+
+### CVE-2026-117567 (#1107): deferred 2026-11-11 (target 2026-11-25), no release
+
+esp-mcp is a VulnCheck record against a commit, like Kali-GPT, hagent and nmap-mcp on
+2026-10-28. NVD: "esp-mcp through commit 28afddf contains an OS command injection
+vulnerability that allows attackers to run arbitrary commands by supplying shell
+metacharacters in MCP tool parameters." Checked in the repository: horw/esp-mcp has no tags
+or releases, its pyproject.toml names `esp-mcp` 0.1.0, and neither PyPI nor npm has that
+name (PyPI's `esp-idf-mcp` is another project). The README runs a clone with `uv
+--directory <path> run main.py`, which names nothing a pin reads. At 28afddf, the newest
+commit (2025-12-27), `main.py` builds `idf.py` command strings from the `target`, `port`,
+`project_path` and `project_name` parameters for `asyncio.create_subprocess_shell`, and
+horw/esp-mcp#49 is open. Deferred to 2026-11-25 to re-check for a release, like #1109,
+#1110 and #1114: a release on PyPI, or a tag that holds the flawed code, makes it a pin on
+that name. #1107 stays open with `cve-deferred`.
+
+### CVE-2026-117560, CVE-2026-61546 and CVE-2026-61542 (#1105, #1131, #1132): out of scope 2026-11-11
+
+**The ATXP Gemini CLI extension is out of scope, non-pinnable.** NVD: "ATXP Gemini CLI
+extension through 1.0.0 contains an OS command injection vulnerability in runAtxp() that
+allows attackers to execute shell commands through unsanitized MCP tool parameters." The
+extension (atxp-dev/atxp) is installed into Gemini CLI from its GitHub repository. Its
+package.json name, `@atxp/gemini-cli-extension`, was never published to npm; npm's `atxp`
+is atxp-dev/cli, the CLI the extension's server runs as `npx atxp@latest`; and VulnCheck's
+CNA data names no package. The v1.0.0 tag (4e88b02) holds the `execSync` template the record
+cites, nothing since has changed it, and atxp-dev/atxp#15 is open. AAK reads no Gemini CLI
+extension, and no file a project keeps states which version a user installed.
+
+**AnkiMCP is out of scope, non-pinnable.** NVD: "AnkiMCP is an Anki addon that implements an
+MCP server, enabling AI assistants to interact with the Anki flashcard application. Prior to
+version 0.21.0, `anki_mcp_server/mcp_server.py` globally disables FastMCP DNS-rebinding
+protection". The add-on (ankimcp/anki-mcp-server-addon) is installed into the Anki desktop
+app from AnkiWeb, from the `.ankiaddon` file on its GitHub releases or from nixpkgs, and
+GHSA-j9xx-59ph-wmr6 lists its ecosystem as "other". It is on neither PyPI nor npm: PyPI's
+`anki-mcp-server` and `anki-mcp`, and npm's `anki-mcp-server`, are other projects. A client
+config names only the listener's URL, `http://127.0.0.1:3141`, which states no add-on
+version. Fixed in 0.21.0 (2026-06-18).
+
+**Gearboy is out of scope, non-pinnable.** NVD: "Gearboy is a Game Boy, Game Boy Color, and
+Super Game Boy emulator and debugger with an embedded MCP server. Gearsystem, the affected
+component, has an optional `--mcp-http` mode that accepts unauthenticated MCP requests from
+any reachable network peer despite localhost-only documentation and logging." The record
+mixes two of drhelius's emulators: the CNA title reads "Gearboy advisory / Gearsystem body",
+GHSA-fmvx-487g-mrww on the Gearboy repository describes Gearsystem and names
+`io.github.drhelius/gearsystem`, and the CNA's affected product is Gearboy below 3.8.7,
+whose fix commit (e2ead98) changes the same `mcp_transport.h` in the Gearboy repository.
+Either way it is a desktop emulator shipped as GitHub release builds (desktop archives, a
+libretro core and `.mcpb` bundles for Claude Desktop), on no registry, and no file AAK reads
+states its version.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-117558 | 7.8 | `@ai-sdlc/plugin-mcp-server` (npm) | **New pin** `AAK-MCP-AISDLC-CVE-2026-117558-001` (HIGH): 0.8.1 up to 0.32.0, a stated version required. | #1103 |
+| CVE-2026-117559 | 7.8 | `droidmind` (PyPI) | **New pin** `AAK-MCP-DROIDMIND-CVE-2026-117559-001` (HIGH): every version, 0.2.0 to 0.4.0. No fixed release. | #1104 |
+| CVE-2026-117561 | 7.8 | `sf-mcp` (npm) | **New pin** `AAK-MCP-SFMCP-CVE-2026-117561-001` (HIGH): every version, 1.1.0 to 1.3.2. No fixed release. | #1106 |
+| CVE-2026-118668 | 8.6 (4.0) | `langgraph-api` (PyPI) | **New pin** `AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001` (HIGH): 0.1.2 up to 0.15.0, the 0.12, 0.13 and 0.14 lines included, a stated version required. | #1133 |
+| CVE-2026-59176 | 7.8 | `functype-mcp-server` (npm) | **New pin** `AAK-MCP-FUNCTYPE-CVE-2026-59176-001` (HIGH): 0.47.0 up to 1.4.4, a stated version required. | #1139 |
+| CVE-2026-117560 | 7.8 | ATXP Gemini CLI extension (`github.com/atxp-dev/atxp`) | **Out of scope**, non-pinnable: installed from its repository, on no registry. Affected through 1.0.0; no fixed release. | #1105 |
+| CVE-2026-61546 | 8.8 (4.0) | AnkiMCP (Anki add-on, `github.com/ankimcp/anki-mcp-server-addon`) | **Out of scope**, non-pinnable: installed into the Anki desktop app, on no registry. Fixed in 0.21.0. | #1131 |
+| CVE-2026-61542 | 8.6 | Gearboy (desktop emulator, `github.com/drhelius/Gearboy`) | **Out of scope**, non-pinnable: release builds only, on no registry. Fixed in 3.8.7. | #1132 |
+
+CVE-2026-117567 has no row: a row is a coverage claim, and it has none. CVSS is each record's
+CVSS 3.1 score where it has one: VulnCheck's for its four records (their CVSS 4.0 score is
+8.5) and GitHub's for Gearboy and functype-mcp-server. GitHub scored CVE-2026-118668 and
+CVE-2026-61546 in CVSS 4.0 only.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as

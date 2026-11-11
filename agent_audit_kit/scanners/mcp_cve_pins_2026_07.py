@@ -295,6 +295,22 @@ available) before shipping:
   - mcp-ffmpeg                     >= 1.0.3, presence-only  (CVE-2026-117568; video
     paths reach a double-quoted `child_process.exec` string. No fixed release, and
     1.0.0 to 1.0.2 had no MCP tools. npm only: PyPI's `mcp-ffmpeg` is another project)
+  - @ai-sdlc/plugin-mcp-server     <  0.32.0  (CVE-2026-117558; `check_issue` and
+    `check_pr_status` put the `repo` argument into a `gh` command string for
+    `execSync`. Every release from 0.8.1, the first. A stated version is required)
+  - droidmind                      presence-only  (CVE-2026-117559; the shell
+    allowlist reads only the first word, so `$()` and backticks pass, and
+    `list_directory` takes its path unchecked. Every release, 0.2.0 to 0.4.0)
+  - sf-mcp                         presence-only  (CVE-2026-117561; flag values reach
+    `execSync` through an `escapeValue` that only quotes values with spaces. Every
+    release, 1.1.0 to 1.3.2. npm only: PyPI's `sf-mcp` is another project)
+  - langgraph-api                  0.1.2 <= v < 0.15.0  (CVE-2026-118668; a JS or TS
+    custom-auth Store handler's rewritten namespace is dropped at the runtime
+    boundary. Its own HIGH rule beside the MEDIUM 0.10.0 row. A stated version is
+    required)
+  - functype-mcp-server            <  1.4.4  (CVE-2026-59176; `set_functype_version`
+    installs `functype@<version>` for any string, an alias included, then imports
+    it. Every release from 0.47.0, the first. A stated version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1790,6 +1806,56 @@ _PINS: tuple[_Pin, ...] = (
                    "bitscorp-mcp/mcp-ffmpeg#8 is open); keep it away from agents that read "
                    "untrusted text",
          ecosystem="js"),
+    # --- 2026-11-11 batch (#1103 to #1139, group kw_a) ---
+    # ai-sdlc's MCP server: `check_issue` and `check_pr_status` built
+    # `gh issue view ${issueNumber} --repo ${repo} ...` strings for `execSync`
+    # (CVE-2026-117558). Checked in the npm tarballs: 0.8.1, the first release, to
+    # 0.31.2 do; 0.32.0 calls `execFileSync('gh', [...])` and checks `repo` against
+    # owner/name (ai-sdlc-framework/ai-sdlc#1982, 717d7ecf). `latest` is 0.42.0, so a
+    # stated version is required.
+    _Pin("AAK-MCP-AISDLC-CVE-2026-117558-001", "@ai-sdlc/plugin-mcp-server",
+         ("@ai-sdlc/plugin-mcp-server",), (0, 32, 0), fix_label="0.32.0",
+         requires_version=True),
+    # DroidMind: `validate_shell_command` checks only the first word of a command
+    # against its allowlist, so `$()` and backticks run what it blocks, and
+    # `list_directory` puts its path into `ls -la {path}` unchecked
+    # (CVE-2026-117559). The PyPI wheels of 0.2.0, the first release, and 0.4.0, the
+    # newest (2026-01-07), both do; hyperb1iss/droidmind#17 is open. Presence-only.
+    _Pin("AAK-MCP-DROIDMIND-CVE-2026-117559-001", "droidmind", ("droidmind",), None,
+         fix_label="no fixed release (0.4.0, 2026-01-07, is the newest and "
+                   "hyperb1iss/droidmind#17 is open); keep it away from agents that read "
+                   "untrusted text"),
+    # sf-mcp (codefriar/sf-mcp): Salesforce CLI flag values pass through an
+    # `escapeValue` that only wraps values holding a space in double quotes, and the
+    # command string goes to `execSync` (CVE-2026-117561). The npm tarballs of 1.1.0,
+    # the first release, and 1.3.2, the newest (2025-05-27), both do; issue #17 is
+    # open. Presence-only, npm only: PyPI's `sf-mcp` is Signal Found's server.
+    _Pin("AAK-MCP-SFMCP-CVE-2026-117561-001", "sf-mcp", ("sf-mcp",), None,
+         fix_label="no fixed release (1.3.2, 2025-05-27, is the newest and "
+                   "codefriar/sf-mcp#17 is open); keep it away from agents that read "
+                   "untrusted text",
+         ecosystem="js"),
+    # langgraph-api: a JavaScript or TypeScript custom-auth handler's changes to a
+    # request were applied back only to its `metadata`, so a Store handler that
+    # rewrote the namespace to the caller's own changed nothing (CVE-2026-118668).
+    # Checked in the PyPI wheels: 0.1.0 has no JS auth bridge, 0.1.2 has
+    # `handle_js_auth_event` applying metadata only, and 0.15.0 adds
+    # `_apply_auth_mutations`. The newest 0.12.x, 0.13.x and 0.14.x releases
+    # (0.12.12, 0.13.8, 0.14.10 of 2026-11-06) lack it. Its own HIGH rule beside the
+    # MEDIUM 0.10.0 row above. `latest` is 0.17.1, so a stated version is required.
+    _Pin("AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001", "langgraph-api", ("langgraph-api",),
+         (0, 15, 0), introduced=(0, 1, 2),
+         fix_label="0.15.0 (affected from 0.1.2; the 0.12, 0.13 and 0.14 lines have no fix)",
+         requires_version=True),
+    # functype-mcp-server: `set_functype_version` took any string, ran
+    # `pnpm add functype@<version>` (a `file:`, `npm:` or URL alias installs another
+    # package as functype) and then imported it (CVE-2026-59176). Checked in the npm
+    # tarballs: 0.47.0, the first release, to 1.4.3 do; 1.4.4 refuses alias syntax
+    # and passes `--ignore-scripts`. `latest` is 1.26.0, so a stated version is
+    # required.
+    _Pin("AAK-MCP-FUNCTYPE-CVE-2026-59176-001", "functype-mcp-server",
+         ("functype-mcp-server",), (1, 4, 4), fix_label="1.4.4",
+         requires_version=True),
 )
 
 _CANDIDATE_NAMES = (

@@ -380,6 +380,11 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CLOUDRUN-CVE-2026-85297-001": ["AIS-07", "STA-08"],
     "AAK-MCP-AWSAPIMCP-CVE-2026-115413-001": ["IAM-01", "STA-08"],
     "AAK-MCP-FFMPEG-CVE-2026-117568-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-AISDLC-CVE-2026-117558-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-DROIDMIND-CVE-2026-117559-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-SFMCP-CVE-2026-117561-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-FUNCTYPE-CVE-2026-59176-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -18346,6 +18351,204 @@ _r(
         "(priyanshum143/MCP-FFMPEG) is another project, so a Python requirement and a "
         "`uvx` launch are not matched. It reads the name and version, not which tools the "
         "client lets the model call. A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-11 batch (#1103 to #1139, group kw_a).
+
+_r(
+    "AAK-MCP-AISDLC-CVE-2026-117558-001",
+    "ai-sdlc MCP server below 0.32.0: the repo argument reaches a gh command string",
+    "The MCP server of the ai-sdlc Claude Code plugin (npm `@ai-sdlc/plugin-mcp-server`, "
+    "ai-sdlc-framework/ai-sdlc) built the `gh issue view` and `gh pr view` commands of "
+    "its `check_issue` and `check_pr_status` tools as strings holding the tool's `repo` "
+    "argument and ran them with `execSync`, so a `repo` value carrying shell "
+    "metacharacters, which a client or a prompt-injected agent can send, runs commands "
+    "as the server's user (CVE-2026-117558, CVSS 7.8, CWE-78). Checked in the published "
+    "npm packages: 0.8.1, the first release, to 0.31.2 build those strings, and 0.32.0 "
+    "runs `gh` through `execFileSync` with an argument array and accepts only an "
+    "owner/name `repo` (ai-sdlc-framework/ai-sdlc#1982).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@ai-sdlc/plugin-mcp-server` to 0.32.0 or later and pin it. Where the "
+    "ai-sdlc Claude Code plugin installs the server for you, check the version it "
+    "installs: its `plugin.json` names one in `runtimeDependencies`.",
+    sarif_name="AiSdlcMcpServerRepoShellInjection",
+    cve_references=["CVE-2026-117558"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports `@ai-sdlc/plugin-mcp-server` below 0.32.0 where a version is stated: a "
+        "package.json or lockfile entry, or the package an `npx` launch in an MCP config "
+        "names, reporting a range that admits an affected version. `latest` was 0.42.0 "
+        "on 2026-11-11 and states no version, so an unversioned reference is not "
+        "reported. The ai-sdlc Claude Code plugin runs the server from its own "
+        "`node_modules` by path and names the version in its `plugin.json` "
+        "`runtimeDependencies`, which AAK does not read, so a plugin install is not "
+        "reported; that file on the project's main branch named 0.9.2 on 2026-11-11. "
+        "It reads the name and version, not which tools the client lets the model call. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DROIDMIND-CVE-2026-117559-001",
+    "DroidMind, every release: shell substitution passes the command allowlist",
+    "DroidMind (PyPI `droidmind`, hyperb1iss/droidmind), an MCP server that drives "
+    "Android devices over ADB, checks a shell command against its allowlist by the "
+    "first word alone, so `$(...)` or backticks inside an allowed command run commands "
+    "the list blocks, such as `reboot`, and its `list_directory` puts the requested "
+    "path into `ls -la {path}` with no check at all. A client or a prompt-injected "
+    "agent therefore runs any shell command on the connected device (CVE-2026-117559, "
+    "CVSS 7.8, CWE-78). Checked in the published PyPI wheels: 0.2.0, the first "
+    "release, and 0.4.0, the newest (2026-01-07), both do. hyperb1iss/droidmind#17 is "
+    "open and there is no fixed release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Remove `droidmind` from agents that read untrusted content, or connect it only to "
+    "devices that hold nothing worth taking; there is no fixed release. Treat its "
+    "shell allowlist as no boundary.",
+    sarif_name="DroidMindShellAllowlistBypass",
+    cve_references=["CVE-2026-117559"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports a reference to `droidmind`: a requirements*.txt entry at any depth, a "
+        "pyproject.toml, Pipfile or lockfile entry at the project root, or the package a "
+        "`uvx` launch in an MCP config names. Presence-only: every version is reported, "
+        "a future fixed one included, until the pin gets a floor, and so is a reference "
+        "that states no version, which installs 0.4.0. The README's own launch, `uvx "
+        "--from git+https://github.com/hyperb1iss/droidmind droidmind`, installs from a "
+        "git URL that names no release and is not reported, although the default branch "
+        "it installs is affected. It reads the name and version, not which tools the "
+        "client lets the model call. A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SFMCP-CVE-2026-117561-001",
+    "sf-mcp, every release: Salesforce CLI flag values reach a shell command string",
+    "sf-mcp (npm `sf-mcp`, codefriar/sf-mcp), an MCP server for the Salesforce CLI, "
+    "builds each `sf` command as a string and runs it with `execSync`. Flag values go "
+    "through an `escapeValue` that only wraps a value holding a space in double quotes, "
+    "so backticks, `$()` and other shell metacharacters in a value a client or a "
+    "prompt-injected agent sends run commands as the server's user (CVE-2026-117561, "
+    "CVSS 7.8, CWE-78). Checked in the published npm packages: 1.1.0, the first "
+    "release, and 1.3.2, the newest (2025-05-27), both do. codefriar/sf-mcp#17 is open "
+    "and there is no fixed release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Remove `sf-mcp` from agents that read untrusted content, or run it as a user whose "
+    "Salesforce orgs and files hold nothing worth taking; there is no fixed release. A "
+    "fork that passes the CLI its arguments as an array (`execFile`, or `spawn` without "
+    "a shell) closes the injection.",
+    sarif_name="SfMcpFlagValueShellInjection",
+    cve_references=["CVE-2026-117561"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports an npm reference to `sf-mcp`: a package.json or lockfile entry, or the "
+        "package an `npx` launch in an MCP config names. Presence-only: every version is "
+        "reported, a future fixed one included, until the pin gets a floor, and so is a "
+        "reference that states no version, which installs 1.3.2. The README's own "
+        "launches are a clone run by path and `npx -y codefriar/sf-mcp`, a GitHub "
+        "reference rather than the npm name, and the package's executable is `sfmcp`, so "
+        "none of those is reported. PyPI's `sf-mcp` (Signal Found's server) is another "
+        "project, so a Python requirement and a `uvx` launch are not matched. It reads "
+        "the name and version, not which tools the client lets the model call. A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-LANGGRAPH-API-CVE-2026-118668-001",
+    "langgraph-api 0.1.2 to 0.14.x: a JS or TS auth handler's namespace rewrite is dropped",
+    "`langgraph-api`, the LangGraph agent server, runs JavaScript or TypeScript custom "
+    "authentication in a Node.js sidecar. From 0.1.2 until 0.15.0 the server applied "
+    "only a handler's changes to `metadata` back to the request, so a Store "
+    "authorization handler that rewrote the requested namespace to keep each user in "
+    "their own was ignored, and an authenticated user could read, overwrite, search or "
+    "delete another user's Store items, the agents' long-term memory "
+    "(CVE-2026-118668, CVSS 4.0 8.6, CWE-639; GHSA-4hm6-w6qq-w73v). Python handlers, "
+    "and JS handlers that reject a foreign namespace rather than rewrite it, are not "
+    "affected. Checked in the PyPI wheels: 0.1.0 has no JS auth bridge, 0.1.2 applies "
+    "metadata only, and 0.15.0 applies every change the handler makes and refuses one "
+    "it cannot apply. The newest 0.12.x, 0.13.x and 0.14.x releases, 0.14.10 of "
+    "2026-11-06 among them, do not carry the fix.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `langgraph-api` to 0.15.0 or later and pin it; a later 0.12, 0.13 or "
+    "0.14 release does not fix this. Until then, make every JS or TS Store "
+    "authorization handler reject a request for a namespace the user does not own "
+    "instead of rewriting it.",
+    sarif_name="LangGraphApiJsAuthStoreNamespace",
+    cve_references=["CVE-2026-118668"],
+    owasp_agentic_references=["ASI03", "ASI06"],
+    limitations=(
+        "Reports `langgraph-api` from 0.1.2 below 0.15.0 where a version is stated: a "
+        "requirements*.txt entry at any depth, or a pyproject.toml, Pipfile or lockfile "
+        "entry at the project root, reporting a range that admits an affected version. "
+        "`latest` was 0.17.1 on 2026-11-11 and states no version, so an unversioned "
+        "reference is not reported. It reads the version, not `langgraph.json`, so a "
+        "deployment with Python custom auth, with none, or with JS handlers that reject "
+        "rather than rewrite is reported too. The `langchain/langgraph-api` images are "
+        "not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FUNCTYPE-CVE-2026-59176-001",
+    "functype-mcp-server below 1.4.4: set_functype_version installs and imports any package",
+    "functype-mcp-server (npm, jordanburke/functype) has a `set_functype_version` tool, "
+    "on by default, that takes any string, runs `pnpm add functype@<version>` and then "
+    "imports `functype/cli` from what it installed. A `file:`, `npm:`, URL or path "
+    "alias in the version installs another package under the name functype, so a "
+    "client or a prompt-injected agent runs its JavaScript in the server's process "
+    "(CVE-2026-59176, CVSS 7.8, CWE-829; GHSA-wcjj-9m6g-2fr2). Checked in the published "
+    "npm packages: 0.47.0, the first release, to 1.4.3 pass the string as given, and "
+    "1.4.4 refuses alias syntax and installs with `--ignore-scripts`.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `functype-mcp-server` to 1.4.4 or later and pin it. Until then, keep the "
+    "server away from agents that read untrusted content, and do not run it with "
+    "`TRANSPORT_TYPE=httpStream` on a reachable address.",
+    sarif_name="FunctypeMcpVersionAliasInstall",
+    cve_references=["CVE-2026-59176"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports `functype-mcp-server` below 1.4.4 where a version is stated: a "
+        "package.json or lockfile entry, or the package an `npx` launch in an MCP config "
+        "names, reporting a range that admits an affected version. `latest` was 1.26.0 "
+        "on 2026-11-11 and states no version, so the README's own `npx "
+        "functype-mcp-server` is not reported. The `functype` library itself is not "
+        "affected and not matched. A file over 2 MB, or a lockfile over 32 MiB, is not "
         "read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
