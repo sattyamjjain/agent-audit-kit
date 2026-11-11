@@ -251,6 +251,16 @@ available) before shipping:
     session's tasks. Its own HIGH rule beside the 1.31.0 OAuth pin above, since
     1.31.0 is fixed for that bug and affected by this one. A stated version is
     required, and only a server that configures the SDK's task store is exposed)
+  - @modelcontextprotocol/server   2.0.0 <= v < 2.3.0  (CVE-2026-111770; a transport or
+    server shared by several HTTP clients delivers one client's messages to another.
+    HIGH, its own rule; the 1.x sdk refuses sharing from 1.26.0 and is not read)
+  - @modelcontextprotocol/sdk      1.6.0 <= v < 1.32.0, and the 2.x server, express and
+    server-legacy below 2.3.0, 2.0.2 and 2.3.1  (CVE-2026-111771; server bearer auth
+    accepts a token issued for another service. MEDIUM, one rule, four pins)
+  - @modelcontextprotocol/sdk      < 1.32.0, and
+    @modelcontextprotocol/client   2.0.0 <= v < 2.3.0  (CVE-2026-111769; the HTTP client
+    transports and OAuth requests send custom headers and 307/308 bodies across a
+    cross-origin redirect. MEDIUM, one rule, two pins)
   - mcp-ripgrep                    presence-only  (CVE-2026-113378; the advanced-search
     and list-files tools append `-t ${fileType}` unescaped to a command line run
     through a shell. Every release, 0.1.0 to 0.4.0, the newest, has it, and there
@@ -336,6 +346,26 @@ available) before shipping:
   - mcp-chrome-bridge              presence-only  (CVE-2026-102878; the native server's
     HTTP MCP endpoint answers web pages: every origin through 1.0.29, and an origin
     that only starts with `http://127.0.0.1` in 1.0.30 and 1.0.31. No fixed release)
+  - agentscope                     >= 2.0.0, presence-only  (CVE-2026-123022; the 2.x
+    service's `POST /workspace/mcp` starts any stdio command a caller sends, behind
+    only a caller-set `X-User-ID` header. No fixed release; 1.x has no service. PyPI
+    only: npm's `agentscope` is another project)
+  - mcp-contextforge-gateway       0.7.0 <= v < 1.1.0  (CVE-2026-18484; a federated tool
+    whose computed name collides with an existing one makes `tools/call` fail for
+    everyone. MEDIUM, its own rule beside the CRITICAL 1.0.9 row. A stated version is
+    required)
+  - mcp-atlassian                  0.22.0 <= v < 0.24.1  (CVE-2026-124503; the upload
+    guard's boundary is the working directory, so an SSE or HTTP server started from
+    `/` or a home directory reads any file there. Its own rule beside the 0.22.0
+    row. A stated version is required)
+  - fast-agent-mcp                 0.3.18 <= v < 0.7.21  (CVE-2026-102610; `fast-agent
+    serve` listens on 0.0.0.0 with no authentication, and with `--shell` the agent
+    runs commands for any caller. `serve` arrives in 0.3.18; a stated version is
+    required)
+  - @dagucloud/dagu                2.7.0 <= v < 2.11.0  (CVE-2026-102943; the MCP
+    `dagu_read` dag_spec target reads YAML files outside the DAG directories. The MCP
+    server arrives in 2.7.0; the image is a row in container_image_pins. A stated
+    version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -1662,6 +1692,63 @@ _PINS: tuple[_Pin, ...] = (
          ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
          fix_label="2.3.0 (affected from 2.0.0), and set maxToolInputElements",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 wave (#1223, and two records the watcher held) ---
+    # Three more records on the same SDK, each its own rule: none of the rules above
+    # reports the same flaw, and their ranges do not hold these. `latest` of every
+    # package below is fixed, so each pin needs a stated version.
+    #
+    # The 2.x server matched a response or notification to its connection by JSON-RPC
+    # id alone, so a stateless transport, or a server instance, shared by several
+    # HTTP clients delivered one client's messages to another (CVE-2026-111770, CVSS
+    # 3.1 7.7, CWE-362, GHSA-jm63-cq47-j5jp). Checked in the npm tarballs: 2.0.0 and
+    # 2.2.0 have neither guard, and 2.3.0 refuses a second connect and a stateless
+    # transport's second request (typescript-sdk#2918, merged to main only). The
+    # advisory names only this package. The CVE record also lists the repository
+    # (`typescript-sdk`) below 1.32.0, but `@modelcontextprotocol/sdk` refuses both
+    # from 1.26.0 (checked at 1.26.0 and 1.31.0), so the 1.x sdk is not read here.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111770-001", "@modelcontextprotocol/server",
+         ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0), and build a server and transport per request or session",
+         requires_version=True, ecosystem="js"),
+    # Server-side bearer authentication had no audience check, so a valid token issued
+    # for another service passed (CVE-2026-111771, CVSS 3.1 6.8, CWE-863,
+    # GHSA-rvq5-wwqv-78pq). Checked in the npm tarballs: sdk 1.5.0 has no bearer
+    # middleware and 1.6.0 adds requireBearerAuth; sdk 1.31.0, server 2.2.0, express
+    # 2.0.1 and server-legacy 2.3.0 take no audience; sdk 1.32.0, server 2.3.0,
+    # express 2.0.2 and server-legacy 2.3.1 add `expectedResource`, off by default.
+    # MEDIUM, one rule, four pins.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 6, 0),
+         fix_label="1.32.0 (affected from 1.6.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/server",
+         ("@modelcontextprotocol/server",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/express",
+         ("@modelcontextprotocol/express",), (2, 0, 2), introduced=(2, 0, 0),
+         fix_label="2.0.2 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111771-001", "@modelcontextprotocol/server-legacy",
+         ("@modelcontextprotocol/server-legacy",), (2, 3, 1), introduced=(2, 0, 0),
+         fix_label="2.3.1 (affected from 2.0.0), and set expectedResource",
+         requires_version=True, ecosystem="js"),
+    # The HTTP client transports and OAuth client requests followed a redirect to any
+    # origin, keeping custom headers and the session id and, on a 307 or 308, the body
+    # (CVE-2026-111769, CVSS 3.1 6.5, CWE-200, GHSA-6prh-2h8m-c8cw). Checked in the npm
+    # tarballs: 0.4.0, the first release, posts through fetch's default redirect
+    # handling, its SSE client takes custom headers from 1.1.0 and the OAuth client
+    # ships in 1.6.0; sdk 1.31.0 and client 2.2.0 follow any redirect, and 1.32.0 and
+    # 2.3.0 follow one only within the origin (`redirectPolicy`). MEDIUM, and the
+    # OAuth pin above stops at 1.31.0 and 2.2.0, so its own rule.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111769-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 32, 0),
+         fix_label="1.32.0 (every release before it)",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-111769-001", "@modelcontextprotocol/client",
+         ("@modelcontextprotocol/client",), (2, 3, 0), introduced=(2, 0, 0),
+         fix_label="2.3.0 (affected from 2.0.0)",
+         requires_version=True, ecosystem="js"),
     # MCP Toolbox for Databases before 0.25.0 had no way to validate the Host a request
     # names (CVE-2026-11624, GHSA-76g7-m3xw-x9gr, CWE-346). OSV lists the Go module
     # only; the npm `@toolbox-sdk/server` runs the binary of its own version, from
@@ -1977,6 +2064,110 @@ _PINS: tuple[_Pin, ...] = (
                    "hangwin/mcp-chrome#384 is open); stop the native server while you "
                    "browse untrusted sites",
          ecosystem="js"),
+    # --- 2026-11-11 wave (#1226 and three held records, group misc) ---
+    # AgentScope (PyPI `agentscope`) 2.x ships an agent service (`agentscope.app`)
+    # whose `POST /workspace/mcp` takes the caller's MCP client config; a stdio
+    # config's `command` is a free string, a stateful client connects on add, and the
+    # only identity is the caller's own `X-User-ID` header (CVE-2026-123022). Checked
+    # in the PyPI wheels: 1.0.21, the last 1.x, has no `agentscope.app`; 2.0.0 and
+    # 2.0.11, the newest, have the route and the header. Issue #3312 is open and
+    # #3448, an opt-in allowlist, is unmerged, so the pin is presence-only from 2.0.0.
+    # npm's `agentscope` is another project.
+    _Pin("AAK-MCP-AGENTSCOPE-CVE-2026-123022-001", "agentscope", ("agentscope",), None,
+         introduced=(2, 0, 0),
+         fix_label="no fixed release (2.0.11, 2026-10-27, is the newest and "
+                   "agentscope-ai/agentscope#3312 is open); keep the service's API off "
+                   "networks you do not trust",
+         ecosystem="py"),
+    # IBM ContextForge: a federated gateway's tool is named by the gateway's slug and
+    # the tool's, and before 1.1.0 nothing checked that name against existing tools,
+    # so a colliding registration makes `tools/call` fail for everyone
+    # (CVE-2026-18484, MEDIUM). Fixed in 1.1.0 (#6534), above the CRITICAL row's
+    # 1.0.9 floor, so it is its own rule. IBM names 1.0.0 to 1.0.11; the PyPI wheels
+    # show the precondition from 0.7.0, where tool names became unique per team and
+    # owner only, and 0.6.0 kept them unique across the database. `latest` is 1.1.1.
+    _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "mcp-contextforge-gateway",
+         ("mcp-contextforge-gateway",), (1, 1, 0), introduced=(0, 7, 0),
+         fix_label="1.1.0 (affected from 0.7.0; IBM names 1.0.0 to 1.0.11)",
+         requires_version=True, ecosystem="py"),
+    # mcp-atlassian 0.22.0 confined attachment upload sources with
+    # `validate_safe_path`, whose boundary is `os.getcwd()`, so an SSE or HTTP server
+    # started from `/` or a home directory still reads any file there
+    # (CVE-2026-124503, GHSA-qh7q-jmc7-rc7j). Checked at the tags: 0.22.0 to 0.24.0
+    # pass no base directory; 0.24.1 adds MCP_ATLASSIAN_FILES_DIR. Its own rule beside
+    # the 0.22.0 row, whose other references are fixed at 0.22.0. `latest` is 0.24.1.
+    _Pin("AAK-MCP-ATLASSIAN-CVE-2026-124503-001", "mcp-atlassian", ("mcp-atlassian",),
+         (0, 24, 1), introduced=(0, 22, 0), fix_label="0.24.1 (affected from 0.22.0)",
+         requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 wave (#1224, #1225 and three held Dynatrace records) ---
+    # The Dynatrace MCP server (npm `@dynatrace-oss/dynatrace-mcp-server`, archived;
+    # 2.1.2 is the final release and npm marks every version deprecated). `--http` /
+    # `--server` first ships in 0.5.0 (0.5.0-rc.4; rc.1 to rc.3 have none, and read as
+    # 0.5.0 here) and, through 1.8.7, hands every request to a stateless
+    # StreamableHTTPServerTransport with no token, session or Host check
+    # (CVE-2026-123811). It bound 0.0.0.0 by default through 0.11.0 and 127.0.0.1
+    # from 0.12.0. 2.0.0 adds MCP_BEARER_TOKEN and a Host allowlist but only warns
+    # when the variable is unset; 2.1.0 refuses to start without it. Stdio, the
+    # default, is not exposed, which the version cannot show. `latest` is 2.1.2.
+    _Pin("AAK-MCP-DYNATRACE-CVE-2026-123811-001", "@dynatrace-oss/dynatrace-mcp-server",
+         ("@dynatrace-oss/dynatrace-mcp-server",), (2, 0, 0), introduced=(0, 5, 0),
+         fix_label="2.0.0, with MCP_BEARER_TOKEN set (affected from 0.5.0, over the "
+                   "opt-in --http transport; 2.1.0 requires the token)",
+         requires_version=True, ecosystem="js"),
+    # The same server's tool inputs, from 0.1.0: `clusterId` goes raw into a DQL
+    # string at 0.1.0, and by 2.1.0 `timeframe`, `clusterId`, `kubernetesEntityId`
+    # and `entityNames` reach DQL unescaped; 2.1.1 adds validateTimeframe and
+    # escapeDqlStringValue (CVE-2026-123810). create_workflow_for_notification put
+    # teamName, problemType and channel into a Jinja-evaluated workflow from 0.1.0
+    # until 2.0.0 removed the tool (CVE-2026-123809), and create_dynatrace_notebook,
+    # new in 1.2.0, wrote without requestHumanApproval until 1.8.7 (CVE-2026-123812).
+    # MEDIUM, its own rule: the fix is above the HIGH row's 2.0.0 floor.
+    _Pin("AAK-MCP-DYNATRACE-CVE-2026-123810-001", "@dynatrace-oss/dynatrace-mcp-server",
+         ("@dynatrace-oss/dynatrace-mcp-server",), (2, 1, 1),
+         fix_label="2.1.1 (2.1.2 is the final release)",
+         requires_version=True, ecosystem="js"),
+    # Code Graph RAG (PyPI `code-graph-rag`): the MCP `read_file` tool's paginated
+    # branch joined `file_path` to the project root unchecked (CVE-2026-77604).
+    # Checked in the PyPI wheels: 0.0.79 to 0.0.100 ship no `codebase_rag/mcp`
+    # package (their sdists neither), 0.0.148 to 0.0.246 open the joined path, and
+    # 0.0.345 resolves it. `latest` is 0.6.30.
+    _Pin("AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001", "code-graph-rag", ("code-graph-rag",),
+         (0, 0, 345), introduced=(0, 0, 148),
+         fix_label="0.0.345 (affected from 0.0.148); run 0.0.589 or later, as 0.0.421 to "
+                   "0.0.584 carry the structural tools' symlink escape",
+         requires_version=True, ecosystem="py"),
+    # The same package's structural_search / structural_replace tools follow a
+    # symlink out of the root (CVE-2026-87008): AstGrepService first ships in
+    # 0.0.421, 0.0.421 to 0.0.584 classify files by their unresolved path, and 0.0.589
+    # resolves first. Its own rule: the range is disjoint from the row above, and
+    # 0.0.345, between them, carries neither flaw.
+    _Pin("AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001", "code-graph-rag", ("code-graph-rag",),
+         (0, 0, 589), introduced=(0, 0, 421), fix_label="0.0.589 (affected from 0.0.421)",
+         requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 wave (apps) ---
+    # fast-agent (PyPI `fast-agent-mcp`): `fast-agent serve` served the agent as an MCP
+    # server over HTTP on 0.0.0.0:8000 with no authentication, and with `--shell` the
+    # agent's `execute` tool ran commands for any caller (CVE-2026-102610, CVSS 3.1 6.4,
+    # GHSA-9vhv-g5hf-m7m7). Checked in the wheels: 0.3.17 has no `serve`; 0.3.18 adds
+    # cli/commands/serve.py with HTTP and `--host 0.0.0.0` as defaults, as 0.7.20 has;
+    # 0.7.21 defaults to 127.0.0.1. Agent scripts' `--server` mode listened on 0.0.0.0
+    # before 0.3.18 too, but the record names `serve`, so the range starts at 0.3.18 and
+    # OSV's record, which `aak update` brings in, covers the rest. `fast-agent-acp` is
+    # a launcher pinned to the same `fast-agent-mcp` and is not named by the advisory.
+    # `latest` is 0.10.54, fixed, so a stated version is required.
+    _Pin("AAK-MCP-FASTAGENT-CVE-2026-102610-001", "fast-agent-mcp", ("fast-agent-mcp",),
+         (0, 7, 21), introduced=(0, 3, 18), fix_label="0.7.21 (affected from 0.3.18)",
+         requires_version=True, ecosystem="py"),
+    # Dagu's npm launcher `@dagucloud/dagu` (2.6.4 onward; npm's unscoped `dagu` stops at
+    # 1.22.10, before MCP) runs the binary of its own version from
+    # `@dagucloud/dagu-<os>-<arch>`. The MCP `dagu_read` dag_spec target read any
+    # .yaml/.yml path (CVE-2026-102943, GHSA-5m6c-38r8-5w76): the MCP server ships in
+    # v2.7.0 (absent at v2.6.10) and v2.11.0 confines `locateDAG` to the DAG
+    # directories. The image `ghcr.io/dagucloud/dagu` is a row of the same rule in
+    # container_image_pins. `latest` is 2.26.0, fixed, so a stated version is required.
+    _Pin("AAK-MCP-DAGU-CVE-2026-102943-001", "@dagucloud/dagu", ("@dagucloud/dagu",),
+         (2, 11, 0), introduced=(2, 7, 0), fix_label="2.11.0 (affected from 2.7.0)",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
