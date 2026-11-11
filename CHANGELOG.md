@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-NETWORKAI-CVE-2026-120311-001 (HIGH): npm `network-ai` from 5.0.0 below 5.15.5, whose `FileJobStore` (behind `JobQueue`) and `AgentVCR` join a caller's job id or cassette name onto their directory with no check that it stays there, so any `.json` file the process can reach is read, written or deleted (CVE-2026-120311, CVE-2026-120312). Both records start at 5.13.4, but the npm tarballs carry the same code from 5.0.0, so the rule starts there. A stated version is required, since `latest` (6.0.1) is fixed.
+
 ### Changed
 
+- Five VulnCheck records for n8n, CVE-2026-118643, CVE-2026-118644, CVE-2026-118645, CVE-2026-118647 and CVE-2026-118649, get no pin: none is on n8n's MCP surface, so `AAK-MCP-N8N-CVE-2026-72768-001` keeps its 2.41.4 floor, and `AAK-KNOWN-VULN-001` reports them after `aak update`. The ledger has the reasons.
 - `AAK-MCP-LANGFLOW-CVE-2026-12940-001` names IBM's other 49 Langflow OSS records on NVD (7 Oct to 8 Nov 2026), #1157 to #1161, #1165, #1166 and #1183 among them. Each lists 1.0.0 through 1.12.2, 1.12.3 or 1.12.4 and is fixed in 1.12.3, 1.12.4 or 1.12.5, under the rule's 1.13.0 floor, so no release is reported that was not before. After `aak update`, AAK-KNOWN-VULN-001 no longer repeats these records beside the rule's finding: a uv.lock on langflow 1.12.2 got 49 such findings on 0.6.34. The ledger has the reasons.
 
 ## [0.6.34] - 2026-11-10

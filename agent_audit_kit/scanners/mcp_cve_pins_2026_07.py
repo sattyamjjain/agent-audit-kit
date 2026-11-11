@@ -228,6 +228,10 @@ available) before shipping:
   - network-ai                     4.0.0 <= v < 5.15.2  (CVE-2026-109332; the MCP SSE
     transport answers other origins. LOW, its own rule beside the HIGH pin, and a
     stated version is required)
+  - network-ai                     5.0.0 <= v < 5.15.5  (CVE-2026-120311 and
+    CVE-2026-120312; FileJobStore job ids and AgentVCR cassette names escape their
+    directory. HIGH, its own rule; the records' 5.13.4 lower bound is too high, the
+    tarballs carry the flaw from 5.0.0. A stated version is required)
   - claude-agent-sdk               >= 0.2.121, and
     @anthropic-ai/claude-agent-sdk >= 0.3.208  (CVE-2026-96620; `resume` reaches the
     Claude CLI as its own argv token, so a session id starting with `-` injects a
@@ -1533,6 +1537,18 @@ _PINS: tuple[_Pin, ...] = (
     # beside the HIGH pin above, and like it a stated version is required.
     _Pin("AAK-MCP-NETWORKAI-CVE-2026-109332-001", "network-ai", ("network-ai",), (5, 15, 2),
          introduced=(4, 0, 0), fix_label="5.15.2 (affected from 4.0.0)",
+         requires_version=True, ecosystem="js"),
+    # --- 2026-11-11 (#1179, #1180) ---
+    # Network-AI's FileJobStore (behind JobQueue) and AgentVCR join a caller's job id
+    # or cassette name onto their directory with no containment check, so a name
+    # with `..` segments reads, writes or deletes any `.json` file the process can
+    # reach (CVE-2026-120311, CVE-2026-120312, both HIGH). The records say from
+    # 5.13.4; the npm tarballs carry both modules, with the same unchecked join,
+    # from 5.0.0, and 4.15.3 has neither. 5.15.5 checks every name. HIGH and a
+    # different flaw from the two rows above, so its own rule; `latest` (6.0.1) is
+    # fixed, so a stated version is required.
+    _Pin("AAK-NETWORKAI-CVE-2026-120311-001", "network-ai", ("network-ai",), (5, 15, 5),
+         introduced=(5, 0, 0), fix_label="5.15.5 (affected from 5.0.0)",
          requires_version=True, ecosystem="js"),
     # --- 2026-10-16 (#1026) ---
     # The Claude Agent SDK passed `resume` to the Claude CLI as two argv tokens,

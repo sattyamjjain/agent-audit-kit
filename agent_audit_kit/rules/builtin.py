@@ -358,6 +358,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001": ["IAM-05", "STA-08"],
     "AAK-MCP-ODOOMCP-CVE-2026-108861-001": ["IAM-05", "STA-08"],
     "AAK-MCP-NETWORKAI-CVE-2026-109332-001": ["IVS-04", "STA-08"],
+    "AAK-NETWORKAI-CVE-2026-120311-001": ["AIS-07", "STA-08"],
     "AAK-MCP-NEZHA-CVE-2026-111385-001": ["IVS-04", "STA-08"],
     "AAK-MCP-ZCODE-CVE-2026-88755-001": ["IAM-16", "STA-08"],
     "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": ["AIS-07", "STA-08"],
@@ -17303,6 +17304,59 @@ _r(
         "whether the project starts the SSE server or where it binds it, so a project "
         "that uses the library or the stdio transport is reported too. A file over "
         "2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+# 2026-11-11 (#1179, #1180). Two VulnCheck records the watcher titled against the
+# LOW CORS rule above. A different flaw at another severity, so a rule of its own.
+# No MCP tool, hook or CLI in the package reaches either class, so the id has no
+# MCP area and the rule no MCP id.
+
+_r(
+    "AAK-NETWORKAI-CVE-2026-120311-001",
+    "network-ai 5.0.0 to 5.15.4: FileJobStore job ids and AgentVCR cassette names escape their directory",
+    "Network-AI (`network-ai` on npm), a multi-agent orchestration library, exports "
+    "`FileJobStore`, the file store behind its `JobQueue`, and `AgentVCR`, which "
+    "records and replays agent interactions. Each builds a file path by joining its "
+    "directory with a caller-supplied name and `.json`, and never checks that the "
+    "result stays inside that directory. A job id passed to `FileJobStore.get()` or "
+    "`delete()`, or through `JobQueue.getJob()` or `cancel()`, reads or deletes any "
+    "`.json` file the process can reach (CVE-2026-120311, GHSA-v64j-mc7x-c7x7), and a "
+    "cassette name passed to `AgentVCR.load()` or `save()` reads or writes one "
+    "(CVE-2026-120312, GHSA-mfxv-jg44-xj48); both are CVSS 3.1 8.8, CWE-23. The "
+    "advisories show the write and delete halves rewriting or removing AuthGuardian's "
+    "trust-level and grant files, so an agent the operator's configuration denies is "
+    "granted. Both records say the flaw starts at 5.13.4. Checked in the npm "
+    "tarballs: both modules first ship in 5.0.0 with the same unchecked join, 4.15.3 "
+    "has neither, and 5.15.5 passes every name through `InputSanitizer.safeChildPath`, "
+    "which accepts 1 to 128 characters of letters, digits, `_`, `.` and `-` and no "
+    "`..`. No MCP tool, hook or CLI in the package calls either class: an application "
+    "is exposed when it hands them a name a request, a test parameter or an agent's "
+    "output can set. HIGH, and a different flaw from the two network-ai pins beside "
+    "it, so a rule of its own.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `network-ai` to 5.15.5 or later and pin it. Until then, pass "
+    "`FileJobStore`, `JobQueue.getJob()` and `cancel()` only the ids `enqueue()` "
+    "returned, and `AgentVCR.load()` and `save()` only fixed cassette names, or "
+    "reject any name outside `^[A-Za-z0-9_-]+$` before the call.",
+    sarif_name="NetworkAiJobStoreVcrPathTraversal",
+    cve_references=["CVE-2026-120311", "CVE-2026-120312"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        "Reads `network-ai` from 5.0.0 below 5.15.5 where a project states the "
+        "version: a package.json or lockfile entry, or a versioned launch in .mcp.json, "
+        "mcp.json or claude_desktop_config.json. An unpinned reference resolves to "
+        "6.0.1, which is fixed, and is not reported. 5.0.0 to 5.13.3 are reported "
+        "although both CVE records start at 5.13.4, because their tarballs carry the "
+        "same code. It reads the version, not whether the project uses "
+        "`FileJobStore`, `JobQueue` or `AgentVCR` or where their names come from, so a "
+        "project that only runs the MCP server or the Claude Code hook is reported too. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

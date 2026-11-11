@@ -153,6 +153,83 @@ CVE-2026-103360 (8.1), CVE-2026-102590 (5.0), CVE-2026-103092 (8.5), CVE-2026-10
 CVE-2026-107328 (9.9) and CVE-2026-110244 (8.8). The rule stays CRITICAL: the releases these list
 are the ones it already reported for IBM's 9.8 records of 29 Oct.
 
+## 2026-11-11 (unreleased): five n8n records in the advisory feed, and a new rule for network-ai
+
+Seven VulnCheck records the watcher filed `pin floor stale` between 1 and 3 Nov, deferred for
+0.6.32 and 0.6.33 with no scope claimed. Each is read here against NVD's API record, its CNA
+record, its GitHub advisory, OSV and the published packages, all read on 2026-11-11. NVD text is
+quoted from the API record, and the records are saved unedited under tests/fixtures/nvd_cna.
+
+**n8n (#1167, #1169, #1172, #1173, #1182) gets no pin: `AAK-KNOWN-VULN-001` reports all five
+after `aak update`.** NVD, CVE-2026-118645: "n8n before 1.123.85, 2.x before 2.43.5, and 2.44.x
+before 2.44.1 contains a filter injection vulnerability in the Quick Base node, which sends the
+Where filter to the Quick Base API as raw query text." CVE-2026-118643 and CVE-2026-118647 carry
+the same three ranges and store a credential's secret in execution error data, in the Git,
+MongoDB Atlas Vector Store and Google Cloud Storage nodes and in the SeaTable Trigger. CVE-2026-118649:
+"n8n before 2.43.5 and 2.44.x before 2.44.1 accepts a client-supplied workflow ID and caches each
+workflow's owner project in memory by that ID", so a crafted ID opens every project's Data Table
+rows. CVE-2026-118644: "n8n before 2.41.5 and 2.42.x before 2.42.2 passes a failed workflow's full
+execution context, including the identity of the user who started the run, to the configured
+error workflow." The watcher titled each against `AAK-MCP-N8N-CVE-2026-72768-001`, whose floor is
+2.41.4 with 2.42.0 as an `also` range. That rule reports defects on n8n's MCP surface, and like
+#1155's record these are not: their advisories (GHSA-65mv-v8rp-54wc, GHSA-qmvv-q3c9-wpp7,
+GHSA-crfj-5wv6-8v86, GHSA-wvjj-qg37-pv73, GHSA-pcr3-v5vr-qppf) name workflow nodes, the
+workflow-project cache and the error-workflow run, and no MCP path. Checked in the source: at
+2.43.4 the MCP `create_workflow_from_code` tool never takes a workflow ID from its caller, so the
+crafted ID comes through the REST create path, whose DTO 2.43.5 restricts; and the change that
+closes CVE-2026-118644 is in `execute-error-workflow.ts`, which stops handing the run's identity
+to the error workflow, while the MCP `update_workflow` tool already checked read access to the
+error workflow before it. So the floor stays: a raise would report 2.41.4 to 2.43.4 under the MCP
+rule's flaws. VulnCheck's CNA records name `pkg:npm/n8n`, so `aak update` maps them with no map
+row. The fixed releases were read in the source at each line's tags: the Quick Base, SeaTable and
+Git fixes are absent at 1.123.84, 2.41.7, 2.42.7, 2.43.4 and 2.44.0 and present at 1.123.85,
+2.43.5, 2.44.1 and 2.45.0; the workflow-project cache fix is the same on 2.x and still absent at
+1.123.85, as its record, which starts at the first release, says; the error-workflow fix is
+present at 2.41.5 and 2.42.2 and absent at 2.41.4 and 2.42.1. The 2.41.x and 2.42.x lines have no
+release with the first four fixes. The lower bounds, the first release and 2.0.0, are the
+records' and were not read. Measured with the scanner on a feed holding each record as `nvd_feed`
+converts it: an npm lockfile resolving n8n 2.41.4 reports all five at HIGH and no n8n pin fires,
+2.43.4 and 2.44.0 report four, and 2.43.5, 2.44.1 and 2.45.0 report none. None is bundled, since
+`tests/test_pin_floors_vs_advisories.py` holds the bundled feed to the pins, so without
+`aak update` they are not reported. OSV's answer for n8n 2.43.4 today holds none of them.
+
+**Network-AI (#1179, #1180) gets `AAK-NETWORKAI-CVE-2026-120311-001`: npm `network-ai` from 5.0.0
+below 5.15.5, HIGH.** NVD, CVE-2026-120311: "Network-AI from 5.13.4 before 5.15.5 contains a path
+traversal vulnerability in FileJobStore that allows attackers to read or delete arbitrary .json
+files by supplying traversal sequences in the job id." CVE-2026-120312 is the same flaw in
+AgentVCR, "that allows attackers controlling the cassette name to read or write arbitrary .json
+files." The watcher titled both against `AAK-MCP-NETWORKAI-CVE-2026-109332-001`, the LOW pin for
+the MCP SSE transport's cross-origin answers, whose floor is 5.15.2. These are another flaw at
+CVSS 8.8, so neither joins it or the HIGH hook pin beside it, and they are two flaws in two
+modules (GHSA-v64j-mc7x-c7x7, GHSA-mfxv-jg44-xj48), not duplicates. One rule carries both, since
+they share a range, a fix and a severity. Checked in the npm tarballs: both modules first ship in
+5.0.0 and join the directory and the caller's name unchecked in 5.0.0, 5.5.0, 5.10.0, 5.12.7,
+5.13.3, 5.13.4, 5.14.0 and 5.15.4; 4.15.3 has neither; 5.15.5 routes every name through
+`InputSanitizer.safeChildPath`. Both records and both advisories start at 5.13.4, and the
+advisories say the modules are absent from 5.13.3, which ships them, so the rule starts at 5.0.0:
+the feed, which reads a record's range, would leave 5.0.0 to 5.13.3 unreported. No MCP tool, hook
+or CLI in the package calls either class, so the rule has no MCP id, and an application is exposed
+when it hands them a name a request, a test parameter or an agent's output sets. It is a pin
+rather than a feed entry because the classes are the library's agent job queue and its agent
+record-and-replay, and the advisories show the write and delete halves rewriting AuthGuardian's
+trust-level and grant files, so an agent the configuration denies is granted. `latest` is 6.0.1,
+fixed, so a stated version is required. Measured with the scanner: package.json entries at 5.0.0,
+5.13.3 and 5.15.4 fire, and 4.15.3, 5.15.5, `latest` and `^5.15.5` do not; with both records cached
+as `aak update` writes them, `AAK-KNOWN-VULN-001` fires from 5.13.4 and stands down on the line the
+rule reports. OSV holds neither record: its nine network-ai records are all fixed by 5.12.2.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-118643 | 8.2 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.85, 2.0.0 to 2.43.5 and 2.44.0 to 2.44.1. No pin. | #1172 |
+| CVE-2026-118644 | 7.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.41.5 and 2.42.0 to 2.42.2. No pin. | #1182 |
+| CVE-2026-118645 | 8.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.85, 2.0.0 to 2.43.5 and 2.44.0 to 2.44.1. No pin. | #1167 |
+| CVE-2026-118647 | 8.2 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.85, 2.0.0 to 2.43.5 and 2.44.0 to 2.44.1. No pin. | #1173 |
+| CVE-2026-118649 | 8.3 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.43.5 and 2.44.0 to 2.44.1. No pin. | #1169 |
+| CVE-2026-120311 | 8.8 | `network-ai` (npm) | **New pin** `AAK-NETWORKAI-CVE-2026-120311-001` (HIGH): 5.0.0 up to 5.15.5, a stated version required. | #1179 |
+| CVE-2026-120312 | 8.8 | `network-ai` (npm) | **New pin**, the same rule: 5.0.0 up to 5.15.5, a stated version required. | #1180 |
+
+CVSS is each record's CVSS 3.1 score, VulnCheck's.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as
