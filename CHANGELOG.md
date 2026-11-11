@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.35] - 2026-11-11
+
 ### Added
 
 - New rule AAK-FLOWISE-CVE-2026-119978-001 (HIGH): npm `flowise` from 1.4.6, every release, presence-only (CVE-2026-119978). Flowise's custom function route lets the caller's code require `langchain` and `mammoth`, so it can write a file into mammoth's folder with langchain's `LocalFileStore` and run it. The route first ships in 1.4.6, and FlowiseAI ended the project after 3.1.4, so there is no fixed release; the remediation is settings, permissions and network, not an upgrade. `flowise-components`, named only by the finder's write-up, is a stated limitation (#1168).

@@ -18,7 +18,7 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-11-11 (unreleased): #1223 and two held MCP TypeScript SDK records, three new rules
+## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769
 behind its back-pressure cap. All three are GitHub's records for the official MCP TypeScript
@@ -101,7 +101,7 @@ CVSS is each record's CVSS 3.1 score, GitHub's.
 
 Dispositioned at 2026-11-11T09:10:00Z.
 
-## 2026-11-11 (unreleased): #1226 and five held records, three new pins, three out of scope
+## 2026-11-11 (v0.6.35): #1226 and five held records, three new pins, three out of scope
 
 The watcher filed #1226 at 06:20Z on 11 Nov and held the other five behind its
 back-pressure cap, so they have no issue yet. Each is read here against NVD's API record,
@@ -256,7 +256,7 @@ CVE-2026-124503, whose GitHub advisory scores it 7.7, and IBM's for CVE-2026-184
 ash_ai record has only a CVSS 4.0 score, and the ASF rates Axis2's record low and Storm's
 important, with no number.
 
-## 2026-11-11 (unreleased): #1224 and #1225, the Dynatrace MCP server and Code Graph RAG, four new rules
+## 2026-11-11 (v0.6.35): #1224 and #1225, the Dynatrace MCP server and Code Graph RAG, four new rules
 
 The watcher filed #1225 (the Dynatrace MCP server) and #1224 (Code Graph RAG) from NVD's
 keyword feed on 11 Nov and is holding four more records on the same two servers:
@@ -373,7 +373,7 @@ and 0.0.345, which have no structural tools, under GHSA-85gg-2gfq-q95m.
 
 CVSS is each record's CVSS 3.1 score, GitHub's, which NVD carries as its only metric.
 
-## 2026-11-11 (unreleased): nine held records, six new pins for MCP servers and self-hosted apps, one out of scope
+## 2026-11-11 (v0.6.35): nine held records, six new pins for MCP servers and self-hosted apps, one out of scope
 
 The watcher holds these nine records behind its back-pressure cap, so none has an issue. Each is
 read here against NVD's API record, its CNA record, OSV and the published artifacts, all on
@@ -554,7 +554,7 @@ included), Dagu and fast-agent, VulnCheck's for Trawl, SiYuan and Vikunja (their
 are 6.3, 6.9 and 5.3). GitHub scored ezBookkeeping in CVSS 4.0 only, and GHSA-7qmf-c45g-5p4q not at
 all (the maintainer's rating is moderate).
 
-## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
+## 2026-11-11 (v0.6.35): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
 
 Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are
 IBM's NVD CNA records for Langflow OSS. They close a debt the 2026-10-30 section left open: of
@@ -690,7 +690,7 @@ CVE-2026-103360 (8.1), CVE-2026-102590 (5.0), CVE-2026-103092 (8.5), CVE-2026-10
 CVE-2026-107328 (9.9) and CVE-2026-110244 (8.8). The rule stays CRITICAL: the releases these list
 are the ones it already reported for IBM's 9.8 records of 29 Oct.
 
-## 2026-11-11 (unreleased): five n8n records in the advisory feed, and a new rule for network-ai
+## 2026-11-11 (v0.6.35): five n8n records in the advisory feed, and a new rule for network-ai
 
 Seven VulnCheck records the watcher filed `pin floor stale` between 1 and 3 Nov, deferred for
 0.6.32 and 0.6.33 with no scope claimed. Each is read here against NVD's API record, its CNA
@@ -767,7 +767,7 @@ rule reports. OSV holds neither record: its nine network-ai records are all fixe
 
 CVSS is each record's CVSS 3.1 score, VulnCheck's.
 
-## 2026-11-11 (unreleased): nine keyword-feed records, five new pins, three out of scope, one deferred
+## 2026-11-11 (v0.6.35): nine keyword-feed records, five new pins, three out of scope, one deferred
 
 The watcher filed these from NVD's keyword feed between 27 and 29 Oct (#1103 to #1107,
 #1131 to #1133, #1139), and each was deferred with no scope claimed. Each is read here
@@ -920,7 +920,7 @@ CVSS 3.1 score where it has one: VulnCheck's for its four records (their CVSS 4.
 8.5) and GitHub's for Gearboy and functype-mcp-server. GitHub scored CVE-2026-118668 and
 CVE-2026-61546 in CVSS 4.0 only.
 
-## 2026-11-11 (unreleased): ten keyword-feed matches, two new pins, one floor raised, one advisory-feed record, six out of scope
+## 2026-11-11 (v0.6.35): ten keyword-feed matches, two new pins, one floor raised, one advisory-feed record, six out of scope
 
 The watcher filed these ten from NVD's keyword feed between 29 Oct and 3 Nov, and each
 was deferred with no scope claimed so 0.6.30 to 0.6.33 could ship. Each is read here
@@ -1067,7 +1067,7 @@ CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that, mar
 (4.0): GitHub's for the six GitHub records, Wordfence's for AI Engine, the kernel CNA's
 for CVE-2026-99164, and CISA-ADP's for the two Royal MCP records, whose CNA gave none.
 
-## 2026-11-11 (unreleased): #1066, #1067 and #1215 to #1219, three new pins, one in the advisory feed, three out of scope
+## 2026-11-11 (v0.6.35): #1066, #1067 and #1215 to #1219, three new pins, one in the advisory feed, three out of scope
 
 The watcher opened five `cve-response` issues at 19:44Z on 2026-11-10 (#1215 to #1219).
 #1066 and #1067 date from 2026-10-21, deferred then as pins scoped but not written. Three
@@ -1212,7 +1212,7 @@ in CVSS 4.0, and VulnCheck CVE-2026-114090 7.6.
 
 Dispositioned at 2026-11-11T05:34:00Z.
 
-## 2026-11-11 (unreleased): twelve OSV records, three on existing rules, nine left to the advisory feed
+## 2026-11-11 (v0.6.35): twelve OSV records, three on existing rules, nine left to the advisory feed
 
 The watcher's OSV source (#1122) filed these twelve on 28 and 29 Oct, for six packages the
 pin tables name: `next` (#1125, #1126, #1134), `better-auth` (#1127, #1135, #1142, #1148),
@@ -1386,7 +1386,7 @@ A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is eac
 PraisonAI, and GitHub's for LiteLLM and the MCP SDK. GitHub scores the three Next.js advisories
 in CVSS 4.0 only.
 
-## 2026-11-11 (unreleased): presence-only pins for Flowise and mcp-chrome-bridge, whose vendors will ship no fix
+## 2026-11-11 (v0.6.35): presence-only pins for Flowise and mcp-chrome-bridge, whose vendors will ship no fix
 
 Two issues deferred until a fixed release are read again here, on 2026-11-11, against
 NVD's API records, their CNA records and every published npm tarball, read through unpkg.
