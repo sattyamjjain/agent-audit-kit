@@ -373,6 +373,187 @@ and 0.0.345, which have no structural tools, under GHSA-85gg-2gfq-q95m.
 
 CVSS is each record's CVSS 3.1 score, GitHub's, which NVD carries as its only metric.
 
+## 2026-11-11 (unreleased): nine held records, six new pins for MCP servers and self-hosted apps, one out of scope
+
+The watcher holds these nine records behind its back-pressure cap, so none has an issue. Each is
+read here against NVD's API record, its CNA record, OSV and the published artifacts, all on
+2026-11-11. Six rules are new, each measured with the scanner on a firing fixture and a negative
+one after its range was read in the published packages, or in the source at the commit each image's
+label names: fast-agent on PyPI, Dagu's npm launcher and image, and the images of the pgEdge
+Postgres MCP Server (three CVEs and two GHSA records that have none, one HIGH rule), Trawl, SiYuan
+and ezBookkeeping. The self-hosted apps follow the image-tag precedent of SiYuan's CVE-2026-116168
+and Nezha's CVE-2026-111385: each flaw sits in the app's MCP code or in the MCP endpoint's own
+access control, and the image tag is where a deployment states its release. GHSA-7qmf-c45g-5p4q, a
+Trawl advisory with no CVE id on the same releases and the same fix, joins the Trawl rule. Vikunja
+is out of scope: its flaw is the app's API-token check, which MCP shares with every other surface.
+NVD text is quoted from the API records. Only Vikunja's CNA data names a package a feed can match;
+OSV holds GHSA records for fast-agent (PyPI), ezBookkeeping and Dagu (Go), and git ranges for the
+rest, and none of the nine is in the bundled advisory feed.
+
+### CVE-2026-102610: new pin 2026-11-11
+
+**fast-agent gets `AAK-MCP-FASTAGENT-CVE-2026-102610-001`: PyPI `fast-agent-mcp` from 0.3.18
+below 0.7.21, MEDIUM.** NVD: "Prior to 0.7.21, fast-agent serve uses HTTP transport bound to
+0.0.0.0 on port 8000 without authentication, allowing any network client that can reach the
+/mcp endpoint to invoke the exposed agent tool." Started with `--shell`, the agent also holds a
+local `execute` tool, which then runs operating-system commands for that caller.
+GHSA-9vhv-g5hf-m7m7 gives `<= 0.7.20` with no lower bound. Checked in the PyPI wheels: 0.3.17 has
+no `serve` command; 0.3.18 (2025-10-30) adds `cli/commands/serve.py` with the HTTP transport and
+`--host 0.0.0.0` as defaults, as 0.7.20 has; 0.7.21 (2026-06-19) defaults to 127.0.0.1 and warns
+before serving another host without authentication. The pin starts where `serve` does. Agent
+scripts run with `--server` listened on 0.0.0.0 by default before then too (checked in 0.2.10 and
+0.3.17), a default 0.7.21 also changed, and OSV's record lists every release below 0.7.21, so
+after `aak update` AAK-KNOWN-VULN-001 reports those releases from a lockfile, and stands down on a
+line where the pin already reports the CVE. `fast-agent-acp`, a launcher that requires
+`fast-agent-mcp` at its own version, is named by no source and is not matched; a lockfile records
+the `fast-agent-mcp` it installs. `latest` is 0.10.54, fixed, so a stated version is required.
+
+### CVE-2026-125320, CVE-2026-125321, CVE-2026-125322, GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9: new image pin 2026-11-11
+
+**The pgEdge Postgres MCP Server gets `AAK-MCP-PGEDGE-CVE-2026-125320-001`: the image
+`ghcr.io/pgedge/postgres-mcp` below 1.1.0, HIGH.** NVD on CVE-2026-125320: "Prior to 1.1.0, the
+HTTP transport did not validate the Origin header on incoming requests." On CVE-2026-125321,
+deployments with the HTTP transport and authentication on "used the leftmost caller-supplied
+X-Forwarded-For value as the client address for login rate limiting." On CVE-2026-125322: "the
+where parameter of the count_rows tool accepted subqueries against tables other than the table
+named in the tool call." The advisories are GHSA-6hg5-9f3w-c886, GHSA-v347-v3w7-7fq9 and
+GHSA-fhv3-x3jh-grj7, repository records only. The server is Go, on neither npm nor PyPI; it ships
+as release binaries and the GHCR image. Checked in the source at the commit each image's label
+names: 1.0.0-beta2 (6830caeb), the first image, and 1.0.0 (67121476) have an `ExtractIPAddress`
+that takes X-Forwarded-For first, a `count_rows` that puts `where` into its query unchecked, and no
+`internal/mcp/origin.go`; the three fixes (6a19e46a, 933f1b4c, 5571bd49) are all in 1.1.0-beta1
+(b971c413), so the betas and the release candidate, which read as 1.1.0, are fixed. 1.0.0-test1
+(cc13a18a, June) predates the fixes and reads as 1.0.0. One rule takes all three: one image, one
+fixed release, one severity band. `latest` was the 1.1.0 digest on 2026-11-11. Two more of the
+project's advisories, which have no CVE id, are fixed in the same 1.1.0-beta1 and join the rule,
+which they make HIGH; the three MEDIUM records ride along, as IBM's lower-severity Langflow records
+joined the Langflow rule. GHSA-j7mp-839j-jrm7 (CVSS 3.1 8.1): on a read-only connection a caller of
+`query_database` could still write, because a statement the guard did not take for a read went to
+`tx.Exec` with no bind parameters, over the simple query protocol, so several statements,
+transaction control among them, ran in one message; b5b92930 (in 1.1.0-beta1) sets the access mode
+on `BEGIN`, sends read-only statements through `tx.Query` and adds a guard that rejects read-write
+modes, session characteristics and `DISCARD`. Of the tags the rule reports, 1.0.0-beta2 alone lacks
+it: it runs each statement with `tx.Query`, one per message, and the `tx.Exec` path arrives in
+1.0.0-beta3. GHSA-r5pp-jx86-r6r9 (8.8): a custom `pl-do` tool put its arguments inside a `DO` block
+delimited by the fixed tag `$mcp_custom_tool$`, so an argument holding that tag ran the caller's
+own SQL as the connecting role; 1.1.0-beta1 generates unpredictable tags per invocation
+(`newDollarQuoteTags`). 1.0.0-beta2 has no `internal/tools/custom_tool.go` at all, so this route is
+not in it either. Both advisories name every pre-release, and 1.0.0-beta2 reads as 1.0.0, so the
+rule reports it at HIGH; its limitations say so and a fixture holds it. The image runs stdio unless
+`PGEDGE_HTTP_ENABLED` is set, where the two HTTP records do not reach; the rule reads the tag, and
+its limitations say so. Two other pgEdge advisories, on the write-confirmation prompts of the
+bundled CLI and web client, concern artifacts the rule does not read and are not on it.
+
+### CVE-2026-102943: new pin 2026-11-11
+
+**Dagu gets `AAK-MCP-DAGU-CVE-2026-102943-001`: the npm launcher `@dagucloud/dagu` and the image
+`ghcr.io/dagucloud/dagu` from 2.7.0 below 2.11.0, MEDIUM.** NVD: through 2.10.x the MCP
+`dagu_read` operation's `dag_spec` target calls the DAG specification API directly, past the HTTP
+middleware that checks the name, and "The underlying resolver does not restrict resolved paths to
+configured DAG directories", so a viewer-role API key reads `.yaml` and `.yml` files outside them.
+Dagu is a self-hosted workflow engine whose README installs it from npm, Docker, Homebrew or a
+script; the launcher, on npm from 2.6.4, runs the binary of its own version from
+`@dagucloud/dagu-<os>-<arch>`, and npm's unscoped `dagu` stops at 1.22.10, before MCP. Checked in
+the source at each tag: the MCP server (`internal/service/mcp/server.go`, #2158) is absent at
+v2.6.10 and ships in v2.7.0, whose `getDAGSpec` hands the name to `GetDAGSpec` in process; at
+v2.10.7 `locateDAG` still returns a name containing a separator as found; v2.11.0 (c15c5406,
+#2424) resolves every name inside a configured DAG directory. The images carry no revision label
+but were pushed with their releases (2.7.0 on 2026-05-18, 2.11.0 on 2026-07-26), and their
+`-alpine` and `-dev` builds share the version. `latest` is 2.26.0 for both. OSV's
+GHSA-5m6c-38r8-5w76 names the Go module `github.com/dagu-org/dagu/v2`, but the go.mod at the
+affected tags declares `github.com/dagucloud/dagu` without the `/v2` a v2 tag needs, and the Go
+module proxy refuses v2.10.7 under either path, so no go.mod can require an affected release; the
+rule reads none.
+
+### CVE-2026-122140 and GHSA-7qmf-c45g-5p4q: new image pin 2026-11-11
+
+**Trawl gets `AAK-MCP-TRAWL-CVE-2026-122140-001`: the image `ghcr.io/germondai/trawl` from 1.5.0
+below 1.10.0, MEDIUM.** NVD: "Trawl 1.5.0 before 1.10.0 contains a server-side request forgery
+vulnerability that allows unauthenticated attackers to bypass the MCP outbound URL policy using
+IPv4-mapped IPv6 addresses." GHSA-mj45-84p2-v77q gives 1.5.0 to 1.9.3, fixed in 1.10.0. Trawl is a
+self-hosted scraping engine whose MCP endpoint (`MCP_ENABLED=true`) serves its scraping tools to
+agents. VulnCheck's CNA data names `pkg:github/germondai/trawl`, which no registry carries, npm's
+and PyPI's `trawl` are other projects, and the README runs the GHCR image. Checked in the source at
+the commit each image's label names: 1.4.2 (7189f101) has neither the MCP routes nor
+`apps/api/src/outbound-policy.ts`; 1.5.0 (c81d628b) adds both, with a mapped-address match that
+accepts only the dotted form, and the file is unchanged at 1.9.3 (4f3a7cf9); 1.10.0 (fc3f64a7)
+classifies addresses with Node's `BlockList` (17cdb33a, #263). GHSA-7qmf-c45g-5p4q, which has no
+CVE id and no NVD record, joins the rule: the same releases checked a hostname's DNS answers apart
+from the connection that used them, so a name rebinding from a public to a private address between
+the two passed. At 1.5.0 and 1.9.3 the validator resolves the name and hands back only the URL,
+which the fetch resolves again; 1.10.0 adds `apps/api/src/public-egress.ts`, which pins each
+guarded connection to the validated address, in the same commit. The maintainer rates it moderate
+and GitHub gives no score; the reporter proposed CVSS 3.1 7.5. The `-baseline` and `-fonts` builds
+share their release's version. `latest` was the 1.11.0 digest on 2026-11-11. `latest-fonts` still
+points at the 1.6.0 image but states no version, so it is not reported; the rule says so.
+
+### CVE-2026-123492: new image pin 2026-11-11
+
+**SiYuan gets `AAK-MCP-SIYUAN-CVE-2026-123492-001`: the image `b3log/siyuan` from v3.8.0 below
+v3.8.9, MEDIUM.** NVD: "SiYuan before 3.8.9 contains a nil pointer dereference vulnerability in
+privateCacheMiddleware that allows authenticated attackers to crash the kernel by reading
+nonexistent MCP resources." This is the image the 2026-10-26 rule for CVE-2026-116168 reads. That
+rule covers a different flaw, from 3.7.0 below 3.8.7, so this one is its own rule and tags from
+v3.8.0 to v3.8.6 fire both. GHSA-2x3p-x74g-442x names v3.8.7 and v3.8.8, the releases its reporter
+ran. Checked in the source: `privateCacheMiddleware` is absent from `kernel/mcp/server.go` at
+v3.7.3 and the same at v3.8.0 and v3.8.8; the kernel requires go-sdk 1.7.0 at v3.8.0 and v3.8.6 and
+1.8.0 at v3.8.7 and v3.8.8, and both return a typed nil `*ReadResourceResult` with the not-found
+error, which the middleware dereferences. The fix, a8b6dd77 ("Prevent nil result panics in MCP
+cache middleware", 2026-10-22), is in v3.8.9 and not v3.8.8. Docker Hub's v3.8.9-alpha.1 to alpha.3
+were pushed before it and read as 3.8.9, so they are not reported; the rule says so. `latest` was
+the v3.8.10 digest on 2026-11-11.
+
+### CVE-2026-86041: new image pin 2026-11-11
+
+**ezBookkeeping gets `AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001`: the image `mayswind/ezbookkeeping`
+from 0.10.0 below 1.6.0, MEDIUM.** NVD: "From 0.10.0 until 1.6.0, ezBookkeeping constructs its Gin
+router with gin.New() without configuring SetTrustedProxies, causing c.ClientIP() to trust a
+spoofed X-Forwarded-For value." A valid MCP or API token is still required for protected actions.
+The gate it opens is the MCP endpoint's own: the range starts where `mcp_allowed_remote_ips`
+arrives (`pkg/middlewares/mcp_server_ip_limit.go`, absent at 0.9.0, present at 0.10.0), and the
+API-token allowlist came later (absent at 1.2.0, present at 1.5.1), the same shape as pgEdge's
+CVE-2026-125321. ezBookkeeping is a Go server whose README runs the Docker Hub image, and the
+labels name each tag's commit: 0.10.0 is 06ef2220, OSV's `introduced` commit; 1.5.1 (6fa9816c)
+still sets no trusted proxies; 1.6.0 (e5c12d37) carries d79a5beb, which accepts forwarding headers
+only from configured trusted proxies, by default the private and loopback ranges, so the
+remediation also says to narrow them. `latest` was the 2.1.1 digest on 2026-11-11, and the
+`SNAPSHOT-<date>` tags state no version. OSV's GHSA-wchh-mrv2-5h4q names the Go module from 0.10.0
+below 1.6.0, so after `aak update` AAK-KNOWN-VULN-001 reports a go.mod requiring an affected
+release (measured on v1.5.1); the image rule reads no go.mod.
+
+### CVE-2026-123493: out of scope 2026-11-11
+
+**Vikunja is out of scope.** NVD: "Vikunja from 2.4.0 before 2.7.1 contains an authentication
+bypass vulnerability that allows disabled or locked users to retain access through API tokens owned
+by their bot users." The flaw is the app's API-token check, which looks at the bot's status and not
+its owner's. GHSA-5fc2-w2j4-6r8w traces it to `ValidateTokenAndGetOwner` and
+`ValidateAPITokenString`, shared by the HTTP API, CalDAV, feeds and MCP alike, and Vikunja's MCP
+module (`pkg/modules/mcp`) is absent from 2.4.0 to 2.6.0 and first ships in 2.7.0, the last
+affected release. No MCP code is involved, and a task manager's general token handling is not a
+surface this scanner pins. NVD's CNA data names the Go module `code.vikunja.io/api`, which
+`nvd_feed` keeps after `aak update`, but that module declares no `/v2` path and the Go module proxy
+lists it only up to v0.24.6, so no go.mod names an affected release. Fixed in 2.7.1.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-102610 | 6.4 | `fast-agent-mcp` (PyPI) | **New pin** `AAK-MCP-FASTAGENT-CVE-2026-102610-001` (MEDIUM): 0.3.18 up to 0.7.21, a stated version required. | not filed |
+| CVE-2026-125320 | 5.3 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH): tags below 1.1.0. | not filed |
+| CVE-2026-125321 | 6.5 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | The same image pin. | not filed |
+| CVE-2026-125322 | 6.5 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | The same image pin. | not filed |
+| GHSA-j7mp-839j-jrm7 | 8.1 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** the same image pin, making it HIGH: tags below 1.1.0; 1.0.0-beta2, which lacks the route, reads as 1.0.0 and is reported. | not filed |
+| GHSA-r5pp-jx86-r6r9 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** the same image pin: tags below 1.1.0; 1.0.0-beta2, which has no custom tools, reads as 1.0.0 and is reported. | not filed |
+| CVE-2026-102943 | 6.5 | `@dagucloud/dagu` (npm), `ghcr.io/dagucloud/dagu` (GHCR) | **New pin** `AAK-MCP-DAGU-CVE-2026-102943-001` (MEDIUM): 2.7.0 up to 2.11.0, the launcher where a version is stated and the image by tag. | not filed |
+| CVE-2026-122140 | 5.8 | `ghcr.io/germondai/trawl` (GHCR) | **New image pin** `AAK-MCP-TRAWL-CVE-2026-122140-001` (MEDIUM): tags from 1.5.0 below 1.10.0. | not filed |
+| GHSA-7qmf-c45g-5p4q | n/a | `ghcr.io/germondai/trawl` (GHCR) | **Joins** `AAK-MCP-TRAWL-CVE-2026-122140-001` (MEDIUM): the same releases, 1.5.0 to 1.9.3, fixed in 1.10.0. | not filed |
+| CVE-2026-123492 | 4.9 | `b3log/siyuan` (Docker Hub) | **New image pin** `AAK-MCP-SIYUAN-CVE-2026-123492-001` (MEDIUM): tags from v3.8.0 below v3.8.9. | not filed |
+| CVE-2026-86041 | 5.3 (4.0) | `mayswind/ezbookkeeping` (Docker Hub) | **New image pin** `AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001` (MEDIUM): tags from 0.10.0 below 1.6.0. | not filed |
+| CVE-2026-123493 | 5.4 | Vikunja (`github.com/go-vikunja/vikunja`) | **Out of scope**: the app's API-token check, shared by every surface, with no MCP code involved. Fixed in 2.7.1. | not filed |
+
+CVSS is each record's CVSS 3.1 score where it has one: GitHub's for pgEdge (its two GHSA records
+included), Dagu and fast-agent, VulnCheck's for Trawl, SiYuan and Vikunja (their CVSS 4.0 scores
+are 6.3, 6.9 and 5.3). GitHub scored ezBookkeeping in CVSS 4.0 only, and GHSA-7qmf-c45g-5p4q not at
+all (the maintainer's rating is moderate).
+
 ## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
 
 Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are

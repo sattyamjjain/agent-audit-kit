@@ -358,6 +358,14 @@ available) before shipping:
     guard's boundary is the working directory, so an SSE or HTTP server started from
     `/` or a home directory reads any file there. Its own rule beside the 0.22.0
     row. A stated version is required)
+  - fast-agent-mcp                 0.3.18 <= v < 0.7.21  (CVE-2026-102610; `fast-agent
+    serve` listens on 0.0.0.0 with no authentication, and with `--shell` the agent
+    runs commands for any caller. `serve` arrives in 0.3.18; a stated version is
+    required)
+  - @dagucloud/dagu                2.7.0 <= v < 2.11.0  (CVE-2026-102943; the MCP
+    `dagu_read` dag_spec target reads YAML files outside the DAG directories. The MCP
+    server arrives in 2.7.0; the image is a row in container_image_pins. A stated
+    version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -2136,6 +2144,30 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001", "code-graph-rag", ("code-graph-rag",),
          (0, 0, 589), introduced=(0, 0, 421), fix_label="0.0.589 (affected from 0.0.421)",
          requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 wave (apps) ---
+    # fast-agent (PyPI `fast-agent-mcp`): `fast-agent serve` served the agent as an MCP
+    # server over HTTP on 0.0.0.0:8000 with no authentication, and with `--shell` the
+    # agent's `execute` tool ran commands for any caller (CVE-2026-102610, CVSS 3.1 6.4,
+    # GHSA-9vhv-g5hf-m7m7). Checked in the wheels: 0.3.17 has no `serve`; 0.3.18 adds
+    # cli/commands/serve.py with HTTP and `--host 0.0.0.0` as defaults, as 0.7.20 has;
+    # 0.7.21 defaults to 127.0.0.1. Agent scripts' `--server` mode listened on 0.0.0.0
+    # before 0.3.18 too, but the record names `serve`, so the range starts at 0.3.18 and
+    # OSV's record, which `aak update` brings in, covers the rest. `fast-agent-acp` is
+    # a launcher pinned to the same `fast-agent-mcp` and is not named by the advisory.
+    # `latest` is 0.10.54, fixed, so a stated version is required.
+    _Pin("AAK-MCP-FASTAGENT-CVE-2026-102610-001", "fast-agent-mcp", ("fast-agent-mcp",),
+         (0, 7, 21), introduced=(0, 3, 18), fix_label="0.7.21 (affected from 0.3.18)",
+         requires_version=True, ecosystem="py"),
+    # Dagu's npm launcher `@dagucloud/dagu` (2.6.4 onward; npm's unscoped `dagu` stops at
+    # 1.22.10, before MCP) runs the binary of its own version from
+    # `@dagucloud/dagu-<os>-<arch>`. The MCP `dagu_read` dag_spec target read any
+    # .yaml/.yml path (CVE-2026-102943, GHSA-5m6c-38r8-5w76): the MCP server ships in
+    # v2.7.0 (absent at v2.6.10) and v2.11.0 confines `locateDAG` to the DAG
+    # directories. The image `ghcr.io/dagucloud/dagu` is a row of the same rule in
+    # container_image_pins. `latest` is 2.26.0, fixed, so a stated version is required.
+    _Pin("AAK-MCP-DAGU-CVE-2026-102943-001", "@dagucloud/dagu", ("@dagucloud/dagu",),
+         (2, 11, 0), introduced=(2, 7, 0), fix_label="2.11.0 (affected from 2.7.0)",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

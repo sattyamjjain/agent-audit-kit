@@ -38,6 +38,14 @@ deployment states its release. OpenHuman, an agent harness, ships as desktop
 installers and the image `ghcr.io/tinyhumansai/openhuman-core`; its Rust crate
 is not on crates.io, where `openhuman` is a 2023 crate of OpenHuman-ai's, and
 npm's and PyPI's `openhuman` are 2023 packages of other projects as well.
+The pgEdge Postgres MCP Server is a Go server on neither registry; it ships as
+release binaries and `ghcr.io/pgedge/postgres-mcp`. Trawl, a scraping engine with
+an MCP endpoint, ships as `ghcr.io/germondai/trawl`; npm's and PyPI's `trawl` are
+other projects. Dagu, a workflow engine with a built-in MCP server, ships as
+`ghcr.io/dagucloud/dagu` and as the npm launcher `@dagucloud/dagu`, which has a
+row in `mcp_cve_pins_2026_07` for the same rule. ezBookkeeping, a personal finance
+app that serves MCP, is a Go server whose README runs the Docker Hub image
+`mayswind/ezbookkeeping`, tagged by release.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -529,6 +537,75 @@ _PINS: tuple[_ImagePin, ...] = (
         "ghcr.io/vitali87/code-graph-rag",
         (0, 0, 589), "from 0.0.421 below 0.0.589", "Fixed in 0.0.589.",
         ("CVE-2026-87008",), introduced=(0, 0, 421),
+    ),
+    # --- 2026-11-11 wave (apps) ---
+    # pgEdge Postgres MCP Server: CVE-2026-125320 (no Origin check on the HTTP
+    # transport), CVE-2026-125321 (login rate limiting keyed on X-Forwarded-For) and
+    # CVE-2026-125322 (`count_rows` `where` subqueries as an oracle), all fixed in
+    # 1.1.0. The labels name each image's commit: 1.0.0-beta2 (6830caeb, the first
+    # image) and 1.0.0 (67121476) have all three flaws; 1.1.0-beta1 (b971c413) carries
+    # all three fixes (6a19e46a, 933f1b4c, 5571bd49), as rc1 and 1.1.0 (25c2aaed) do.
+    # 1.0.0-test1 (cc13a18a, June) predates the fixes and reads as 1.0.0. `1.0` is the
+    # 1.0.0 digest; `latest` was the 1.1.0 digest on 2026-11-11. GHSA-j7mp-839j-jrm7
+    # (read-only bypass through `tx.Exec`) and GHSA-r5pp-jx86-r6r9 (pl-do dollar-quote
+    # injection), HIGH and with no CVE id, are fixed in 1.1.0-beta1 too and make the rule
+    # HIGH; 1.0.0-beta2 has neither route but reads as 1.0.0.
+    _ImagePin(
+        "AAK-MCP-PGEDGE-CVE-2026-125320-001", "pgEdge Postgres MCP Server",
+        "ghcr.io/pgedge/postgres-mcp",
+        (1, 1, 0), "below 1.1.0",
+        "Fixed in 1.1.0, as are GHSA-j7mp-839j-jrm7 (read-only bypass) and "
+        "GHSA-r5pp-jx86-r6r9 (SQL injection through pl-do tools).",
+        ("CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"),
+    ),
+    # Dagu: CVE-2026-102943, the MCP `dagu_read` dag_spec target reads YAML files
+    # outside the DAG directories. `internal/service/mcp/server.go` is absent at
+    # v2.6.10 and ships in v2.7.0; v2.11.0 confines `locateDAG`. The images carry no
+    # revision label, but each was pushed with its release (2.7.0 on 2026-05-18, 2.11.0
+    # on 2026-07-26); `-alpine` and `-dev` builds share the version, and `latest` was
+    # the 2.26.0 build on 2026-11-11. The npm launcher is the pin table's row.
+    _ImagePin(
+        "AAK-MCP-DAGU-CVE-2026-102943-001", "Dagu", "ghcr.io/dagucloud/dagu",
+        (2, 11, 0), "from 2.7.0 below 2.11.0", "Fixed in 2.11.0.",
+        ("CVE-2026-102943",), introduced=(2, 7, 0),
+    ),
+    # Trawl: CVE-2026-122140, IPv4-mapped IPv6 addresses in hex form pass the MCP
+    # outbound URL policy, and GHSA-7qmf-c45g-5p4q (no CVE id), a name that rebinds
+    # between the policy's DNS lookup and the fetch's, on the same releases. The labels name each image's commit: 1.4.2 (7189f101) has
+    # no MCP routes and no `outbound-policy.ts`; 1.5.0 (c81d628b) adds both, and the
+    # file is unchanged at 1.9.3 (4f3a7cf9); 1.10.0 (fc3f64a7) classifies addresses
+    # with `BlockList`. `-baseline` and `-fonts` builds share the version. `latest` was
+    # the 1.11.0 digest on 2026-11-11; `latest-fonts` is still the 1.6.0 image and
+    # states no version.
+    _ImagePin(
+        "AAK-MCP-TRAWL-CVE-2026-122140-001", "Trawl", "ghcr.io/germondai/trawl",
+        (1, 10, 0), "from 1.5.0 below 1.10.0",
+        "Fixed in 1.10.0, as is GHSA-7qmf-c45g-5p4q (DNS rebinding past the same policy).",
+        ("CVE-2026-122140",), introduced=(1, 5, 0),
+    ),
+    # SiYuan: CVE-2026-123492, a `resources/read` of a missing resource panics the
+    # kernel in `privateCacheMiddleware`. The middleware is absent at v3.7.3 and
+    # arrives in v3.8.0; the fix, a8b6dd77 (2026-10-22), is in v3.8.9 and not v3.8.8.
+    # v3.8.9-alpha.1 to alpha.3 were pushed before it and read as 3.8.9, so they go
+    # unreported; `latest` was the v3.8.10 digest on 2026-11-11. A different flaw from
+    # the 116168 row above, so its own rule.
+    _ImagePin(
+        "AAK-MCP-SIYUAN-CVE-2026-123492-001", "SiYuan", "b3log/siyuan",
+        (3, 8, 9), "from 3.8.0 below 3.8.9", "Fixed in 3.8.9.",
+        ("CVE-2026-123492",), introduced=(3, 8, 0),
+    ),
+    # ezBookkeeping: CVE-2026-86041, Gin trusts every proxy, so a spoofed
+    # X-Forwarded-For passes `mcp_allowed_remote_ips`. The labels name each image's
+    # commit: 0.9.0 (6222b6ed) has no MCP IP limit; 0.10.0 (06ef2220, OSV's
+    # `introduced`) adds `mcp_server_ip_limit.go` matching `c.ClientIP()`; 1.5.1
+    # (6fa9816c) still sets no trusted proxies; 1.6.0 (e5c12d37) carries d79a5beb.
+    # Docker Hub keeps two-part tags (`0.10`, `1.5`) on the newest patch of each line.
+    # `latest` was the 2.1.1 digest on 2026-11-11; `SNAPSHOT-<date>` tags state no
+    # version.
+    _ImagePin(
+        "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001", "ezBookkeeping", "mayswind/ezbookkeeping",
+        (1, 6, 0), "from 0.10.0 below 1.6.0", "Fixed in 1.6.0.",
+        ("CVE-2026-86041",), introduced=(0, 10, 0),
     ),
 )
 

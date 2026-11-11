@@ -402,6 +402,12 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DYNATRACE-CVE-2026-123810-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-FASTAGENT-CVE-2026-102610-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-PGEDGE-CVE-2026-125320-001": ["AIS-07", "IAM-01", "STA-08"],
+    "AAK-MCP-DAGU-CVE-2026-102943-001": ["AIS-07", "DSP-17", "STA-08"],
+    "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
+    "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -20366,6 +20372,313 @@ _r(
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FASTAGENT-CVE-2026-102610-001",
+    "fast-agent 0.3.18 to 0.7.20: `fast-agent serve` exposes the agent over MCP on every interface with no authentication",
+    "fast-agent (PyPI `fast-agent-mcp`, evalstate/fast-agent), a framework for building "
+    "and running agents with MCP support, serves an agent as an MCP server with "
+    "`fast-agent serve`. Before 0.7.21 that command defaulted to the HTTP transport on "
+    "0.0.0.0, port 8000, with no authentication unless `FAST_AGENT_SERVE_OAUTH` named a "
+    "provider, so any host that reached the port could call the `agent` tool and spend "
+    "the operator's model and configured MCP servers; started with `--shell` (`-x`), the "
+    "agent also holds a local `execute` tool, which then runs operating-system commands as "
+    "the server's user for that caller (CVE-2026-102610, CVSS 3.1 6.4, CWE-306, CWE-78, "
+    "GHSA-9vhv-g5hf-m7m7). Checked in the PyPI wheels: 0.3.17 has no `serve` command; "
+    "0.3.18 adds `cli/commands/serve.py` with the HTTP transport and `--host 0.0.0.0` as "
+    "defaults, as 0.7.20 still has; 0.7.21 defaults to 127.0.0.1 and warns before serving "
+    "another host without authentication.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `fast-agent-mcp` to 0.7.21 or later and pin it. Until then pass `--host "
+    "127.0.0.1` to `fast-agent serve` or serve over stdio, and never combine `--shell` with "
+    "a listener another host can reach.",
+    sarif_name="FastAgentServeMcpNoAuth",
+    cve_references=["CVE-2026-102610"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports a PyPI reference to `fast-agent-mcp` from 0.3.18 below 0.7.21 that states a "
+        "version: a requirements file, pyproject.toml, a lockfile, or a `uvx` launch in an MCP "
+        "config, reporting a range that admits an affected version. `latest` was 0.10.54 on "
+        "2026-11-11 and states no version, so an unpinned `uvx fast-agent-mcp` is not "
+        "reported. It reads the version, not whether `serve` runs, on which host or with "
+        "`--shell`, so a project that only runs agents in process, or serves on 127.0.0.1, is "
+        "reported too. Releases before 0.3.18 have no `serve` command and are not reported, "
+        "although an agent script run with `--server` listens on 0.0.0.0 by default there "
+        "too (checked in 0.2.10 and 0.3.17), a default 0.7.21 also changed; OSV's "
+        "GHSA-9vhv-g5hf-m7m7 lists every release below 0.7.21 and reaches them through "
+        "AAK-KNOWN-VULN-001 after `aak update`. `fast-agent-acp`, a launcher that requires "
+        "`fast-agent-mcp` at its own version, is not matched by name; a lockfile records the "
+        "`fast-agent-mcp` it pulls in. A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-PGEDGE-CVE-2026-125320-001",
+    "pgEdge Postgres MCP Server image below 1.1.0: read-only bypass, SQL injection through pl-do tools, DNS rebinding, a spoofable rate-limit address and a count_rows oracle",
+    "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp) runs SQL against "
+    "PostgreSQL for MCP clients and ships as the image `ghcr.io/pgedge/postgres-mcp`. Five "
+    "flaws are fixed in 1.1.0. GHSA-j7mp-839j-jrm7 (CVSS 3.1 8.1, CWE-693, no CVE id): on a "
+    "read-only connection a caller of the `query_database` tool could write anyway, because "
+    "a statement the guard did not take for a read went to `tx.Exec` with no bind "
+    "parameters, over the simple query protocol, so several statements, transaction control "
+    "among them, ran in one message. GHSA-r5pp-jx86-r6r9 (8.8, CWE-89, no CVE id): a custom "
+    "`pl-do` tool put its arguments inside a `DO` block delimited by a fixed dollar-quote "
+    "tag, so an argument holding that tag ran the caller's own SQL as the connecting role. "
+    "CVE-2026-125320 (5.3, CWE-346, GHSA-6hg5-9f3w-c886): the HTTP transport did not check "
+    "the Origin header, so a page a user visited could reach a server on that machine "
+    "through DNS rebinding and read schemas and query results. CVE-2026-125321 (6.5, "
+    "CWE-807, GHSA-v347-v3w7-7fq9): with the HTTP transport and authentication on, login "
+    "rate limiting keyed on the leftmost caller-supplied X-Forwarded-For value. "
+    "CVE-2026-125322 (6.5, CWE-89, GHSA-fhv3-x3jh-grj7): the `count_rows` tool's `where` "
+    "parameter accepted subqueries against other tables, so the returned count was an "
+    "oracle for any table the database role can read. Checked in the source at the commit "
+    "each image's label names: 1.0.0 (67121476) has all five; 1.1.0-beta1 (b971c413) "
+    "carries every fix (the read-only guard and `BEGIN` access mode of b5b92930, per-call "
+    "dollar-quote tags, the Origin check, the client-address resolver and the subquery "
+    "rejection), and every later image keeps them. 1.0.0-beta2 (6830caeb), the first image, "
+    "has the three CVE flaws but neither GHSA route: it has no custom tools, and it runs "
+    "each `query_database` statement with `tx.Query`, one statement per message, after "
+    "`SET TRANSACTION READ ONLY`; the `tx.Exec` path and `pl-do` tools arrive in "
+    "1.0.0-beta3.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/pgedge/postgres-mcp` 1.1.0 or later, pinned by version, and review the "
+    "database's audit logs for DDL and DML made through the MCP connection, which upgrading "
+    "does not undo. Until then grant the connecting role no write privileges (the one "
+    "control that holds against both read-only bypasses), define no `pl-do` custom tools, "
+    "serve over stdio, the image's default, or put an HTTP deployment behind a proxy that "
+    "overwrites X-Forwarded-For and refuses cross-origin requests, and grant SELECT only on "
+    "the tables MCP clients may read.",
+    sarif_name="PgedgePostgresMcpPre110Flaws",
+    cve_references=["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"],
+    # GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9 have no CVE id. Both are fixed in
+    # 1.1.0-beta1, like the three CVEs, and both routes are in every image the rule
+    # reports but 1.0.0-beta2, which reads as 1.0.0 (the limitations say so). They
+    # make the rule HIGH; the three MEDIUM records ride along, the Langflow precedent.
+    incident_references=["GHSA-j7mp-839j-jrm7", "GHSA-r5pp-jx86-r6r9"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-07", "ADV-AUTH-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/pgedge/postgres-mcp:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags below 1.1.0 are reported, from 1.0.0-beta2, the "
+        "first, with the two-part `1.0` and the `-with-kb` builds; the 1.1.0 betas and "
+        "release candidate read as 1.1.0 and carry the fixes. 1.0.0-beta2 is reported at HIGH "
+        "because it reads as 1.0.0, although that one tag has neither high-severity route: "
+        "it has no `custom_tool.go`, and its `query_database` uses the single-statement "
+        "extended protocol; the advisories name every pre-release. `latest` was the 1.1.0 "
+        "digest on 2026-11-11, so an untagged reference is not reported. The rule reads the "
+        "tag, not the transport or the configuration: GHSA-j7mp-839j-jrm7 needs a read-only "
+        "connection whose role can write, GHSA-r5pp-jx86-r6r9 a `pl-do` custom tool, "
+        "CVE-2026-125320 the HTTP transport and CVE-2026-125321 HTTP with authentication on, "
+        "so a deployment that has none of these, such as a stdio one, the image's default, "
+        "with no custom tools, is reported although only CVE-2026-125322 reaches it. The "
+        "write-confirmation prompts of the bundled CLI and web client are other artifacts and "
+        "not read. The release binaries and a server built from source state no version AAK "
+        "reads, and the `ghcr.io/pgedge/nla-web` client image is not matched. Mirrors under "
+        "another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DAGU-CVE-2026-102943-001",
+    "Dagu 2.7.0 to 2.10.7: the MCP dagu_read dag_spec target reads YAML files outside the DAG directories",
+    "Dagu (dagucloud/dagu), a self-hosted workflow engine with a built-in MCP server, ships "
+    "as the image `ghcr.io/dagucloud/dagu` and through the npm launcher `@dagucloud/dagu`, "
+    "which runs the binary of its own version from a platform package. Before 2.11.0 the "
+    "MCP `dagu_read` tool's `dag_spec` target called the DAG specification API in process, "
+    "past the HTTP middleware that checks the file name, and the store's resolver returned "
+    "an absolute or traversing path as given, so a holder of a viewer-role API key could "
+    "read any `.yaml` or `.yml` file the Dagu process can read, across workspaces "
+    "(CVE-2026-102943, CVSS 3.1 6.5, CWE-22, GHSA-5m6c-38r8-5w76). Checked in the source at "
+    "each tag: the MCP server (`internal/service/mcp/server.go`, #2158) is absent at "
+    "v2.6.10 and ships in v2.7.0, whose `getDAGSpec` hands the name to `GetDAGSpec`; at "
+    "v2.10.7 `locateDAG` still returns a name containing a separator unchecked; v2.11.0 "
+    "(c15c5406, #2424) resolves every name inside a configured DAG directory.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade Dagu to 2.11.0 or later (the image, the npm launcher or the binary) and pin "
+    "it. Until then do not give MCP clients API keys on a server whose host holds YAML "
+    "files they should not read.",
+    sarif_name="DaguMcpDagSpecPathTraversal",
+    cve_references=["CVE-2026-102943"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `ghcr.io/dagucloud/dagu` tags from 2.7.0 below 2.11.0, the `-alpine` and "
+        "`-dev` builds included, in compose files, Kubernetes manifests, Helm values, "
+        "Dockerfiles and MCP configs, and an npm reference to `@dagucloud/dagu` in that range "
+        "that states a version: a package.json or lockfile entry, or the package in an MCP "
+        "config or a package.json script, reporting a range that admits an affected version. "
+        "Releases below 2.7.0 predate the MCP server and are not reported, nor is npm's "
+        "unscoped `dagu`, whose last release is 1.22.10. `latest` was the 2.26.0 build on "
+        "2026-11-11, so an untagged image and an unpinned launcher are not reported. It reads "
+        "the version, not whether any MCP client holds an API key. A binary installed by "
+        "script, Homebrew or Scoop states no version AAK reads, and this rule reads no "
+        "go.mod. Mirrors under another registry are not matched, and commented-out lines "
+        "are skipped. A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-TRAWL-CVE-2026-122140-001",
+    "Trawl image 1.5.0 to 1.9.3: IPv4-mapped IPv6 addresses and DNS rebinding pass the MCP outbound URL policy",
+    "Trawl (germondai/trawl), a self-hosted scraping engine with an optional MCP endpoint "
+    "(`MCP_ENABLED=true`, Streamable HTTP at `/mcp`), ships as the image "
+    "`ghcr.io/germondai/trawl`. From 1.5.0 its MCP tools check each target and redirect "
+    "against an outbound policy meant to keep them off loopback, private and metadata "
+    "addresses, but `isPrivateIp` recognised an IPv4-mapped IPv6 address only in dotted "
+    "form, and the URL parser rewrites every mapped literal into hex (`::ffff:7f00:1`) "
+    "first, so an unauthenticated MCP caller, directly or through a redirect, could fetch "
+    "loopback, private and cloud-metadata services and read the response (CVE-2026-122140, "
+    "CVSS 3.1 5.8, CWE-918, GHSA-mj45-84p2-v77q). The same releases checked a hostname's DNS "
+    "answers apart from the connection that used them, so a name that rebinds from a public "
+    "to a private address between the two passed as well (GHSA-7qmf-c45g-5p4q, no CVE id, "
+    "rated moderate by the maintainer, CWE-367). Checked in the source at the commit each "
+    "image's label names: 1.4.2 has neither the MCP routes nor "
+    "`apps/api/src/outbound-policy.ts`; 1.5.0 adds both, with the dotted-only match and a "
+    "validator that resolves the name and hands back only the URL, which the fetch resolves "
+    "again, and the file is unchanged at 1.9.3; 1.10.0 classifies addresses numerically with "
+    "Node's `BlockList` and pins each guarded connection to the validated address "
+    "(`apps/api/src/public-egress.ts`, 17cdb33a, #263).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/germondai/trawl` 1.10.0 or later, pinned by version. Until then leave "
+    "`MCP_ENABLED` off, or keep the MCP endpoint off any network an untrusted caller "
+    "reaches, and run the container where loopback, private and metadata addresses hold "
+    "nothing to read.",
+    sarif_name="TrawlMcpOutboundPolicyMappedIpv6Ssrf",
+    cve_references=["CVE-2026-122140"],
+    # GHSA-7qmf-c45g-5p4q has no CVE id. Same releases (1.5.0 to 1.9.3), same fix
+    # (1.10.0, 17cdb33a) and the same MCP outbound policy, rated moderate, so it joins
+    # here rather than as a second rule on the same tags.
+    incident_references=["GHSA-7qmf-c45g-5p4q"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/germondai/trawl:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 1.5.0 below 1.10.0 are reported, with the "
+        "`-baseline` and `-fonts` builds; tags below 1.5.0 predate the MCP endpoint and are "
+        "not. `latest` was the 1.11.0 image on 2026-11-11, so an untagged reference is not "
+        "reported. `latest-fonts` is still the 1.6.0 image, affected, but states no version, "
+        "so it is not reported, nor are the `nightly-` and `sha-` tags. The rule reads the "
+        "tag, not whether `MCP_ENABLED` is set, so a deployment with MCP off is reported too. "
+        "A server built from source states no version AAK reads, and npm's and PyPI's "
+        "`trawl` are other projects. Mirrors under another registry are not matched, and "
+        "commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SIYUAN-CVE-2026-123492-001",
+    "SiYuan image 3.8.0 to 3.8.8: an MCP resources/read of a missing resource crashes the kernel",
+    "SiYuan (siyuan-note/siyuan), a self-hosted notes app whose kernel serves MCP, ships its "
+    "server as the Docker Hub image `b3log/siyuan`. From 3.8.0 the kernel's "
+    "`privateCacheMiddleware` sets a cache scope on each MCP result without checking the "
+    "error or the pointer, and the Go MCP SDK answers `resources/read` of an unregistered "
+    "URI with a nil `*ReadResourceResult` and an error, so a holder of a valid API token "
+    "who reads a missing resource in an initialized session panics the kernel and stops "
+    "it (CVE-2026-123492, CVSS 3.1 4.9, CWE-476, GHSA-2x3p-x74g-442x). Checked in the "
+    "source: `kernel/mcp/server.go` has no such middleware at v3.7.3; v3.8.0 adds it, "
+    "unchanged through v3.8.8, over go-sdk 1.7.0 and then 1.8.0, which both return that "
+    "typed nil; a8b6dd77 (\"Prevent nil result panics in MCP cache middleware\", "
+    "2026-10-22) returns on an error and checks the pointer, in v3.8.9 and not v3.8.8.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `b3log/siyuan` v3.8.9 or later, pinned by version. Until then give MCP clients an "
+    "API token only where a kernel restart is acceptable, and keep a restart policy on the "
+    "container.",
+    sarif_name="SiyuanMcpResourceReadNilPanic",
+    cve_references=["CVE-2026-123492"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-VALID-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`b3log/siyuan:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a "
+        "Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile `FROM`, "
+        "and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. Tags "
+        "from v3.8.0 below v3.8.9 are reported, the v3.8.8 alphas and betas among them. "
+        "v3.8.9-alpha.1 to alpha.3 were pushed before the fix but read as 3.8.9, so they are "
+        "not reported; alpha.4 and later carry it. `latest` was the v3.8.10 digest on "
+        "2026-11-11, so an untagged reference is not reported. Tags from v3.8.0 below v3.8.7 "
+        "also fire AAK-MCP-SIYUAN-CVE-2026-116168-001, a different flaw. The desktop app "
+        "states no version AAK reads, and npm's and PyPI's `siyuan` are other projects. "
+        "`docker.io/b3log/siyuan` and mirrors under another registry are not matched, and "
+        "commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001",
+    "ezBookkeeping image 0.10.0 to 1.5.1: a spoofed X-Forwarded-For passes the MCP source-IP allowlist",
+    "ezBookkeeping (mayswind/ezbookkeeping), a self-hosted personal finance app with an MCP "
+    "endpoint, ships as the Docker Hub image `mayswind/ezbookkeeping`. From 0.10.0 an "
+    "operator can limit the MCP endpoint to `mcp_allowed_remote_ips`, but the router is "
+    "built with `gin.New()` and never calls `SetTrustedProxies`, so Gin trusts every proxy "
+    "and `c.ClientIP()` returns a caller-supplied X-Forwarded-For value: a caller from any "
+    "address passes the allowlist, and in later releases `api_token_allowed_remote_ips` as "
+    "well, by naming an allowed address, which is then recorded as the transaction's "
+    "`CreatedIp` and in the request log. A valid MCP or API token is still required for "
+    "protected actions (CVE-2026-86041, CVSS 4.0 5.3, CWE-348, GHSA-wchh-mrv2-5h4q). "
+    "Checked in the source at the commit each image's label names: 0.9.0 has no MCP IP "
+    "limit; 0.10.0 (06ef2220) adds `pkg/middlewares/mcp_server_ip_limit.go`, which matches "
+    "the allowlist against `c.ClientIP()`, and 1.5.1 still sets no trusted proxies; 1.6.0 "
+    "(d79a5beb) accepts forwarding headers only from configured trusted proxies.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `mayswind/ezbookkeeping` 1.6.0 or later, pinned by version, and set its trusted "
+    "proxies to the reverse proxy actually in front of it: by default 1.6.0 trusts every "
+    "private and loopback range. Until then put the MCP endpoint behind a proxy that "
+    "overwrites X-Forwarded-For, and rely on the MCP token, not the IP allowlist, as the "
+    "gate.",
+    sarif_name="EzbookkeepingMcpIpAllowlistXffBypass",
+    cve_references=["CVE-2026-86041"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025", "MCP08:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-03"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`mayswind/ezbookkeeping:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 0.10.0 below 1.6.0 are reported, the "
+        "two-part `0.10` and `1.0` to `1.5` among them; tags below 0.10.0 predate the MCP IP "
+        "limit and are not. `latest` was the 2.1.1 digest on 2026-11-11, so an untagged "
+        "reference, the README's own `docker run`, is not reported. The `SNAPSHOT-<date>` "
+        "and `latest-snapshot` tags state no version and are not reported, although the "
+        "snapshots built before the fix (2026-06-16) carry the flaw. The rule reads the tag, "
+        "not whether an IP allowlist is configured, so a deployment with none, which this "
+        "flaw does not reach, is reported too. A binary or a server built from source states "
+        "no version AAK reads, and this rule reads no go.mod. `docker.io/mayswind/"
+        "ezbookkeeping` and mirrors under another registry are not matched, and "
+        "commented-out lines are skipped."
     ),
 )
 

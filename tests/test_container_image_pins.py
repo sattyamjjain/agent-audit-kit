@@ -1086,12 +1086,14 @@ def test_siyuan_pin_carries_its_cve_and_severity() -> None:
 
 def test_siyuan_fixtures_positive_and_negative() -> None:
     """v3.8.6 is the last image whose sensitive-path list leaves out `.env`; v3.8.7
-    adds it (9ffcc734)."""
+    adds it (9ffcc734). Both tags also fire the CVE-2026-123492 rule (3.8.0 below
+    3.8.9), a different flaw on the same image, so only this rule is compared."""
     root = FIXTURES / "cve-2026-116168-siyuan"
-    assert [(f.rule_id, f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]] == [
+    assert [(f.rule_id, f.file_path, f.line_number) for f in scan(root / "vulnerable")[0]
+            if f.rule_id == SIYUAN] == [
         (SIYUAN, "compose.yaml", 3),
     ]
-    assert _ids(root / "negative") == []
+    assert SIYUAN not in _ids(root / "negative")
     assert SIYUAN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 
