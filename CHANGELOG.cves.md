@@ -256,6 +256,123 @@ CVE-2026-124503, whose GitHub advisory scores it 7.7, and IBM's for CVE-2026-184
 ash_ai record has only a CVSS 4.0 score, and the ASF rates Axis2's record low and Storm's
 important, with no number.
 
+## 2026-11-11 (unreleased): #1224 and #1225, the Dynatrace MCP server and Code Graph RAG, four new rules
+
+The watcher filed #1225 (the Dynatrace MCP server) and #1224 (Code Graph RAG) from NVD's
+keyword feed on 11 Nov and is holding four more records on the same two servers:
+CVE-2026-123809, CVE-2026-123810 and CVE-2026-123812 on Dynatrace's and CVE-2026-87008 on Code
+Graph RAG. All six are read here against NVD's API records, the CNA records, the repositories'
+GitHub advisories, OSV and the published artifacts, all on 2026-11-11. NVD text is quoted from
+the API records. Each CNA record names one product and one upper bound and cites the repository
+advisory its text comes from. Neither package had a pin. Four new rules, each measured with the
+scanner on firing and negative fixtures after its range was read in the artifacts. OSV holds the
+six GitHub records, each with a range that starts at 0; none is in the bundled advisory feed.
+
+### CVE-2026-123811 (#1225): new pin 2026-11-11
+
+**The Dynatrace MCP server gets `AAK-MCP-DYNATRACE-CVE-2026-123811-001`: npm
+`@dynatrace-oss/dynatrace-mcp-server` from 0.5.0 below 2.0.0, HIGH.** NVD: "Prior to 2.0.0, a
+server started with the --http option accepts JSON-RPC tools/call requests without
+authentication, session validation, or Host and Origin protections before dispatching them under
+the server's configured Dynatrace credentials." GHSA-p7w7-4929-vpj5 gives `<= 1.8.7`. Checked in
+every stable npm tarball, 0.1.0 (2025-04-30) to 2.1.2 (2026-07-20): `--http` and its alias
+`--server` first ship in 0.5.0 (on npm from 0.5.0-rc.4; rc.1 to rc.3 have no HTTP mode), and
+through 1.8.7 each request goes to a stateless `StreamableHTTPServerTransport` with no check of
+any kind. The listener bound `0.0.0.0` by default through 0.11.0 and `127.0.0.1` from 0.12.0.
+2.0.0 checks a bearer token from `MCP_BEARER_TOKEN` and turns on the transport's Host allowlist,
+but with the variable unset it prints a warning and serves the call anyway; 2.1.0 refuses to
+start without it. The pin follows the record's 2.0.0, the rule text says that 2.0.x run without
+the variable is not reported, and the remediation names `MCP_BEARER_TOKEN`. Stdio, the default, is not exposed, and no version says how
+the server is launched: the HTTP mode is normally started by hand or in a container rather than
+from a client's config, so the rule reads the version and its text says the stdio default is not affected rather
+than looking for the flag. The repository is archived, 2.1.2 is the final release, and npm marks
+every version deprecated. `latest` is 2.1.2, so a stated version is required.
+
+### CVE-2026-123810, CVE-2026-123809 and CVE-2026-123812 (not filed): new pin 2026-11-11
+
+**The same server gets `AAK-MCP-DYNATRACE-CVE-2026-123810-001`: below 2.1.1, MEDIUM, and the two
+lower-scored records join it.** NVD, CVE-2026-123810 (4.3): "Prior to 2.1.1, several read
+capabilities interpolate caller-controlled values into DQL without sufficient validation or
+escaping." CVE-2026-123809 (4.2): "Prior to 2.0.0, the create_workflow_for_notification tool
+inserts the caller-controlled teamName, problemType, and channel values into a Dynatrace workflow
+without neutralizing Jinja2 expressions." CVE-2026-123812 (3.7): "Prior to 1.8.7, the
+create_dynatrace_notebook registration in src/index.ts performs a persistent document-write action
+without calling requestHumanApproval". CVE-2026-123810's fix sits above the HIGH rule's 2.0.0
+floor and the record is MEDIUM, so it gets its own rule; raising that floor would report 2.0.0 to
+2.1.0 as the HIGH flaw. Checked in the tarballs: 0.1.0, the first release, already puts
+`clusterId` into a DQL string, by 2.1.0 `timeframe`, `clusterId`, `kubernetesEntityId` and
+`entityNames` reach DQL unescaped, and 2.1.1 (2026-07-14) adds `validateTimeframe` and
+`escapeDqlStringValue`. The workflow tool ships in every release from 0.1.0 to 1.8.7 with the
+three values in its template, and 2.0.0 (2026-06-16) removes it. The notebook tool first ships in
+1.2.0 (2026-01-08) with no approval call, and 1.8.7 (2026-06-08) adds one and a `destructiveHint`.
+Both lower-scored records' affected releases sit inside the MEDIUM rule's range, so they join it,
+as the Langflow records joined theirs: one MEDIUM finding per declaration, and 1.2.0 to 1.8.6 are
+reported at MEDIUM for the LOW notebook gap. The repository advisories for CVE-2026-123810
+(GHSA-pqh8-p93p-2rx7) and CVE-2026-123809 (GHSA-xrmj-5g4g-8987) list affected versions as "up to
+and including 1.8.5", which 1.8.6, 1.8.7 and, for the DQL values, 2.0.0 to 2.1.0 contradict in the
+code; the ranges here are the records' and the code's. Docker's MCP catalog image
+`mcp/dynatrace-mcp-server` has one tag, `latest`, pushed on 2026-07-01 with the revision label of
+the v2.1.0 release commit, and its `/app/dist/index.js` is byte-identical to npm's 2.1.0, so it
+carries CVE-2026-123810 today. It is not read: an untagged or `latest` reference does not say
+which build a project pulled, and once Docker rebuilds `latest` from 2.1.1 or later a pin on it
+would keep reporting a fixed image. The rule's limitations say so.
+
+### CVE-2026-77604 (#1224) and CVE-2026-87008 (not filed): two new pins 2026-11-11
+
+**Code Graph RAG gets `AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001`, PyPI `code-graph-rag` from
+0.0.148 below 0.0.345, and `AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001`, from 0.0.421 below 0.0.589,
+both HIGH and both with the GHCR image over the same ranges.** NVD, CVE-2026-77604: "Prior to 0.0.345, the MCPToolsRegistry.read_file implementation in
+codebase_rag/mcp/tools.py joins attacker-controlled file_path input to project_root without
+resolving and verifying containment when offset or limit selects the paginated branch."
+CVE-2026-87008: "Prior to 0.0.589, AstGrepService in codebase_rag/tools/ast_grep_service.py
+enumerates files beneath project_root and relies on should_skip_path in
+codebase_rag/utils/path_utils.py to classify them, but the containment check operates on
+unresolved lexical paths." Both are HIGH and both let an MCP tool reach a file outside the
+configured root (CWE-22, the second also CWE-59), but their ranges are disjoint, so each has its
+own rule: neither reports a release twice, and every finding names only the CVE that release
+carries. Checked in the PyPI wheels: 0.0.79 (2026-02-21) to 0.0.100 ship no `codebase_rag/mcp`
+package, and neither do their sdists, although the CLI's `mcp-server` command imports it; 0.0.148
+to 0.0.246 open the joined path in the paginated branch; 0.0.345 (2026-07-14) resolves it and has
+no AstGrepService; 0.0.421 to 0.0.584 judge files by their unresolved path; 0.0.589 (2026-08-10)
+resolves first, and 0.0.639 and 0.6.30 still do. 0.0.345 carries neither flaw and neither rule
+reports it. The global GitHub advisory for
+CVE-2026-87008 gives 0.0.587 as fixed, a version PyPI never carried; 0.0.584 is the last release
+before 0.0.589. The GHCR image `ghcr.io/vitali87/code-graph-rag` runs `mcp-server` by default and
+labels each tag with its commit: 0.0.88, 0.0.99 and 0.0.100 were built from source, carry the MCP
+server and open the joined path; 0.0.496, 0.0.534 and 0.0.584 compare unresolved paths; 0.0.639
+resolves first. Each was read in the image's own files or in the source at the commit its label
+names, and each rule has the image row for its range. `latest` is 0.6.30 on PyPI and GHCR, so a stated
+version is required. PyPI's `codebase-rag`, whose name matches the package's import name, is
+another project and a negative fixture.
+
+Measured with the scanner (tests/test_cve_batch_2026_11_11_wave_servers.py): a package.json,
+lockfile or `npx` launch stating the Dynatrace server at 0.5.0, 1.2.0, 1.8.5 or 1.8.7 gets both
+Dynatrace rules, 0.1.0, 0.4.0, 2.0.0 and 2.1.0 only the MEDIUM one, and 2.1.1, 2.1.2 and `latest`
+neither; a compose file naming `mcp/dynatrace-mcp-server` gets neither, as the limitations
+say. Code Graph RAG at 0.0.148 and 0.0.246 fires the CVE-2026-77604 rule
+and at 0.0.421 and 0.0.584 the CVE-2026-87008 rule, in requirements.txt and uv.lock (and a `uvx`
+launch at 0.0.246 and 0.0.584), and 0.0.79, 0.0.100, 0.0.345, 0.0.589 and 0.6.30 fire neither; a
+requirements range that admits releases from both intervals gets both findings. Image tags 0.0.88 to
+0.0.100 fire the first rule and 0.0.496 to 0.0.584 the second, and 0.0.345, 0.0.639, `0.0` and
+`latest` neither. After `aak update`, with a feed holding the six OSV records as `advisory_feed`
+writes them, a lockfile resolving the Dynatrace server at 1.8.5 or 2.0.0, or Code Graph RAG at
+0.0.584, gets only the rules' findings: the engine stands down each AAK-KNOWN-VULN-001 finding whose
+CVE a rule on the same line names. Because the records' ranges start at 0, the feed still reports
+releases the code shows unaffected: Dynatrace 0.1.0 under GHSA-p7w7-4929-vpj5, from before the HTTP
+mode, Code Graph RAG 0.0.100 under GHSA-vvr2-h2jp-838m and GHSA-85gg-2gfq-q95m, and 0.0.148, 0.0.246
+and 0.0.345, which have no structural tools, under GHSA-85gg-2gfq-q95m.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123811 | 7.5 | `@dynatrace-oss/dynatrace-mcp-server` (npm) | **New pin** `AAK-MCP-DYNATRACE-CVE-2026-123811-001` (HIGH): 0.5.0 up to 2.0.0, over the opt-in `--http` transport, a stated version required. | #1225 |
+| CVE-2026-123810 | 4.3 | `@dynatrace-oss/dynatrace-mcp-server` (npm) | **New pin** `AAK-MCP-DYNATRACE-CVE-2026-123810-001` (MEDIUM): 0.1.0 up to 2.1.1, a stated version required. Docker's catalog image, which publishes only `latest`, is not read. | not filed |
+| CVE-2026-123809 | 4.2 | `@dynatrace-oss/dynatrace-mcp-server` (npm) | **Joins** `AAK-MCP-DYNATRACE-CVE-2026-123810-001`: 0.1.0 up to 2.0.0, which removes the tool. | not filed |
+| CVE-2026-123812 | 3.7 | `@dynatrace-oss/dynatrace-mcp-server` (npm) | **Joins** `AAK-MCP-DYNATRACE-CVE-2026-123810-001`, reported at MEDIUM: 1.2.0 up to 1.8.7. | not filed |
+| CVE-2026-77604 | 7.5 | `code-graph-rag` (PyPI), `ghcr.io/vitali87/code-graph-rag` | **New pin** `AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001` (HIGH): 0.0.148 up to 0.0.345 on PyPI and image tags below 0.0.345, a stated version required. | #1224 |
+| CVE-2026-87008 | 7.1 | `code-graph-rag` (PyPI), `ghcr.io/vitali87/code-graph-rag` | **New pin** `AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001` (HIGH): 0.0.421 up to 0.0.589 on PyPI and image tags in that range, a stated version required. | not filed |
+
+CVSS is each record's CVSS 3.1 score, GitHub's, which NVD carries as its only metric.
+
 ## 2026-11-11 (unreleased): #1157 to #1161, #1165, #1166 and #1183, and IBM's other Langflow records
 
 Eight issues the watcher filed between 31 Oct and 3 Nov, deferred with no scope claimed, are

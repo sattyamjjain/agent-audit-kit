@@ -2091,6 +2091,51 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-ATLASSIAN-CVE-2026-124503-001", "mcp-atlassian", ("mcp-atlassian",),
          (0, 24, 1), introduced=(0, 22, 0), fix_label="0.24.1 (affected from 0.22.0)",
          requires_version=True, ecosystem="py"),
+    # --- 2026-11-11 wave (#1224, #1225 and three held Dynatrace records) ---
+    # The Dynatrace MCP server (npm `@dynatrace-oss/dynatrace-mcp-server`, archived;
+    # 2.1.2 is the final release and npm marks every version deprecated). `--http` /
+    # `--server` first ships in 0.5.0 (0.5.0-rc.4; rc.1 to rc.3 have none, and read as
+    # 0.5.0 here) and, through 1.8.7, hands every request to a stateless
+    # StreamableHTTPServerTransport with no token, session or Host check
+    # (CVE-2026-123811). It bound 0.0.0.0 by default through 0.11.0 and 127.0.0.1
+    # from 0.12.0. 2.0.0 adds MCP_BEARER_TOKEN and a Host allowlist but only warns
+    # when the variable is unset; 2.1.0 refuses to start without it. Stdio, the
+    # default, is not exposed, which the version cannot show. `latest` is 2.1.2.
+    _Pin("AAK-MCP-DYNATRACE-CVE-2026-123811-001", "@dynatrace-oss/dynatrace-mcp-server",
+         ("@dynatrace-oss/dynatrace-mcp-server",), (2, 0, 0), introduced=(0, 5, 0),
+         fix_label="2.0.0, with MCP_BEARER_TOKEN set (affected from 0.5.0, over the "
+                   "opt-in --http transport; 2.1.0 requires the token)",
+         requires_version=True, ecosystem="js"),
+    # The same server's tool inputs, from 0.1.0: `clusterId` goes raw into a DQL
+    # string at 0.1.0, and by 2.1.0 `timeframe`, `clusterId`, `kubernetesEntityId`
+    # and `entityNames` reach DQL unescaped; 2.1.1 adds validateTimeframe and
+    # escapeDqlStringValue (CVE-2026-123810). create_workflow_for_notification put
+    # teamName, problemType and channel into a Jinja-evaluated workflow from 0.1.0
+    # until 2.0.0 removed the tool (CVE-2026-123809), and create_dynatrace_notebook,
+    # new in 1.2.0, wrote without requestHumanApproval until 1.8.7 (CVE-2026-123812).
+    # MEDIUM, its own rule: the fix is above the HIGH row's 2.0.0 floor.
+    _Pin("AAK-MCP-DYNATRACE-CVE-2026-123810-001", "@dynatrace-oss/dynatrace-mcp-server",
+         ("@dynatrace-oss/dynatrace-mcp-server",), (2, 1, 1),
+         fix_label="2.1.1 (2.1.2 is the final release)",
+         requires_version=True, ecosystem="js"),
+    # Code Graph RAG (PyPI `code-graph-rag`): the MCP `read_file` tool's paginated
+    # branch joined `file_path` to the project root unchecked (CVE-2026-77604).
+    # Checked in the PyPI wheels: 0.0.79 to 0.0.100 ship no `codebase_rag/mcp`
+    # package (their sdists neither), 0.0.148 to 0.0.246 open the joined path, and
+    # 0.0.345 resolves it. `latest` is 0.6.30.
+    _Pin("AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001", "code-graph-rag", ("code-graph-rag",),
+         (0, 0, 345), introduced=(0, 0, 148),
+         fix_label="0.0.345 (affected from 0.0.148); run 0.0.589 or later, as 0.0.421 to "
+                   "0.0.584 carry the structural tools' symlink escape",
+         requires_version=True, ecosystem="py"),
+    # The same package's structural_search / structural_replace tools follow a
+    # symlink out of the root (CVE-2026-87008): AstGrepService first ships in
+    # 0.0.421, 0.0.421 to 0.0.584 classify files by their unresolved path, and 0.0.589
+    # resolves first. Its own rule: the range is disjoint from the row above, and
+    # 0.0.345, between them, carries neither flaw.
+    _Pin("AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001", "code-graph-rag", ("code-graph-rag",),
+         (0, 0, 589), introduced=(0, 0, 421), fix_label="0.0.589 (affected from 0.0.421)",
+         requires_version=True, ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

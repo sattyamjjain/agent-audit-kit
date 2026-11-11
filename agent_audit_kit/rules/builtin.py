@@ -398,6 +398,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
     "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-DYNATRACE-CVE-2026-123811-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-DYNATRACE-CVE-2026-123810-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -20141,6 +20145,224 @@ _r(
         "(`docker run -w /`) is not reported. Releases below 0.22.0 had no upload guard at "
         "all, which AAK-MCP-ATLASSIAN-CVE-2026-73498-001 reports. A file over 2 MB, or a "
         "lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-11 wave, group "servers" (#1224, #1225 and three held Dynatrace records):
+# the Dynatrace MCP server's npm package (Docker's catalog image publishes only
+# `latest` and is not read), and Code Graph RAG on PyPI and GHCR. The ledger has the
+# reasoning.
+
+_r(
+    "AAK-MCP-DYNATRACE-CVE-2026-123811-001",
+    "Dynatrace MCP server 0.5.0 to 1.8.7: `--http` mode runs tool calls with no authentication",
+    "The Dynatrace MCP server (npm `@dynatrace-oss/dynatrace-mcp-server`, "
+    "dynatrace-oss/dynatrace-mcp) gives an MCP client the Dynatrace tenant it is "
+    "configured for. Started with `--http` (or its alias `--server`), it handed every "
+    "request to a stateless MCP transport with no token, session, Host or Origin check, "
+    "so any caller that reached the port could run `tools/call` under the server's "
+    "Dynatrace credentials: `execute_dql` reads logs, security events and user sessions, "
+    "and from 1.2.0 `create_dynatrace_notebook` writes tenant-visible notebooks (CVE-2026-123811, "
+    "CVSS 3.1 7.5, CWE-306, GHSA-p7w7-4929-vpj5). The listener bound `0.0.0.0` by "
+    "default through 0.11.0 and `127.0.0.1` from 0.12.0. The default stdio transport is "
+    "not affected. Checked in the published npm packages: the HTTP mode first ships in "
+    "0.5.0, 1.8.7 still checks nothing, and 2.0.0 adds a bearer check on "
+    "`MCP_BEARER_TOKEN` and a Host allowlist, though it only warns when the variable is "
+    "unset; 2.1.0 refuses to start without it. The repository is archived, 2.1.2 is the "
+    "final release, and npm marks every version deprecated.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@dynatrace-oss/dynatrace-mcp-server` to 2.0.0 or later and pin it, and set "
+    "`MCP_BEARER_TOKEN` to a long random value before starting it with `--http`: 2.0.0 "
+    "and 2.0.1 serve unauthenticated calls when it is unset, and 2.1.0 and later refuse "
+    "to start without it. Better, run it over stdio or move to the Dynatrace Remote MCP "
+    "Server the project points to: the package is archived and gets no further fixes.",
+    sarif_name="DynatraceMcpHttpNoAuth",
+    cve_references=["CVE-2026-123811"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01", "ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@dynatrace-oss/dynatrace-mcp-server` from 0.5.0 below 2.0.0 where a "
+        "package.json, lockfile or MCP config states the version, reporting a range that "
+        "admits an affected version. It reads the version, not the transport: a server "
+        "run over stdio, the default, is reported too, and no `--http` or `--server` "
+        "argument is looked for, since the HTTP mode is normally started outside the "
+        "client's config. 0.5.0-rc.1 to 0.5.0-rc.3, which have no HTTP mode, read as 0.5.0 and are "
+        "reported. 2.0.0 and 2.0.1 still serve unauthenticated calls when "
+        "`MCP_BEARER_TOKEN` is unset, which no version shows, and are not reported. "
+        "`latest` was 2.1.2 on 2026-11-11 and states no version, so the README's "
+        "`@latest` launch, an unversioned reference and a config that runs a global "
+        "install by its executable name, `mcp-server-dynatrace`, are not reported. "
+        "Releases from 0.5.0 below 2.0.0 also fire "
+        "`AAK-MCP-DYNATRACE-CVE-2026-123810-001`. A file over 2 MB, or a lockfile over "
+        "32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DYNATRACE-CVE-2026-123810-001",
+    "Dynatrace MCP server below 2.1.1: tool arguments reach DQL queries and workflow templates unescaped",
+    "The Dynatrace MCP server (npm `@dynatrace-oss/dynatrace-mcp-server`, "
+    "dynatrace-oss/dynatrace-mcp) builds DQL queries and Dynatrace workflows from its "
+    "tools' arguments. Before 2.1.1 several read tools put caller values into DQL with "
+    "no validation or escaping: `entityNames` in the entity search, `timeframe` in the "
+    "problem, vulnerability, exception and Kubernetes event queries, and `clusterId` and "
+    "`kubernetesEntityId` in the Kubernetes event filter. A value can close the string, "
+    "add pipeline stages or comment out the rest of the query, and so escape the field, "
+    "time-window and result limits of tools marked `readOnlyHint`, which a client may "
+    "run without asking (CVE-2026-123810, CVSS 3.1 4.3, CWE-89, GHSA-pqh8-p93p-2rx7). "
+    "Before 2.0.0 `create_workflow_for_notification` put `teamName`, `problemType` and "
+    "`channel` into a workflow whose Jinja2 expressions Dynatrace evaluates each time it "
+    "runs, tenant-visible unless `isPrivate` was set and kept after the session ends "
+    "(CVE-2026-123809, CVSS 3.1 4.2, CWE-1336, GHSA-xrmj-5g4g-8987). Before 1.8.7 "
+    "`create_dynatrace_notebook` wrote tenant-visible notebooks, which can hold DQL that "
+    "other users run, without the operator approval the other write tools ask for "
+    "(CVE-2026-123812, CVSS 3.1 3.7, CWE-862, GHSA-pc2w-4mq8-32qw). The DQL injection "
+    "reads no data beyond what the configured token's own `execute_dql` can. Checked in the "
+    "published npm packages: 0.1.0, the first release, already puts `clusterId` into a "
+    "DQL string, 2.1.0 still interpolates every value the advisory lists, and 2.1.1 "
+    "validates `timeframe` and escapes the strings; the workflow tool ships from 0.1.0 "
+    "until 2.0.0 removes it; the notebook tool first ships in 1.2.0, and 1.8.7 adds the "
+    "approval prompt.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@dynatrace-oss/dynatrace-mcp-server` to 2.1.1 or later and pin it; 2.1.2 "
+    "is the final release and the repository is archived. Do not let a client run the "
+    "server's tools without asking on the strength of `readOnlyHint`, and delete any "
+    "`[MCP POC] Notify team` workflow an earlier release left in the tenant.",
+    sarif_name="DynatraceMcpDqlAndWorkflowInjection",
+    cve_references=["CVE-2026-123810", "CVE-2026-123809", "CVE-2026-123812"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07", "ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@dynatrace-oss/dynatrace-mcp-server` below 2.1.1 where a package.json, "
+        "lockfile or MCP config states the version, reporting a range that admits an "
+        "affected version. Docker's MCP catalog image `mcp/dynatrace-mcp-server` is not "
+        "read: it publishes only `latest` (a 2.1.0 build on 2026-11-11, whose server "
+        "bundle is byte-identical to npm's 2.1.0), and an untagged or `latest` reference "
+        "does not say which build a project pulled, so it would still be reported after a "
+        "rebuild from a fixed release. Reported at MEDIUM throughout: 2.0.0 to 2.1.0 carry only "
+        "CVE-2026-123810, releases before 1.2.0 have no notebook tool, and the LOW "
+        "notebook gap of 1.2.0 to 1.8.6 is reported at MEDIUM. npm's `latest` was 2.1.2 "
+        "on 2026-11-11 and states no version, so the README's `@latest` launch, an "
+        "unversioned reference and a config that runs a global install by its executable "
+        "name, `mcp-server-dynatrace`, are not reported. It reads the version, not which tools the "
+        "client lets the model call or approves without asking. Releases from 0.5.0 below "
+        "2.0.0 also fire `AAK-MCP-DYNATRACE-CVE-2026-123811-001`. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001",
+    "Code Graph RAG below 0.0.345: the MCP read_file tool's paginated branch reads outside the project root",
+    "Code Graph RAG (PyPI `code-graph-rag`, vitali87/code-graph-rag) indexes a codebase "
+    "into a knowledge graph and serves it over MCP (`code-graph-rag mcp-server`, stdio or "
+    "HTTP) with tools that read and edit the project's files. Before 0.0.345 the "
+    "`read_file` tool's paginated branch, taken when `offset` or `limit` is given, "
+    "joined `file_path` to the project root without resolving it or checking "
+    "containment, so an absolute path or `..` read any UTF-8 file the server can open, "
+    "credentials and keys included, for a client, a prompt-injected agent or any caller "
+    "that reaches the HTTP transport (CVE-2026-77604, CVSS 3.1 7.5, CWE-22, "
+    "GHSA-vvr2-h2jp-838m). Checked in the PyPI wheels: 0.0.79 to 0.0.100 ship no MCP "
+    "server (the `codebase_rag/mcp` package is missing from wheel and sdist), 0.0.148 "
+    "to 0.0.246 open the joined path, and 0.0.345 resolves it and checks that it stays "
+    "inside the root. The GHCR image, which runs `mcp-server` by default, was checked at "
+    "the commit each tag's label names: 0.0.88, 0.0.99 and 0.0.100 were built from "
+    "source and carry the server with the flaw.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `code-graph-rag` (PyPI or the GHCR image) to 0.0.589 or later and pin it: "
+    "0.0.345 fixes this flaw, but 0.0.421 to 0.0.584 carry the structural tools' symlink "
+    "escape. Until then keep the HTTP transport off networks you do not trust.",
+    sarif_name="CodeGraphRagMcpReadFilePathTraversal",
+    cve_references=["CVE-2026-77604"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `code-graph-rag` from 0.0.148 below 0.0.345 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in an MCP config, reporting a range that "
+        "admits an affected version. 0.0.79 to 0.0.100, whose PyPI files hold no MCP "
+        "server, are not reported. It also reads `ghcr.io/vitali87/code-graph-rag` tags "
+        "below 0.0.345 (0.0.88, 0.0.99 and 0.0.100, which were built from source and do "
+        "carry the server) in compose files, Kubernetes manifests, Helm values, Dockerfiles "
+        "and MCP configs; `latest` was the 0.6.30 image on 2026-11-11 and the two-part tag "
+        "`0.0` the 0.0.996 image, so neither is reported. `latest` on PyPI was 0.6.30 on "
+        "2026-11-11 and states no version, so an unversioned reference is not reported, "
+        "and neither is the guide's `code-graph-rag mcp-server`, a global install run by "
+        "name, or `uv run --directory <checkout>`, a source checkout. PyPI's "
+        "`codebase-rag` is another project and is not matched. It reads the version, not "
+        "which transport runs or which tools the client lets the model call. 0.0.421 to "
+        "0.0.584 are reported by `AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001`. A file over "
+        "2 MB, or a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001",
+    "Code Graph RAG 0.0.421 to 0.0.584: MCP structural tools follow symlinks out of the project root",
+    "Code Graph RAG (PyPI `code-graph-rag`, vitali87/code-graph-rag) serves a codebase "
+    "over MCP (`code-graph-rag mcp-server`) with `structural_search` and "
+    "`structural_replace`, ast-grep tools that sweep the project's files. Before 0.0.589 "
+    "their AstGrepService judged each file by its unresolved path, so a symbolic link "
+    "planted in an analyzed repository passed as inside the root, and `structural_search` "
+    "read, and `structural_replace` with `dry_run` off overwrote, the file outside it "
+    "that the link names, with no approval step on the MCP path. Analyzing a repository "
+    "that holds such a link exposes credentials, keys and other files the server can read "
+    "or write (CVE-2026-87008, CVSS 3.1 7.1, CWE-22/CWE-59, GHSA-85gg-2gfq-q95m). Checked "
+    "in the PyPI wheels: AstGrepService first ships in 0.0.421 (0.0.345 has no structural "
+    "tools), 0.0.584 still compares unresolved paths, and 0.0.589 resolves each path "
+    "against the resolved root first. The GHCR image, which runs `mcp-server` by default, "
+    "was checked at the commit each tag's label names: 0.0.496, 0.0.534 and 0.0.584 carry "
+    "the flaw and 0.0.639 does not.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `code-graph-rag` (PyPI or the GHCR image) to 0.0.589 or later and pin it. "
+    "Until then do not point the server at a repository you have not checked for "
+    "symbolic links that leave it, and keep `structural_replace` on its dry run.",
+    sarif_name="CodeGraphRagMcpStructuralToolsSymlinkEscape",
+    cve_references=["CVE-2026-87008"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `code-graph-rag` from 0.0.421 below 0.0.589 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in an MCP config, reporting a range that "
+        "admits an affected version. Releases below 0.0.421 have no structural tools and "
+        "are not reported. The advisory names 0.0.587 as fixed, a version PyPI never "
+        "carried; 0.0.584 is the last release before 0.0.589. It also reads "
+        "`ghcr.io/vitali87/code-graph-rag` tags from 0.0.421 below 0.0.589 in compose "
+        "files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs; `latest` "
+        "was the 0.6.30 image on 2026-11-11 and the two-part tag `0.0` the 0.0.996 image, "
+        "so neither is reported. `latest` on PyPI was 0.6.30 on 2026-11-11 and states no "
+        "version, so an unversioned reference is not reported, and neither is the guide's "
+        "`code-graph-rag mcp-server`, a global install run by name, or `uv run --directory "
+        "<checkout>`, a source checkout. PyPI's `codebase-rag` is another project and is "
+        "not matched. It reads the version, not whether the repositories the server "
+        "analyzes hold symbolic links or which tools the client lets the model call. "
+        "0.0.148 to 0.0.246 are reported by `AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001`. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

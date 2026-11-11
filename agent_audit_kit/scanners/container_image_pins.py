@@ -507,6 +507,29 @@ _PINS: tuple[_ImagePin, ...] = (
         "Fixed in the 0.57.12 image; the advisory names 0.57.13.",
         ("CVE-2026-54140",), introduced=(0, 54, 0),
     ),
+    # CVE-2026-77604 (< 0.0.345) and CVE-2026-87008 (0.0.421 to 0.0.588): the GHCR
+    # image of Code Graph RAG runs `code-graph-rag mcp-server` by default and labels
+    # each tag with its commit. GHCR carries 0.0.88, 0.0.99 and 0.0.100, built from
+    # source with the MCP server the matching PyPI wheels lack, and their
+    # `read_file` joins the path unchecked; then 0.0.496, 0.0.534 and 0.0.584, whose
+    # should_skip_path compares unresolved paths; 0.0.639 resolves first. No tag sits
+    # between 0.0.100 and 0.0.496. `latest` was 0.6.30 and the floating `0.0` was
+    # 0.0.996 on 2026-11-11. One row per CVE, each the image twin of its pin-table
+    # row; the ranges are disjoint, so a tag falls in at most one.
+    _ImagePin(
+        "AAK-MCP-CODEGRAPHRAG-CVE-2026-77604-001", "Code Graph RAG",
+        "ghcr.io/vitali87/code-graph-rag",
+        (0, 0, 345), "below 0.0.345",
+        "Fixed in 0.0.345, but 0.0.421 to 0.0.584 carry CVE-2026-87008: run 0.0.589 or "
+        "later.",
+        ("CVE-2026-77604",),
+    ),
+    _ImagePin(
+        "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001", "Code Graph RAG",
+        "ghcr.io/vitali87/code-graph-rag",
+        (0, 0, 589), "from 0.0.421 below 0.0.589", "Fixed in 0.0.589.",
+        ("CVE-2026-87008",), introduced=(0, 0, 421),
+    ),
 )
 
 _MAX_FILE_BYTES = 2_000_000
