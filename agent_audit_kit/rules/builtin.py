@@ -10553,13 +10553,20 @@ _r(
     "pull-request branch name into a Bash `run:` block, with any `@claude` comment "
     "able to trigger the job, so a fork PR reaches arbitrary execution in the "
     "Actions runner. The 4.6.78 floor is the highest of the three, so a project "
-    "pinned below it is exposed to all of them. Default bind is 127.0.0.1, so "
+    "pinned below it is exposed to all of them. CVE-2026-61438 (CVSS 7.3, "
+    "GHSA-26mh-57q7-jfvr) names the same 4.6.78 as its fix: the job-workflow "
+    "executor's AST sandbox keeps `os` on its import allowlist, so the inline "
+    "`script:` step of a YAML workflow run with `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` "
+    "reaches `os.system` (the limitations say which later releases still ship it). "
+    "Default bind is 127.0.0.1, so "
     "remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `praisonai` to >= 4.6.78 and pin it. Always configure `--api-key` for "
     "the HTTP-stream transport and never bind it to a non-loopback interface "
-    "without authentication.",
+    "without authentication. For CVE-2026-61438 an upgrade is not enough, since "
+    "every later release still ships the job-workflow executor: leave "
+    "`PRAISONAI_ALLOW_JOB_WORKFLOWS` unset unless every workflow file it runs is trusted.",
     sarif_name="PraisonAiMcpNoAuthDefault",
     cve_references=[
         "CVE-2026-61427", "CVE-2026-47394", "CVE-2026-48168",
@@ -10573,6 +10580,11 @@ _r(
         # StdioMCPClient, and the UI binds 0.0.0.0 -- this rule's own shape.
         # Fixed 4.6.59, below the 4.6.78 floor, so again no pin of its own.
         "CVE-2026-57124",
+        # 2026-11-11 (#1144): CVE-2026-61438, the job-workflow executor's AST
+        # sandbox allows `import os`. Its advisory names 4.6.78 as the fix, this
+        # rule's floor, so every release it scopes already fires. No published
+        # release removes the executor, which the limitations say.
+        "CVE-2026-61438",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
@@ -10584,7 +10596,13 @@ _r(
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "a lockfile format the reader does not parse (`pdm.lock`). CVE-2026-61438 is "
+        "read as its advisory scopes it, below 4.6.78, though no release fixed it: "
+        "PyPI has no 4.6.78 (4.6.81 follows 4.6.77) and the v4.6.78 tag still allows "
+        "`os`, 4.6.81 to 4.6.102 ship the same `_exec_inline_python`, and from 4.6.103 "
+        "`praisonai` loads it from its required dependency `praisonai-code`, which this "
+        "rule does not read and whose newest release, 0.1.21, still allows `os`. Those "
+        "releases are not reported for it. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
@@ -10665,7 +10683,7 @@ _r(
 
 _r(
     "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
-    "OpenClaw MCP authorization bypasses (below 2026.7.1)",
+    "OpenClaw MCP authorization and network-policy bypasses (below 2026.7.1)",
     "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an "
     "authorization-bypass in the MCP loopback feature that lets lower-trust "
     "callers execute owner-only tools by routing through configured input paths, "
@@ -10684,6 +10702,10 @@ _r(
     "CWE-862, GHSA-pjjr-5qhr-5w6r). The same sender can persist a stdio MCP command "
     "through `/mcp set` or `/mcp unset` that runs with OpenClaw's privileges when the "
     "configuration loads (CVE-2026-100596, CVSS 8.8, CWE-862, GHSA-wwx7-573h-pqwc). "
+    "Before 2026.6.6 the browser tool's CDP discovery also accepted WebSocket URLs that "
+    "OpenClaw's network policy blocks, so a lower-trust caller or configured input path "
+    "could reach destinations the policy should have blocked (CVE-2026-62197, CVSS 8.5, "
+    "CWE-918, GHSA-3x84-qq85-fj65). "
     "Treat every release below 2026.7.1 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
@@ -10694,6 +10716,10 @@ _r(
     cve_references=[
         "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
         "CVE-2026-100587", "CVE-2026-100596",
+        # 2026-11-11 (#1128): the browser tool's CDP discovery took WebSocket URLs
+        # the network policy blocks. Fixed in 2026.6.6, below this rule's 2026.7.1
+        # floor, so every release it affects already fires; no pin of its own.
+        "CVE-2026-62197",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
@@ -17692,22 +17718,35 @@ _r(
 
 _r(
     "AAK-MCP-TSSDK-CVE-2026-111768-001",
-    "MCP TypeScript SDK: one HTTP request within the size limit can exhaust server memory during validation",
+    "MCP TypeScript SDK: one HTTP request can exhaust server memory (validation work, body size, batch length)",
     "The official MCP TypeScript SDK's HTTP servers put no limit on how many array elements and "
     "object keys they validated in one request, so one request inside the default 4 MiB limit could "
     "exhaust the server's memory, and the process aborted with `JavaScript heap out of memory` "
     "(CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453). No credentials are needed unless requests "
     "are authenticated before they reach the SDK. It affects `@modelcontextprotocol/sdk` 1.3.0 up to "
-    "1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected.",
+    "1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. stdio-only servers are not affected. "
+    "The HTTP transports also put no limit on the size of a POST body or on the number of messages "
+    "in a JSON-RPC batch, so a large body could exhaust memory and one long batch could keep the "
+    "server from answering anyone else (GHSA-f897-62hf-6gxq, CVSS 3.1 7.5, no CVE id): "
+    "`@modelcontextprotocol/sdk` 1.10.0 up to 1.30.1 and `@modelcontextprotocol/server` 2.0.0, inside "
+    "the ranges above, and the `@modelcontextprotocol/node` 2.0.0 and `@modelcontextprotocol/hono` "
+    "2.0.0 adapters, which this rule does not read.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade to `@modelcontextprotocol/sdk` 1.32.0 or `@modelcontextprotocol/server` 2.3.0 or later "
     "and pin it. The advisory says upgrading alone changes nothing, because the patched versions add "
     "an option that is off by default: set `maxToolInputElements` on `McpServer` just above the largest "
     "input your tools need, and lower `maxRequestBodySize` on the transport, or your own body parser's "
-    "limit, to what they need. If you cannot upgrade yet, make the second change.",
+    "limit, to what they need. If you cannot upgrade yet, make the second change. Upgrade "
+    "`@modelcontextprotocol/node` to 2.1.0 and `@modelcontextprotocol/hono` to 2.0.1 or later where you "
+    "use them, since each reads the request body itself.",
     sarif_name="McpTypeScriptSdkValidationMemory",
     cve_references=["CVE-2026-111768"],
+    # 2026-11-11 (#1141): GHSA-f897-62hf-6gxq has no CVE id. Its sdk and server
+    # ranges sit inside this rule's, and the releases this rule names as fixed
+    # (1.32.0, 2.3.0) fix it too, so it joins here rather than as a second pin
+    # on the same packages.
+    incident_references=["GHSA-f897-62hf-6gxq"],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04", "ASI08"],
     adversa_references=["ADV-SUPPLY-08"],
@@ -17717,7 +17756,11 @@ _r(
         "a range that admits an affected version. `latest` is fixed and states no version, so it is not "
         "reported. It reads the version, not the code: a fixed release without `maxToolInputElements` "
         "set, which the advisory says is still exposed, is not reported, and a stdio-only server on an "
-        "affected version is reported without being exposed. A file over 2 MB, or a lockfile "
+        "affected version is reported without being exposed. `@modelcontextprotocol/node` 2.0.0 and "
+        "`@modelcontextprotocol/hono` 2.0.0, which GHSA-f897-62hf-6gxq also names, are not read: "
+        "AAK-KNOWN-VULN-001 reports them from OSV's record after `aak update`, and not before, so a "
+        "project on either adapter with a fixed `@modelcontextprotocol/server` gets no finding from the "
+        "bundled data. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "

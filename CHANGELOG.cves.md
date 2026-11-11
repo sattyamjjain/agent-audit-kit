@@ -675,6 +675,180 @@ in CVSS 4.0, and VulnCheck CVE-2026-114090 7.6.
 
 Dispositioned at 2026-11-11T05:34:00Z.
 
+## 2026-11-11 (unreleased): twelve OSV records, three on existing rules, nine left to the advisory feed
+
+The watcher's OSV source (#1122) filed these twelve on 28 and 29 Oct, for six packages the
+pin tables name: `next` (#1125, #1126, #1134), `better-auth` (#1127, #1135, #1142, #1148),
+`openclaw` (#1128), `litellm` (#1129, #1143), `@modelcontextprotocol/sdk` (#1141) and
+`praisonai` (#1144). Each was deferred unread so a release could ship. Each is read here
+against GitHub's advisory, OSV's record and an OSV query by package and version, NVD's API
+record and the CNA record where there is a CVE, and the published packages, all on
+2026-11-11; NVD and advisory text is quoted from those records. Three are flaws on the
+surface an existing rule reports, inside its range, and join it. Nine are flaws in a web
+framework, an auth library's sign-in flows or an LLM proxy's web routes, off the MCP surface
+the pins on their package report, so they get no pin and `AAK-KNOWN-VULN-001` reports them
+from OSV's records after `aak update`. None is bundled, so without `aak update` none of the
+nine is reported. Measured twice: `aak update --nvd-days 0` into an empty HOME on 2026-11-11
+wrote a feed of 39,428 entries (14.7 MB, under the size at which MEDIUM records are dropped)
+holding all twelve, and lockfiles scanned against it fired on each record's affected releases
+and not on its fixed ones; the tests rebuild that feed from the twelve records, saved unedited
+under tests/fixtures/osv.
+
+### GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr and CVE-2026-94482 (#1125, #1126, #1134): advisory feed 2026-11-11
+
+**Next.js gets no pin; `AAK-KNOWN-VULN-001` reports all three after `aak update`.**
+GHSA-2464-fhr4-w9xw: "A memory-related vulnerability has been discovered in an upstream
+library used for Image Optimization can lead to possible remote code execution (RCE) when
+Next.js runs on glibc-based Linux", `next` 10.0.0 up to 15.5.28 and 16.0.0 up to 16.4.1. The
+library is `sharp`: 15.5.28 and 16.4.1 ask for `^0.35.5` where 15.5.27 and 16.4.0 took
+`^0.35.4`, and OSV lists `sharp` below 0.35.5 itself (GHSA-wq5f-xc86-pv6w, CVE-2026-114111),
+which `AAK-KNOWN-VULN-001` reports on the `sharp` entry of a lockfile that resolves `next`
+16.4.1 beside `sharp` 0.35.4. GHSA-673q-mjm6-r5xr: "A vulnerability in applications using App
+router with Cache Component can lead to remote code execution", 16.0.0 up to 16.4.1. NVD,
+CVE-2026-94482: "From 13.0.0 until 15.5.28 and 16.4.1, crafted requests targeting App Router
+applications with at least one Server Action can cause excessive CPU consumption and block
+processing of further requests in the same process." The `next` pin,
+`AAK-MCP-NEXTJS-CVE-2026-94486-001` (LOW), reports the `next dev` server's MCP endpoint, and
+none of the three is on it. GitHub scores all three in CVSS 4.0 only, which the feed does not
+score, so the findings take GitHub's labels: CRITICAL, CRITICAL and HIGH. Measured: `next`
+12.3.4 fires GHSA-2464 alone, 13.0.0 and 15.5.27 fire it and CVE-2026-94482, 16.0.0 and 16.4.0
+fire all three, and 9.5.5, 15.5.28 and 16.4.1 fire none. The ranges are the advisories'; they
+were not read in the source.
+
+### CVE-2026-110862, CVE-2026-109346, CVE-2026-110864 and CVE-2026-110861 (#1127, #1135, #1142, #1148): advisory feed 2026-11-11
+
+**Better Auth gets no pin; `AAK-KNOWN-VULN-001` reports all four after `aak update`.** NVD:
+"Better Auth from 1.4.0-beta.18 before 1.7.7 contains an authentication bypass vulnerability
+that allows unauthenticated attackers to sign in as other users by reusing OAuth state values
+as Magic Link tokens" (CVE-2026-110862); "better-auth from 1.3.8-beta.3 before 1.7.0-rc.3
+contains a UI misrepresentation vulnerability in the deviceAuthorization plugin because GET
+/device omits the requesting client_id and scope" (CVE-2026-109346); "Better Auth from
+1.5.0-beta.12 before 1.7.7 contains an authentication bypass vulnerability in the OAuth Proxy
+plugin that allows unauthenticated attackers to sign in as other users by forging encrypted
+profiles" (CVE-2026-110864); and, in `better-auth` and `@better-auth/drizzle-adapter` from
+1.6.17 before 1.7.7 and `@better-auth/kysely-adapter` from 1.6.17 before 1.7.0, "a race
+condition in database-backed rate limiting on PostgreSQL where the limit check is not atomic
+with the counter update" (CVE-2026-110861). The `better-auth` pin,
+`AAK-MCP-BETTERAUTH-CVE-2026-53512-001` (HIGH, below 1.6.13), reports the OAuth provider that
+the `mcp` and `oidcProvider` plugins and `@better-auth/oauth-provider` run for an MCP server.
+These four are in Magic Link, the device-authorization plugin, the OAuth Proxy plugin and the
+rate limiter, and a floor raise would report 1.6.13 onwards under the provider's flaws.
+Checked in the npm tarballs: the fix of the first and third, better-auth#11494 (ac54bfd6,
+which derives a key per purpose under `better-auth:oauth-encryption:v1` and prefixes the
+verification identifiers), is in 1.7.7 and absent from 1.7.6 and from 1.6.34, the newest
+release on the `release-1.6` tag, so the 1.6 line is affected through its newest release.
+CVE-2026-110862 is VulnCheck's record of GHSA-965c-763c-88jm, and CVE-2026-114607 is GitHub's
+record of the same advisory, published on 22 Oct; neither is rejected, OSV lists both as
+aliases, and the finding names both. CVE-2026-110861 is LOW at CVSS 3.7, and the feed's lowest
+level is MEDIUM, so it is reported MEDIUM. Measured: 1.6.34 fires all four, 1.6.16 the first
+three, 1.4.0-beta.17 CVE-2026-109346 alone, 1.7.0-rc.3 and 1.7.6 all but that one, and
+1.3.8-beta.2 and 1.7.7 none; `@better-auth/drizzle-adapter` 1.7.6 and
+`@better-auth/kysely-adapter` 1.6.31 fire CVE-2026-110861, and 1.7.7 and 1.7.0 do not. The
+device-authorization and rate-limit ranges are the advisories'; they were not read in the
+source.
+
+### GHSA-g5ff-637f-6q2m and GHSA-hhww-mrg2-969h (#1129, #1143): advisory feed 2026-11-11
+
+**LiteLLM gets no pin; `AAK-KNOWN-VULN-001` reports both after `aak update`.** Neither has a
+CVE id or an NVD record. GHSA-g5ff-637f-6q2m: "An authenticated LiteLLM proxy user could read
+arbitrary local files from the proxy runtime by sending a crafted `vertex_ai_credentials` value
+to `/utils/transform_request`", every release below 1.95.0. GHSA-hhww-mrg2-969h: the
+`/sso/debug/callback` endpoint "reflected identity-provider-controlled fields into an inline"
+script block, 1.65.5 up to 1.85.0. The `litellm` pins report the MCP Streamable-HTTP auth
+bypass and the skills-archive traversal below 1.84.0 (`AAK-MCP-LITELLM-CVE-2026-59822-001`),
+the session-token forgery of CVE-2026-114612, and the stdio command injection below 1.83.7.
+Neither record names an MCP path, and both fixes sit above the 1.84.0 floor, so a raise would
+report 1.84.x under the MCP flaws. CVE-2026-114612, a proxy flaw too, got its own pin on 23 Oct,
+before the advisory feed existed; since 0.6.29 a flaw off a package's MCP surface is the
+feed's, as n8n's CVE-2026-119408 was on 7 Nov. Measured: 1.65.4 fires GHSA-g5ff alone, 1.65.5
+and 1.84.0 fire both, 1.85.0 and 1.94.0 GHSA-g5ff alone, and 1.95.0 neither. The ranges are the
+advisories'; they were not read in the source.
+
+### CVE-2026-62197 (#1128): on the OpenClaw rule 2026-11-11
+
+**OpenClaw's CDP discovery record joins `AAK-MCP-OPENCLAW-CVE-2026-62195-001`, with no floor
+change.** NVD: "OpenClaw before 2026.6.6 contains a policy bypass vulnerability in browser CDP
+discovery that accepts blocked WebSocket URLs. Attackers with lower-trust access can reach
+network destinations that should have been blocked by OpenClaw policy when the affected
+feature is enabled." GHSA-3x84-qq85-fj65 names npm `openclaw` below 2026.6.6. NVD published
+the record on 13 Jul; the watcher filed it on 28 Oct, after the advisory reached GitHub's
+global database on 21 Oct. Checked in the npm tarballs: the fix, openclaw#91747 (ade5ac03,
+"validate discovered CDP websocket URLs"), checks the WebSocket URL a browser's discovery
+endpoint returns against the network policy before the tool connects to it, when it ends a
+running script and when it lists tabs; it is in 2026.6.6 and not in 2026.6.5. The browser tool
+is the agent's, and the flaw has the rule's shape: a lower-trust caller crosses OpenClaw's own
+policy. VulnCheck scores it 8.5 in CVSS 3.1 (6.3 in CVSS 4.0), HIGH like the rule, and 2026.6.6
+sits below the rule's 2026.7.1 floor, so every release it affects already fires and only the
+rule's `cve_references`, title, description and fix label change. Measured: 2026.6.5 fires,
+2026.6.6 still fires for the rule's other records, and 2026.7.1 does not. After `aak update`
+the feed's finding for GHSA-3x84 is dropped on the line where the rule reports CVE-2026-62197.
+
+### CVE-2026-61438 (#1144): on the PraisonAI rule, and deferred for the releases after its floor
+
+**PraisonAI's job-workflow record joins `AAK-MCP-PRAISONAI-CVE-2026-61427-001` for the range
+its advisory gives; no published release fixes it.** NVD: "PraisonAI before 4.6.78 contains a
+remote code execution vulnerability in JobWorkflowExecutor._exec_inline_python() due to
+insufficient AST validation of workflow script steps." The executor runs the inline `script:`
+steps of a YAML workflow when `PRAISONAI_ALLOW_JOB_WORKFLOWS=true`, and its import allowlist
+holds `os`. GHSA-26mh-57q7-jfvr names PyPI `praisonai` below 4.6.78, the rule's floor, at CVSS
+7.3, HIGH like the rule, so every release it scopes already fires. CVE-2026-62248, GitHub's
+record of the same advisory, is rejected as its duplicate. The fix the advisory names is in no
+published release. Checked on PyPI and at the tags: PyPI has no 4.6.78, since 4.6.81 follows
+4.6.77; the v4.6.78 tag's `job_workflow.py` still lists `os`; `_exec_inline_python` is the
+same in the 4.6.77, 4.6.81 and 4.6.102 wheels; and from 4.6.103 the CLI features live in
+`praisonai-code`, which `praisonai` requires (4.7.24 asks for `>=0.1.21`) and loads as
+`praisonai.cli.features`, and whose 0.0.1 and 0.1.21, the newest, carry the same function. So
+releases from 4.6.81 are not reported for this CVE, by the rule or by the feed, which reads the
+same range; the rule's limitations and remediation say so, and a fixture holds 4.6.81 as
+unreported. #1144 stays open with a dated deferral for a ruling on reporting those releases.
+Not run: the advisory's proof, which checks the AST and does not execute the step.
+
+### GHSA-f897-62hf-6gxq (#1141): on the MCP TypeScript SDK rule 2026-11-11
+
+**The SDK's body-size and batch-length record joins `AAK-MCP-TSSDK-CVE-2026-111768-001`.** It
+has no CVE id and no NVD record. GHSA-f897-62hf-6gxq: "In affected versions, MCP servers
+reachable over HTTP put no limit on the size of a POST body or on the number of messages in a
+JSON-RPC batch. Large requests could exhaust the server's memory, and one long batch could
+block it from serving anyone else." It names `@modelcontextprotocol/sdk` 1.10.0 up to 1.30.1,
+`@modelcontextprotocol/server` and `@modelcontextprotocol/node` 2.0.0 up to 2.1.0, and
+`@modelcontextprotocol/hono` 2.0.0 up to 2.0.1. Checked in the npm tarballs: 1.9.0 has no
+Streamable HTTP server transport and 1.10.0 adds it; 1.30.1 adds a 4 MiB default body limit
+and a 100-message batch limit (`DEFAULT_MAX_REQUEST_BODY_SIZE`, `MAX_BATCH_SIZE`), which
+1.30.0 lacks; `@modelcontextprotocol/server` 2.1.0 has both and 2.0.0 neither; and
+`@modelcontextprotocol/node` 2.1.0 and `@modelcontextprotocol/hono` 2.0.1 take
+`maxRequestBodySize`, which their 2.0.0 lacks. The rule reports the same class, one request
+that exhausts an HTTP server's memory, at the same CVSS 3.1 7.5, on `@modelcontextprotocol/sdk`
+1.3.0 up to 1.32.0 and `@modelcontextprotocol/server` 2.0.0 up to 2.3.0. The record's ranges
+for those two sit inside the rule's, so it joins, as an incident reference since
+`cve_references` holds CVE ids, and a second rule would report each of those declarations
+twice. Its title, description, remediation and limitations name it. The two adapters
+peer-depend on `@modelcontextprotocol/server` `^2.0.0`, so they can run beside a fixed one,
+and the rule does not read them: `AAK-KNOWN-VULN-001` reports `@modelcontextprotocol/node`
+2.0.0 and `@modelcontextprotocol/hono` 2.0.0 after `aak update`, measured on a lockfile beside
+`@modelcontextprotocol/server` 2.3.1, and 2.1.0 and 2.0.1 do not fire. With no CVE id the
+feed's finding does not stand down for the rule, so after `aak update` the SDK from 1.10.0 to
+1.30.0 gets both findings.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| GHSA-2464-fhr4-w9xw | 9.5 (4.0) | `next` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports 10.0.0 up to 15.5.28 and 16.0.0 up to 16.4.1, CRITICAL. No pin. | #1125 |
+| GHSA-673q-mjm6-r5xr | 9.5 (4.0) | `next` (npm) | **Advisory feed, after `aak update`**: 16.0.0 up to 16.4.1, CRITICAL. No pin. | #1126 |
+| CVE-2026-110862 | 9.1 | `better-auth` (npm) | **Advisory feed, after `aak update`**: 1.4.0-beta.18 up to 1.7.7, CRITICAL, with its twin CVE-2026-114607. No pin. | #1127 |
+| CVE-2026-62197 | 8.5 | `openclaw` (npm) | **Joins** `AAK-MCP-OPENCLAW-CVE-2026-62195-001` (HIGH), no floor change: below 2026.6.6, under the rule's 2026.7.1 floor. | #1128 |
+| GHSA-g5ff-637f-6q2m | 8.1 | `litellm` (PyPI) | **Advisory feed, after `aak update`**: below 1.95.0, HIGH. No pin. | #1129 |
+| CVE-2026-94482 | 8.2 (4.0) | `next` (npm) | **Advisory feed, after `aak update`**: 13.0.0 up to 15.5.28 and 16.0.0 up to 16.4.1, HIGH. No pin. | #1134 |
+| CVE-2026-109346 | 8.1 | `better-auth` (npm) | **Advisory feed, after `aak update`**: 1.3.8-beta.3 up to 1.7.0-rc.3, HIGH. No pin. | #1135 |
+| GHSA-f897-62hf-6gxq | 7.5 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/server` (npm) | **Joins** `AAK-MCP-TSSDK-CVE-2026-111768-001` (HIGH): sdk 1.10.0 up to 1.30.1 and server 2.0.0, inside the rule's range. `@modelcontextprotocol/node` and `@modelcontextprotocol/hono` 2.0.0: advisory feed, after `aak update`. | #1141 |
+| CVE-2026-110864 | 7.4 | `better-auth` (npm) | **Advisory feed, after `aak update`**: 1.5.0-beta.12 up to 1.7.7, HIGH. No pin. | #1142 |
+| GHSA-hhww-mrg2-969h | 6.8 | `litellm` (PyPI) | **Advisory feed, after `aak update`**: 1.65.5 up to 1.85.0, MEDIUM. No pin. | #1143 |
+| CVE-2026-61438 | 7.3 | `praisonai` (PyPI) | **Joins** `AAK-MCP-PRAISONAI-CVE-2026-61427-001` (HIGH), no floor change: below 4.6.78, as the advisory scopes it. Releases from 4.6.81 still ship the executor and are not reported. | #1144 |
+| CVE-2026-110861 | 3.7 | `better-auth`, `@better-auth/drizzle-adapter`, `@better-auth/kysely-adapter` (npm) | **Advisory feed, after `aak update`**: 1.6.17 up to 1.7.7 (the kysely adapter up to 1.7.0), MEDIUM. No pin. | #1148 |
+
+A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is each record's CVSS
+3.1 score, the CNA's or GitHub's: VulnCheck's for the four Better Auth CVEs, OpenClaw and
+PraisonAI, and GitHub's for LiteLLM and the MCP SDK. GitHub scores the three Next.js advisories
+in CVSS 4.0 only.
+
 ## 2026-11-07 (v0.6.34): mcp-go's and SurrealDB's NVD records, and Go and crates.io in the advisory feed
 
 NVD published VulnCheck's records of CVE-2026-121419 on 3 Nov 2026, which the watcher filed as

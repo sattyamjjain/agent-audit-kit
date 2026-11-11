@@ -20,12 +20,16 @@ available) before shipping:
   - mcp-server-kubernetes          >= 3.9.0   (CVE-2026-61459)
   - astrbot                        >  4.25.2  (CVE-2026-15501; NVD "up to 4.25.2")
   - awslabs.healthlake-mcp-server  >= 0.0.14  (CVE-2026-15643)
-  - praisonai                      >= 4.6.78  (CVE-2026-61427)
+  - praisonai                      >= 4.6.78  (CVE-2026-61427; CVE-2026-61438 names the
+    same floor, which no published release reaches: PyPI has no 4.6.78, and every
+    later release still ships its job-workflow executor, from 4.6.103 through the
+    required `praisonai-code`. The rule's limitations say so)
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
   - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
     CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound;
-    CVE-2026-100587 and CVE-2026-100596 sit at the same floor)
+    CVE-2026-100587 and CVE-2026-100596 sit at the same floor, and CVE-2026-62197,
+    the browser tool's CDP discovery, under it at 2026.6.6)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
   - mcp (MCP Python SDK)            >= 1.29.1, and 2.0.x below 2.1.0  (CVE-2026-52869,
@@ -522,7 +526,7 @@ _PINS: tuple[_Pin, ...] = (
     # with OpenClaw; unscoped, `openclaw==2.0.2` read as an OpenClaw below the floor.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
          fix_label="2026.7.1 (CVE-2026-100585, CVE-2026-100587, CVE-2026-100596; "
-                   "CVE-2026-62195 alone was fixed in 2026.6.6)",
+                   "CVE-2026-62195 and CVE-2026-62197 alone were fixed in 2026.6.6)",
          ecosystem="js"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
@@ -1639,7 +1643,10 @@ _PINS: tuple[_Pin, ...] = (
     # could exhaust server memory (CVE-2026-111768, CVSS 3.1 7.5, GHSA-46jr-4wx8-v453).
     # Its range starts at 1.3.0 and reaches the 2.x server package, and 1.31.0 is
     # affected by the two pins above as well, so it is its own rule. `latest` is fixed,
-    # so a stated version is required.
+    # so a stated version is required. GHSA-f897-62hf-6gxq (no CVE id: no limit on a
+    # POST body's size or a JSON-RPC batch's length, sdk 1.10.0 up to 1.30.1, server
+    # 2.0.0) sits inside both rows and joined the rule on 2026-11-11; the node and
+    # hono adapters it also names are left to AAK-KNOWN-VULN-001.
     _Pin("AAK-MCP-TSSDK-CVE-2026-111768-001", "@modelcontextprotocol/sdk",
          ("@modelcontextprotocol/sdk",), (1, 32, 0), introduced=(1, 3, 0),
          fix_label="1.32.0 (affected from 1.3.0), and set maxToolInputElements",
