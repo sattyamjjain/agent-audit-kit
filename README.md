@@ -127,7 +127,7 @@ report ([how to cite](https://sattyamjjain.github.io/agent-audit-kit/docs/resear
 These regenerate from `results.json` and are asserted in CI, so they cannot
 drift from the report.
 
-Coverage: [Identity Briefing interviewed Sattyam](https://identity-briefing.beehiiv.com/p/ai-agent-security-mcp-permissions-testing) about the <!-- report:corpus -->2,303<!-- /report -->-config census and the live authentication probe (Danny Perry, November 2026).
+Coverage: Identity Briefing interviewed Sattyam about the <!-- report:corpus -->2,303<!-- /report -->-config census and the live authentication probe (Danny Perry, November 2026). Read it on [identitybriefing.com](https://www.identitybriefing.com/p/ai-agent-security-mcp-permissions-testing) or [beehiiv](https://identity-briefing.beehiiv.com/p/ai-agent-security-mcp-permissions-testing).
 
 ## Compliance evidence
 
