@@ -26,7 +26,7 @@ jobs:
       # Option 1: Use the GitHub Action (recommended)
       - name: Run AgentAuditKit
         id: scan
-        uses: sattyamjjain/agent-audit-kit@v0.6.34
+        uses: sattyamjjain/agent-audit-kit@v0.6.35
         with:
           fail-on: high          # Fail the build on high+ severity findings
           format: sarif          # Write SARIF (the sarif-file output)
