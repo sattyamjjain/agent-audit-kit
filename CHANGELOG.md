@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001` also names CVE-2026-123024 (#1232): the AgentScope 2.x service takes the caller's `X-User-ID` header as its only identity on every route, so anyone who reaches it acts as any user. Both records cover every 2.x release and neither has a fix, so the rule stays presence-only from 2.0.0; its title names both flaws, and its remediation adds that an authenticating proxy must drop the `X-User-ID` a client sends. After `aak update`, AAK-KNOWN-VULN-001 no longer repeats the record beside the rule.
+- New rule AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001 (HIGH): Amazon's mcp-gateway-registry images, `public.ecr.aws/p3v1o3c6/registry` and Docker Hub's `mcpgateway/registry`, from 1.0.9 below 1.25.0 (CVE-2026-100307). `POST /api/servers/groups/import` checked no role, so any signed-in user could map their own group to the registry admin scope. Docker Hub's image stopped at 1.24.4 and its `latest` is that build, so an untagged Docker Hub reference is reported too; the fix is published only on ECR Public.
+- New rule AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001 (HIGH): the same images from 1.0.3 below 1.35.0 (CVE-2026-125926). A user allowed to register or modify a server could point its upstream address at internal services or the cloud metadata endpoint. The 1.35.0 floor is the advisory's: the source shows no change to the registration and update address check between 1.34.0 and 1.35.0, and the rule says so.
 
 ### Fixed
 

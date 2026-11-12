@@ -109,6 +109,74 @@ commit ranges.
 CVSS is each record's CVSS 3.1 score from VulDB. Both records also carry a CVSS 4.0 score,
 which VulDB rates MEDIUM.
 
+## 2026-11-12 (unreleased): two held Amazon mcp-gateway-registry records, two new image rules
+
+The watcher holds CVE-2026-100307 and CVE-2026-125926, both published by Amazon's CNA on 11 Nov,
+behind its back-pressure cap, so neither has an issue. Both are read here against NVD's API record,
+the CVE record, the repository's advisories, OSV, the published images and the source at each git
+tag, all on 2026-11-12, and NVD text is quoted from the API records. The project already has a HIGH
+SQL injection pin with a 1.0.13 floor. Both new fixes sit above that floor and neither is SQL
+injection, so each record gets a rule of its own, and the two are different flaws with different
+fixes, so neither joins the other. The project is on neither registry: npm's and PyPI's
+`mcp-gateway-registry` do not exist, and its pyproject names `mcp-registry` 0.1.0, which on PyPI is
+another project. Its registry service, which serves the management API and runs the nginx that
+proxies MCP traffic, ships as the image `public.ecr.aws/p3v1o3c6/registry`, tagged 1.0.13 to 1.37.0,
+and before that as Docker Hub's `mcpgateway/registry`, tagged v1.0.0 to 1.24.4. The project's
+compose file pulled Docker Hub's image through 1.25.0 and ECR Public's from 1.26.0. Docker Hub's has
+not been pushed since 2026-06-04, so it has no fixed tag for either record and its `latest` is the
+1.24.4 build. Each image's label names its commit, and for the tags read here that is the git tag's;
+Docker Hub's 1.24.4 was built three commits before its tag, with the same handler. Both rules read
+the two images by tag, each measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_gateway.py). Neither record is in OSV (queried by id and by
+commit) or in the bundled advisory feed, and NVD's CNA data names the product with no packageURL,
+so `nvd_feed` keeps neither: only these rules report them.
+
+### CVE-2026-100307 (not filed): new image pin 2026-11-12
+
+**Group import gets `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001`: the registry image from 1.0.9
+below 1.25.0, HIGH.** NVD: "Missing authorization in the external management API in Amazon
+mcp-gateway-registry 1.0.9 through 1.24.7 might allow an authenticated remote user to assign the
+registry administrator scope to their own identity group and obtain administrative control of every
+registered gateway asset via a crafted group import request." GHSA-rxf3-qgpv-wxvr names the route,
+`POST /api/servers/groups/import`, which authenticated the caller and checked no role. Read in the
+source at the tags: v1.0.8 has no import route; v1.0.9, v1.0.9-patch1, v1.0.22-p1, 1.23.0 and
+1.24.7 run `import_group_definition` with no admin check; 1.25.0 calls `_require_admin` first
+(mcp-gateway-registry#1333, which its release notes list as authorization enforced on the external
+API's management endpoints). The sibling group routes already exist in v1.0.8 and the advisory says
+they had the same gap, but the record's range starts with the import route, and so does the rule.
+Upgrading does not undo a grant made before it, so the remediation names the review of the
+`mcp_scopes` collection the advisory asks for, and the rule says it reads the tag, not the store.
+
+### CVE-2026-125926 (not filed): new image pin 2026-11-12
+
+**Server addresses get `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001`: the registry image from
+1.0.3 below 1.35.0, HIGH.** NVD: "Server-side request forgery (SSRF) in the server registration and
+update API in Amazon mcp-gateway-registry before 1.35.0 might allow an authenticated remote user to
+send requests from the gateway to internal network services and cloud instance metadata endpoints
+and read the responses via a crafted request." The CVE record gives v1.0.3 through 1.34.0, and so
+does GHSA-fc39-fwh3-wv5r, the repository's advisory for it, which the record does not cite. Read in
+the source at the tags: v1.0.3 to 1.25.0 store a registered server's address with no check, and
+1.26.0 adds `validate_proxy_pass_url` on registration and update, which refuses a literal private
+or metadata address but resolves no host name; that code is the same in 1.34.0 and 1.35.0. The
+advisory names no fix commit, and nothing between 1.34.0 and 1.35.0 changes how registration or
+update checks an address. The change on a path that sends requests to a registered server's
+address is mcp-gateway-registry#1795: a virtual server stops routing to a backend that is disabled
+or not healthy, as the direct route already did, so a backend the health check's address guard
+refused is no longer reachable through a virtual server. The advisory does not say that is its
+fix, so the 1.35.0 floor is the advisory's, and the rule says so. Docker Hub's v1.0.0 to v1.0.2
+builds predate the record's first release and are not reported, although their registration route
+checks no address either; every other version tag there is reported, `latest` included. Tags from
+1.0.9 below 1.25.0 get both rules.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-100307 | 8.8 | `public.ecr.aws/p3v1o3c6/registry` (ECR Public), `mcpgateway/registry` (Docker Hub) | **New image pin** `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001` (HIGH): tags from 1.0.9 below 1.25.0, and Docker Hub's `latest`, the 1.24.4 build. | not filed |
+| CVE-2026-125926 | 8.5 | `public.ecr.aws/p3v1o3c6/registry` (ECR Public), `mcpgateway/registry` (Docker Hub) | **New image pin** `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001` (HIGH): tags from 1.0.3 below 1.35.0, and Docker Hub's `latest`; the floor is the advisory's. | not filed |
+
+CVSS is each record's CVSS 3.1 score, Amazon's; its CVSS 4.0 scores are 8.7 and 6.3.
+
+Dispositioned at 2026-11-12T04:30:00Z.
+
 ## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769

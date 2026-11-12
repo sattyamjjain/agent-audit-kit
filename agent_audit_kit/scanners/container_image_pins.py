@@ -16,7 +16,11 @@ Kortix's API server ships as the Docker Hub image `kortix/kortix-api`, tagged by
 release; npm's `suna` is an unrelated 2025 placeholder, and the desktop app and
 the `kortix` CLI are binaries. Unla is a Go MCP gateway published as
 `ghcr.io/amoylab/unla/allinone` and `.../mcp-gateway`, with an Aliyun mirror its
-Chinese README names. Trinity's backend ships as `ghcr.io/abilityai/trinity-backend`;
+Chinese README names. Amazon's MCP Gateway & Registry is on neither registry
+(npm's and PyPI's `mcp-gateway-registry` do not exist, and its own pyproject names
+`mcp-registry` 0.1.0, which on PyPI is another project); its registry service ships
+as `public.ecr.aws/p3v1o3c6/registry` and, up to 1.24.4, as Docker Hub's
+`mcpgateway/registry`. Trinity's backend ships as `ghcr.io/abilityai/trinity-backend`;
 PyPI's `trinity-cli` is its command-line client on its own 0.2.x line, and PyPI's
 `trinity` is an unrelated Ethereum client. Nginx UI is a Go binary on neither
 registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. EdgeEver is
@@ -437,6 +441,53 @@ _PINS: tuple[_ImagePin, ...] = (
         "ghcr.io/ibm/mcp-context-forge",
         (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.", ("CVE-2026-18484",),
         introduced=(0, 7, 0),
+    ),
+    # Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) runs
+    # its registry API, and the nginx that proxies MCP traffic, in the `registry`
+    # image. Its compose file pulled `mcpgateway/registry` from Docker Hub through
+    # 1.25.0 and `public.ecr.aws/p3v1o3c6/registry` from 1.26.0. The labels name each
+    # image's commit, the git tag's for ECR Public's 1.0.13, 1.24.7, 1.25.0, 1.34.0
+    # and 1.35.0. Docker Hub's tags run v1.0.0 to 1.24.4 and stopped on 2026-06-04,
+    # so it has no fixed tag for either flaw and its `latest` is the 1.24.4 build
+    # (9fd96af3, three commits short of the tag, with the same import handler).
+    # ECR Public's run 1.0.13 to 1.37.0, and its `latest` and `1` were the 1.37.0
+    # digest on 2026-11-12; Docker Hub's `1` and `1.0` are v1.0.12's.
+    #
+    # CVE-2026-100307: `POST /api/servers/groups/import` arrived in v1.0.9 (absent in
+    # v1.0.8) with no admin check, and 1.25.0 calls `_require_admin` first (#1333).
+    _ImagePin(
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001", "Amazon mcp-gateway-registry",
+        "public.ecr.aws/p3v1o3c6/registry",
+        (1, 25, 0), "from 1.0.9 below 1.25.0", "Fixed in 1.25.0.",
+        ("CVE-2026-100307",), introduced=(1, 0, 9),
+    ),
+    _ImagePin(
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001", "Amazon mcp-gateway-registry",
+        "mcpgateway/registry",
+        (1, 25, 0), "from 1.0.9 below 1.25.0",
+        "Fixed in 1.25.0, published only as public.ecr.aws/p3v1o3c6/registry.",
+        ("CVE-2026-100307",), floating_affected=True, introduced=(1, 0, 9),
+    ),
+    # CVE-2026-125926: no release up to 1.25.0 checks a registered server's address;
+    # 1.26.0 refuses a literal private or metadata address at registration and update
+    # but resolves no host name (`validate_proxy_pass_url`, `resolve=False`), the same
+    # through 1.35.0. The 1.35.0 change on this path is #1795: a virtual server stops
+    # routing to a backend that is disabled or not healthy, so one the health check's
+    # address guard refused is no longer reachable through it. The advisory names no
+    # fix, so its 1.35.0 is the floor. It starts the range at v1.0.3, the first git
+    # tag; Docker Hub's v1.0.0 to v1.0.2 builds predate it and are not claimed.
+    _ImagePin(
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001", "Amazon mcp-gateway-registry",
+        "public.ecr.aws/p3v1o3c6/registry",
+        (1, 35, 0), "from 1.0.3 below 1.35.0", "Fixed in 1.35.0.",
+        ("CVE-2026-125926",), introduced=(1, 0, 3),
+    ),
+    _ImagePin(
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001", "Amazon mcp-gateway-registry",
+        "mcpgateway/registry",
+        (1, 35, 0), "from 1.0.3 below 1.35.0",
+        "Fixed in 1.35.0, published only as public.ecr.aws/p3v1o3c6/registry.",
+        ("CVE-2026-125926",), floating_affected=True, introduced=(1, 0, 3),
     ),
     # CVE-2026-75128: Langchain-Chatchat's API runs any registered tool, the
     # always-registered `shell` tool included, for an unauthenticated caller on

@@ -263,6 +263,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-MCP-SERENA-CVE-2026-49471-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-LITELLM-CVE-2026-59822-001": ["IAM-01", "STA-08"],
@@ -10087,6 +10089,126 @@ _r(
         "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file "
         "over 2 MB is not read. A lockfile over 32 MiB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001",
+    "Amazon mcp-gateway-registry image 1.0.9 to 1.24.7: any signed-in user can map their "
+    "group to the registry admin scope",
+    "Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) decides which "
+    "identities reach which registered MCP servers and agents. Its registry service ships as "
+    "the image `public.ecr.aws/p3v1o3c6/registry` and, up to 1.24.4, as Docker Hub's "
+    "`mcpgateway/registry`. From 1.0.9 the external management API's "
+    "`POST /api/servers/groups/import` authenticated the caller but checked no role, so any "
+    "signed-in user could import a group definition that maps their own identity-provider "
+    "group to the `mcp-registry-admin` scope, be treated as an administrator from the next "
+    "request, and then register, change or remove every server and agent and read the "
+    "backend credentials the registry stores (CVE-2026-100307, CVSS 3.1 8.8, CWE-862, "
+    "GHSA-rxf3-qgpv-wxvr). The sibling group routes and several server-mutation routes had "
+    "the same gap. Checked in the source at the git tag each image's label names: v1.0.8 has "
+    "no import route; v1.0.9, v1.0.22-p1 and 1.24.7 run `import_group_definition` with no "
+    "admin check; 1.25.0 calls `_require_admin` first (mcp-gateway-registry#1333).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `public.ecr.aws/p3v1o3c6/registry` 1.25.0 or later, pinned by version. Docker "
+    "Hub's `mcpgateway/registry` has no fixed tag, so move to the ECR Public image. "
+    "Upgrading does not undo a grant made before it: review the `mcp_scopes` collection's "
+    "`group_mappings` for mappings to `mcp-registry-admin` or another privileged scope, and "
+    "its `ui_permissions` for mutating actions granted to `all`, remove any an administrator "
+    "did not create, and rotate the credentials the registry stores where unintended access "
+    "cannot be ruled out.",
+    sarif_name="McpGatewayRegistryGroupImportAdminEscalation",
+    cve_references=["CVE-2026-100307"],
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`public.ecr.aws/p3v1o3c6/registry:TAG` or `mcpgateway/registry:TAG` in YAML "
+        "(compose files, Kubernetes manifests, MCP configs), a Helm values mapping whose "
+        "`repository` names the whole image beside a `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. The project's `auth-server` and `mcpgw` images are "
+        "not read: the management API is the registry service's. Tags from 1.0.9 below "
+        "1.25.0 are reported, "
+        "`v1.0.9-patch1`, `v1.0.22-p1` and the two-part `1.0`, `1.23` and `1.24` among "
+        "them; tags below 1.0.9 predate the import route and are not. Docker Hub's `latest` "
+        "is the 1.24.4 build, so an untagged `mcpgateway/registry` is reported; ECR Public's "
+        "`latest` was the 1.37.0 digest on 2026-11-12, so an untagged ECR Public reference "
+        "is not. The one-part tag `1` states no version and is not reported, although "
+        "Docker Hub's is the v1.0.12 build. The project's own charts split the image into "
+        "`registry: public.ecr.aws/p3v1o3c6` and `repository: registry`, and set the tag in "
+        "`global.image.tag`, and its compose file interpolates both "
+        "(`${ECR_REGISTRY:-...}/registry:${REGISTRY_VERSION:-latest}`), so neither is read, "
+        "and neither are Terraform variables. A reference to the GitHub repository, which "
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 reads, is not read by this rule. The "
+        "rule reads the tag, not the scope store, so it cannot tell whether a grant made "
+        "before an upgrade is still in place. `docker.io/mcpgateway/registry` and mirrors "
+        "under another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+_r(
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001",
+    "Amazon mcp-gateway-registry image 1.0.3 to 1.34.0: a registered server's address can "
+    "point the gateway at internal services",
+    "Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) proxies MCP "
+    "traffic to the servers registered with it. Its registry service ships as the image "
+    "`public.ecr.aws/p3v1o3c6/registry` and, up to 1.24.4, as Docker Hub's "
+    "`mcpgateway/registry`. Before 1.35.0 a user allowed to register or modify a server "
+    "could set its upstream address to a service on the deployment's internal network or "
+    "to the cloud instance metadata endpoint, and the gateway sent requests there and in "
+    "some cases returned the responses (CVE-2026-125926, CVSS 3.1 8.5, CWE-918, "
+    "GHSA-fc39-fwh3-wv5r). Checked in the source at the git tags: v1.0.3 to 1.25.0 store a "
+    "registered address with no check; 1.26.0 refuses a literal private or metadata "
+    "address at registration and update but resolves no host name "
+    "(`validate_proxy_pass_url`), unchanged in 1.35.0. The advisory names no fix commit. "
+    "The 1.35.0 change on this path is mcp-gateway-registry#1795: a virtual server stops "
+    "routing to a backend that is disabled or not healthy, as the direct route already "
+    "did, so a backend the health check's address guard refused is no longer reachable "
+    "through one. The range is the advisory's, v1.0.3 through 1.34.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `public.ecr.aws/p3v1o3c6/registry` 1.35.0 or later, pinned by version. Docker "
+    "Hub's `mcpgateway/registry` has no fixed tag, so move to the ECR Public image. 1.35.0 "
+    "leaves stored server addresses as they were: review every registered server's "
+    "upstream address and remove any you did not intend. Limit registering and modifying "
+    "servers to trusted accounts, restrict the registry's and auth server's outbound "
+    "network access to the destinations they need, require IMDSv2 on EC2, and rotate the "
+    "attached role's credentials if the logs cannot rule out unexpected registrations.",
+    sarif_name="McpGatewayRegistryUpstreamAddressSsrf",
+    cve_references=["CVE-2026-125926"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`public.ecr.aws/p3v1o3c6/registry:TAG` or `mcpgateway/registry:TAG` in YAML "
+        "(compose files, Kubernetes manifests, MCP configs), a Helm values mapping whose "
+        "`repository` names the whole image beside a `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. The project's `auth-server` and `mcpgw` images are "
+        "not read: the registration and update API is the registry service's. Tags from "
+        "1.0.3 below 1.35.0 are reported, the "
+        "two-part `1.0` to `1.34` among them, which is every version tag on Docker Hub from "
+        "v1.0.3. Docker Hub's v1.0.0 to v1.0.2 and `1.0.0` builds predate the advisory's "
+        "first release and are not reported, although their registration route checks no "
+        "address either. Docker Hub's `latest` is the 1.24.4 build, so an untagged "
+        "`mcpgateway/registry` is reported; ECR Public's `latest` was the 1.37.0 digest on "
+        "2026-11-12, so an untagged ECR Public reference is not. The one-part tag `1` "
+        "states no version and is not reported, although Docker Hub's is the v1.0.12 build. "
+        "Tags from 1.0.9 below 1.25.0 also fire "
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001, a different flaw. The project's own "
+        "charts split the image into `registry: public.ecr.aws/p3v1o3c6` and `repository: "
+        "registry`, and set the tag in `global.image.tag`, and its compose file "
+        "interpolates both (`${ECR_REGISTRY:-...}/registry:${REGISTRY_VERSION:-latest}`), so "
+        "neither is read, and neither are Terraform variables. A reference to the GitHub "
+        "repository, which AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 reads, is not read by "
+        "this rule. The rule reads the tag, not the stored server addresses, so it cannot "
+        "tell whether an address registered before an upgrade still points inside the "
+        "network. `docker.io/mcpgateway/registry` and mirrors under another registry are "
+        "not matched, and commented-out lines are skipped."
     ),
 )
 
