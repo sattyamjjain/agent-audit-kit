@@ -346,10 +346,14 @@ available) before shipping:
   - mcp-chrome-bridge              presence-only  (CVE-2026-102878; the native server's
     HTTP MCP endpoint answers web pages: every origin through 1.0.29, and an origin
     that only starts with `http://127.0.0.1` in 1.0.30 and 1.0.31. No fixed release)
-  - agentscope                     >= 2.0.0, presence-only  (CVE-2026-123022; the 2.x
-    service's `POST /workspace/mcp` starts any stdio command a caller sends, behind
-    only a caller-set `X-User-ID` header. No fixed release; 1.x has no service. PyPI
-    only: npm's `agentscope` is another project)
+  - agentscope                     >= 2.0.0, presence-only  (CVE-2026-123022 and
+    CVE-2026-123024; the 2.x service takes a caller-set `X-User-ID` header as its only
+    identity, and its `POST /workspace/mcp` starts any stdio command a caller sends.
+    Neither has a fixed release; 1.x has no service. PyPI only: npm's `agentscope` is
+    another project)
+  - agentscope                     2.0.0 <= v < 2.0.9  (CVE-2026-123023; the Bash tool's
+    parser lists `tee` as read-only, so an agent writes files without asking. Its own
+    rule beside the presence-only row. A stated version is required)
   - mcp-contextforge-gateway       0.7.0 <= v < 1.1.0  (CVE-2026-18484; a federated tool
     whose computed name collides with an existing one makes `tools/call` fail for
     everyone. MEDIUM, its own rule beside the CRITICAL 1.0.9 row. A stated version is
@@ -2073,12 +2077,27 @@ _PINS: tuple[_Pin, ...] = (
     # 2.0.11, the newest, have the route and the header. Issue #3312 is open and
     # #3448, an opt-in allowlist, is unmerged, so the pin is presence-only from 2.0.0.
     # npm's `agentscope` is another project.
+    # 2026-11-12 (#1232): CVE-2026-123024 is that header identity itself, on every
+    # route of the service. Every 2.x wheel has it (`app/_deps.py` in 2.0.0,
+    # `app/deps.py` from 2.0.1), #3314 is open and #3329, an opt-in API key, is
+    # unmerged, so it joins this row rather than a second presence-only row that would
+    # report every 2.x line twice. If one of the two is fixed first, it moves to a
+    # rule of its own with a floor.
     _Pin("AAK-MCP-AGENTSCOPE-CVE-2026-123022-001", "agentscope", ("agentscope",), None,
          introduced=(2, 0, 0),
          fix_label="no fixed release (2.0.11, 2026-10-27, is the newest and "
-                   "agentscope-ai/agentscope#3312 is open); keep the service's API off "
-                   "networks you do not trust",
+                   "agentscope-ai/agentscope#3312 and #3314 are open); keep the "
+                   "service's API off networks you do not trust",
          ecosystem="py"),
+    # 2026-11-12 (#1231): AgentScope's Bash tool allows a read-only command before its
+    # other checks, and `_bash_parser.SAFE_COMMANDS` listed `tee`, which writes files
+    # (CVE-2026-123023). Checked in the PyPI wheels: 1.0.21 has no Bash tool; 2.0.0 to
+    # 2.0.8, 2.0.4.post1 and 2.0.7.post1 list `tee`; 2.0.9 drops it (#2629, 6b43b13),
+    # and 2.0.10 and 2.0.11 leave it out. Its own rule: the presence-only row above
+    # would report 2.0.9 and later under this CVE. `latest` is 2.0.11, fixed.
+    _Pin("AAK-AGENTSCOPE-CVE-2026-123023-001", "agentscope", ("agentscope",), (2, 0, 9),
+         introduced=(2, 0, 0), fix_label="2.0.9 (affected from 2.0.0)",
+         requires_version=True, ecosystem="py"),
     # IBM ContextForge: a federated gateway's tool is named by the gateway's slug and
     # the tool's, and before 1.1.0 nothing checked that name against existing tools,
     # so a colliding registration makes `tools/call` fail for everyone
@@ -2168,6 +2187,18 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-DAGU-CVE-2026-102943-001", "@dagucloud/dagu", ("@dagucloud/dagu",),
          (2, 11, 0), introduced=(2, 7, 0), fix_label="2.11.0 (affected from 2.7.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-12 wave (misc) ---
+    # Helio, an MCP governance proxy, `@gethelio/proxy` on npm: its dashboard sideband
+    # admitted a CORS origin whose hostname began with `10.`, `172.16.` to `172.31.` or
+    # `192.168.`, so `192.168.attacker.com` passed (CVE-2026-65957,
+    # GHSA-2c3r-q7gv-hp2m). Checked in the tarballs: the prefix test is in
+    # dist/index.js from 0.1.0, the first release, through 0.7.0, and 0.8.0 replaces it
+    # with `isPrivateIpv4`. The image `ghcr.io/gethelio/helio` is a row of the same
+    # rule in container_image_pins. npm's unscoped `helio` and PyPI's `helio` are other
+    # projects, and the Python SDK `helio-client` serves no dashboard. `latest` is
+    # 0.16.0, fixed, so a stated version is required.
+    _Pin("AAK-MCP-HELIO-CVE-2026-65957-001", "@gethelio/proxy", ("@gethelio/proxy",),
+         (0, 8, 0), fix_label="0.8.0", requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

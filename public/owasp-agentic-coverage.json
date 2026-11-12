@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-12T03:04:03Z",
+  "last_updated": "2026-11-12T04:34:06Z",
   "aak_version": "0.6.35",
-  "rule_count": 496,
+  "rule_count": 501,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -173,7 +173,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 121,
+      "rule_density": 123,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -201,6 +201,17 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-AGENTSCOPE-CVE-2026-123023-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-123023"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },
@@ -751,6 +762,17 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-59973"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-125926"
           ],
           "aicm_references": [
             "IVS-04",
@@ -1381,7 +1403,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 139,
+      "rule_density": 142,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1620,7 +1642,8 @@
           "id": "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-123022"
+            "CVE-2026-123022",
+            "CVE-2026-123024"
           ],
           "aicm_references": [
             "AIS-07",
@@ -1837,6 +1860,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-100307"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-GENIEACS-CVE-2026-55637-001",
           "severity": "high",
           "cve_references": [
@@ -1857,6 +1891,30 @@
           ],
           "aicm_references": [
             "DSP-17",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-HELIO-CVE-2026-65957-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-65957"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-HEYM-CVE-2026-67546-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-67546"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "IAM-01",
             "STA-08"
           ]
@@ -2807,7 +2865,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 258,
+      "rule_density": 263,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2824,6 +2882,17 @@
             "CVE-2026-30624"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENTSCOPE-CVE-2026-123023-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-123023"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-AST02-001",
@@ -3226,7 +3295,8 @@
           "id": "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-123022"
+            "CVE-2026-123022",
+            "CVE-2026-123024"
           ],
           "aicm_references": [
             "AIS-07",
@@ -3946,6 +4016,28 @@
           ]
         },
         {
+          "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-100307"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-125926"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
           "severity": "high",
           "cve_references": [
@@ -4038,6 +4130,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-HELIO-CVE-2026-65957-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-65957"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-HEYM-CVE-2026-100858-001",
           "severity": "medium",
           "cve_references": [
@@ -4045,6 +4149,18 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-HEYM-CVE-2026-67546-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-67546"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -5680,7 +5796,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 114,
+      "rule_density": 115,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -6050,7 +6166,8 @@
           "id": "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-123022"
+            "CVE-2026-123022",
+            "CVE-2026-123024"
           ],
           "aicm_references": [
             "AIS-07",
@@ -6292,6 +6409,18 @@
           ],
           "aicm_references": [
             "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-HEYM-CVE-2026-67546-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-67546"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -7421,7 +7550,7 @@
     {
       "asi_id": "ASI09",
       "title": "Human-Agent Trust Exploitation",
-      "rule_density": 15,
+      "rule_density": 16,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -7439,6 +7568,17 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-AGENTSCOPE-CVE-2026-123023-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-123023"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },

@@ -42,6 +42,9 @@ NEW_RULES = (
     (ATLASSIAN_PIN, "CVE-2026-124503", Severity.HIGH),
 )
 OUT_OF_SCOPE = ("CVE-2026-119613", "CVE-2026-123779", "CVE-2026-82436")
+# A later batch's record joined the rule: CVE-2026-123024 (#1232, 2026-11-12), the
+# service's caller-set identity, has the same releases and no fix either.
+LATER_REFERENCES = {AGENTSCOPE_PIN: ["CVE-2026-123022", "CVE-2026-123024"]}
 
 
 def _pins(scanned: Path) -> list:
@@ -68,7 +71,7 @@ def test_each_rule_names_only_its_own_cve(rule_id: str, cve: str, severity: Seve
     rule = RULES[rule_id]
     assert rule.severity is severity
     assert rule.category is Category.SUPPLY_CHAIN
-    assert rule.cve_references == [cve]
+    assert rule.cve_references == LATER_REFERENCES.get(rule_id, [cve])
     assert cve in rule.description
 
 

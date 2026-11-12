@@ -18,6 +18,339 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-12 (unreleased): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
+
+The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI
+`agentscope`, from the reporter of CVE-2026-123022 in the 0.6.35 section below. Each is
+read here against NVD's API record, its CVE record, the upstream issues and pull requests,
+OSV, and the PyPI wheels of 1.0.21 and of every 2.x release from 2.0.0 to 2.0.11 with
+2.0.4.post1 and 2.0.7.post1, all on 2026-11-12, and NVD text is quoted from the API
+records. One gets a new pin and one joins the service's existing rule, each measured with
+the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_agentscope.py).
+
+### CVE-2026-123023 (#1231): new pin 2026-11-12
+
+**AgentScope's Bash tool gets `AAK-AGENTSCOPE-CVE-2026-123023-001`: PyPI `agentscope` from
+2.0.0 below 2.0.9, HIGH.** NVD: "A flaw has been found in agentscope-ai AgentScope up to
+2.0.8. This affects the function check_permissions of the file
+src/agentscope/tool/_builtin/_bash.py of the component Bash Tool." VulDB's CNA record lists
+2.0.0 to 2.0.8 as affected and 2.0.9 as unaffected, and names the patch, commit 6b43b13,
+which is agentscope-ai/agentscope#2629, merged on 18 Sep. Every 2.x workspace gives its
+agents a built-in `Bash` tool, and its `check_permissions` allows a command the parser calls
+read-only before the tool's dangerous-command and dangerous-path checks run. The parser's
+`SAFE_COMMANDS` set listed `tee`, which writes the files it is given, so a command that
+pipes into `tee` writes or appends to any file the agent's user can write, where the same
+write through `>` asks first. Whoever steers the agent, through prompt injection or the
+service's API, can add a login key or change a shell startup file. Checked in the wheels:
+1.0.21, the last 1.x release, has no `Bash` tool; every release from 2.0.0 (25 May) to
+2.0.8 (8 Sep), the two post releases included, lists `tee`; 2.0.9 (28 Sep) drops it and
+nothing else in the package names it, and 2.0.10 and 2.0.11 leave it out. The upstream
+issue, #3313, says 2.0.4 and earlier and is still open, but the wheels put the fix in
+2.0.9, as the CNA record does.
+
+The flaw has a fixed release, so it does not join `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001`:
+that rule is presence-only and reports every 2.x release, so it would report 2.0.9 to
+2.0.11 under a flaw they do not have. It gets a ranged rule at its own severity beside it,
+as Penpot's bridge CVE did, and a reference to 2.0.0 to 2.0.8 gets both findings, one per
+flaw. `latest` is 2.0.11, fixed, so a stated version is required. The Bash tool is the
+agent's own shell tool, not MCP, so the rule has no MCP area and no MCP id, as Flowise's
+did. It reads the version, not whether a project gives an agent the tool, and its
+limitations say so. The record's CVSS 3.1 7.3 sets HIGH; the reporter's write-up scores
+8.1.
+
+Measured with the scanner on the record as `nvd_feed` converts it through the `agentscope`
+map row: the feed lists 2.0.0 to 2.0.8 by number, with no fixed version, so after
+`aak update` `AAK-KNOWN-VULN-001` reports those nine releases and misses 2.0.4.post1 and
+2.0.7.post1, which the pin reports. With the pin in place the engine drops the feed's HIGH
+finding on the same line. The bundled feed does not hold the record. OSV holds the CVE only
+as an NVD import with git commit ranges, and nothing for PyPI `agentscope` at 2.0.8.
+
+### CVE-2026-123024 (#1232): on the AgentScope service rule 2026-11-12
+
+**The 2.x service's identity joins `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001`, presence-only
+from 2.0.0, HIGH.** NVD: "A vulnerability has been found in agentscope-ai AgentScope up to
+2.0.11. This impacts the function get_current_user_id of the file
+src/agentscope/app/deps.py of the component Agent Service. Such manipulation of the
+argument X-User-ID leads to missing authentication." VulDB's CNA record lists 2.0.0 to
+2.0.11 and says the fixing pull request awaits acceptance. It is a separate record from
+CVE-2026-123022, not a copy: that one is the workspace route that starts a caller's stdio
+command (CWE-78), this one the identity every route of the service trusts (CWE-306).
+`get_current_user_id` accepts any `X-User-ID` value that is not empty, the code calls it a
+temporary header-based identity, and `create_app` adds no authentication, so a caller who
+names another user lists, changes and deletes that user's stored credentials, agents,
+sessions and schedules and chats as that user. Checked in the wheels: 1.0.21 has no
+`agentscope.app`; every 2.x release has the function, in `app/_deps.py` in 2.0.0 and
+`app/deps.py` from 2.0.1, and seven route modules in 2.0.0 and fourteen in 2.0.11 take it.
+The pull request the record cites, #3448, is the opt-in allowlist of stdio commands that
+the 0.6.35 section names for CVE-2026-123022, and by its own description it adds no
+authentication. #3329, an opt-in shared API key that would close #3314, is open too, and
+`main` on 2026-11-12 still has the header identity, so neither record has a fixed release.
+
+The two records name the same package and releases, have no fix and score the same CVSS 3.1
+7.3, and the rule's remediation already said to bind the service to 127.0.0.1 or put
+authentication in front of it that sets the header; it now also says that proxy must drop
+any `X-User-ID` a client sends. A second presence-only rule would report every 2.x line
+twice for one exposed service, so the record joins the rule: its title, description and
+`cve_references` name both CVEs, and its range does not move. If one of the two gets a
+fixed release first, it moves to a rule of its own with a floor. Measured with the scanner:
+2.0.0, 2.0.9 and 2.0.11 fire the rule and 1.0.21 does not. After `aak update` the feed lists
+the twelve releases by number. With the record on the rule the engine drops the feed's HIGH
+finding on the same line; with the rule as 0.6.35 shipped it, `AAK-KNOWN-VULN-001` reports
+CVE-2026-123024 beside it on 2.0.11. The reporter scores this one 9.8; the record's CVSS 3.1
+7.3 sets HIGH, as the rule already is. OSV holds the CVE only as an NVD import with git
+commit ranges.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123023 | 7.3 | `agentscope` (PyPI) | **New pin** `AAK-AGENTSCOPE-CVE-2026-123023-001` (HIGH): 2.0.0 up to 2.0.9, beside the presence-only service pin, a stated version required. | #1231 |
+| CVE-2026-123024 | 7.3 | `agentscope` (PyPI) | **Joins** `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001` (HIGH), no range change: every release from 2.0.0, 2.0.0 to 2.0.11 today. No fixed release. | #1232 |
+
+CVSS is each record's CVSS 3.1 score from VulDB. Both records also carry a CVSS 4.0 score,
+which VulDB rates MEDIUM.
+
+## 2026-11-12 (unreleased): two held Amazon mcp-gateway-registry records, two new image rules
+
+The watcher holds CVE-2026-100307 and CVE-2026-125926, both published by Amazon's CNA on 11 Nov,
+behind its back-pressure cap, so neither has an issue. Both are read here against NVD's API record,
+the CVE record, the repository's advisories, OSV, the published images and the source at each git
+tag, all on 2026-11-12, and NVD text is quoted from the API records. The project already has a HIGH
+SQL injection pin with a 1.0.13 floor. Both new fixes sit above that floor and neither is SQL
+injection, so each record gets a rule of its own, and the two are different flaws with different
+fixes, so neither joins the other. The project is on neither registry: npm's and PyPI's
+`mcp-gateway-registry` do not exist, and its pyproject names `mcp-registry` 0.1.0, which on PyPI is
+another project. Its registry service, which serves the management API and runs the nginx that
+proxies MCP traffic, ships as the image `public.ecr.aws/p3v1o3c6/registry`, tagged 1.0.13 to 1.37.0,
+and before that as Docker Hub's `mcpgateway/registry`, tagged v1.0.0 to 1.24.4. The project's
+compose file pulled Docker Hub's image through 1.25.0 and ECR Public's from 1.26.0. Docker Hub's has
+not been pushed since 2026-06-04, so it has no fixed tag for either record and its `latest` is the
+1.24.4 build. Each image's label names its commit, and for the tags read here that is the git tag's;
+Docker Hub's 1.24.4 was built three commits before its tag, with the same handler. Both rules read
+the two images by tag, each measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_gateway.py). Neither record is in OSV (queried by id and by
+commit) or in the bundled advisory feed, and NVD's CNA data names the product with no packageURL,
+so `nvd_feed` keeps neither: only these rules report them.
+
+### CVE-2026-100307 (not filed): new image pin 2026-11-12
+
+**Group import gets `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001`: the registry image from 1.0.9
+below 1.25.0, HIGH.** NVD: "Missing authorization in the external management API in Amazon
+mcp-gateway-registry 1.0.9 through 1.24.7 might allow an authenticated remote user to assign the
+registry administrator scope to their own identity group and obtain administrative control of every
+registered gateway asset via a crafted group import request." GHSA-rxf3-qgpv-wxvr names the route,
+`POST /api/servers/groups/import`, which authenticated the caller and checked no role. Read in the
+source at the tags: v1.0.8 has no import route; v1.0.9, v1.0.9-patch1, v1.0.22-p1, 1.23.0 and
+1.24.7 run `import_group_definition` with no admin check; 1.25.0 calls `_require_admin` first
+(mcp-gateway-registry#1333, which its release notes list as authorization enforced on the external
+API's management endpoints). The sibling group routes already exist in v1.0.8 and the advisory says
+they had the same gap, but the record's range starts with the import route, and so does the rule.
+Upgrading does not undo a grant made before it, so the remediation names the review of the
+`mcp_scopes` collection the advisory asks for, and the rule says it reads the tag, not the store.
+
+### CVE-2026-125926 (not filed): new image pin 2026-11-12
+
+**Server addresses get `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001`: the registry image from
+1.0.3 below 1.35.0, HIGH.** NVD: "Server-side request forgery (SSRF) in the server registration and
+update API in Amazon mcp-gateway-registry before 1.35.0 might allow an authenticated remote user to
+send requests from the gateway to internal network services and cloud instance metadata endpoints
+and read the responses via a crafted request." The CVE record gives v1.0.3 through 1.34.0, and so
+does GHSA-fc39-fwh3-wv5r, the repository's advisory for it, which the record does not cite. Read in
+the source at the tags: v1.0.3 to 1.25.0 store a registered server's address with no check, and
+1.26.0 adds `validate_proxy_pass_url` on registration and update, which refuses a literal private
+or metadata address but resolves no host name; that code is the same in 1.34.0 and 1.35.0. The
+advisory names no fix commit, and nothing between 1.34.0 and 1.35.0 changes how registration or
+update checks an address. The change on a path that sends requests to a registered server's
+address is mcp-gateway-registry#1795: a virtual server stops routing to a backend that is disabled
+or not healthy, as the direct route already did, so a backend the health check's address guard
+refused is no longer reachable through a virtual server. The advisory does not say that is its
+fix, so the 1.35.0 floor is the advisory's, and the rule says so. Docker Hub's v1.0.0 to v1.0.2
+builds predate the record's first release and are not reported, although their registration route
+checks no address either; every other version tag there is reported, `latest` included. Tags from
+1.0.9 below 1.25.0 get both rules.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-100307 | 8.8 | `public.ecr.aws/p3v1o3c6/registry` (ECR Public), `mcpgateway/registry` (Docker Hub) | **New image pin** `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001` (HIGH): tags from 1.0.9 below 1.25.0, and Docker Hub's `latest`, the 1.24.4 build. | not filed |
+| CVE-2026-125926 | 8.5 | `public.ecr.aws/p3v1o3c6/registry` (ECR Public), `mcpgateway/registry` (Docker Hub) | **New image pin** `AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001` (HIGH): tags from 1.0.3 below 1.35.0, and Docker Hub's `latest`; the floor is the advisory's. | not filed |
+
+CVSS is each record's CVSS 3.1 score, Amazon's; its CVSS 4.0 scores are 8.7 and 6.3.
+
+Dispositioned at 2026-11-12T04:30:00Z.
+
+## 2026-11-12 (unreleased): #1229, #1230 and two held records, a new pin for Helio, three out of scope
+
+The watcher filed #1229 and #1230 on 11 Nov and holds CVE-2026-65957 and CVE-2026-65968
+behind its back-pressure cap, so those two have no issue yet. Each is read here against NVD's
+API record, its CVE record, OSV and the published artifacts, all on 2026-11-12, and NVD text
+is quoted from the API records. Helio, an MCP governance proxy, gets a new pin on its npm
+package and its image, measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_misc.py) after its range was read in the npm tarballs and in
+the source at the commit each image's label names. Three are out of scope. ByteStash's flaw is
+the app's shared API-key check, which its MCP endpoint inherits, as Vikunja's was. SiYuan's is
+reachable only through Windows path rules, and the image AAK reads for SiYuan carries only
+Linux builds. ideon's fix is in its image proxy, and the record's MCP text names files ideon
+does not have.
+
+### CVE-2026-65957 (not filed): new pin 2026-11-12
+
+**Helio gets `AAK-MCP-HELIO-CVE-2026-65957-001`: npm `@gethelio/proxy` and the image
+`ghcr.io/gethelio/helio` below 0.8.0, MEDIUM.** NVD: "Prior to version 0.8.0, the dashboard
+sideband (default 127.0.0.1:3100) validated CORS request origins by matching the hostname
+against a private-network string prefix" ... "rather than validating an IP address." Helio sits
+between agents and their MCP servers, holds tool calls for approval and audits them; the
+sideband serves that audit trail, the approval tickets and the routes that approve or deny a
+held call, so the flaw is on its MCP surface. GHSA-2c3r-q7gv-hp2m (GitHub's CNA, CVSS 4.0 6.9)
+names `@gethelio/proxy` below 0.8.0 and bounds the exposure. With `dashboard.api_secret` set,
+which `helio init` writes, the response carries no credentials header and the session cookie
+is `SameSite=Lax`, so a page reads nothing. In open mode (`dashboard.allow_open_mode: true`,
+no secret, loopback only) no auth middleware or CSRF check is registered, so a page on an
+admitted origin that a user on the same host opens reads the audit trail cross-origin and can
+approve held calls. Checked in the npm tarballs: `dist/index.js` carries the prefix test in
+every release from 0.1.0, the first, to 0.7.0 (0.1.0, 0.1.1 and 0.2.0 to 0.7.0), and 0.8.0 and
+0.16.0 replace it with `isPrivateIpv4`, which admits only a dotted private IPv4 literal
+(4ca8329c, #121). The image
+labels name each tag's commit: 0.1.0 is fa50419b and 0.7.0 is 0c5bbcfa, both without the fix,
+and 0.8.0 is 6f9d147a, one commit past it. The two-part tags `0.1` to `0.7` sit on affected
+lines; `latest` and the one-part `0` were the 0.16.0 digest on 2026-11-12, and npm's `latest`
+is 0.16.0, so an untagged image or an unpinned `npx @gethelio/proxy` is not reported. The rule
+reads the version, not `helio.yaml`, so a deployment with a secret set is reported too, and its
+limitations say so. npm's unscoped `helio` and PyPI's `helio` are other projects, and the
+Python SDK `helio-client` serves no dashboard. OSV has no record of the CVE or the GHSA and
+none for the package at 0.7.0, and the CNA record names no package, so `nvd_feed` keeps
+nothing and only the pin reports it.
+
+### CVE-2026-126658 (#1229): out of scope 2026-11-12
+
+**ByteStash is out of scope.** NVD: "ByteStash 1.5.10 before 1.6.2 contains an insufficient
+session expiration vulnerability that allows holders of API keys to keep access after account
+deactivation because validateApiKey never checks account status." ByteStash is a self-hosted
+snippet store that ships as the image `ghcr.io/jordan-dalby/bytestash`; npm and PyPI have no
+`bytestash`. GHSA-26m9-ww2j-3cr5 traces the flaw to `validateApiKey` in
+`server/src/repositories/apiKeyRepository.js`, which serves both the REST API's key middleware
+(`/api/snippets`) and the MCP endpoint's (`/mcp`): its query checks the key's own `is_active`
+flag and never the account's. Checked in the source at the tags: `validateApiKey` arrives with
+API keys in v1.5.4, account deactivation (`PATCH /api/admin/users/:id/toggle-active`) in
+v1.5.10, which is why the record starts there, and the MCP endpoint (`mcpRoutes.js`,
+`mcpAuth.js`) only in v1.5.12; v1.6.2 adds the account check to the query. So 1.5.10 and
+1.5.11 have the flaw and no MCP code, and from 1.5.12 MCP inherits the shared check, the shape
+of Vikunja's CVE-2026-123493: a general app's token handling, not a surface this scanner pins.
+OSV holds the CVE only as an NVD import with git ranges, and the CNA record names
+`pkg:github/jordan-dalby/ByteStash`, which no feed matches. Fixed in 1.6.2.
+
+### CVE-2026-126776 (#1230): out of scope 2026-11-12
+
+**SiYuan's Windows path traversal is out of scope.** NVD: "SiYuan 3.7.0 before 3.8.10 on
+Windows contains a path traversal vulnerability in kernel/util/webfetch.go that allows
+attackers to write files outside the import directory via backslash-encoded filenames." The
+MCP and agent tools `web_fetch` and `http_request` save a non-text response in the temp
+`import` directory under a name taken by `path.Base` from the URL path, which splits only on
+`/`. On Windows `filepath.Join` also treats a backslash as a separator, so a name made of
+backslash-separated parent segments lands above that directory. On Linux and macOS the
+backslash is an ordinary character and the file stays inside `import`, as the Linux control run
+in GHSA-hq2c-hh95-vrr6 shows. Checked in the source: `kernel/util/webfetch.go` is absent at
+v3.6.5 and ships in v3.7.0, whose `extractFilename` is unchanged at v3.8.9; v3.8.10 (94d6a42a)
+normalizes backslashes before taking the base name, replaces an invalid name and checks the
+joined path with `IsSubPath`. The one artifact AAK reads for SiYuan is the image
+`b3log/siyuan`, and its v3.7.0, v3.8.9 and `latest` indexes list only `linux/amd64`,
+`linux/arm64` and two `linux/arm` builds, besides attestations; the Windows desktop installer
+states its version in no file AAK reads. So the image rules for CVE-2026-116168 and
+CVE-2026-123492 do not claim this record and keep only their own CVEs. NVD's CNA data names
+the Go module `github.com/siyuan-note/siyuan/kernel` from 3.7.0 below 3.8.10, which `nvd_feed`
+keeps after `aak update`, but that module sits in `kernel/` with no `kernel/v*` tags and no
+`/v3` path, so the Go module proxy serves it only at pseudo-versions, which sort below 3.7.0,
+and no go.mod names an affected release (a test holds it). OSV has no record of the CVE or the
+GHSA. Fixed in 3.8.10.
+
+### CVE-2026-65968 (not filed): out of scope 2026-11-12
+
+**ideon is out of scope.** NVD: "ideon is a self-hosted visual workspace. Prior to version
+0.9.4, validateUrlForSSRF() / safeFetch() in lib/oauth/ssrf-protection.ts (and the parallel
+validateMcpUrl() in lib/security/validators.ts) perform SSRF host-blocking by string/regex
+matching on new URL(url).hostname." The record goes on to describe an authenticated user who
+registers a Streamable HTTP or SSE MCP server at an IPv4-mapped IPv6 address in hex form,
+which a server-side OAuth discovery then fetches. That is not ideon's code. The CNA record and
+GHSA-cvcr-fcf6-366r are titled as an unauthenticated SSRF in `/api/proxy/image` past the
+`isSafeUrl` guard, and the advisory's affected-versions section names another project's main
+branch (pluggedin-app). Checked in the source at v0.9.3: ideon has neither
+`lib/oauth/ssrf-protection.ts` nor `lib/security/validators.ts` and no MCP-server registration;
+its own MCP server (`src/lib/mcp`) neither fetches URLs nor calls the guard, and `isSafeUrl` in
+`src/app/lib/security-utils.ts` is called only by the image proxy route. The fix, 58e2f26b in
+v0.9.4, changes only `isSafeUrl`, which now strips the brackets and unmaps IPv4-mapped
+addresses before its checks. A visual workspace's image proxy is not an agent or MCP surface.
+ideon ships as the image `ghcr.io/3xpyth0n/ideon`, which no rule reads. OSV has no record of
+the CVE or the GHSA. Fixed in 0.9.4.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-65957 | 6.9 (4.0) | `@gethelio/proxy` (npm), `ghcr.io/gethelio/helio` (GHCR) | **New pin** `AAK-MCP-HELIO-CVE-2026-65957-001` (MEDIUM): every release below 0.8.0, the package where a version is stated and the image by tag. | not filed |
+| CVE-2026-126658 | 5.4 | ByteStash (`ghcr.io/jordan-dalby/bytestash`) | **Out of scope**: the app's API-key check, shared by its REST API and its MCP endpoint. Fixed in 1.6.2. | #1229 |
+| CVE-2026-126776 | 5.3 | SiYuan (`b3log/siyuan`) | **Out of scope**: Windows only, and the image carries only Linux builds; the SiYuan image rules do not claim it. Fixed in 3.8.10. | #1230 |
+| CVE-2026-65968 | 5.3 (4.0) | ideon (`ghcr.io/3xpyth0n/ideon`) | **Out of scope**: the fix is in the image proxy's URL guard, and the record's MCP text names files ideon does not have. Fixed in 0.9.4. | not filed |
+
+CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for ByteStash and SiYuan
+(their CVSS 4.0 scores are 5.3 and 6.0). GitHub scored Helio and ideon in CVSS 4.0 only.
+
+## 2026-11-12 (unreleased): two held heym records, one new image rule, one out of scope
+
+The watcher holds CVE-2026-67546 and CVE-2026-67545 behind its back-pressure cap, so neither has
+an issue. Both are GitHub's records for heym, a self-hosted platform for agent workflows,
+published on 11 Nov from advisories the project published in July. Each is read here against
+NVD's API record, its CVE record, the GitHub advisory and the source at the commit each image's
+label names, all on 2026-11-12, and NVD text is quoted from the API records. heym is on neither
+PyPI nor npm and ships as the image `ghcr.io/heymrun/heym`, which
+`AAK-MCP-HEYM-CVE-2026-100858-001` already reads below 0.0.109 for a MEDIUM SSRF in the Slack,
+Discord and Crawler workflow nodes. Both records are HIGH and fixed below that floor, so neither
+can join that rule without being reported at MEDIUM. One gets a rule of its own, measured with
+the scanner on firing fixtures and negative ones (tests/test_cve_batch_2026_11_12_heym.py); the
+other is out of scope. OSV holds neither record, and the CNA data names `heymrun/heym` with a
+bare range and no packageURL, so `aak update` maps neither into the advisory feed.
+
+### CVE-2026-67546 (not filed): new image pin 2026-11-12
+
+**heym gets `AAK-MCP-HEYM-CVE-2026-67546-001`: the image `ghcr.io/heymrun/heym` below 0.0.75,
+HIGH.** NVD: "Prior to version 0.0.75, the same POST /api/mcp/fetch-tools endpoint (any
+authenticated user, lowest role) also accepts the stdio transport, which spawns the
+attacker-supplied command with attacker-supplied args and an environment merged over
+os.environ." The workflow editor uses the route to preview an MCP server's tools, and the
+process starts before any MCP handshake, so its side effects happen whether or not it speaks
+MCP. GHSA-378x-q589-34mv names 0.0.75 as patched and gives no lower bound. Checked in the source
+at the commit each image's label names: 0.0.1 (5df3bea6), the first image, already serves the
+route behind `get_current_user` alone and hands the caller's stdio command to the MCP SDK's
+`stdio_client`; 0.0.72 (b04ceb3c), the 0.0.73 tag and 0.0.74 (e356609b) have the same
+`_open_transport`, which also merges the caller's variables over the backend's environment;
+0.0.75 (6c6213f8) sends every stdio command through `build_sandboxed_command` to a throwaway
+container with no Docker socket and only the caller's variables. So every tag below 0.0.75 is
+reported, from the first. GHCR has no 0.0.70, 0.0.71 or 0.0.73 image, and `latest` was the
+0.0.153 image on 2026-11-12, so the README's `docker run` of `latest` is not reported. 0.0.75
+keeps a single-user opt-out, `HEYM_MCP_STDIO_SANDBOX=subprocess`, that starts stdio commands on
+the host again; the rule reads the tag, and its limitations say so. Tags below 0.0.75 also fire
+the 0.0.109 rule, for its own flaw.
+
+### CVE-2026-67545 (not filed): out of scope 2026-11-12
+
+**heym's HTTP workflow node is out of scope.** NVD: "Prior to version 0.0.73, the HTTP workflow
+node in Heym makes outbound HTTP requests to user-supplied URLs without validation of the target
+host or IP address." An unauthenticated caller reaches it only through a workflow whose author
+already pointed an HTTP node at an internal address and allowed anonymous runs, and NVD adds:
+"The same project has comprehensive SSRF protection in its MCP integration, which is absent
+from the HTTP node." Checked in the source: the node fetches through an unguarded client at 0.0.1
+and 0.0.72, and at the 0.0.73 tag and in the 0.0.74 image it calls `ssrf_guard.guard_http_url`
+and a client pinned to the checked address first (GHSA-8wj7-v2w6-wfcx). The flaw is a workflow
+node outside heym's MCP code, and n8n's workflow-node records got no pin on 2026-11-11 for that
+reason. The 0.0.109 rule, shipped on 2026-10-03 for the Slack, Discord and Crawler nodes,
+predates that ruling and is not revisited here. Every image this record affects, 0.0.72 and
+older, is reported by `AAK-MCP-HEYM-CVE-2026-67546-001` and the 0.0.109 rule for their own
+flaws, and no rule names this CVE. Fixed in 0.0.73; the first image with the fix is 0.0.74.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-67546 | 8.8 | `ghcr.io/heymrun/heym` (GHCR) | **New image pin** `AAK-MCP-HEYM-CVE-2026-67546-001` (HIGH): tags below 0.0.75, from 0.0.1. | not filed |
+| CVE-2026-67545 | 7.4 | `ghcr.io/heymrun/heym` (GHCR) | **Out of scope**: the HTTP workflow node, outside heym's MCP integration. Fixed in 0.0.73, first image 0.0.74. | not filed |
+
+CVSS is each record's CVSS 3.1 score, GitHub's.
+
+Dispositioned at 2026-11-12T03:45:00Z.
+
 ## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769

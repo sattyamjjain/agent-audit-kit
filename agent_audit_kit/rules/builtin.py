@@ -263,6 +263,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-MCP-SERENA-CVE-2026-49471-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-LITELLM-CVE-2026-59822-001": ["IAM-01", "STA-08"],
@@ -396,6 +398,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-FLOWISE-CVE-2026-119978-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-AGENTSCOPE-CVE-2026-123023-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
     "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123811-001": ["IAM-01", "STA-08"],
@@ -408,6 +411,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
     "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-HEYM-CVE-2026-67546-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -10086,6 +10091,126 @@ _r(
         "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file "
         "over 2 MB is not read. A lockfile over 32 MiB is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001",
+    "Amazon mcp-gateway-registry image 1.0.9 to 1.24.7: any signed-in user can map their "
+    "group to the registry admin scope",
+    "Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) decides which "
+    "identities reach which registered MCP servers and agents. Its registry service ships as "
+    "the image `public.ecr.aws/p3v1o3c6/registry` and, up to 1.24.4, as Docker Hub's "
+    "`mcpgateway/registry`. From 1.0.9 the external management API's "
+    "`POST /api/servers/groups/import` authenticated the caller but checked no role, so any "
+    "signed-in user could import a group definition that maps their own identity-provider "
+    "group to the `mcp-registry-admin` scope, be treated as an administrator from the next "
+    "request, and then register, change or remove every server and agent and read the "
+    "backend credentials the registry stores (CVE-2026-100307, CVSS 3.1 8.8, CWE-862, "
+    "GHSA-rxf3-qgpv-wxvr). The sibling group routes and several server-mutation routes had "
+    "the same gap. Checked in the source at the git tag each image's label names: v1.0.8 has "
+    "no import route; v1.0.9, v1.0.22-p1 and 1.24.7 run `import_group_definition` with no "
+    "admin check; 1.25.0 calls `_require_admin` first (mcp-gateway-registry#1333).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `public.ecr.aws/p3v1o3c6/registry` 1.25.0 or later, pinned by version. Docker "
+    "Hub's `mcpgateway/registry` has no fixed tag, so move to the ECR Public image. "
+    "Upgrading does not undo a grant made before it: review the `mcp_scopes` collection's "
+    "`group_mappings` for mappings to `mcp-registry-admin` or another privileged scope, and "
+    "its `ui_permissions` for mutating actions granted to `all`, remove any an administrator "
+    "did not create, and rotate the credentials the registry stores where unintended access "
+    "cannot be ruled out.",
+    sarif_name="McpGatewayRegistryGroupImportAdminEscalation",
+    cve_references=["CVE-2026-100307"],
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`public.ecr.aws/p3v1o3c6/registry:TAG` or `mcpgateway/registry:TAG` in YAML "
+        "(compose files, Kubernetes manifests, MCP configs), a Helm values mapping whose "
+        "`repository` names the whole image beside a `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. The project's `auth-server` and `mcpgw` images are "
+        "not read: the management API is the registry service's. Tags from 1.0.9 below "
+        "1.25.0 are reported, "
+        "`v1.0.9-patch1`, `v1.0.22-p1` and the two-part `1.0`, `1.23` and `1.24` among "
+        "them; tags below 1.0.9 predate the import route and are not. Docker Hub's `latest` "
+        "is the 1.24.4 build, so an untagged `mcpgateway/registry` is reported; ECR Public's "
+        "`latest` was the 1.37.0 digest on 2026-11-12, so an untagged ECR Public reference "
+        "is not. The one-part tag `1` states no version and is not reported, although "
+        "Docker Hub's is the v1.0.12 build. The project's own charts split the image into "
+        "`registry: public.ecr.aws/p3v1o3c6` and `repository: registry`, and set the tag in "
+        "`global.image.tag`, and its compose file interpolates both "
+        "(`${ECR_REGISTRY:-...}/registry:${REGISTRY_VERSION:-latest}`), so neither is read, "
+        "and neither are Terraform variables. A reference to the GitHub repository, which "
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 reads, is not read by this rule. The "
+        "rule reads the tag, not the scope store, so it cannot tell whether a grant made "
+        "before an upgrade is still in place. `docker.io/mcpgateway/registry` and mirrors "
+        "under another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+_r(
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001",
+    "Amazon mcp-gateway-registry image 1.0.3 to 1.34.0: a registered server's address can "
+    "point the gateway at internal services",
+    "Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) proxies MCP "
+    "traffic to the servers registered with it. Its registry service ships as the image "
+    "`public.ecr.aws/p3v1o3c6/registry` and, up to 1.24.4, as Docker Hub's "
+    "`mcpgateway/registry`. Before 1.35.0 a user allowed to register or modify a server "
+    "could set its upstream address to a service on the deployment's internal network or "
+    "to the cloud instance metadata endpoint, and the gateway sent requests there and in "
+    "some cases returned the responses (CVE-2026-125926, CVSS 3.1 8.5, CWE-918, "
+    "GHSA-fc39-fwh3-wv5r). Checked in the source at the git tags: v1.0.3 to 1.25.0 store a "
+    "registered address with no check; 1.26.0 refuses a literal private or metadata "
+    "address at registration and update but resolves no host name "
+    "(`validate_proxy_pass_url`), unchanged in 1.35.0. The advisory names no fix commit. "
+    "The 1.35.0 change on this path is mcp-gateway-registry#1795: a virtual server stops "
+    "routing to a backend that is disabled or not healthy, as the direct route already "
+    "did, so a backend the health check's address guard refused is no longer reachable "
+    "through one. The range is the advisory's, v1.0.3 through 1.34.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `public.ecr.aws/p3v1o3c6/registry` 1.35.0 or later, pinned by version. Docker "
+    "Hub's `mcpgateway/registry` has no fixed tag, so move to the ECR Public image. 1.35.0 "
+    "leaves stored server addresses as they were: review every registered server's "
+    "upstream address and remove any you did not intend. Limit registering and modifying "
+    "servers to trusted accounts, restrict the registry's and auth server's outbound "
+    "network access to the destinations they need, require IMDSv2 on EC2, and rotate the "
+    "attached role's credentials if the logs cannot rule out unexpected registrations.",
+    sarif_name="McpGatewayRegistryUpstreamAddressSsrf",
+    cve_references=["CVE-2026-125926"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`public.ecr.aws/p3v1o3c6/registry:TAG` or `mcpgateway/registry:TAG` in YAML "
+        "(compose files, Kubernetes manifests, MCP configs), a Helm values mapping whose "
+        "`repository` names the whole image beside a `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. The project's `auth-server` and `mcpgw` images are "
+        "not read: the registration and update API is the registry service's. Tags from "
+        "1.0.3 below 1.35.0 are reported, the "
+        "two-part `1.0` to `1.34` among them, which is every version tag on Docker Hub from "
+        "v1.0.3. Docker Hub's v1.0.0 to v1.0.2 and `1.0.0` builds predate the advisory's "
+        "first release and are not reported, although their registration route checks no "
+        "address either. Docker Hub's `latest` is the 1.24.4 build, so an untagged "
+        "`mcpgateway/registry` is reported; ECR Public's `latest` was the 1.37.0 digest on "
+        "2026-11-12, so an untagged ECR Public reference is not. The one-part tag `1` "
+        "states no version and is not reported, although Docker Hub's is the v1.0.12 build. "
+        "Tags from 1.0.9 below 1.25.0 also fire "
+        "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001, a different flaw. The project's own "
+        "charts split the image into `registry: public.ecr.aws/p3v1o3c6` and `repository: "
+        "registry`, and set the tag in `global.image.tag`, and its compose file "
+        "interpolates both (`${ECR_REGISTRY:-...}/registry:${REGISTRY_VERSION:-latest}`), so "
+        "neither is read, and neither are Terraform variables. A reference to the GitHub "
+        "repository, which AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 reads, is not read by "
+        "this rule. The rule reads the tag, not the stored server addresses, so it cannot "
+        "tell whether an address registered before an upgrade still points inside the "
+        "network. `docker.io/mcpgateway/registry` and mirrors under another registry are "
+        "not matched, and commented-out lines are skipped."
     ),
 )
 
@@ -20072,29 +20197,34 @@ _r(
 
 _r(
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
-    "AgentScope 2.x: the service's workspace API starts any stdio MCP command a caller sends (no fixed release)",
+    "AgentScope 2.x: the service takes a caller-set X-User-ID header as identity, and its workspace API starts any stdio MCP command (no fixed release)",
     "AgentScope (PyPI `agentscope`, agentscope-ai/agentscope) ships from 2.0.0 an agent "
-    "service, `agentscope.app`, whose `POST /workspace/mcp` route takes an MCP client "
-    "configuration from the caller. A stdio configuration's `command` is a free string "
-    "and a stateful client connects as soon as it is added, so the server starts that "
-    "program, with the caller's arguments and environment, as its own user. The route's "
-    "only identity is the `X-User-ID` header the caller sets, which the code calls a "
-    "temporary header-based identity, so anyone who reaches the API runs programs on the "
-    "host, or inside the Docker or E2B sandbox where the workspace runs there "
-    "(CVE-2026-123022, CVSS 3.1 7.3, CWE-78). Checked in the PyPI wheels: 1.0.21, the "
-    "last 1.x release, has no `agentscope.app`; 2.0.0 (2026-05-25) and 2.0.11 "
-    "(2026-10-27), the newest, have the route and the header. agentscope-ai/agentscope#3312 "
-    "is open, and #3448, an opt-in allowlist of stdio commands that leaves the default as "
-    "it is, is unmerged, so there is no fixed release.",
+    "service, `agentscope.app`, whose only identity is the `X-User-ID` header the caller "
+    "sets: `get_current_user_id` accepts any value that is not empty, the code calls it a "
+    "temporary header-based identity, and `create_app` adds no authentication, so anyone "
+    "who reaches the API acts as whichever user the header names, listing, changing and "
+    "deleting that user's stored credentials, agents, sessions and schedules and chatting "
+    "as that user (CVE-2026-123024, CVSS 3.1 7.3, CWE-306). The same service's "
+    "`POST /workspace/mcp` route takes an MCP client configuration from the caller. A "
+    "stdio configuration's `command` is a free string and a stateful client connects as "
+    "soon as it is added, so the server starts that program, with the caller's arguments "
+    "and environment, as its own user, or inside the Docker or E2B sandbox where the "
+    "workspace runs there (CVE-2026-123022, CVSS 3.1 7.3, CWE-78). Checked in the PyPI "
+    "wheels: 1.0.21, the last 1.x release, has no `agentscope.app`; every 2.x release, "
+    "2.0.0 (2026-05-25) to 2.0.11 (2026-10-27), the newest, has the header identity "
+    "(`app/_deps.py` in 2.0.0, `app/deps.py` from 2.0.1), and 2.0.0 and 2.0.11 have the "
+    "route. agentscope-ai/agentscope#3312 and #3314 are open, and #3448, an opt-in "
+    "allowlist of stdio commands, and #3329, an opt-in shared API key, are unmerged and "
+    "would leave the default as it is, so neither flaw has a fixed release.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "There is no fixed release. Keep an AgentScope 2.x service's API off networks you do "
-    "not trust: bind it to 127.0.0.1, or put authentication in front of it that sets "
-    "`X-User-ID` itself, and block `POST /workspace/mcp` at the proxy where callers need "
-    "not add MCP servers. The Docker and E2B workspace backends contain the started "
-    "program but still run it.",
+    "not trust: bind it to 127.0.0.1, or put authentication in front of it that drops "
+    "any `X-User-ID` a client sends and sets the header itself, and block "
+    "`POST /workspace/mcp` at the proxy where callers need not add MCP servers. The "
+    "Docker and E2B workspace backends contain the started program but still run it.",
     sarif_name="AgentScopeWorkspaceStdioCommand",
-    cve_references=["CVE-2026-123022"],
+    cve_references=["CVE-2026-123022", "CVE-2026-123024"],
     owasp_mcp_references=["MCP05:2025", "MCP07:2025", "MCP04:2025"],
     owasp_agentic_references=["ASI05", "ASI03", "ASI04"],
     adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
@@ -20109,6 +20239,53 @@ _r(
         "extra), so a project that uses AgentScope only as a library is reported too. npm's "
         "`agentscope` is another project and is not matched. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-12 (#1231): AgentScope's Bash tool counted `tee` as read-only through 2.0.8.
+# Fixed in 2.0.9, so a ranged rule of its own beside the presence-only service rule
+# above, which would otherwise report 2.0.9 and later under a flaw they do not have.
+# The Bash tool is the agent's own shell tool, not MCP, so no MCP area or MCP id.
+_r(
+    "AAK-AGENTSCOPE-CVE-2026-123023-001",
+    "AgentScope 2.0.0 to 2.0.8: the Bash tool counts `tee` as read-only, so an agent writes files without asking",
+    "AgentScope (PyPI `agentscope`, agentscope-ai/agentscope) 2.x gives every workspace's "
+    "agents a built-in `Bash` tool. Its `check_permissions` allows a command its parser "
+    "calls read-only at once, ahead of the tool's dangerous-command and dangerous-path "
+    "checks, and the parser's `SAFE_COMMANDS` set, which makes that call, listed `tee` "
+    "through 2.0.8. `tee` writes the files it is given, so a command that pipes into it "
+    "writes or appends to any file the agent's user can write, where the same write "
+    "through `>` asks first. Whoever steers the agent, through "
+    "prompt injection or the 2.x service's API, can add a login key or change a shell "
+    "startup file (CVE-2026-123023, CVSS 3.1 7.3, CWE-863). Checked in the PyPI wheels: "
+    "1.0.21, the last 1.x release, has no `Bash` tool; every release from 2.0.0 "
+    "(2026-05-25) to 2.0.8, 2.0.4.post1 and 2.0.7.post1 included, lists `tee`; 2.0.9 "
+    "(2026-09-28) removes it (agentscope-ai/agentscope#2629, commit 6b43b13), and 2.0.10 "
+    "and 2.0.11 leave it out.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `agentscope` to 2.0.9 or later and pin it. Until you can, run agents that read "
+    "input you do not control in a Docker or E2B workspace, where a write through `tee` "
+    "stays inside the sandbox, and keep a 2.x service's API off networks you do not trust.",
+    sarif_name="AgentScopeBashTeeReadOnly",
+    cve_references=["CVE-2026-123023"],
+    owasp_agentic_references=["ASI02", "ASI09", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports a PyPI reference to `agentscope` from 2.0.0 below 2.0.9 that states a "
+        "version: a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or "
+        "lockfile entry at the project root, or the package a `uvx` launch in an MCP config "
+        "names, judging a range by the versions it admits. `latest` is 2.0.11, fixed, so a "
+        "reference that states no version is not reported. 2.0.4.post1 and 2.0.7.post1 read "
+        "as 2.0.4 and 2.0.7, both affected. It reads the version, not whether the project "
+        "gives an agent the `Bash` tool or which permission mode it runs, so a project that "
+        "uses AgentScope without the tool is reported too. 1.x releases have no `Bash` tool "
+        "and are not reported. npm's `agentscope` is another project and is not matched. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
@@ -20740,6 +20917,121 @@ _r(
         "no version AAK reads, and this rule reads no go.mod. `docker.io/mayswind/"
         "ezbookkeeping` and mirrors under another registry are not matched, and "
         "commented-out lines are skipped."
+    ),
+)
+
+
+# 2026-11-12 wave (misc). Helio is an MCP proxy whose dashboard sideband holds the
+# audit trail of tool calls and the routes that approve held ones, so the flaw sits on
+# its MCP governance surface. One rule reads the npm package and the image.
+
+_r(
+    "AAK-MCP-HELIO-CVE-2026-65957-001",
+    "Helio below 0.8.0: the dashboard sideband's CORS check admits hostnames that begin like a private address",
+    "Helio (gethelio/helio), an MCP governance proxy that sits between agents and their "
+    "MCP servers and holds tool calls for approval, ships as the npm package "
+    "`@gethelio/proxy` and the image `ghcr.io/gethelio/helio`. Its dashboard sideband "
+    "(default 127.0.0.1:3100) serves the audit trail, approval tickets and limit state, "
+    "and the routes that approve or deny held tool calls. Before 0.8.0 its CORS check "
+    "admitted an origin whose hostname began with `10.`, `172.16.` to `172.31.` or "
+    "`192.168.`, a prefix test on the name rather than an address check, so a public DNS "
+    "name such as `192.168.attacker.com` passed and the proxy echoed it in "
+    "`Access-Control-Allow-Origin` (CVE-2026-65957, CVSS 4.0 6.9, CWE-346, "
+    "GHSA-2c3r-q7gv-hp2m). With `dashboard.allow_open_mode: true` and no "
+    "`dashboard.api_secret`, where no auth middleware or CSRF check is registered, a page "
+    "on such an origin that a user on the same host opens reads the sideband cross-origin "
+    "and can drive the approval routes; with a secret set, the default `helio init` "
+    "writes, the response carries no credentials header and the session cookie is "
+    "`SameSite=Lax`, so the advisory finds no data access. Checked in the npm tarballs: "
+    "`dist/index.js` carries the prefix test from 0.1.0, the first release, through "
+    "0.7.0, and 0.8.0 replaces it with a private IPv4 literal check (`isPrivateIpv4`, "
+    "4ca8329c, #121).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade Helio to 0.8.0 or later (the npm package or the image) and pin it. Run the "
+    "dashboard with `dashboard.api_secret` set rather than in open mode; the advisory "
+    "notes that 0.8.0 still leaves open mode an unauthenticated loopback service.",
+    sarif_name="HelioDashboardCorsPrefixOrigin",
+    cve_references=["CVE-2026-65957"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `@gethelio/proxy` below 0.8.0 where a project states the version: a "
+        "package.json or lockfile entry, or the package in an MCP config or a package.json "
+        "script, reporting a range that admits an affected version; and "
+        "`ghcr.io/gethelio/helio` tags below 0.8.0, the two-part `0.1` to `0.7` among "
+        "them, in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs. `latest`, the one-part `0` and an unpinned `npx @gethelio/proxy` were "
+        "0.16.0 on 2026-11-12, so they are not reported. It reads the version, not "
+        "`helio.yaml`, so a deployment with `dashboard.api_secret` set, which the advisory "
+        "finds not exploitable for data access, is reported too. npm's unscoped `helio` "
+        "and PyPI's `helio` are other projects, and the Python SDK `helio-client` serves no "
+        "dashboard and is not read. Mirrors under another registry are not matched, and "
+        "commented-out lines are skipped. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-12 wave, group "heym" (two held records). One new image pin: heym's MCP
+# fetch-tools endpoint started any account's stdio command on the backend host
+# (CVE-2026-67546, HIGH, below 0.0.75), beside the MEDIUM 0.0.109 workflow-node
+# pin. CVE-2026-67545, an SSRF in the HTTP workflow node outside heym's MCP
+# integration, is out of scope; the ledger has the reason.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-HEYM-CVE-2026-67546-001",
+    "heym image below 0.0.75: the MCP fetch-tools endpoint starts any account's stdio command on the backend host",
+    "heym (heymrun/heym), a self-hosted platform for agent workflows, is on neither PyPI "
+    "nor npm and ships as the container image `ghcr.io/heymrun/heym`. Its workflow "
+    "editor previews an MCP server's tools through `POST /api/mcp/fetch-tools`, which "
+    "needs only a logged-in account (`get_current_user`; heym has no role model) and "
+    "takes the MCP connection from the request body. With the stdio transport, the "
+    "default, the backend starts the caller's `command` with the caller's `args` and "
+    "environment variables as its own process on the backend host, before any MCP "
+    "handshake, so the command's side effects happen whether or not it speaks MCP, and "
+    "on a deployment that mounts the Docker socket they reach the host "
+    "(CVE-2026-67546, CVSS 3.1 8.8, CWE-94, GHSA-378x-q589-34mv). Checked in the "
+    "source at the commit each image's label names: 0.0.1 (5df3bea6), the first image, "
+    "already serves the route and hands the stdio command to the MCP SDK's "
+    "`stdio_client`; 0.0.74 (e356609b) does the same in `_open_transport` "
+    "(`backend/app/services/mcp_tool_executor.py`), with the caller's variables merged "
+    "over the backend's own environment; 0.0.75 (6c6213f8) rewrites every stdio "
+    "command through `build_sandboxed_command` "
+    "(`backend/app/services/mcp_stdio_sandbox.py`) to run in a throwaway container "
+    "with no Docker socket and only the caller's variables.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/heymrun/heym` at 0.0.75 or later and pin that tag (or its digest), "
+    "and leave `HEYM_MCP_STDIO_SANDBOX` at `auto` or `docker`. Until then, give an "
+    "account only to people trusted to run commands on the backend host, and do not "
+    "mount the Docker socket into the container.",
+    sarif_name="HeymImageMcpFetchToolsStdioSpawn",
+    cve_references=["CVE-2026-67546"],
+    owasp_mcp_references=["MCP05:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/heymrun/heym:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Every tag below 0.0.75 is reported, from 0.0.1, "
+        "the first; GHCR has no 0.0.70, 0.0.71 or 0.0.73 image. `latest` was the 0.0.153 "
+        "image on 2026-11-12, so an untagged reference, the README's own `docker run`, is "
+        "not reported. A tag from 0.0.75 that runs with `HEYM_MCP_STDIO_SANDBOX=subprocess`, "
+        "the single-user opt-out, starts stdio commands on the backend host again and is "
+        "not reported: the rule reads the tag, not that variable. heym's compose file "
+        "builds a local image (`heym-backend:local` unless `HEYM_BACKEND_IMAGE` is set), "
+        "which states no version. Tags below 0.0.75 also fire "
+        "AAK-MCP-HEYM-CVE-2026-100858-001, a different flaw. Mirrors under another "
+        "registry are not matched, and commented-out lines are skipped."
     ),
 )
 

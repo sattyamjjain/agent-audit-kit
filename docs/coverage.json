@@ -714,6 +714,37 @@
       "title": "Agent Zero 0.9.8 MCP-config RCE (CVE-2026-30624, git-only pin)"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-123023"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 13 - Transparency",
+        "Art. 14 - Human Oversight",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI09 Human-Agent Trust Exploitation"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-AGENTSCOPE-CVE-2026-123023-001",
+      "severity": "high",
+      "title": "AgentScope 2.0.0 to 2.0.8: the Bash tool counts `tee` as read-only, so an agent writes files without asking"
+    },
+    {
       "category": "legal-compliance",
       "cve_references": [],
       "eu_ai_act": [],
@@ -3251,7 +3282,8 @@
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-123022"
+        "CVE-2026-123022",
+        "CVE-2026-123024"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -3280,7 +3312,7 @@
       ],
       "rule_id": "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
       "severity": "high",
-      "title": "AgentScope 2.x: the service's workspace API starts any stdio MCP command a caller sends (no fixed release)"
+      "title": "AgentScope 2.x: the service takes a caller-set X-User-ID header as identity, and its workspace API starts any stdio MCP command (no fixed release)"
     },
     {
       "category": "supply-chain",
@@ -5585,6 +5617,65 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-100307"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP02:2025 Privilege Escalation via Scope Creep",
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-100307-001",
+      "severity": "high",
+      "title": "Amazon mcp-gateway-registry image 1.0.9 to 1.24.7: any signed-in user can map their group to the registry admin scope"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-125926"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-125926-001",
+      "severity": "high",
+      "title": "Amazon mcp-gateway-registry image 1.0.3 to 1.34.0: a registered server's address can point the gateway at internal services"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-14471"
       ],
       "eu_ai_act": [
@@ -5831,6 +5922,34 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-65957"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-HELIO-CVE-2026-65957-001",
+      "severity": "medium",
+      "title": "Helio below 0.8.0: the dashboard sideband's CORS check admits hostnames that begin like a private address"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-100858"
       ],
       "eu_ai_act": [
@@ -5858,6 +5977,40 @@
       "rule_id": "AAK-MCP-HEYM-CVE-2026-100858-001",
       "severity": "medium",
       "title": "heym image below 0.0.109 fetches workflow-node URLs past its SSRF guard"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-67546"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-HEYM-CVE-2026-67546-001",
+      "severity": "high",
+      "title": "heym image below 0.0.75: the MCP fetch-tools endpoint starts any account's stdio command on the backend host"
     },
     {
       "category": "mcp-config",
@@ -12447,63 +12600,63 @@
       "mcp-config": 70,
       "mcp-server-card": 4,
       "secret-exposure": 22,
-      "supply-chain": 231,
+      "supply-chain": 236,
       "taint-analysis": 15,
       "tool-poisoning": 34,
       "transport-security": 17,
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 261,
-      "Art. 13 - Transparency": 32,
-      "Art. 14 - Human Oversight": 20,
-      "Art. 15 - Robustness & Security": 378,
-      "Art. 9 - Risk Management": 252
+      "Art. 10 - Data Governance": 266,
+      "Art. 13 - Transparency": 33,
+      "Art. 14 - Human Oversight": 21,
+      "Art. 15 - Robustness & Security": 383,
+      "Art. 9 - Risk Management": 255
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 260,
-      "Constrain and sandbox tool execution (p.11)": 233,
-      "Design for boundaries (p.10)": 363,
-      "Filter and monitor output pipelines and chained execution (p.12)": 134,
+      "Choose supported MCP projects when possible (p.10)": 265,
+      "Constrain and sandbox tool execution (p.11)": 236,
+      "Design for boundaries (p.10)": 368,
+      "Filter and monitor output pipelines and chained execution (p.12)": 135,
       "Instrument for logging and detection (p.13)": 25,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 332,
-      "Sign and verify MCP messages (p.12)": 344,
-      "Track and patch MCP related vulnerabilities (p.13)": 265,
-      "Validate parameters (p.11)": 237
+      "Scan local network for open or vulnerable MCP servers (p.14)": 337,
+      "Sign and verify MCP messages (p.12)": 349,
+      "Track and patch MCP related vulnerabilities (p.13)": 270,
+      "Validate parameters (p.11)": 240
     },
     "by_owasp_agentic": {
       "ASI01": 19,
-      "ASI02": 121,
-      "ASI03": 139,
-      "ASI04": 258,
-      "ASI05": 114,
+      "ASI02": 123,
+      "ASI03": 142,
+      "ASI04": 263,
+      "ASI05": 115,
       "ASI06": 6,
       "ASI07": 26,
       "ASI08": 13,
-      "ASI09": 15,
+      "ASI09": 16,
       "ASI10": 5
     },
     "by_owasp_mcp": {
       "MCP01:2025": 40,
-      "MCP02:2025": 18,
+      "MCP02:2025": 19,
       "MCP03:2025": 16,
-      "MCP04:2025": 201,
-      "MCP05:2025": 132,
+      "MCP04:2025": 205,
+      "MCP05:2025": 133,
       "MCP06:2025": 4,
-      "MCP07:2025": 104,
+      "MCP07:2025": 107,
       "MCP08:2025": 2,
       "MCP09:2025": 5,
       "MCP10:2025": 18
     },
     "by_severity": {
       "critical": 103,
-      "high": 219,
+      "high": 223,
       "info": 5,
       "low": 22,
-      "medium": 147
+      "medium": 148
     },
-    "total_cves_covered": 473,
-    "total_rules": 496
+    "total_cves_covered": 479,
+    "total_rules": 501
   },
   "tool": "agent-audit-kit"
 }
