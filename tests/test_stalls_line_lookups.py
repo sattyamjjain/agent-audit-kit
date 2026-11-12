@@ -122,9 +122,10 @@ def _gha_heredocs(separator: str, k: int) -> dict[str, str]:
 
 
 def _gha_publish_jobs(k: int) -> dict[str, str]:
-    """k jobs, each publishing with no environment, so each is reported and placed. Each
-    command differs: a placement that searched from the top of the file for each job's
-    command (5,000 jobs) took 5.9 s against 1.4 s."""
+    """k jobs, each publishing with no environment, so each is reported and placed. The YAML
+    parse dominates the cost, so a placement that searched from the top of the file for each
+    job's command shows only at sizes past this row's bound on CI: that one is pinned by
+    counting line searches in tests/test_gha_publish_gate.py instead."""
     jobs = "".join(f" j{i}:\n  runs-on: x\n  steps:\n  - run: npm publish p{i}\n" for i in range(k))
     return {".github/workflows/ci.yml": "on: release\njobs:\n" + jobs}
 
@@ -459,7 +460,7 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # AAK-GHA-PUBLISH-GATE-001's reader, before it was released: every ungated job is placed
     # inside its own step's lines (the composed document gives each step's range), and a
     # stage's option words, launchers and commands are each read once.
-    "publish-gate-jobs": (gha_hardening.scan, _gha_publish_jobs, 500, True),
+    "publish-gate-jobs": (gha_hardening.scan, _gha_publish_jobs, 150, True),
     "publish-gate-options": (gha_hardening.scan, lambda k: _gha_run('"npm' + " -x" * k + ' publish"'), 8_000, False),
     "publish-gate-launchers": (gha_hardening.scan, lambda k: _gha_run('"' + "npx -y " * k + 'vsce publish"'), 5_000,
                                False),

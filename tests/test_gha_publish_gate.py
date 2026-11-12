@@ -338,6 +338,19 @@ def test_the_document_is_composed_only_for_a_finding(monkeypatch: pytest.MonkeyP
     assert len(composed) == 1
 
 
+def test_each_job_is_placed_by_reading_only_its_own_step(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every reported job is placed by searching the lines of its own step, never the file
+    from the top: 200 jobs cost at most one line search each. A search from the top costs
+    about 400 per job here, a quadratic the timing rows cannot see under the YAML parse."""
+    searched: list[str] = []
+    real = gha_hardening.linear_find
+    monkeypatch.setattr(gha_hardening, "linear_find", lambda text, key: searched.append(key) or real(text, key))
+    jobs = "".join(f"  j{i}:\n    runs-on: x\n    steps:\n      - run: npm publish p{i}\n" for i in range(200))
+    _workflow(tmp_path, "on: release\njobs:\n" + jobs)
+    assert [line for _, _, line in _gates(tmp_path)] == [6 + 4 * i for i in range(200)]
+    assert len(searched) <= 200
+
+
 def test_an_uncomposable_document_falls_back_to_the_first_matching_line(monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
 
