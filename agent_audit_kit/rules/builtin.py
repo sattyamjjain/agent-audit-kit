@@ -396,6 +396,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-FLOWISE-CVE-2026-119978-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-AGENTSCOPE-CVE-2026-123023-001": ["AIS-07", "STA-08"],
     "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
     "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123811-001": ["IAM-01", "STA-08"],
@@ -20072,29 +20073,34 @@ _r(
 
 _r(
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001",
-    "AgentScope 2.x: the service's workspace API starts any stdio MCP command a caller sends (no fixed release)",
+    "AgentScope 2.x: the service takes a caller-set X-User-ID header as identity, and its workspace API starts any stdio MCP command (no fixed release)",
     "AgentScope (PyPI `agentscope`, agentscope-ai/agentscope) ships from 2.0.0 an agent "
-    "service, `agentscope.app`, whose `POST /workspace/mcp` route takes an MCP client "
-    "configuration from the caller. A stdio configuration's `command` is a free string "
-    "and a stateful client connects as soon as it is added, so the server starts that "
-    "program, with the caller's arguments and environment, as its own user. The route's "
-    "only identity is the `X-User-ID` header the caller sets, which the code calls a "
-    "temporary header-based identity, so anyone who reaches the API runs programs on the "
-    "host, or inside the Docker or E2B sandbox where the workspace runs there "
-    "(CVE-2026-123022, CVSS 3.1 7.3, CWE-78). Checked in the PyPI wheels: 1.0.21, the "
-    "last 1.x release, has no `agentscope.app`; 2.0.0 (2026-05-25) and 2.0.11 "
-    "(2026-10-27), the newest, have the route and the header. agentscope-ai/agentscope#3312 "
-    "is open, and #3448, an opt-in allowlist of stdio commands that leaves the default as "
-    "it is, is unmerged, so there is no fixed release.",
+    "service, `agentscope.app`, whose only identity is the `X-User-ID` header the caller "
+    "sets: `get_current_user_id` accepts any value that is not empty, the code calls it a "
+    "temporary header-based identity, and `create_app` adds no authentication, so anyone "
+    "who reaches the API acts as whichever user the header names, listing, changing and "
+    "deleting that user's stored credentials, agents, sessions and schedules and chatting "
+    "as that user (CVE-2026-123024, CVSS 3.1 7.3, CWE-306). The same service's "
+    "`POST /workspace/mcp` route takes an MCP client configuration from the caller. A "
+    "stdio configuration's `command` is a free string and a stateful client connects as "
+    "soon as it is added, so the server starts that program, with the caller's arguments "
+    "and environment, as its own user, or inside the Docker or E2B sandbox where the "
+    "workspace runs there (CVE-2026-123022, CVSS 3.1 7.3, CWE-78). Checked in the PyPI "
+    "wheels: 1.0.21, the last 1.x release, has no `agentscope.app`; every 2.x release, "
+    "2.0.0 (2026-05-25) to 2.0.11 (2026-10-27), the newest, has the header identity "
+    "(`app/_deps.py` in 2.0.0, `app/deps.py` from 2.0.1), and 2.0.0 and 2.0.11 have the "
+    "route. agentscope-ai/agentscope#3312 and #3314 are open, and #3448, an opt-in "
+    "allowlist of stdio commands, and #3329, an opt-in shared API key, are unmerged and "
+    "would leave the default as it is, so neither flaw has a fixed release.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "There is no fixed release. Keep an AgentScope 2.x service's API off networks you do "
-    "not trust: bind it to 127.0.0.1, or put authentication in front of it that sets "
-    "`X-User-ID` itself, and block `POST /workspace/mcp` at the proxy where callers need "
-    "not add MCP servers. The Docker and E2B workspace backends contain the started "
-    "program but still run it.",
+    "not trust: bind it to 127.0.0.1, or put authentication in front of it that drops "
+    "any `X-User-ID` a client sends and sets the header itself, and block "
+    "`POST /workspace/mcp` at the proxy where callers need not add MCP servers. The "
+    "Docker and E2B workspace backends contain the started program but still run it.",
     sarif_name="AgentScopeWorkspaceStdioCommand",
-    cve_references=["CVE-2026-123022"],
+    cve_references=["CVE-2026-123022", "CVE-2026-123024"],
     owasp_mcp_references=["MCP05:2025", "MCP07:2025", "MCP04:2025"],
     owasp_agentic_references=["ASI05", "ASI03", "ASI04"],
     adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
@@ -20109,6 +20115,53 @@ _r(
         "extra), so a project that uses AgentScope only as a library is reported too. npm's "
         "`agentscope` is another project and is not matched. A file over 2 MB, or a lockfile "
         "over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-12 (#1231): AgentScope's Bash tool counted `tee` as read-only through 2.0.8.
+# Fixed in 2.0.9, so a ranged rule of its own beside the presence-only service rule
+# above, which would otherwise report 2.0.9 and later under a flaw they do not have.
+# The Bash tool is the agent's own shell tool, not MCP, so no MCP area or MCP id.
+_r(
+    "AAK-AGENTSCOPE-CVE-2026-123023-001",
+    "AgentScope 2.0.0 to 2.0.8: the Bash tool counts `tee` as read-only, so an agent writes files without asking",
+    "AgentScope (PyPI `agentscope`, agentscope-ai/agentscope) 2.x gives every workspace's "
+    "agents a built-in `Bash` tool. Its `check_permissions` allows a command its parser "
+    "calls read-only at once, ahead of the tool's dangerous-command and dangerous-path "
+    "checks, and the parser's `SAFE_COMMANDS` set, which makes that call, listed `tee` "
+    "through 2.0.8. `tee` writes the files it is given, so a command that pipes into it "
+    "writes or appends to any file the agent's user can write, where the same write "
+    "through `>` asks first. Whoever steers the agent, through "
+    "prompt injection or the 2.x service's API, can add a login key or change a shell "
+    "startup file (CVE-2026-123023, CVSS 3.1 7.3, CWE-863). Checked in the PyPI wheels: "
+    "1.0.21, the last 1.x release, has no `Bash` tool; every release from 2.0.0 "
+    "(2026-05-25) to 2.0.8, 2.0.4.post1 and 2.0.7.post1 included, lists `tee`; 2.0.9 "
+    "(2026-09-28) removes it (agentscope-ai/agentscope#2629, commit 6b43b13), and 2.0.10 "
+    "and 2.0.11 leave it out.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `agentscope` to 2.0.9 or later and pin it. Until you can, run agents that read "
+    "input you do not control in a Docker or E2B workspace, where a write through `tee` "
+    "stays inside the sandbox, and keep a 2.x service's API off networks you do not trust.",
+    sarif_name="AgentScopeBashTeeReadOnly",
+    cve_references=["CVE-2026-123023"],
+    owasp_agentic_references=["ASI02", "ASI09", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports a PyPI reference to `agentscope` from 2.0.0 below 2.0.9 that states a "
+        "version: a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or "
+        "lockfile entry at the project root, or the package a `uvx` launch in an MCP config "
+        "names, judging a range by the versions it admits. `latest` is 2.0.11, fixed, so a "
+        "reference that states no version is not reported. 2.0.4.post1 and 2.0.7.post1 read "
+        "as 2.0.4 and 2.0.7, both affected. It reads the version, not whether the project "
+        "gives an agent the `Bash` tool or which permission mode it runs, so a project that "
+        "uses AgentScope without the tool is reported too. 1.x releases have no `Bash` tool "
+        "and are not reported. npm's `agentscope` is another project and is not matched. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

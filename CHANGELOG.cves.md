@@ -18,6 +18,97 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-12 (unreleased): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
+
+The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI
+`agentscope`, from the reporter of CVE-2026-123022 in the 0.6.35 section below. Each is
+read here against NVD's API record, its CVE record, the upstream issues and pull requests,
+OSV, and the PyPI wheels of 1.0.21 and of every 2.x release from 2.0.0 to 2.0.11 with
+2.0.4.post1 and 2.0.7.post1, all on 2026-11-12, and NVD text is quoted from the API
+records. One gets a new pin and one joins the service's existing rule, each measured with
+the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_agentscope.py).
+
+### CVE-2026-123023 (#1231): new pin 2026-11-12
+
+**AgentScope's Bash tool gets `AAK-AGENTSCOPE-CVE-2026-123023-001`: PyPI `agentscope` from
+2.0.0 below 2.0.9, HIGH.** NVD: "A flaw has been found in agentscope-ai AgentScope up to
+2.0.8. This affects the function check_permissions of the file
+src/agentscope/tool/_builtin/_bash.py of the component Bash Tool." VulDB's CNA record lists
+2.0.0 to 2.0.8 as affected and 2.0.9 as unaffected, and names the patch, commit 6b43b13,
+which is agentscope-ai/agentscope#2629, merged on 18 Sep. Every 2.x workspace gives its
+agents a built-in `Bash` tool, and its `check_permissions` allows a command the parser calls
+read-only before the tool's dangerous-command and dangerous-path checks run. The parser's
+`SAFE_COMMANDS` set listed `tee`, which writes the files it is given, so a command that
+pipes into `tee` writes or appends to any file the agent's user can write, where the same
+write through `>` asks first. Whoever steers the agent, through prompt injection or the
+service's API, can add a login key or change a shell startup file. Checked in the wheels:
+1.0.21, the last 1.x release, has no `Bash` tool; every release from 2.0.0 (25 May) to
+2.0.8 (8 Sep), the two post releases included, lists `tee`; 2.0.9 (28 Sep) drops it and
+nothing else in the package names it, and 2.0.10 and 2.0.11 leave it out. The upstream
+issue, #3313, says 2.0.4 and earlier and is still open, but the wheels put the fix in
+2.0.9, as the CNA record does.
+
+The flaw has a fixed release, so it does not join `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001`:
+that rule is presence-only and reports every 2.x release, so it would report 2.0.9 to
+2.0.11 under a flaw they do not have. It gets a ranged rule at its own severity beside it,
+as Penpot's bridge CVE did, and a reference to 2.0.0 to 2.0.8 gets both findings, one per
+flaw. `latest` is 2.0.11, fixed, so a stated version is required. The Bash tool is the
+agent's own shell tool, not MCP, so the rule has no MCP area and no MCP id, as Flowise's
+did. It reads the version, not whether a project gives an agent the tool, and its
+limitations say so. The record's CVSS 3.1 7.3 sets HIGH; the reporter's write-up scores
+8.1.
+
+Measured with the scanner on the record as `nvd_feed` converts it through the `agentscope`
+map row: the feed lists 2.0.0 to 2.0.8 by number, with no fixed version, so after
+`aak update` `AAK-KNOWN-VULN-001` reports those nine releases and misses 2.0.4.post1 and
+2.0.7.post1, which the pin reports. With the pin in place the engine drops the feed's HIGH
+finding on the same line. The bundled feed does not hold the record. OSV holds the CVE only
+as an NVD import with git commit ranges, and nothing for PyPI `agentscope` at 2.0.8.
+
+### CVE-2026-123024 (#1232): on the AgentScope service rule 2026-11-12
+
+**The 2.x service's identity joins `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001`, presence-only
+from 2.0.0, HIGH.** NVD: "A vulnerability has been found in agentscope-ai AgentScope up to
+2.0.11. This impacts the function get_current_user_id of the file
+src/agentscope/app/deps.py of the component Agent Service. Such manipulation of the
+argument X-User-ID leads to missing authentication." VulDB's CNA record lists 2.0.0 to
+2.0.11 and says the fixing pull request awaits acceptance. It is a separate record from
+CVE-2026-123022, not a copy: that one is the workspace route that starts a caller's stdio
+command (CWE-78), this one the identity every route of the service trusts (CWE-306).
+`get_current_user_id` accepts any `X-User-ID` value that is not empty, the code calls it a
+temporary header-based identity, and `create_app` adds no authentication, so a caller who
+names another user lists, changes and deletes that user's stored credentials, agents,
+sessions and schedules and chats as that user. Checked in the wheels: 1.0.21 has no
+`agentscope.app`; every 2.x release has the function, in `app/_deps.py` in 2.0.0 and
+`app/deps.py` from 2.0.1, and seven route modules in 2.0.0 and fourteen in 2.0.11 take it.
+The pull request the record cites, #3448, is the opt-in allowlist of stdio commands that
+the 0.6.35 section names for CVE-2026-123022, and by its own description it adds no
+authentication. #3329, an opt-in shared API key that would close #3314, is open too, and
+`main` on 2026-11-12 still has the header identity, so neither record has a fixed release.
+
+The two records name the same package and releases, have no fix and score the same CVSS 3.1
+7.3, and the rule's remediation already said to bind the service to 127.0.0.1 or put
+authentication in front of it that sets the header; it now also says that proxy must drop
+any `X-User-ID` a client sends. A second presence-only rule would report every 2.x line
+twice for one exposed service, so the record joins the rule: its title, description and
+`cve_references` name both CVEs, and its range does not move. If one of the two gets a
+fixed release first, it moves to a rule of its own with a floor. Measured with the scanner:
+2.0.0, 2.0.9 and 2.0.11 fire the rule and 1.0.21 does not. After `aak update` the feed lists
+the twelve releases by number. With the record on the rule the engine drops the feed's HIGH
+finding on the same line; with the rule as 0.6.35 shipped it, `AAK-KNOWN-VULN-001` reports
+CVE-2026-123024 beside it on 2.0.11. The reporter scores this one 9.8; the record's CVSS 3.1
+7.3 sets HIGH, as the rule already is. OSV holds the CVE only as an NVD import with git
+commit ranges.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-123023 | 7.3 | `agentscope` (PyPI) | **New pin** `AAK-AGENTSCOPE-CVE-2026-123023-001` (HIGH): 2.0.0 up to 2.0.9, beside the presence-only service pin, a stated version required. | #1231 |
+| CVE-2026-123024 | 7.3 | `agentscope` (PyPI) | **Joins** `AAK-MCP-AGENTSCOPE-CVE-2026-123022-001` (HIGH), no range change: every release from 2.0.0, 2.0.0 to 2.0.11 today. No fixed release. | #1232 |
+
+CVSS is each record's CVSS 3.1 score from VulDB. Both records also carry a CVSS 4.0 score,
+which VulDB rates MEDIUM.
+
 ## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769
