@@ -207,9 +207,9 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `mcp_codeexec_sandbox` looks at tools that run code a caller sends: FastMCP's Generative UI provider on a prefab-ui release whose Deno sandbox keeps read, write and network access (CVE-2026-120338, [AAK-MCP-CODEEXEC-SANDBOX-001](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MCP-CODEEXEC-SANDBOX-001.md)), and any Deno launch with an open permission whose script hands it caller code without revoking that permission ([AAK-MCP-CODEEXEC-SANDBOX-002](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules/AAK-MCP-CODEEXEC-SANDBOX-002.md)).
 
-`runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497).
+`runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497, Node.js's 11 Nov 2026 security release).
 
-<!-- test-count:total -->5,763<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->5,765<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->501<!-- /rule-count --> rules
