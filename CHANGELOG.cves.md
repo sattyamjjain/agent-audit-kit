@@ -18,7 +18,7 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-11-12 (unreleased): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
+## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI
 `agentscope`, from the reporter of CVE-2026-123022 in the 0.6.35 section below. Each is
@@ -109,7 +109,7 @@ commit ranges.
 CVSS is each record's CVSS 3.1 score from VulDB. Both records also carry a CVSS 4.0 score,
 which VulDB rates MEDIUM.
 
-## 2026-11-12 (unreleased): two held Amazon mcp-gateway-registry records, two new image rules
+## 2026-11-12 (v0.6.36): two held Amazon mcp-gateway-registry records, two new image rules
 
 The watcher holds CVE-2026-100307 and CVE-2026-125926, both published by Amazon's CNA on 11 Nov,
 behind its back-pressure cap, so neither has an issue. Both are read here against NVD's API record,
@@ -177,7 +177,7 @@ CVSS is each record's CVSS 3.1 score, Amazon's; its CVSS 4.0 scores are 8.7 and 
 
 Dispositioned at 2026-11-12T04:30:00Z.
 
-## 2026-11-12 (unreleased): #1229, #1230 and two held records, a new pin for Helio, three out of scope
+## 2026-11-12 (v0.6.36): #1229, #1230 and two held records, a new pin for Helio, three out of scope
 
 The watcher filed #1229 and #1230 on 11 Nov and holds CVE-2026-65957 and CVE-2026-65968
 behind its back-pressure cap, so those two have no issue yet. Each is read here against NVD's
@@ -290,7 +290,7 @@ the CVE or the GHSA. Fixed in 0.9.4.
 CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for ByteStash and SiYuan
 (their CVSS 4.0 scores are 5.3 and 6.0). GitHub scored Helio and ideon in CVSS 4.0 only.
 
-## 2026-11-12 (unreleased): two held heym records, one new image rule, one out of scope
+## 2026-11-12 (v0.6.36): two held heym records, one new image rule, one out of scope
 
 The watcher holds CVE-2026-67546 and CVE-2026-67545 behind its back-pressure cap, so neither has
 an issue. Both are GitHub's records for heym, a self-hosted platform for agent workflows,

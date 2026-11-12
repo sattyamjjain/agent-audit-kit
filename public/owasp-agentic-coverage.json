@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-12T06:39:08Z",
-  "aak_version": "0.6.35",
+  "last_updated": "2026-11-12T08:06:33Z",
+  "aak_version": "0.6.36",
   "rule_count": 501,
   "coverage": [
     {

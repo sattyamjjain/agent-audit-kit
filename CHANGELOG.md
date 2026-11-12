@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.36] - 2026-11-12
+
 ### Added
 
 - New rule AAK-GHA-PUBLISH-GATE-001 (HIGH): a GitHub Actions job that publishes a package (`npm`, `pnpm`, `yarn`, `bun`, `uv`, `poetry`, `hatch`, `flit`, `pdm`, `cargo`, `vsce` or `ovsx publish`, `twine upload`, `gem push`, `nuget push`, or the `pypa/gh-action-pypi-publish`, `JS-DevTools/npm-publish` and `rubygems/release-gem` actions) and names no `environment:`, so no reviewer approves the release before it publishes. @ethersphere/bee-js 13.3.0 (GHSA-hh7j-5m3j-23pf) shipped malware this way: stolen CI credentials created a release, which started the npm publish job, and it published with valid provenance and no approval. The finding sits on the job's first publishing step, and its evidence names the triggers, says whether the job has the `id-token` permission set to `write`, and, for a release or tag-push trigger, says that whoever can create one publishes. A named environment counts as the gate: whether it has required reviewers is a repository setting the checkout does not hold. A dry run, TestPyPI, a registry on the runner and a reusable workflow are not reported.
