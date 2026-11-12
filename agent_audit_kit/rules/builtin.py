@@ -19837,17 +19837,25 @@ _r(
     "PHP2Shell (CVE-2026-109618 and CVE-2026-109619, remote code execution, fixed in "
     "PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12) and CVE-2026-111497 (an out-of-bounds "
     "write in the Brotli decoder Node.js bundles, fixed in 22.23.4, 24.22.1 and "
-    "26.12.1 only) are in CISA's Known Exploited Vulnerabilities catalog. No "
-    "dependency pin sees them: the version that matters is the interpreter an MCP "
-    "server runs on.",
+    "26.12.1 only) are in CISA's Known Exploited Vulnerabilities catalog. Node.js's "
+    "security release of 11 Nov 2026 (16 CVEs, seven rated high, in HTTP/2, HTTPS and "
+    "TLS) is in the file too, fixed in 22.23.5, 24.22.3 and 26.13.1. No dependency "
+    "pin sees them: the version that matters is the interpreter an MCP server runs on.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Move to the fixed release on the same line (PHP 8.4.27, Node.js 24.22.1 and so "
+    "Move to the fixed release on the same line (PHP 8.4.27, Node.js 24.22.3 and so "
     "on) or to a supported line that has one, and pin the full version (or the image "
     "digest) so the next fix is a visible change. An end-of-life line gets no fix: "
     "upgrade the line. Rebuild images after changing the base.",
     sarif_name="RuntimeBelowAdvisoryFix",
-    cve_references=["CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497"],
+    cve_references=[
+        "CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497",
+        # Node.js, 11 Nov 2026 security release (NODEJS-SEC-2026-11-11 in the advisory file).
+        "CVE-2026-106071", "CVE-2026-123828", "CVE-2026-123829", "CVE-2026-123862",
+        "CVE-2026-123863", "CVE-2026-123864", "CVE-2026-123865", "CVE-2026-123866",
+        "CVE-2026-123867", "CVE-2026-123868", "CVE-2026-123871", "CVE-2026-123872",
+        "CVE-2026-123874", "CVE-2026-123875", "CVE-2026-123877", "CVE-2026-126051",
+    ],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SUPPLY-04"],
@@ -19856,8 +19864,12 @@ _r(
         "Judges a runtime against `data/runtime_advisories.json`, or a copy at "
         "`~/.agent-audit-kit/runtime_advisories.json`, read first; a scan never fetches "
         "it. The bundled file names PHP (CVE-2026-109618 from 7.3.0, CVE-2026-109619 from "
-        "5.4.0) and Node.js (CVE-2026-111497 from 10.16.0, 11.7.0 on the 11 line) and no "
-        "Python advisory, so a Python runtime is read and reported by nothing today. A "
+        "5.4.0) and Node.js (CVE-2026-111497 from 10.16.0, 11.7.0 on the 11 line; the 11 "
+        "Nov 2026 security release as one entry, NODEJS-SEC-2026-11-11, its 16 CVEs as "
+        "aliases, with no first affected release, since Node.js says end-of-life versions "
+        "are always affected, and HIGH for every line, though three high CVEs reach only "
+        "24.x and 26.x) and no Python advisory, so a Python runtime is read and reported "
+        "by nothing today. A "
         "release is judged against the fixed release on its line (the major for Node.js, "
         "major.minor for PHP and Python); a line with no fixed release is affected when "
         "it is older than the newest fixed line, and a newer line is taken to carry the "
@@ -19890,11 +19902,18 @@ _r(
     "cannot be told from the file.",
     Severity.INFO,
     Category.SUPPLY_CHAIN,
-    "Pin a full version (`node:24.22.1-slim`) or an image digest so the release you run "
+    "Pin a full version (`node:24.22.3-slim`) or an image digest so the release you run "
     "is the one you reviewed. For a managed runtime, confirm in the platform's release "
     "notes that it runs the fixed release.",
     sarif_name="RuntimeFloatingTagUnjudged",
-    cve_references=["CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497"],
+    cve_references=[
+        "CVE-2026-109618", "CVE-2026-109619", "CVE-2026-111497",
+        # Node.js, 11 Nov 2026 security release (NODEJS-SEC-2026-11-11 in the advisory file).
+        "CVE-2026-106071", "CVE-2026-123828", "CVE-2026-123829", "CVE-2026-123862",
+        "CVE-2026-123863", "CVE-2026-123864", "CVE-2026-123865", "CVE-2026-123866",
+        "CVE-2026-123867", "CVE-2026-123868", "CVE-2026-123871", "CVE-2026-123872",
+        "CVE-2026-123874", "CVE-2026-123875", "CVE-2026-123877", "CVE-2026-126051",
+    ],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-02"],

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-28T05:53:03Z",
-  "source": "Bundled with agent-audit-kit: the PHP and Node.js vendor advisories, GHSA-9v8h-qqgm-4m35, NVD and the CISA KEV catalog (2026.10.27), and endoflife.date, each read on 2026-10-28 (the url and read_at of each entry).",
+  "generated_at": "2026-11-12T06:36:00Z",
+  "source": "Bundled with agent-audit-kit: the PHP and Node.js vendor advisories, GHSA-9v8h-qqgm-4m35, NVD and the CISA KEV catalog (2026.10.27), and endoflife.date, each read on 2026-10-28, and the Node.js security release of 11 Nov 2026, read on 2026-11-12 (the url and read_at of each entry).",
   "advisories": [
     {
       "id": "CVE-2026-109618",
@@ -50,6 +50,26 @@
       "url": "https://nodejs.org/en/blog/vulnerability/october-2026-security-releases",
       "read_at": "2026-10-28",
       "notes": "Node.js: 'affects Node.js 26.x, 24.x, and 22.x', fixed in v22.23.4, v24.22.1 and v26.12.1, and 'End-of-Life versions are always affected'. Node.js bundles Brotli from 11.7.0 and 10.16.0 (doc/changelogs), so older releases are not affected by this CVE. No 27.x existed on 2026-10-28."
+    },
+    {
+      "id": "NODEJS-SEC-2026-11-11",
+      "aliases": [
+        "CVE-2026-123863", "CVE-2026-123864", "CVE-2026-123865", "CVE-2026-123866", "CVE-2026-126051",
+        "CVE-2026-123872", "CVE-2026-123874", "CVE-2026-123828", "CVE-2026-123867", "CVE-2026-123868",
+        "CVE-2026-123871", "CVE-2026-123877", "CVE-2026-123875", "CVE-2026-123829", "CVE-2026-123862",
+        "CVE-2026-106071"
+      ],
+      "subject": "node",
+      "title": "Node.js security release of 11 Nov 2026: 16 CVEs, seven rated high, in HTTP/2, HTTPS and TLS (crashes, heap disclosure, mTLS bypass)",
+      "fixed_by_line": {"22": "22.23.5", "24": "24.22.3", "26": "26.13.1"},
+      "unfixed_lines_affected": true,
+      "kev_added": null,
+      "kev_due": null,
+      "severity": "HIGH",
+      "cvss": "Node.js rates seven high, six medium and three low; the page gives no CVSS",
+      "url": "https://nodejs.org/en/blog/vulnerability/november-2026-security-releases",
+      "read_at": "2026-11-12",
+      "notes": "One entry for the release, its CVEs as aliases: the file keys an advisory by line, and three of the high CVEs (CVE-2026-123863, -123874, -126051) and two medium ones (CVE-2026-123828, -123868) affect only 24.x and 26.x, so an entry per CVE would report 22.x for flaws it does not have. Every one of 22.x, 24.x and 26.x has at least one high CVE fixed here (22.x: CVE-2026-123864, -123865, -123866, -123872), fixed in v22.23.5, v24.22.3 and v26.13.1. The page says 'End-of-Life versions are always affected' and names no first affected release, so no affected_from is set. Bundled dependency updates: llhttp (22, 24, 26), undici (24, 26), sqlite (22, 24)."
     },
     {
       "id": "CVE-2026-111497",

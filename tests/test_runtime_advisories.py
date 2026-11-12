@@ -44,12 +44,15 @@ def _evidence(root: Path) -> str:
     "case, expected",
     [
         ("node-24-22-0-slim", [(ADV_001, "Dockerfile", 1)]),
-        ("node-24-22-1", []),
+        # At the October fix (24.22.1) and below November's (24.22.3): the November entry alone.
+        ("node-24-22-1", [(ADV_001, "Dockerfile", 1)]),
+        ("node-24-22-3", []),
         ("node-20-19-0", [(ADV_001, "Dockerfile", 1)]),
         ("php-8-4-26-fpm", [(ADV_001, "Dockerfile", 1)]),
         ("php-8-4-27-fpm", []),
         ("nvmrc-22-23-3", [(ADV_001, ".nvmrc", 1)]),
-        ("tool-versions-26-12-1", []),
+        ("tool-versions-26-12-1", [(ADV_001, ".tool-versions", 1)]),
+        ("tool-versions-26-13-1", []),
         ("node-floating", [(ADV_002, "Dockerfile", 1)]),
         ("lockfiles", [(ADV_003, "uv.lock", 5)]),
         ("mcp-nvm-launcher", [(ADV_001, ".mcp.json", 4)]),
@@ -69,6 +72,34 @@ def test_a_line_without_a_fix_says_so_and_when_it_ended() -> None:
     evidence = _evidence(FIXTURES / "node-20-19-0")
     assert "Node.js 20.19.0 is on a line with no fixed release for CVE-2026-111497" in evidence
     assert "the 20 line reached end of life on 2026-04-30" in evidence
+
+
+@pytest.mark.parametrize(
+    ("version", "fires"), [("22.23.4", True), ("22.23.5", False), ("24.22.2", True), ("24.22.3", False),
+                           ("26.13.0", True), ("26.13.1", False)],
+)
+def test_the_november_2026_release_moves_every_lines_floor(tmp_path: Path, version: str, fires: bool) -> None:
+    """Node.js's 11 Nov 2026 security release (16 CVEs, the highest rated high) fixed
+    22.23.5, 24.22.3 and 26.13.1. A release at October's fix (22.23.4) now fires, for the
+    November entry alone, with no KEV, at HIGH."""
+    (tmp_path / ".nvmrc").write_text(version + "\n")
+    findings, _ = ra.scan(tmp_path)
+    if not fires:
+        assert findings == []
+        return
+    (finding,) = findings
+    assert finding.rule_id == ADV_001 and finding.severity is Severity.HIGH
+    assert "NODEJS-SEC-2026-11-11 (Node.js security release of 11 Nov 2026" in finding.evidence
+    assert "CVE-2026-111497" not in finding.evidence and "CISA KEV" not in finding.evidence
+
+
+def test_an_end_of_life_release_before_brotli_names_only_the_november_release(tmp_path: Path) -> None:
+    """8.17.0 predates Node.js's bundled Brotli, so CVE-2026-111497 still does not name it;
+    the November release's page says end-of-life versions are always affected."""
+    (tmp_path / "Dockerfile").write_text("FROM node:8.17.0\n")
+    evidence = _evidence(tmp_path)
+    assert "on a line with no fixed release for NODEJS-SEC-2026-11-11" in evidence
+    assert "CVE-2026-111497" not in evidence
 
 
 def test_php2shell_reports_both_cves_with_their_kev_dates() -> None:
@@ -123,9 +154,10 @@ def test_sarif_round_trip_places_every_rule_on_a_line() -> None:
         ("FROM node:lts", ADV_002),
         ("FROM node", ADV_002),                # no tag: latest
         ("FROM php:8", ADV_002),               # floats across lines
-        ("FROM node:26.12.1", None),
+        ("FROM node:26.12.1", ADV_001),        # the October fix, below November's 26.13.1
+        ("FROM node:26.13.1", None),
         ("FROM node:27.0.0", None),            # a newer line than any fix carries it
-        ("FROM node:8.17.0", None),            # before Node.js bundled Brotli
+        ("FROM node:8.17.0", ADV_001),         # end of life: "always affected" by the November release
         ("FROM php:5.3.29", None),             # before either flaw
         ("FROM python:3.12.7-slim", None),     # no advisory names Python
         ("FROM node@sha256:" + "a" * 64, None),
@@ -146,7 +178,7 @@ def test_a_from_through_a_global_arg_and_a_stage_name(tmp_path: Path) -> None:
 
 
 def test_tool_versions_reads_every_listed_version(tmp_path: Path) -> None:
-    (tmp_path / ".tool-versions").write_text("nodejs 24.22.1 20.19.0\nphp 8.4.26\npython 3.12.7\n")
+    (tmp_path / ".tool-versions").write_text("nodejs 24.22.3 20.19.0\nphp 8.4.26\npython 3.12.7\n")
     assert _found(tmp_path) == [(ADV_001, ".tool-versions", 1), (ADV_001, ".tool-versions", 2)]
 
 
@@ -154,7 +186,7 @@ def test_engines_node_is_judged_at_the_lowest_release_it_admits(tmp_path: Path) 
     (tmp_path / "package.json").write_text(json.dumps({"engines": {"node": ">=18"}}, indent=2))
     evidence = _evidence(tmp_path)
     assert "Node.js 18.0.0" in evidence and "lowest release `>=18` admits" in evidence
-    (tmp_path / "package.json").write_text(json.dumps({"engines": {"node": ">=22.23.4 <23 || >=24.22.1"}}))
+    (tmp_path / "package.json").write_text(json.dumps({"engines": {"node": ">=22.23.5 <23 || >=24.22.3"}}))
     assert _found(tmp_path) == []
 
 
@@ -178,7 +210,8 @@ def test_managed_runtimes(tmp_path: Path, file: str, text: str, rule: str | None
     "command, rule",
     [
         ("~/.nvm/versions/node/v24.22.0/bin/node", ADV_001),
-        ("/Users/x/.local/share/mise/installs/node/22.23.4/bin/node", None),
+        ("/Users/x/.local/share/mise/installs/node/22.23.4/bin/node", ADV_001),
+        ("/Users/x/.local/share/mise/installs/node/22.23.5/bin/node", None),
         ("/opt/homebrew/Cellar/node/24.21.0_1/bin/node", ADV_001),
         ("C:\\Users\\x\\.volta\\tools\\image\\node\\20.19.0\\node.exe", ADV_001),
         ("/home/x/.asdf/installs/php/8.3.35/bin/php", ADV_001),
@@ -216,7 +249,13 @@ def test_the_bundled_file_holds_what_the_advisories_published() -> None:
     assert node["kev_added"] == "2026-10-27"
     assert by_key[("CVE-2026-111497", "pypi:Brotli")]["fixed_by_line"] == {"1.2": "1.2.1"}
     assert by_key[("CVE-2026-111497", "pypi:brotlicffi")]["fixed_by_line"] == {"1.2": "1.2.1.0"}
-    assert all(a["read_at"] == "2026-10-28" and a["url"] for a in data["advisories"])
+    november = by_key[("NODEJS-SEC-2026-11-11", "node")]
+    assert november["fixed_by_line"] == {"22": "22.23.5", "24": "24.22.3", "26": "26.13.1"}
+    assert (november["severity"], november["kev_added"], november["unfixed_lines_affected"]) == ("HIGH", None, True)
+    assert len(november["aliases"]) == 16 and all(a.startswith("CVE-2026-") for a in november["aliases"])
+    assert november["url"] == "https://nodejs.org/en/blog/vulnerability/november-2026-security-releases"
+    assert all(a["read_at"] == ("2026-11-12" if a is november else "2026-10-28") and a["url"]
+               for a in data["advisories"])
     assert data["eol"]["node"]["lines"]["20"] == "2026-04-30"
     assert data["eol"]["php"]["lines"]["8.1"] == "2025-12-31"
 
@@ -226,7 +265,7 @@ def test_a_local_copy_is_read_first_and_a_broken_one_is_skipped(tmp_path: Path) 
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps({"generated_at": "t", "source": "local", "advisories": [
         {"id": "CVE-TEST-1", "subject": "node", "severity": "high", "fixed_by_line": {"24": "24.99.0"}}]}))
-    (tmp_path / ".nvmrc").write_text("24.22.1\n")
+    (tmp_path / ".nvmrc").write_text("24.22.3\n")
     findings, _ = ra.scan(tmp_path)
     assert [(f.rule_id, f.severity) for f in findings] == [(ADV_001, Severity.HIGH)]
     cache.write_text("{ not json")
