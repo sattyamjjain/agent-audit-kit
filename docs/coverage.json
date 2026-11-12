@@ -1521,6 +1521,27 @@
       "title": "Third-party GitHub Action not pinned by full commit SHA"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-GHA-PUBLISH-GATE-001",
+      "severity": "high",
+      "title": "Workflow job publishes a package with no environment approval gate"
+    },
+    {
       "category": "secret-exposure",
       "cve_references": [],
       "eu_ai_act": [
@@ -12426,35 +12447,35 @@
       "mcp-config": 70,
       "mcp-server-card": 4,
       "secret-exposure": 22,
-      "supply-chain": 230,
+      "supply-chain": 231,
       "taint-analysis": 15,
       "tool-poisoning": 34,
       "transport-security": 17,
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 260,
+      "Art. 10 - Data Governance": 261,
       "Art. 13 - Transparency": 32,
       "Art. 14 - Human Oversight": 20,
-      "Art. 15 - Robustness & Security": 377,
+      "Art. 15 - Robustness & Security": 378,
       "Art. 9 - Risk Management": 252
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 259,
+      "Choose supported MCP projects when possible (p.10)": 260,
       "Constrain and sandbox tool execution (p.11)": 233,
       "Design for boundaries (p.10)": 363,
       "Filter and monitor output pipelines and chained execution (p.12)": 134,
       "Instrument for logging and detection (p.13)": 25,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 331,
-      "Sign and verify MCP messages (p.12)": 343,
-      "Track and patch MCP related vulnerabilities (p.13)": 264,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 332,
+      "Sign and verify MCP messages (p.12)": 344,
+      "Track and patch MCP related vulnerabilities (p.13)": 265,
       "Validate parameters (p.11)": 237
     },
     "by_owasp_agentic": {
       "ASI01": 19,
       "ASI02": 121,
       "ASI03": 139,
-      "ASI04": 257,
+      "ASI04": 258,
       "ASI05": 114,
       "ASI06": 6,
       "ASI07": 26,
@@ -12476,13 +12497,13 @@
     },
     "by_severity": {
       "critical": 103,
-      "high": 218,
+      "high": 219,
       "info": 5,
       "low": 22,
       "medium": 147
     },
     "total_cves_covered": 473,
-    "total_rules": 495
+    "total_rules": 496
   },
   "tool": "agent-audit-kit"
 }

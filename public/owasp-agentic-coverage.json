@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-11T10:37:20Z",
+  "last_updated": "2026-11-12T03:04:03Z",
   "aak_version": "0.6.35",
-  "rule_count": 495,
+  "rule_count": 496,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2807,7 +2807,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 257,
+      "rule_density": 258,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2994,6 +2994,14 @@
           "aicm_references": [
             "CCC-08",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-GHA-PUBLISH-GATE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
           ]
         },
         {

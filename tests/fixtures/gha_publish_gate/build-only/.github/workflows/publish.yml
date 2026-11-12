@@ -1,0 +1,12 @@
+# Fixture for AAK-GHA-PUBLISH-GATE-001: a build that packs and tests, and publishes
+# nothing. Never run: it lives under tests/fixtures.
+name: Build
+on: pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm pack
+      - run: npm test

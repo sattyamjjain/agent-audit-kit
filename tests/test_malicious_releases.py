@@ -191,6 +191,21 @@ def test_a_cargo_lock_resolving_env_test_guard_fires_once_whatever_its_spelling(
     assert finding.evidence.startswith("Cargo.lock resolves env-test-guard 0.3.0, a malicious release: MAL-2026-18776")
 
 
+def test_the_bundled_feed_reports_bee_js_and_the_mcp_weather_server_without_an_update(tmp_path: Path) -> None:
+    """MAL-2026-18773 and MAL-2026-19085 are bundled, so a scan with no cached feed (the
+    autouse empty home) reports them. Before 2026-11-12 both passed until `aak update`."""
+    (tmp_path / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"dependencies": {"@ethersphere/bee-js": "13.3.0"}},
+        "node_modules/@ethersphere/bee-js": {"version": "13.3.0"}}}))
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {"weather": {
+        "command": "npx", "args": ["-y", "@lemili9804/mcp-weather-server@1.0.6"]}}}))
+    findings, _ = scan(tmp_path)
+    assert malicious_feed.load_feed().origin == "bundled"
+    assert sorted((f.file_path, f.evidence.split(": ", 1)[1][:14]) for f in findings) == [
+        (".mcp.json", "MAL-2026-19085"), ("package-lock.json", "MAL-2026-18773")]
+    assert all(f.severity is Severity.CRITICAL for f in findings)
+
+
 def test_the_clean_cargo_lock_twin_is_quiet() -> None:
     assert scan(CARGO / "env-test-guard-0.1.0")[0] == []
 
@@ -444,7 +459,7 @@ def test_existing_image_entries_still_build_with_positional_fields() -> None:
 
 def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
-    litellm, local_commander, axios, plain_crypto, env_test_guard = data["entries"]
+    litellm, local_commander, axios, plain_crypto, env_test_guard, bee_js, mcp_weather = data["entries"]
     assert (litellm["id"], litellm["ecosystem"], litellm["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
     assert litellm["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
     assert litellm["modified"] == "2026-10-21T22:01:01.881791175Z"
@@ -469,6 +484,17 @@ def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     assert malicious_feed.osv_entries(record, "crates.io") == [env_test_guard]
     assert (env_test_guard["name"], env_test_guard["versions"]) == ("env-test-guard", ["0.2.0", "0.3.0"])
     assert env_test_guard["modified"] == "2026-11-09T04:45:05.142026828Z" and "MAL-2026-18776" in data["source"]
+    # MAL-2026-18773 (@ethersphere/bee-js 13.3.0, published through the project's own release
+    # workflow with stolen CI credentials, GHSA-hh7j-5m3j-23pf) and MAL-2026-19085 (an npm
+    # package named as an MCP weather server), both saved unedited from
+    # https://api.osv.dev/v1/vulns/<id> on 2026-11-12: a scan without `aak update` reports them.
+    for entry, ident in ((bee_js, "MAL-2026-18773"), (mcp_weather, "MAL-2026-19085")):
+        record = json.loads((FIXTURES / "osv" / f"{ident}.json").read_text())
+        assert malicious_feed.osv_entries(record, "npm") == [entry]
+        assert ident in data["source"]
+    assert (bee_js["name"], bee_js["versions"], bee_js["aliases"]) == (
+        "@ethersphere/bee-js", ["13.3.0"], ["GHSA-hh7j-5m3j-23pf"])
+    assert (mcp_weather["name"], mcp_weather["versions"]) == ("@lemili9804/mcp-weather-server", ["1.0.3", "1.0.6"])
     images = {image["id"]: image for image in data["oci"]}
     assert images["LITELLM-2026-10-21"]["digests"] == [DIGEST] and len(DIGEST) == len("sha256:") + 64
     # The two repositories The Hacker News calls backdoored, listed whole: it names no
@@ -572,14 +598,14 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
     data = json.loads(done.path.read_text())
     assert data["generated_at"] == "2026-10-28T12:00:00Z"
     assert sorted(e["id"] for e in data["entries"]) == [
-        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18776", "MAL-2026-2144", "MAL-2026-2306", "MAL-2026-2307",
-        "MAL-2026-3", "MAL-2026-4",
+        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18773", "MAL-2026-18776", "MAL-2026-19085", "MAL-2026-2144",
+        "MAL-2026-2306", "MAL-2026-2307", "MAL-2026-3", "MAL-2026-4",
     ]
     assert data["oci"][0]["digests"] == [DIGEST]
     assert [image["id"] for image in data["oci"] if image.get("all_tags") is True] == [
         "ARTEX-2026-11-05-TOMICDD", "ARTEX-2026-11-05-CONGDONGLINUX",
     ]
-    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 5}
+    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 7}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
     assert feed.repository("tomicdd/artex:latest").id == "ARTEX-2026-11-05-TOMICDD"
@@ -636,7 +662,7 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 8 entries" in result.output
+    assert "Malicious-release feed updated: 10 entries" in result.output
     assert "GitHub: skipped" in result.output
 
 

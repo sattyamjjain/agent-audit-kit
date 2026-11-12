@@ -62,7 +62,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("transport_limits", "Transport body-size limits (CVE-2026-39313)", []),
     ("mcp_sdk_hardening", "Upstream MCP SDK STDIO hardening (OX-MCP-2026-04-15)", []),
     ("dns_rebind", "MCP SDK DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577)", []),
-    ("gha_hardening", "GitHub Actions SHA-pin / Immutable Action policy", []),
+    ("gha_hardening", "GitHub Actions SHA-pin, secret-dump and publish-gate (AAK-GHA-PUBLISH-GATE-001) policy", []),
     ("log_token_leak", "Token-shaped values in log sinks (CVE-2026-20205)", []),
     ("ssrf_redirect", "SSRF: validate-then-fetch with redirects (CVE-2026-41481)", []),
     ("ssrf_toctou", "SSRF: validate-then-fetch DNS-rebind / TOCTOU (CVE-2026-41488)", []),

@@ -80,7 +80,7 @@
     },
     {
       "module": "gha_hardening",
-      "name": "GitHub Actions SHA-pin / Immutable Action policy"
+      "name": "GitHub Actions SHA-pin, secret-dump and publish-gate (AAK-GHA-PUBLISH-GATE-001) policy"
     },
     {
       "module": "gpt_researcher_transport_flip",

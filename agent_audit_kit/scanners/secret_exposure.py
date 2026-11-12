@@ -499,7 +499,9 @@ def _permission_rule_findings(
     `permissions.allow`, `.ask` and `.deny` rules (`_agent_permission_secrets`).
 
     No length or entropy gate: a typed password is short and plain, and a permission
-    rule holding one is the leak Apiiro measured. A placeholder (`<your-password>`), a
+    rule holding one is the leak Apiiro measured. A placeholder as `_is_placeholder`
+    reads one (a placeholder word, a run of `x`, or one repeated character, so
+    `PGPASSWORD=x` and `MYSQL_PWD=0000` are skipped), a
     value a prefix rule already reports (a `ghp_` token, an `sk-` key) and one that
     AAK-SECRET-004 reports on the same line are left out, so a value is reported once.
     The finding sits on the rule's own line and shows at most two characters of it.

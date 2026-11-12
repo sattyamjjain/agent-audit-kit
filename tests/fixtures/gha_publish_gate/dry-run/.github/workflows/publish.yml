@@ -1,0 +1,11 @@
+# Fixture for AAK-GHA-PUBLISH-GATE-001: a dry run publishes nothing.
+# Never run: it lives under tests/fixtures.
+name: Check package
+on: [push, pull_request]
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm publish --dry-run

@@ -17,6 +17,8 @@ to the `owner/action@ref` form.
 
 AAK-GHA-SECRET-DUMP-001 reads the same workflows' `run:` steps for one that
 prints secrets through an encoder; see the block above `_secret_dump_findings`.
+AAK-GHA-PUBLISH-GATE-001 reads their jobs for one that publishes a package with
+no `environment:` approval gate; see the block above `_PUBLISH_RULE`.
 """
 
 from __future__ import annotations
@@ -29,7 +31,15 @@ import yaml
 
 from agent_audit_kit.models import Finding, Severity
 
-from ._helpers import CONFIG_MAX_BYTES, load_yaml, make_finding, placed, read_text_capped
+from ._helpers import (
+    CONFIG_MAX_BYTES,
+    compose_yaml_all,
+    linear_find,
+    load_yaml,
+    make_finding,
+    placed,
+    read_text_capped,
+)
 
 _WORKFLOWS_DIR = ".github/workflows"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -124,6 +134,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         # Every reported step's line in one pass over the file, not one search of it per step.
         findings.extend(placed(text, unplaced))
         findings.extend(_secret_dump_findings(wf, rel, text, doc))
+        findings.extend(_publish_gate_findings(wf, rel, text, doc))
     return findings, scanned
 
 
@@ -424,3 +435,270 @@ def _secret_dump_findings(path: Path, rel: str, text: str, doc: object) -> list[
                 finding = dataclasses.replace(finding, severity=Severity.CRITICAL)
             unplaced.append((finding, first))
     return placed(text, unplaced)
+
+
+# ---------------------------------------------------------------------------
+# AAK-GHA-PUBLISH-GATE-001: a job that publishes a package with no environment.
+#
+# @ethersphere/bee-js 13.3.0 (GHSA-hh7j-5m3j-23pf, 2026-11-09) shipped malware
+# through the project's own release workflow: stolen CI credentials created a
+# GitHub release, the release event started the npm publish job, and the job ran
+# with no approval and published in 73 seconds, with valid provenance. Provenance
+# records where a package was built, not that anyone reviewed the release. A job
+# that names a GitHub environment waits for that environment's required
+# reviewers before it starts; a job that names none starts as soon as its trigger
+# fires. A job is reported when one of its steps publishes (a `run:` command or a
+# `uses:` action in `_PUBLISHERS`) and the job has no `environment:`. Whether the
+# environment it names has required reviewers is a repository setting, not in
+# the checkout, so a named environment counts as the gate.
+# ---------------------------------------------------------------------------
+
+_PUBLISH_RULE = "AAK-GHA-PUBLISH-GATE-001"
+# What publishes a package. A command is written as the words it is typed with:
+# the program, then the subcommand words, with option words (`pnpm -r publish`)
+# allowed between them. An action is written `uses: owner/repo` and matches any
+# ref. To read another registry's client, add its command or action here; the
+# launchers a command may sit behind (`npx`, `python -m`, ...) are below.
+_PUBLISHERS: tuple[str, ...] = (
+    "npm publish",
+    "pnpm publish",
+    "yarn publish",
+    "yarn npm publish",
+    "bun publish",
+    "twine upload",
+    "uv publish",
+    "poetry publish",
+    "hatch publish",
+    "flit publish",
+    "pdm publish",
+    "cargo publish",
+    "gem push",
+    "dotnet nuget push",
+    "nuget push",
+    "vsce publish",
+    "ovsx publish",
+    "uses: pypa/gh-action-pypi-publish",
+    "uses: JS-DevTools/npm-publish",
+    "uses: rubygems/release-gem",
+)
+_PUBLISH_COMMANDS = tuple(tuple(p.split()) for p in _PUBLISHERS if not p.startswith("uses: "))
+_PUBLISH_ACTIONS = frozenset(p[len("uses: "):].lower() for p in _PUBLISHERS if p.startswith("uses: "))
+# A step whose script names none of these subcommands is not parsed at all.
+_PUBLISH_WORD_RE = re.compile(
+    r"(?<![\w-])(?:" + "|".join(sorted({re.escape(c[-1]) for c in _PUBLISH_COMMANDS})) + r")(?![\w-])"
+)
+# Words that run the program after them, each followed by its own options.
+_LAUNCHERS = frozenset({
+    "npx", "bunx", "pnpx", "uvx", "sudo", "command", "exec", "env", "time", "nohup", "do", "then", "else", "!",
+})
+_LAUNCHER_PAIRS = frozenset({
+    ("pipx", "run"), ("pnpm", "dlx"), ("pnpm", "exec"), ("yarn", "dlx"), ("yarn", "exec"), ("npm", "exec"),
+    ("uv", "run"), ("poetry", "run"), ("pdm", "run"), ("hatch", "run"), ("bundle", "exec"),
+})
+_DRY_RUN_RE = re.compile(r"(?<![\w-])--dry-run(?![\w-])")
+# An upload to TestPyPI or to a registry on the runner itself (an e2e test's Verdaccio) is
+# not a release. Read in the command, in a `with:` input of the action, and in an `env:`
+# value whose name says it sets the registry.
+_NOT_A_RELEASE_RE = re.compile(r"test\.pypi\.org|(?<![\w-])testpypi(?![\w-])|localhost|127\.0\.0\.1|\[::1\]", re.I)
+_REGISTRY_KEY_RE = re.compile(r"registry|repository|publish.url|index.url", re.I)
+
+
+def _bare(word: str) -> str:
+    """A program word as its name: no quotes, no directory, no `@version` (`@vscode/vsce@2` is `vsce`)."""
+    name = word.strip("\"'").rsplit("/", 1)[-1]
+    return name.split("@", 1)[0] if not name.startswith("@") else name
+
+
+def _publisher_in(stage: str) -> str | None:
+    """The `_PUBLISHERS` command a pipeline stage runs, or None."""
+    words = stage.replace("(", " ").replace(")", " ").split()
+    i = 0
+    while i < len(words):
+        word = _bare(words[i])
+        if ("=" in words[i] and not words[i].startswith(("-", "/", "$"))) or word in _LAUNCHERS:
+            i += 1
+        elif word.startswith("python") and words[i + 1:i + 2] == ["-m"]:
+            i += 2
+        elif i + 1 < len(words) and (word, _bare(words[i + 1])) in _LAUNCHER_PAIRS:
+            i += 2
+        elif i and words[i].startswith("-"):
+            i += 1  # a launcher's option: `npx --yes vsce publish`
+        else:
+            break
+    if i == len(words):
+        return None
+    program = _bare(words[i])
+    for command in _PUBLISH_COMMANDS:
+        if command[0] != program:
+            continue
+        j = i + 1
+        for want in command[1:]:
+            while j < len(words) and words[j].startswith("-"):
+                j += 1
+            if j == len(words) or words[j] != want:
+                break
+            j += 1
+        else:
+            return " ".join(command)
+    return None
+
+
+def _registry_not_public(*maps: object) -> bool:
+    """Does an `env:` or `with:` mapping point the upload at TestPyPI or the runner itself?"""
+    return any(
+        isinstance(m, dict) and any(
+            _REGISTRY_KEY_RE.search(str(k)) and isinstance(v, str) and _NOT_A_RELEASE_RE.search(v)
+            for k, v in m.items()
+        )
+        for m in maps
+    )
+
+
+def _publish_step(job: dict, top_env: object) -> tuple[int, str, str] | None:
+    """(step index, what the step does, the text it is placed by) for the job's first step
+    that publishes, or None."""
+    steps = job.get("steps")
+    for index, step in enumerate(steps if isinstance(steps, list) else ()):
+        if not isinstance(step, dict):
+            continue
+        uses = step.get("uses")
+        if isinstance(uses, str) and uses.partition("@")[0].strip().lower() in _PUBLISH_ACTIONS:
+            if not _registry_not_public(step.get("with"), step.get("env"), job.get("env"), top_env):
+                return index, f"uses `{uses.strip()}`", uses.strip()
+            continue
+        run = step.get("run")
+        if not isinstance(run, str) or not _PUBLISH_WORD_RE.search(run):
+            continue
+        if _registry_not_public(step.get("env"), job.get("env"), top_env):
+            continue
+        for command, _body, first in _commands(run):
+            if _DRY_RUN_RE.search(command) or _NOT_A_RELEASE_RE.search(command):
+                continue
+            if any(_publisher_in(stage) for stage in _split_unquoted(command, ("|&", "|"))):
+                shown = " ".join(command.split())
+                shown = shown if len(shown) <= 160 else shown[:160] + "…"
+                return index, f"runs `{shown}`", first
+    return None
+
+
+def _gated(job: dict) -> bool:
+    """Does the job name an environment (`environment: pypi` or `environment: {name: pypi}`)?"""
+    env = job.get("environment")
+    if isinstance(env, dict):
+        env = env.get("name")
+    return isinstance(env, str) and bool(env.strip())
+
+
+def _triggers(doc: dict) -> tuple[list[str], list[str]]:
+    """The workflow's events as the evidence names them, and what a person does to start it
+    of creating a release and pushing a tag. PyYAML reads the bare key `on` as the boolean
+    True. A push filtered on branches alone does not run for a tag, nor one filtered on tags
+    alone for a branch; one with neither filter runs for both (paths filters do not apply
+    to tags)."""
+    on = doc.get("on", doc.get(True))
+    if isinstance(on, str):
+        events: dict[str, object] = {on: None}
+    elif isinstance(on, list):
+        events = {e: None for e in on if isinstance(e, str)}
+    elif isinstance(on, dict):
+        events = {str(k): v for k, v in on.items()}
+    else:
+        return [], []
+    names: list[str] = []
+    for event, config in events.items():
+        if event != "push":
+            names.append(event)
+            continue
+        filters = config if isinstance(config, dict) else {}
+        branch_filter = "branches" in filters or "branches-ignore" in filters
+        tag_filter = "tags" in filters or "tags-ignore" in filters
+        refs = [r for r, runs in (("branches", branch_filter or not tag_filter),
+                                  ("tags", tag_filter or not branch_filter)) if runs]
+        names.append(f"push ({' and '.join(refs)})")
+    human = (["create a release"] if "release" in events else []) + (
+        ["push a tag"] if any(n in ("push (tags)", "push (branches and tags)") for n in names) else []
+    )
+    return names, human
+
+
+def _mints_id_token(job: dict, doc: dict) -> bool:
+    """`id-token: write` (or `write-all`) on the job, else on the workflow. The evidence
+    words it without the colon, which the redactor would read as a credential."""
+    perms = job["permissions"] if "permissions" in job else doc.get("permissions")
+    if perms == "write-all":
+        return True
+    return isinstance(perms, dict) and perms.get("id-token") == "write"
+
+
+def _step_ranges(text: str, path: Path) -> dict[tuple[str, int], tuple[int, int]]:
+    """(job id, step index) -> the step's first and last line, 1-based, from the composed
+    document; empty when it cannot be composed."""
+    try:
+        nodes = compose_yaml_all(text, path)
+    except yaml.YAMLError:
+        return {}
+    ranges: dict[tuple[str, int], tuple[int, int]] = {}
+    root = nodes[0] if nodes else None
+    if not isinstance(root, yaml.MappingNode):
+        return ranges
+    for key, jobs in root.value:
+        if key.value != "jobs" or not isinstance(jobs, yaml.MappingNode):
+            continue
+        for job_key, job in jobs.value:
+            if not isinstance(job, yaml.MappingNode):
+                continue
+            for step_key, steps in job.value:
+                if step_key.value == "steps" and isinstance(steps, yaml.SequenceNode):
+                    for index, step in enumerate(steps.value):
+                        ranges[(str(job_key.value), index)] = (step.start_mark.line + 1, step.end_mark.line + 1)
+    return ranges
+
+
+def _publish_gate_findings(path: Path, rel: str, text: str, doc: object) -> list[Finding]:
+    if not isinstance(doc, dict) or not isinstance(doc.get("jobs"), dict):
+        return []
+    ungated: list[tuple[str, int, str, str, bool]] = []
+    for job_id, job in doc["jobs"].items():
+        # A job that calls a reusable workflow (`uses:` on the job) has no steps here.
+        if not isinstance(job, dict) or _gated(job):
+            continue
+        step = _publish_step(job, doc.get("env"))
+        if step is not None:
+            ungated.append((str(job_id), *step, _mints_id_token(job, doc)))
+    if not ungated:
+        return []
+    names, human = _triggers(doc)
+    on = f"on: {', '.join(names)}" if names else "no trigger the rule reads"
+    ranges = _step_ranges(text, path)
+    lines = text.splitlines()
+    out: list[Finding] = []
+    unplaced: list[tuple[Finding, str]] = []
+    for job_id, index, what, needle, id_token in ungated:
+        evidence = (
+            f"Job `{job_id}` {what} ({on}) and names no `environment:`, so it starts as soon as the "
+            "trigger fires and no reviewer approves the release."
+        )
+        if id_token:
+            evidence += (
+                " It has the `id-token` permission set to `write`, so the package it publishes can "
+                "carry valid provenance and look legitimate."
+            )
+        else:
+            evidence += " It has no `id-token` write permission."
+        if human:
+            evidence += (
+                f" Anyone who can {' or '.join(human)} publishes with no human in the loop, which is "
+                "how @ethersphere/bee-js 13.3.0 shipped (GHSA-hh7j-5m3j-23pf)."
+            )
+        finding = make_finding(_PUBLISH_RULE, rel, evidence)
+        span = ranges.get((job_id, index))
+        if span is not None:
+            first, last = span
+            finding.line_number = next(
+                (n for n in range(first, min(last, len(lines)) + 1) if linear_find(lines[n - 1], needle) >= 0), first
+            )
+            out.append(finding)
+        else:
+            unplaced.append((finding, needle))
+    out.extend(placed(text, unplaced))
+    return sorted(out, key=lambda f: f.line_number or 0)

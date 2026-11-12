@@ -425,6 +425,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-RUNTIME-ADV-002": ["STA-08"],
     "AAK-RUNTIME-ADV-003": ["STA-08"],
     "AAK-GHA-SECRET-DUMP-001": ["DSP-17", "STA-08"],
+    "AAK-GHA-PUBLISH-GATE-001": ["STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -2100,7 +2101,9 @@ _r(
     "Hacker News on 7 Nov 2026, found 1,122 of 104,185 public copies of that file holding "
     "at least one secret, 215 of which neither gitleaks nor TruffleHog flagged. A typed "
     "password is short and plain, so no length or entropy gate applies: the place is the "
-    "evidence. The finding shows at most the value's first two characters.",
+    "evidence. A value that reads as a stand-in (a placeholder word, or one character "
+    "repeated, such as `x` or `0000`) is skipped; the limitations list each. The finding "
+    "shows at most the value's first two characters.",
     Severity.HIGH,
     Category.SECRET_EXPOSURE,
     "Rotate the credential: it sits in the file in clear text, and in every copy of the "
@@ -2128,8 +2131,13 @@ _r(
         "http or https URL; and an `Authorization: Bearer`, `Basic` or `token` value. A "
         "password in any other option (`psql` has none, `docker login -p`, `redis-cli -a`) "
         "or a key in a positional argument is not read. A value that starts with `$`, is "
-        "or ends in `*`, or reads as a placeholder (`<your-password>`, `changeme`) is not "
-        "reported, so a literal password that starts with `$` is missed. A value a prefix "
+        "or ends in `*` is read as a shell reference or a wildcard and not reported, so a "
+        "literal password that starts with `$` is missed. A value that reads as a placeholder "
+        "is not reported either: one holding REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME, "
+        "or a run of four `x`, in any case (`<your-password>`, `changeme`, `xxxx1234`), one of "
+        "the two example keys in AWS's documentation, or one character repeated, `-` and `_` aside "
+        "(`x`, `0000`, `a-a-a`), so `PGPASSWORD=x` and `MYSQL_PWD=1111` are missed while "
+        "`PGPASSWORD=1234` and `PGPASSWORD=ab` are reported. A value a prefix "
         "rule (AAK-SECRET-001, -002, -003, -008) reports, or AAK-SECRET-004 reports on the "
         "same line, is left to that rule. A settings file that does not parse as JSON or "
         "JSONC is not read, and a file over 1,000,000 bytes is not read."
@@ -19854,6 +19862,59 @@ _r(
         "workflow carries a published Gheist marker: the file `sync-check.yml` with the step "
         "`toJSON(secrets) }}' | base32 -w 120`, or the string `===== gdmp-pivot:`. A workflow "
         "file over 1 MB is not read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-12: a workflow job that publishes a package with no environment approval
+# gate (@ethersphere/bee-js 13.3.0, GHSA-hh7j-5m3j-23pf). Lives in gha_hardening.py.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-GHA-PUBLISH-GATE-001",
+    "Workflow job publishes a package with no environment approval gate",
+    "A job in a GitHub Actions workflow publishes a package (`npm publish`, `twine upload`, "
+    "`cargo publish`, `pypa/gh-action-pypi-publish` and the like) and names no `environment:`. "
+    "A job that names a GitHub environment waits for that environment's required reviewers "
+    "before it runs; this one runs as soon as its trigger fires, so whoever can fire the "
+    "trigger (create a release, push a tag, dispatch the workflow), or holds a token that "
+    "can, ships a release nobody approved. With `id-token: write` the package also carries "
+    "valid provenance, which records where it was built, not that anyone reviewed it. "
+    "@ethersphere/bee-js 13.3.0 (GHSA-hh7j-5m3j-23pf, 2026-11-09) shipped malware this way: "
+    "stolen CI credentials created a GitHub release, which started the project's npm publish "
+    "workflow, and the job published with no approval in 73 seconds.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Put the publishing job behind a GitHub environment (`environment: npm-release`) and give "
+    "that environment required reviewers in the repository's Settings > Environments, so a "
+    "release waits for a person before it publishes. Keep the release trigger. For trusted "
+    "publishing, name the same environment in the PyPI or npm trusted-publisher "
+    "configuration, so a token is minted only for a run that passed the gate.",
+    sarif_name="GhaPublishWithoutEnvironmentGate",
+    owasp_agentic_references=["ASI04"],
+    incident_references=["GHSA-hh7j-5m3j-23pf"],
+    limitations=(
+        "Reads the jobs of the workflow files directly inside `.github/workflows` and reports "
+        "each job, once, at its first step that publishes, when the job names no environment "
+        "(`environment: x` or `environment: {name: x}`). A named environment counts as the "
+        "gate: whether it has required reviewers, or any protection rule, is a repository "
+        "setting, not in the checkout, and is not checked. A step publishes when it uses "
+        "`pypa/gh-action-pypi-publish`, `JS-DevTools/npm-publish` or `rubygems/release-gem` (any "
+        "ref), or when a `run:` command, joined across backslash continuations and split at "
+        "`;`, `&&`, `||` and `|`, runs `npm`, `pnpm`, `yarn`, `yarn npm`, `bun`, `uv`, `poetry`, "
+        "`hatch`, `flit`, `pdm`, `cargo`, `vsce` or `ovsx publish`, `twine upload`, `gem push`, "
+        "`nuget push` or `dotnet nuget push`, directly or behind `npx`, `uvx`, `pipx run`, "
+        "`python -m`, `sudo`, `env` or leading `VAR=value` words, with only option words "
+        "(`pnpm -r publish`) between the program and its subcommand: `pnpm --filter pkg "
+        "publish` is not read. A command with `--dry-run`, or one that names TestPyPI or a "
+        "registry on the runner (`localhost`, `127.0.0.1`), is not counted, nor is a step whose "
+        "registry-naming `with:` input or `env:` value does. A job that calls a reusable "
+        "workflow (`uses:` on the job), a composite action, a script the step runs "
+        "(`./release.sh`, `npm run release`) and a release tool that publishes for you "
+        "(`changesets/action`, `semantic-release`) are not read, and neither are image pushes "
+        "(`docker push`). The trigger and `id-token: write` shape only the evidence. A "
+        "workflow file over 1 MB is not read."
     ),
 )
 
