@@ -177,6 +177,119 @@ CVSS is each record's CVSS 3.1 score, Amazon's; its CVSS 4.0 scores are 8.7 and 
 
 Dispositioned at 2026-11-12T04:30:00Z.
 
+## 2026-11-12 (unreleased): #1229, #1230 and two held records, a new pin for Helio, three out of scope
+
+The watcher filed #1229 and #1230 on 11 Nov and holds CVE-2026-65957 and CVE-2026-65968
+behind its back-pressure cap, so those two have no issue yet. Each is read here against NVD's
+API record, its CVE record, OSV and the published artifacts, all on 2026-11-12, and NVD text
+is quoted from the API records. Helio, an MCP governance proxy, gets a new pin on its npm
+package and its image, measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_12_misc.py) after its range was read in the npm tarballs and in
+the source at the commit each image's label names. Three are out of scope. ByteStash's flaw is
+the app's shared API-key check, which its MCP endpoint inherits, as Vikunja's was. SiYuan's is
+reachable only through Windows path rules, and the image AAK reads for SiYuan carries only
+Linux builds. ideon's fix is in its image proxy, and the record's MCP text names files ideon
+does not have.
+
+### CVE-2026-65957 (not filed): new pin 2026-11-12
+
+**Helio gets `AAK-MCP-HELIO-CVE-2026-65957-001`: npm `@gethelio/proxy` and the image
+`ghcr.io/gethelio/helio` below 0.8.0, MEDIUM.** NVD: "Prior to version 0.8.0, the dashboard
+sideband (default 127.0.0.1:3100) validated CORS request origins by matching the hostname
+against a private-network string prefix" ... "rather than validating an IP address." Helio sits
+between agents and their MCP servers, holds tool calls for approval and audits them; the
+sideband serves that audit trail, the approval tickets and the routes that approve or deny a
+held call, so the flaw is on its MCP surface. GHSA-2c3r-q7gv-hp2m (GitHub's CNA, CVSS 4.0 6.9)
+names `@gethelio/proxy` below 0.8.0 and bounds the exposure. With `dashboard.api_secret` set,
+which `helio init` writes, the response carries no credentials header and the session cookie
+is `SameSite=Lax`, so a page reads nothing. In open mode (`dashboard.allow_open_mode: true`,
+no secret, loopback only) no auth middleware or CSRF check is registered, so a page on an
+admitted origin that a user on the same host opens reads the audit trail cross-origin and can
+approve held calls. Checked in the npm tarballs: `dist/index.js` carries the prefix test in
+every release from 0.1.0, the first, to 0.7.0 (0.1.0, 0.1.1 and 0.2.0 to 0.7.0), and 0.8.0 and
+0.16.0 replace it with `isPrivateIpv4`, which admits only a dotted private IPv4 literal
+(4ca8329c, #121). The image
+labels name each tag's commit: 0.1.0 is fa50419b and 0.7.0 is 0c5bbcfa, both without the fix,
+and 0.8.0 is 6f9d147a, one commit past it. The two-part tags `0.1` to `0.7` sit on affected
+lines; `latest` and the one-part `0` were the 0.16.0 digest on 2026-11-12, and npm's `latest`
+is 0.16.0, so an untagged image or an unpinned `npx @gethelio/proxy` is not reported. The rule
+reads the version, not `helio.yaml`, so a deployment with a secret set is reported too, and its
+limitations say so. npm's unscoped `helio` and PyPI's `helio` are other projects, and the
+Python SDK `helio-client` serves no dashboard. OSV has no record of the CVE or the GHSA and
+none for the package at 0.7.0, and the CNA record names no package, so `nvd_feed` keeps
+nothing and only the pin reports it.
+
+### CVE-2026-126658 (#1229): out of scope 2026-11-12
+
+**ByteStash is out of scope.** NVD: "ByteStash 1.5.10 before 1.6.2 contains an insufficient
+session expiration vulnerability that allows holders of API keys to keep access after account
+deactivation because validateApiKey never checks account status." ByteStash is a self-hosted
+snippet store that ships as the image `ghcr.io/jordan-dalby/bytestash`; npm and PyPI have no
+`bytestash`. GHSA-26m9-ww2j-3cr5 traces the flaw to `validateApiKey` in
+`server/src/repositories/apiKeyRepository.js`, which serves both the REST API's key middleware
+(`/api/snippets`) and the MCP endpoint's (`/mcp`): its query checks the key's own `is_active`
+flag and never the account's. Checked in the source at the tags: `validateApiKey` arrives with
+API keys in v1.5.4, account deactivation (`PATCH /api/admin/users/:id/toggle-active`) in
+v1.5.10, which is why the record starts there, and the MCP endpoint (`mcpRoutes.js`,
+`mcpAuth.js`) only in v1.5.12; v1.6.2 adds the account check to the query. So 1.5.10 and
+1.5.11 have the flaw and no MCP code, and from 1.5.12 MCP inherits the shared check, the shape
+of Vikunja's CVE-2026-123493: a general app's token handling, not a surface this scanner pins.
+OSV holds the CVE only as an NVD import with git ranges, and the CNA record names
+`pkg:github/jordan-dalby/ByteStash`, which no feed matches. Fixed in 1.6.2.
+
+### CVE-2026-126776 (#1230): out of scope 2026-11-12
+
+**SiYuan's Windows path traversal is out of scope.** NVD: "SiYuan 3.7.0 before 3.8.10 on
+Windows contains a path traversal vulnerability in kernel/util/webfetch.go that allows
+attackers to write files outside the import directory via backslash-encoded filenames." The
+MCP and agent tools `web_fetch` and `http_request` save a non-text response in the temp
+`import` directory under a name taken by `path.Base` from the URL path, which splits only on
+`/`. On Windows `filepath.Join` also treats a backslash as a separator, so a name made of
+backslash-separated parent segments lands above that directory. On Linux and macOS the
+backslash is an ordinary character and the file stays inside `import`, as the Linux control run
+in GHSA-hq2c-hh95-vrr6 shows. Checked in the source: `kernel/util/webfetch.go` is absent at
+v3.6.5 and ships in v3.7.0, whose `extractFilename` is unchanged at v3.8.9; v3.8.10 (94d6a42a)
+normalizes backslashes before taking the base name, replaces an invalid name and checks the
+joined path with `IsSubPath`. The one artifact AAK reads for SiYuan is the image
+`b3log/siyuan`, and its v3.7.0, v3.8.9 and `latest` indexes list only `linux/amd64`,
+`linux/arm64` and two `linux/arm` builds, besides attestations; the Windows desktop installer
+states its version in no file AAK reads. So the image rules for CVE-2026-116168 and
+CVE-2026-123492 do not claim this record and keep only their own CVEs. NVD's CNA data names
+the Go module `github.com/siyuan-note/siyuan/kernel` from 3.7.0 below 3.8.10, which `nvd_feed`
+keeps after `aak update`, but that module sits in `kernel/` with no `kernel/v*` tags and no
+`/v3` path, so the Go module proxy serves it only at pseudo-versions, which sort below 3.7.0,
+and no go.mod names an affected release (a test holds it). OSV has no record of the CVE or the
+GHSA. Fixed in 3.8.10.
+
+### CVE-2026-65968 (not filed): out of scope 2026-11-12
+
+**ideon is out of scope.** NVD: "ideon is a self-hosted visual workspace. Prior to version
+0.9.4, validateUrlForSSRF() / safeFetch() in lib/oauth/ssrf-protection.ts (and the parallel
+validateMcpUrl() in lib/security/validators.ts) perform SSRF host-blocking by string/regex
+matching on new URL(url).hostname." The record goes on to describe an authenticated user who
+registers a Streamable HTTP or SSE MCP server at an IPv4-mapped IPv6 address in hex form,
+which a server-side OAuth discovery then fetches. That is not ideon's code. The CNA record and
+GHSA-cvcr-fcf6-366r are titled as an unauthenticated SSRF in `/api/proxy/image` past the
+`isSafeUrl` guard, and the advisory's affected-versions section names another project's main
+branch (pluggedin-app). Checked in the source at v0.9.3: ideon has neither
+`lib/oauth/ssrf-protection.ts` nor `lib/security/validators.ts` and no MCP-server registration;
+its own MCP server (`src/lib/mcp`) neither fetches URLs nor calls the guard, and `isSafeUrl` in
+`src/app/lib/security-utils.ts` is called only by the image proxy route. The fix, 58e2f26b in
+v0.9.4, changes only `isSafeUrl`, which now strips the brackets and unmaps IPv4-mapped
+addresses before its checks. A visual workspace's image proxy is not an agent or MCP surface.
+ideon ships as the image `ghcr.io/3xpyth0n/ideon`, which no rule reads. OSV has no record of
+the CVE or the GHSA. Fixed in 0.9.4.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-65957 | 6.9 (4.0) | `@gethelio/proxy` (npm), `ghcr.io/gethelio/helio` (GHCR) | **New pin** `AAK-MCP-HELIO-CVE-2026-65957-001` (MEDIUM): every release below 0.8.0, the package where a version is stated and the image by tag. | not filed |
+| CVE-2026-126658 | 5.4 | ByteStash (`ghcr.io/jordan-dalby/bytestash`) | **Out of scope**: the app's API-key check, shared by its REST API and its MCP endpoint. Fixed in 1.6.2. | #1229 |
+| CVE-2026-126776 | 5.3 | SiYuan (`b3log/siyuan`) | **Out of scope**: Windows only, and the image carries only Linux builds; the SiYuan image rules do not claim it. Fixed in 3.8.10. | #1230 |
+| CVE-2026-65968 | 5.3 (4.0) | ideon (`ghcr.io/3xpyth0n/ideon`) | **Out of scope**: the fix is in the image proxy's URL guard, and the record's MCP text names files ideon does not have. Fixed in 0.9.4. | not filed |
+
+CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for ByteStash and SiYuan
+(their CVSS 4.0 scores are 5.3 and 6.0). GitHub scored Helio and ideon in CVSS 4.0 only.
+
 ## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769

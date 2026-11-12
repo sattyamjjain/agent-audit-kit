@@ -49,7 +49,9 @@ other projects. Dagu, a workflow engine with a built-in MCP server, ships as
 `ghcr.io/dagucloud/dagu` and as the npm launcher `@dagucloud/dagu`, which has a
 row in `mcp_cve_pins_2026_07` for the same rule. ezBookkeeping, a personal finance
 app that serves MCP, is a Go server whose README runs the Docker Hub image
-`mayswind/ezbookkeeping`, tagged by release.
+`mayswind/ezbookkeeping`, tagged by release. Helio, an MCP governance proxy, ships as
+`ghcr.io/gethelio/helio` and as the npm package `@gethelio/proxy`, which has a row in
+`mcp_cve_pins_2026_07` for the same rule.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -657,6 +659,19 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001", "ezBookkeeping", "mayswind/ezbookkeeping",
         (1, 6, 0), "from 0.10.0 below 1.6.0", "Fixed in 1.6.0.",
         ("CVE-2026-86041",), introduced=(0, 10, 0),
+    ),
+    # --- 2026-11-12 wave (misc) ---
+    # Helio: CVE-2026-65957, the dashboard sideband's CORS check matched a private-network
+    # prefix on the hostname, so `192.168.attacker.com` passed. The labels name each
+    # image's commit: 0.1.0 (fa50419b) and 0.7.0 (0c5bbcfa) carry the prefix test in
+    # packages/proxy/src/dashboard/api.ts; 0.8.0 (6f9d147a) carries 4ca8329c, which
+    # validates a private IPv4 literal. The two-part tags `0.1` to `0.7` sit on affected
+    # lines; `latest` and `0` were the 0.16.0 digest on 2026-11-12. The npm package is
+    # the pin table's row.
+    _ImagePin(
+        "AAK-MCP-HELIO-CVE-2026-65957-001", "Helio", "ghcr.io/gethelio/helio",
+        (0, 8, 0), "below 0.8.0", "Fixed in 0.8.0.",
+        ("CVE-2026-65957",),
     ),
 )
 

@@ -2187,6 +2187,18 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-DAGU-CVE-2026-102943-001", "@dagucloud/dagu", ("@dagucloud/dagu",),
          (2, 11, 0), introduced=(2, 7, 0), fix_label="2.11.0 (affected from 2.7.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-11-12 wave (misc) ---
+    # Helio, an MCP governance proxy, `@gethelio/proxy` on npm: its dashboard sideband
+    # admitted a CORS origin whose hostname began with `10.`, `172.16.` to `172.31.` or
+    # `192.168.`, so `192.168.attacker.com` passed (CVE-2026-65957,
+    # GHSA-2c3r-q7gv-hp2m). Checked in the tarballs: the prefix test is in
+    # dist/index.js from 0.1.0, the first release, through 0.7.0, and 0.8.0 replaces it
+    # with `isPrivateIpv4`. The image `ghcr.io/gethelio/helio` is a row of the same
+    # rule in container_image_pins. npm's unscoped `helio` and PyPI's `helio` are other
+    # projects, and the Python SDK `helio-client` serves no dashboard. `latest` is
+    # 0.16.0, fixed, so a stated version is required.
+    _Pin("AAK-MCP-HELIO-CVE-2026-65957-001", "@gethelio/proxy", ("@gethelio/proxy",),
+         (0, 8, 0), fix_label="0.8.0", requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

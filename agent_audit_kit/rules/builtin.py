@@ -411,6 +411,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
     "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -20915,6 +20916,62 @@ _r(
         "no version AAK reads, and this rule reads no go.mod. `docker.io/mayswind/"
         "ezbookkeeping` and mirrors under another registry are not matched, and "
         "commented-out lines are skipped."
+    ),
+)
+
+
+# 2026-11-12 wave (misc). Helio is an MCP proxy whose dashboard sideband holds the
+# audit trail of tool calls and the routes that approve held ones, so the flaw sits on
+# its MCP governance surface. One rule reads the npm package and the image.
+
+_r(
+    "AAK-MCP-HELIO-CVE-2026-65957-001",
+    "Helio below 0.8.0: the dashboard sideband's CORS check admits hostnames that begin like a private address",
+    "Helio (gethelio/helio), an MCP governance proxy that sits between agents and their "
+    "MCP servers and holds tool calls for approval, ships as the npm package "
+    "`@gethelio/proxy` and the image `ghcr.io/gethelio/helio`. Its dashboard sideband "
+    "(default 127.0.0.1:3100) serves the audit trail, approval tickets and limit state, "
+    "and the routes that approve or deny held tool calls. Before 0.8.0 its CORS check "
+    "admitted an origin whose hostname began with `10.`, `172.16.` to `172.31.` or "
+    "`192.168.`, a prefix test on the name rather than an address check, so a public DNS "
+    "name such as `192.168.attacker.com` passed and the proxy echoed it in "
+    "`Access-Control-Allow-Origin` (CVE-2026-65957, CVSS 4.0 6.9, CWE-346, "
+    "GHSA-2c3r-q7gv-hp2m). With `dashboard.allow_open_mode: true` and no "
+    "`dashboard.api_secret`, where no auth middleware or CSRF check is registered, a page "
+    "on such an origin that a user on the same host opens reads the sideband cross-origin "
+    "and can drive the approval routes; with a secret set, the default `helio init` "
+    "writes, the response carries no credentials header and the session cookie is "
+    "`SameSite=Lax`, so the advisory finds no data access. Checked in the npm tarballs: "
+    "`dist/index.js` carries the prefix test from 0.1.0, the first release, through "
+    "0.7.0, and 0.8.0 replaces it with a private IPv4 literal check (`isPrivateIpv4`, "
+    "4ca8329c, #121).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade Helio to 0.8.0 or later (the npm package or the image) and pin it. Run the "
+    "dashboard with `dashboard.api_secret` set rather than in open mode; the advisory "
+    "notes that 0.8.0 still leaves open mode an unauthenticated loopback service.",
+    sarif_name="HelioDashboardCorsPrefixOrigin",
+    cve_references=["CVE-2026-65957"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `@gethelio/proxy` below 0.8.0 where a project states the version: a "
+        "package.json or lockfile entry, or the package in an MCP config or a package.json "
+        "script, reporting a range that admits an affected version; and "
+        "`ghcr.io/gethelio/helio` tags below 0.8.0, the two-part `0.1` to `0.7` among "
+        "them, in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs. `latest`, the one-part `0` and an unpinned `npx @gethelio/proxy` were "
+        "0.16.0 on 2026-11-12, so they are not reported. It reads the version, not "
+        "`helio.yaml`, so a deployment with `dashboard.api_secret` set, which the advisory "
+        "finds not exploitable for data access, is reported too. npm's unscoped `helio` "
+        "and PyPI's `helio` are other projects, and the Python SDK `helio-client` serves no "
+        "dashboard and is not read. Mirrors under another registry are not matched, and "
+        "commented-out lines are skipped. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 
