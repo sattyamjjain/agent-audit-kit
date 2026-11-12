@@ -290,6 +290,67 @@ the CVE or the GHSA. Fixed in 0.9.4.
 CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for ByteStash and SiYuan
 (their CVSS 4.0 scores are 5.3 and 6.0). GitHub scored Helio and ideon in CVSS 4.0 only.
 
+## 2026-11-12 (unreleased): two held heym records, one new image rule, one out of scope
+
+The watcher holds CVE-2026-67546 and CVE-2026-67545 behind its back-pressure cap, so neither has
+an issue. Both are GitHub's records for heym, a self-hosted platform for agent workflows,
+published on 11 Nov from advisories the project published in July. Each is read here against
+NVD's API record, its CVE record, the GitHub advisory and the source at the commit each image's
+label names, all on 2026-11-12, and NVD text is quoted from the API records. heym is on neither
+PyPI nor npm and ships as the image `ghcr.io/heymrun/heym`, which
+`AAK-MCP-HEYM-CVE-2026-100858-001` already reads below 0.0.109 for a MEDIUM SSRF in the Slack,
+Discord and Crawler workflow nodes. Both records are HIGH and fixed below that floor, so neither
+can join that rule without being reported at MEDIUM. One gets a rule of its own, measured with
+the scanner on firing fixtures and negative ones (tests/test_cve_batch_2026_11_12_heym.py); the
+other is out of scope. OSV holds neither record, and the CNA data names `heymrun/heym` with a
+bare range and no packageURL, so `aak update` maps neither into the advisory feed.
+
+### CVE-2026-67546 (not filed): new image pin 2026-11-12
+
+**heym gets `AAK-MCP-HEYM-CVE-2026-67546-001`: the image `ghcr.io/heymrun/heym` below 0.0.75,
+HIGH.** NVD: "Prior to version 0.0.75, the same POST /api/mcp/fetch-tools endpoint (any
+authenticated user, lowest role) also accepts the stdio transport, which spawns the
+attacker-supplied command with attacker-supplied args and an environment merged over
+os.environ." The workflow editor uses the route to preview an MCP server's tools, and the
+process starts before any MCP handshake, so its side effects happen whether or not it speaks
+MCP. GHSA-378x-q589-34mv names 0.0.75 as patched and gives no lower bound. Checked in the source
+at the commit each image's label names: 0.0.1 (5df3bea6), the first image, already serves the
+route behind `get_current_user` alone and hands the caller's stdio command to the MCP SDK's
+`stdio_client`; 0.0.72 (b04ceb3c), the 0.0.73 tag and 0.0.74 (e356609b) have the same
+`_open_transport`, which also merges the caller's variables over the backend's environment;
+0.0.75 (6c6213f8) sends every stdio command through `build_sandboxed_command` to a throwaway
+container with no Docker socket and only the caller's variables. So every tag below 0.0.75 is
+reported, from the first. GHCR has no 0.0.70, 0.0.71 or 0.0.73 image, and `latest` was the
+0.0.153 image on 2026-11-12, so the README's `docker run` of `latest` is not reported. 0.0.75
+keeps a single-user opt-out, `HEYM_MCP_STDIO_SANDBOX=subprocess`, that starts stdio commands on
+the host again; the rule reads the tag, and its limitations say so. Tags below 0.0.75 also fire
+the 0.0.109 rule, for its own flaw.
+
+### CVE-2026-67545 (not filed): out of scope 2026-11-12
+
+**heym's HTTP workflow node is out of scope.** NVD: "Prior to version 0.0.73, the HTTP workflow
+node in Heym makes outbound HTTP requests to user-supplied URLs without validation of the target
+host or IP address." An unauthenticated caller reaches it only through a workflow whose author
+already pointed an HTTP node at an internal address and allowed anonymous runs, and NVD adds:
+"The same project has comprehensive SSRF protection in its MCP integration, which is absent
+from the HTTP node." Checked in the source: the node fetches through an unguarded client at 0.0.1
+and 0.0.72, and at the 0.0.73 tag and in the 0.0.74 image it calls `ssrf_guard.guard_http_url`
+and a client pinned to the checked address first (GHSA-8wj7-v2w6-wfcx). The flaw is a workflow
+node outside heym's MCP code, and n8n's workflow-node records got no pin on 2026-11-11 for that
+reason. The 0.0.109 rule, shipped on 2026-10-03 for the Slack, Discord and Crawler nodes,
+predates that ruling and is not revisited here. Every image this record affects, 0.0.72 and
+older, is reported by `AAK-MCP-HEYM-CVE-2026-67546-001` and the 0.0.109 rule for their own
+flaws, and no rule names this CVE. Fixed in 0.0.73; the first image with the fix is 0.0.74.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-67546 | 8.8 | `ghcr.io/heymrun/heym` (GHCR) | **New image pin** `AAK-MCP-HEYM-CVE-2026-67546-001` (HIGH): tags below 0.0.75, from 0.0.1. | not filed |
+| CVE-2026-67545 | 7.4 | `ghcr.io/heymrun/heym` (GHCR) | **Out of scope**: the HTTP workflow node, outside heym's MCP integration. Fixed in 0.0.73, first image 0.0.74. | not filed |
+
+CVSS is each record's CVSS 3.1 score, GitHub's.
+
+Dispositioned at 2026-11-12T03:45:00Z.
+
 ## 2026-11-11 (v0.6.35): #1223 and two held MCP TypeScript SDK records, three new rules
 
 The watcher filed #1223 at 06:20Z on 2026-11-11 and held CVE-2026-111771 and CVE-2026-111769

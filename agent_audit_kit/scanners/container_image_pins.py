@@ -181,6 +181,17 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-HEYM-CVE-2026-100858-001", "heym", "ghcr.io/heymrun/heym",
         (0, 0, 109), "below 0.0.109", "Fixed in 0.0.109.", ("CVE-2026-100858",),
     ),
+    # heym: CVE-2026-67546 (HIGH), `POST /api/mcp/fetch-tools` starts any logged-in
+    # account's stdio MCP command on the backend host. A different flaw at a higher
+    # severity than the 0.0.109 row, so its own rule. The labels name each image's
+    # commit: 0.0.1 (5df3bea6), the first image, already has the route and the spawn;
+    # 0.0.74 (e356609b) still spawns on the host; 0.0.75 (6c6213f8) runs every stdio
+    # command in a throwaway container (`mcp_stdio_sandbox.py`). GHCR has no 0.0.70,
+    # 0.0.71 or 0.0.73 image. `latest` was 0.0.153 on 2026-11-12.
+    _ImagePin(
+        "AAK-MCP-HEYM-CVE-2026-67546-001", "heym", "ghcr.io/heymrun/heym",
+        (0, 0, 75), "below 0.0.75", "Fixed in 0.0.75.", ("CVE-2026-67546",),
+    ),
     # CVE-2026-79534 names v0.11.1, and the same `validatePath` fallback (return the
     # unresolved path when `EvalSymlinks` reports a missing target) is in every
     # tag from 0.6.0 and on `main`. No fixed release: 0.11.1 is the newest tag and

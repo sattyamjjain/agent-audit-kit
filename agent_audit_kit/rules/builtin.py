@@ -412,6 +412,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
     "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-HEYM-CVE-2026-67546-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -20972,6 +20973,65 @@ _r(
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-12 wave, group "heym" (two held records). One new image pin: heym's MCP
+# fetch-tools endpoint started any account's stdio command on the backend host
+# (CVE-2026-67546, HIGH, below 0.0.75), beside the MEDIUM 0.0.109 workflow-node
+# pin. CVE-2026-67545, an SSRF in the HTTP workflow node outside heym's MCP
+# integration, is out of scope; the ledger has the reason.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-HEYM-CVE-2026-67546-001",
+    "heym image below 0.0.75: the MCP fetch-tools endpoint starts any account's stdio command on the backend host",
+    "heym (heymrun/heym), a self-hosted platform for agent workflows, is on neither PyPI "
+    "nor npm and ships as the container image `ghcr.io/heymrun/heym`. Its workflow "
+    "editor previews an MCP server's tools through `POST /api/mcp/fetch-tools`, which "
+    "needs only a logged-in account (`get_current_user`; heym has no role model) and "
+    "takes the MCP connection from the request body. With the stdio transport, the "
+    "default, the backend starts the caller's `command` with the caller's `args` and "
+    "environment variables as its own process on the backend host, before any MCP "
+    "handshake, so the command's side effects happen whether or not it speaks MCP, and "
+    "on a deployment that mounts the Docker socket they reach the host "
+    "(CVE-2026-67546, CVSS 3.1 8.8, CWE-94, GHSA-378x-q589-34mv). Checked in the "
+    "source at the commit each image's label names: 0.0.1 (5df3bea6), the first image, "
+    "already serves the route and hands the stdio command to the MCP SDK's "
+    "`stdio_client`; 0.0.74 (e356609b) does the same in `_open_transport` "
+    "(`backend/app/services/mcp_tool_executor.py`), with the caller's variables merged "
+    "over the backend's own environment; 0.0.75 (6c6213f8) rewrites every stdio "
+    "command through `build_sandboxed_command` "
+    "(`backend/app/services/mcp_stdio_sandbox.py`) to run in a throwaway container "
+    "with no Docker socket and only the caller's variables.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/heymrun/heym` at 0.0.75 or later and pin that tag (or its digest), "
+    "and leave `HEYM_MCP_STDIO_SANDBOX` at `auto` or `docker`. Until then, give an "
+    "account only to people trusted to run commands on the backend host, and do not "
+    "mount the Docker socket into the container.",
+    sarif_name="HeymImageMcpFetchToolsStdioSpawn",
+    cve_references=["CVE-2026-67546"],
+    owasp_mcp_references=["MCP05:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/heymrun/heym:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Every tag below 0.0.75 is reported, from 0.0.1, "
+        "the first; GHCR has no 0.0.70, 0.0.71 or 0.0.73 image. `latest` was the 0.0.153 "
+        "image on 2026-11-12, so an untagged reference, the README's own `docker run`, is "
+        "not reported. A tag from 0.0.75 that runs with `HEYM_MCP_STDIO_SANDBOX=subprocess`, "
+        "the single-user opt-out, starts stdio commands on the backend host again and is "
+        "not reported: the rule reads the tag, not that variable. heym's compose file "
+        "builds a local image (`heym-backend:local` unless `HEYM_BACKEND_IMAGE` is set), "
+        "which states no version. Tags below 0.0.75 also fire "
+        "AAK-MCP-HEYM-CVE-2026-100858-001, a different flaw. Mirrors under another "
+        "registry are not matched, and commented-out lines are skipped."
     ),
 )
 
