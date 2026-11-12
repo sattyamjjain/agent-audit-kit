@@ -86,7 +86,7 @@ agent-compliance:
 agent-security-scan:
   stage: test
   image:
-    name: ghcr.io/sattyamjjain/agent-audit-kit:0.6.35
+    name: ghcr.io/sattyamjjain/agent-audit-kit:0.6.36
     entrypoint: [""]
   script:
     - agent-audit-kit scan . --fail-on high
