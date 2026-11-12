@@ -1,0 +1,23 @@
+# Fixture for AAK-GHA-PUBLISH-GATE-001: the shape that shipped @ethersphere/bee-js
+# 13.3.0 (GHSA-hh7j-5m3j-23pf). A release starts the job, which publishes with
+# provenance and waits for nobody. Never run: it lives under tests/fixtures.
+name: Publish
+on:
+  release:
+    types: [published]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

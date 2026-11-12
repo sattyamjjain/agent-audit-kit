@@ -121,6 +121,14 @@ def _gha_heredocs(separator: str, k: int) -> dict[str, str]:
     return _gha_run("|\n     " + f"base64 <<A{separator}" * k + "cat\n" + "     x\n" * k + "     A")
 
 
+def _gha_publish_jobs(k: int) -> dict[str, str]:
+    """k jobs, each publishing with no environment, so each is reported and placed. Each
+    command differs: a placement that searched from the top of the file for each job's
+    command (5,000 jobs) took 5.9 s against 1.4 s."""
+    jobs = "".join(f" j{i}:\n  runs-on: x\n  steps:\n  - run: npm publish p{i}\n" for i in range(k))
+    return {".github/workflows/ci.yml": "on: release\njobs:\n" + jobs}
+
+
 def _npx_servers(k: int) -> dict[str, str]:
     return {".mcp.json": _js({"mcpServers": {f"s{i}": {"command": "npx", "args": ["-y", f"pkg{i}"]}
                                              for i in range(k)}})}
@@ -448,6 +456,16 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "secret-dump-assignments": (gha_hardening.scan, lambda k: _gha_run('"' + "A=1 " * k + 'base64"'), 8_000, False),
     "secret-dump-heredoc-stages": (gha_hardening.scan, lambda k: _gha_heredocs("|", k), 4_000, False),
     "secret-dump-heredoc-commands": (gha_hardening.scan, lambda k: _gha_heredocs(";", k), 4_000, False),
+    # AAK-GHA-PUBLISH-GATE-001's reader, before it was released: every ungated job is placed
+    # inside its own step's lines (the composed document gives each step's range), and a
+    # stage's option words, launchers and commands are each read once.
+    "publish-gate-jobs": (gha_hardening.scan, _gha_publish_jobs, 500, True),
+    "publish-gate-options": (gha_hardening.scan, lambda k: _gha_run('"npm' + " -x" * k + ' publish"'), 8_000, False),
+    "publish-gate-launchers": (gha_hardening.scan, lambda k: _gha_run('"' + "npx -y " * k + 'vsce publish"'), 5_000,
+                               False),
+    "publish-gate-commands": (gha_hardening.scan, lambda k: _gha_run('"' + "npm publish --dry-run;" * k + '"'),
+                              2_000, False),
+    "publish-gate-stages": (gha_hardening.scan, lambda k: _gha_run('"' + "npm ci|" * k + 'true"'), 5_000, False),
     # Row 4: one per launched package: 4,000 servers took 3.2 s.
     "npx-servers": (supply_chain.scan, _npx_servers, 800, True),
     # Row 5: the UPI pattern read a dotted run from every word boundary: 60 KB took 14 s.

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New rule AAK-GHA-PUBLISH-GATE-001 (HIGH): a GitHub Actions job that publishes a package (`npm`, `pnpm`, `yarn`, `bun`, `uv`, `poetry`, `hatch`, `flit`, `pdm`, `cargo`, `vsce` or `ovsx publish`, `twine upload`, `gem push`, `nuget push`, or the `pypa/gh-action-pypi-publish`, `JS-DevTools/npm-publish` and `rubygems/release-gem` actions) and names no `environment:`, so no reviewer approves the release before it publishes. @ethersphere/bee-js 13.3.0 (GHSA-hh7j-5m3j-23pf) shipped malware this way: stolen CI credentials created a release, which started the npm publish job, and it published with valid provenance and no approval. The finding sits on the job's first publishing step, and its evidence names the triggers, says whether the job has the `id-token` permission set to `write`, and, for a release or tag-push trigger, says that whoever can create one publishes. A named environment counts as the gate: whether it has required reviewers is a repository setting the checkout does not hold. A dry run, TestPyPI, a registry on the runner and a reusable workflow are not reported.
+- The bundled malicious-release feed lists OSV MAL-2026-18773, @ethersphere/bee-js 13.3.0 (GHSA-hh7j-5m3j-23pf), and MAL-2026-19085, @lemili9804/mcp-weather-server 1.0.3 and 1.0.6 (GHSA-qwfq-cw9x-55x4), as https://api.osv.dev/v1/vulns/<id> gave them on 2026-11-12. A lockfile, manifest or MCP launch naming either release is reported by AAK-MALICIOUS-RELEASE-001 without `aak update`; on 0.6.35 both passed until the cached feed was rebuilt.
+
+### Fixed
+
+- AAK-SECRET-010's text. The 0.6.34 entry said it reports a credential with no length or entropy gate, but a value that reads as a placeholder is skipped, and that includes a value of one repeated character: `Bash(PGPASSWORD=x psql:*)` gave no finding while `PGPASSWORD=hunter2` did. The rule's description and limitations now name every value it skips (a placeholder word, a run of four `x`, AWS's two documented example keys, one character repeated with `-` and `_` aside, a `$` reference or a `*` wildcard). What it reports is unchanged.
+
 ## [0.6.35] - 2026-11-11
 
 ### Added

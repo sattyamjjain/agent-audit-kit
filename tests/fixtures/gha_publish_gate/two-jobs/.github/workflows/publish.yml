@@ -1,0 +1,19 @@
+# Fixture for AAK-GHA-PUBLISH-GATE-001: one publishing job behind an environment,
+# one not. Both run the same command, so only the line of the second job's step
+# tells them apart. Never run: it lives under tests/fixtures.
+name: Publish
+on:
+  release:
+    types: [published]
+jobs:
+  npm-gated:
+    runs-on: ubuntu-latest
+    environment: npm-release
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm publish --access public
+  npm-canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm publish --access public

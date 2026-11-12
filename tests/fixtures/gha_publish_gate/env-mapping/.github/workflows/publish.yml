@@ -1,0 +1,18 @@
+# Fixture for AAK-GHA-PUBLISH-GATE-001: the environment written as a mapping with
+# a name and a URL. Never run: it lives under tests/fixtures.
+name: Release
+on:
+  release:
+    types: [published]
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/example
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc

@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from agent_audit_kit.engine import run_scan
+from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners._agent_permission_secrets import command_credentials
 from agent_audit_kit.scanners.secret_exposure import scan
 
@@ -133,6 +134,26 @@ def test_a_placeholder_is_left_out(tmp_path: Path) -> None:
     _settings(tmp_path, "Bash(sshpass -p <your-password> ssh x)", "Bash(PGPASSWORD=changeme psql)",
               "Bash(MYSQL_PWD=xxxxxxxx mysql)")
     assert _rule(scan(tmp_path)[0], "AAK-SECRET-010") == []
+
+
+@pytest.mark.parametrize(
+    ("value", "reported"),
+    [
+        # One character repeated reads as a stand-in, however short.
+        ("x", False), ("0000", False), ("1111", False), ("a-a-a", False),
+        ("CHANGEME", False), ("xxxx1234", False), ("example-pass", False),
+        # Anything else is reported, however short or plain.
+        ("hunter2", True), ("1234", True), ("ab", True), ("x1", True),
+    ],
+)
+def test_which_short_values_read_as_placeholders(tmp_path: Path, value: str, reported: bool) -> None:
+    """CHANGELOG 0.6.34 said AAK-SECRET-010 has no length or entropy gate, yet
+    `PGPASSWORD=x` gave no finding: `_is_placeholder` skips a value of one repeated
+    character. The rule's limitations now name every value it skips; this pins them."""
+    _settings(tmp_path, f"Bash(PGPASSWORD={value} psql:*)")
+    assert bool(_rule(scan(tmp_path)[0], "AAK-SECRET-010")) is reported
+    limitations = RULES["AAK-SECRET-010"].limitations
+    assert "one character repeated" in limitations and "`PGPASSWORD=x`" in limitations
 
 
 def test_ask_and_deny_are_read_and_named(tmp_path: Path) -> None:
