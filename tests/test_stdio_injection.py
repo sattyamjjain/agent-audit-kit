@@ -344,3 +344,34 @@ def test_twenty_thousand_js_matches_are_placed_in_linear_time(tmp_path: Path) ->
     assert [f.line_number for f in findings[:3]] == [2, 3, 4]
     assert findings[-1].line_number == 20_001
     assert elapsed < 5.0
+
+
+# --- which TS/JS files are opened, as AAK-STDIO-001's limitations state (#1060) ---
+
+_JS_SINK = "import { exec } from 'child_process';\nexport function h(req) { exec(`ls ${req.body.dir}`); }\n"
+
+
+@pytest.mark.parametrize(("name", "hint", "opened"), [
+    ("server.ts", "const s = new McpServer({});", True),
+    ("server.mjs", "const s = new McpServer({});", True),
+    ("server.cjs", "const s = new McpServer({});", False),
+    ("server.mts", "const s = new McpServer({});", False),
+    # `stdio\s*:` is followed by `\b`, so the colon must touch a word character.
+    ("server.ts", "const opts = { stdio:true };", True),
+    ("server.ts", "const opts = { stdio: true };", False),
+    ("server.ts", 'const opts = { stdio: "pipe" };', False),
+])
+def test_the_ts_js_files_the_rule_opens(tmp_path: Path, name: str, hint: str, opened: bool) -> None:
+    (tmp_path / name).write_text(hint + "\n" + _JS_SINK, encoding="utf-8")
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert any(f.rule_id == "AAK-STDIO-001" for f in findings) is opened
+
+
+def test_the_rule_text_names_the_files_it_opens() -> None:
+    from agent_audit_kit.rules.builtin import get_rule
+
+    text = get_rule("AAK-STDIO-001").limitations
+    assert f"{stdio_injection._MAX_FILE_BYTES:,} bytes or less" in text
+    for ext in sorted(stdio_injection._JS_EXTS):
+        assert f"`{ext}`" in text, ext
+    assert "`stdio: true`" in text

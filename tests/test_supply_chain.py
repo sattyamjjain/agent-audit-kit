@@ -1556,3 +1556,54 @@ def test_supply_006_reads_a_jsonc_cursor_config(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert [path for path, _ in _supply_006(tmp_path)] == [str(Path(".cursor") / "mcp.json")]
+
+
+# --- the older pins read a git tag only after a bare `@` (#1060) --------------
+#
+# DORIS-001, EXCEL-MCP-001, the LiteLLM pin, the gateway-registry pin and the
+# Serena pin read a requirement's version through `_vcs_tag_version`, which takes
+# only `@v1.2.3` or `@1.2.3`; `_dependency_pins._pip_reference`, which the CVE pin
+# table uses, also reads `@refs/tags/v1.2.3` and an archive's file name. The three
+# pins that need a stated version miss such a requirement below the fix; the two
+# that report an unversioned reference report one at the fix. Each rule says so.
+
+_OLDER_PINS = {
+    # rule: (package, repository, below the fix, the fix, needs a stated version)
+    "AAK-DORIS-001": ("apache-doris-mcp-server", "apache/doris-mcp-server", "0.6.0", "0.6.1", True),
+    "AAK-EXCEL-MCP-001": ("excel-mcp-server", "haris-musa/excel-mcp-server", "0.1.7", "0.1.8", True),
+    "AAK-LITELLM-CVE-2026-30623-PIN-001": ("litellm", "BerriAI/litellm", "1.83.6", "1.83.7", True),
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": (
+        "mcp-gateway-registry", "agentic-community/mcp-gateway-registry", "1.0.12", "1.0.13", False),
+    "AAK-MCP-SERENA-CVE-2026-49471-001": ("serena-agent", "oraios/serena", "1.5.1", "1.5.2", False),
+}
+
+
+def _older_pin_fires(tmp_path: Path, rule_id: str, requirement: str) -> bool:
+    root = tmp_path / f"p{sum(1 for _ in tmp_path.iterdir())}"
+    root.mkdir()
+    (root / "requirements.txt").write_text(requirement + "\n", encoding="utf-8")
+    return rule_id in {f.rule_id for f in scan(root)[0]}
+
+
+@pytest.mark.parametrize("rule_id", sorted(_OLDER_PINS))
+def test_an_older_pin_reads_a_tag_only_after_a_bare_at(tmp_path: Path, rule_id: str) -> None:
+    from agent_audit_kit.rules.builtin import get_rule
+    from agent_audit_kit.scanners._dependency_pins import _pip_reference
+
+    package, repo, below, fixed, needs_version = _OLDER_PINS[rule_id]
+    git = f"{package} @ git+https://github.com/{repo}"
+    assert _older_pin_fires(tmp_path, rule_id, f"{git}@v{below}")
+    assert not _older_pin_fires(tmp_path, rule_id, f"{git}@v{fixed}")
+    for version in (below, fixed):
+        unread = (
+            f"{git}@refs/tags/v{version}",
+            f"{package} @ https://github.com/{repo}/archive/refs/tags/v{version}.tar.gz",
+            f"{package} @ https://files.example.com/{package}-{version}.tar.gz",
+        )
+        for requirement in unread:
+            assert _pip_reference(requirement) == f"=={version}", requirement
+            # Read as no version: missed by a pin that needs one, reported as
+            # unpinned by one that reports an unversioned reference.
+            assert _older_pin_fires(tmp_path, rule_id, requirement) is not needs_version, requirement
+    text = get_rule(rule_id).limitations
+    assert "`@refs/tags/v" in text and "archive's file name" in text

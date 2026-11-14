@@ -1714,3 +1714,57 @@ def test_call_lines_are_counted_in_linear_time() -> None:
     sites = analyze_js("fetch(a);\n" * 3)
     assert [s.line for s in sites] == [1, 2, 3]
     _grows_linearly(lambda: analyze_js("fetch(a);\n" * 4_500), lambda: analyze_js("fetch(a);\n" * 45_000))
+
+
+# --- limits the rule text states (#1060) ------------------------------------
+
+
+def test_a_mapping_bound_twice_is_read_whole_as_ssrf_001_states() -> None:
+    """`"".join(d)` reads `d`'s keys only when the scope binds `d` once; bound
+    twice, `d` is read whole, values included, so a caller's value held only in
+    the values is a false finding. AAK-SSRF-001's limitations say so; a fix that
+    reads the keys of every binding turns the second case False and the text
+    must change with it."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    head = _TOOL_HEAD.replace("p: str", "host: str")
+    once = head + "    d = {'u': 'https://' + host}\n    return requests.get(''.join(d)).text\n"
+    twice = (
+        head + "    d = {'u': 'https://' + host}\n    if len(host) > 3:\n"
+        "        d = {'v': 'https://' + host}\n    return requests.get(''.join(d)).text\n"
+    )
+    assert [s.tainted for s in analyze_python(once)] == [False]
+    assert [s.tainted for s in analyze_python(twice)] == [True]
+    assert "a `d` bound twice is read whole" in get_rule("AAK-SSRF-001").limitations
+
+
+@pytest.mark.parametrize(("body", "address"), [
+    # Four names reach the call; a fifth does not.
+    ("    c = 'http://127.0.0.1'\n    b = c\n    a = b\n    base = a\n", "127.0.0.1"),
+    ("    d = 'http://127.0.0.1'\n    c = d\n    b = c\n    a = b\n    base = a\n", None),
+    # An annotated `=` is followed.
+    ("    base: str = 'http://169.254.169.254/latest'\n", "169.254.169.254"),
+    # A `for` target, `+=`, `:=` and tuple unpacking are not.
+    ("    for base in ['http://127.0.0.1']:\n        pass\n", None),
+    ("    base = ''\n    base += 'http://127.0.0.1'\n", None),
+    ("    if (base := 'http://127.0.0.1'):\n        pass\n", None),
+    ("    base, port = 'http://127.0.0.1', 80\n", None),
+])
+def test_the_address_walk_follows_the_bindings_ssrf_002_and_003_state(body: str, address: str | None) -> None:
+    source = _CYCLE_HEAD + "@mcp.tool()\ndef t(p: str) -> str:\n" + body + "    return requests.get(base).text\n"
+    assert [s.private_addr for s in analyze_python(source)] == [address]
+
+
+def test_the_address_walk_reads_a_name_across_the_file() -> None:
+    """A `base` another function binds is read as the handler's: names are
+    looked up file-wide, not in the call's scope."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    source = (
+        _CYCLE_HEAD + "def setup():\n    base = 'http://127.0.0.1:8080'\n    return base\n"
+        "@mcp.tool()\ndef t(p: str) -> str:\n    base = 'https://api.example.com'\n"
+        "    return requests.get(base).text\n"
+    )
+    assert [s.private_addr for s in analyze_python(source)] == ["127.0.0.1"]
+    for rule_id in ("AAK-SSRF-002", "AAK-SSRF-003"):
+        assert "across the whole file" in get_rule(rule_id).limitations
