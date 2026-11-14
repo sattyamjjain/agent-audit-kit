@@ -5,11 +5,10 @@ on:
     tags:
       - 'v*'
 
+# Every job below sets its own permissions, so this default reaches none of
+# them; it stays read-only so a job added without a block gets nothing more.
 permissions:
-  contents: write
-  packages: write
-  id-token: write
-  attestations: write
+  contents: read
 
 jobs:
   # --------------------------------------------------------------------------

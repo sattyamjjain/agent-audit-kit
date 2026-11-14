@@ -28,8 +28,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
-  issues: write
+  contents: read
 
 # This workflow rebuilds gh-pages from nothing and force-pushes it, so two runs
 # that overlap race for the branch and the one that finishes last wins, whichever
@@ -45,6 +44,9 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
     # Backstop under the crawl's own 1500s budget plus build/publish. Without
     # it a rate-limited crawl could grind against the 6-hour default and be
     # killed with no artifact -- the original failure, slower.
