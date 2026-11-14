@@ -416,6 +416,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HEYM-CVE-2026-67546-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-PRAISONAI-CVE-2026-61438-001": ["AIS-07", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -10709,10 +10710,10 @@ _r(
     "Actions runner. The 4.6.78 floor is the highest of the three, so a project "
     "pinned below it is exposed to all of them. CVE-2026-61438 (CVSS 7.3, "
     "GHSA-26mh-57q7-jfvr) names the same 4.6.78 as its fix: the job-workflow "
-    "executor's AST sandbox keeps `os` on its import allowlist, so the inline "
-    "`script:` step of a YAML workflow run with `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` "
-    "reaches `os.system` (the limitations say which later releases still ship it). "
-    "Default bind is 127.0.0.1, so "
+    "executor's AST sandbox lets the inline `script:` step of a YAML workflow run "
+    "with `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` reach `os`. No published release fixes "
+    "it, so this rule reports it below 4.6.78 and a presence-only rule of its own "
+    "reports the releases from 4.6.78. Default bind is 127.0.0.1, so "
     "remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
@@ -10737,7 +10738,9 @@ _r(
         # 2026-11-11 (#1144): CVE-2026-61438, the job-workflow executor's AST
         # sandbox allows `import os`. Its advisory names 4.6.78 as the fix, this
         # rule's floor, so every release it scopes already fires. No published
-        # release removes the executor, which the limitations say.
+        # release removes the executor, so from 2026-11-14 (#1144) the releases
+        # from 4.6.78 are AAK-PRAISONAI-CVE-2026-61438-001's, and each release
+        # is reported for this CVE by one rule.
         "CVE-2026-61438",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
@@ -10751,12 +10754,12 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). CVE-2026-61438 is "
-        "read as its advisory scopes it, below 4.6.78, though no release fixed it: "
-        "PyPI has no 4.6.78 (4.6.81 follows 4.6.77) and the v4.6.78 tag still allows "
-        "`os`, 4.6.81 to 4.6.102 ship the same `_exec_inline_python`, and from 4.6.103 "
-        "`praisonai` loads it from its required dependency `praisonai-code`, which this "
-        "rule does not read and whose newest release, 0.1.21, still allows `os`. Those "
-        "releases are not reported for it. A file over 2 MB, "
+        "read here below 4.6.78, as its advisory scopes it. No release fixed it: PyPI "
+        "has no 4.6.78 (4.6.81 follows 4.6.77), and 4.6.81 to 4.7.24 ship the same "
+        "`_exec_inline_python`, from 4.6.103 through the required `praisonai-code`. "
+        "Those releases are reported for it by a presence-only rule of their own, so "
+        "a reference that states no version, or a range that admits releases on both "
+        "sides of 4.6.78, gets both rules' findings. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
@@ -15960,17 +15963,21 @@ _r(
     "an adjacent network can connect as the plugin, receive the agent's task "
     "payloads and return forged results (CVE-2026-100868, CVSS 3.1 6.3, "
     "GHSA-ch2q-6x56-qg5r). The fix, commit `b5274a44` (2026-09-22), is in Penpot's "
-    "2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag yet, "
-    "and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). "
-    "npm's own 2.17.0 was published on 2026-07-08, before the fix, and still binds "
-    "every interface, so every published version is reported. The older "
-    "`@penpot/mcp` pin, for the REPL RCE fixed in 2.15.0, stays a separate rule "
-    "because that one is critical and this one is not.",
+    "2.18.0 tag and every 2.18.x tag after it, but their `mcp/package.json` still "
+    "reads 2.17.0 (penpot/penpot#12007), so npm never got a 2.18.x build. The first "
+    "`@penpot/mcp` on npm with the fix is 2.19.1 (2026-11-10), which binds the bridge "
+    "to `PENPOT_MCP_SERVER_HOST`, `localhost` by default. It is published under the "
+    "`next` dist-tag, and `latest` is still 2.15.4, which binds every interface, as "
+    "npm's 2.17.0 (2026-07-08) does. The older `@penpot/mcp` pin, for the REPL RCE "
+    "fixed in 2.15.0, stays a separate rule because that one is critical and this "
+    "one is not.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@penpot/mcp` to the first npm release built from Penpot 2.18.0 or "
-    "later once one is published, and pin it. Until then, block the plugin "
-    "WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by default) from every "
+    "Upgrade `@penpot/mcp` to 2.19.1 or later and pin that version: it is published "
+    "under the `next` dist-tag, so `npx @penpot/mcp` with no version still installs "
+    "the affected 2.15.4. Leave `PENPOT_MCP_SERVER_HOST` at `localhost` unless the "
+    "bridge must be reached from another host. Until you can upgrade, block the "
+    "plugin WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by default) from every "
     "other host, or run the server only on a machine that is not reachable from a "
     "shared network.",
     sarif_name="PenpotMcpPluginBridgeAllInterfaces",
@@ -15982,10 +15989,12 @@ _r(
         "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
         "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference "
         "is reported because what npm installs by default is affected (re-checked "
-        "2026-10-04: `latest` is 2.15.4 and `next` is 2.17.0, both without the fix). "
-        "The floor is 2.18.0, but the fixed tag's package.json reads 2.17.0 and npm "
-        "already holds a 2.17.0, so a fixed build published under a lower number "
-        "would be reported until the floor follows it. It reads the npm version, not "
+        "2026-11-14: `latest` is 2.15.4, without the fix, and the fixed 2.19.1 is "
+        "under `next`). A launch that names a dist-tag, such as `npx @penpot/mcp@next`, "
+        "states no version the rule reads and is reported, though `next` is fixed "
+        "today. The floor is 2.18.0, Penpot's fixed version; npm has no release "
+        "between 2.17.0 and 2.19.1, and a build from a Penpot 2.18.x tag calls itself "
+        "2.17.0 and would be reported. It reads the npm version, not "
         "Penpot's: a self-hosted Penpot 2.18.0 server does not clear an older "
         "`@penpot/mcp`, since the bridge runs in the MCP server. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
@@ -21329,6 +21338,76 @@ _r(
         "which states no version. Tags below 0.0.75 also fire "
         "AAK-MCP-HEYM-CVE-2026-100858-001, a different flaw. Mirrors under another "
         "registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 batch, group "deferred" (#1144). PraisonAI's job-workflow sandbox
+# (CVE-2026-61438) has no fixed release: the 4.6.78 rule reports it below its
+# floor, as the advisory scopes it, and this presence-only rule reports every
+# release from 4.6.78, so each release is reported for it once. The executor is
+# PraisonAI's own workflow runner, not MCP, so no MCP area and no MCP id.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-PRAISONAI-CVE-2026-61438-001",
+    "PraisonAI 4.6.78 and later: a job workflow's inline Python step gets out of the executor's AST sandbox (no fixed release)",
+    "PraisonAI (PyPI `praisonai`, MervinPraison/PraisonAI) runs the inline `script:` "
+    "steps of a `type: job` YAML workflow through "
+    "`JobWorkflowExecutor._exec_inline_python` once `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` "
+    "is set. The function checks the step's AST against an allowlist of node types and "
+    "imported module names, then runs it with a reduced set of builtins, and the check "
+    "falls short twice: the import allowlist holds `os`, and attribute access passes "
+    "with no check on the attribute's name, so a step walks from an allowed builtin to "
+    "the `builtins` module and from there to `os`. Whoever writes or changes a workflow "
+    "file that a user or a CI job runs gets commands run with that process's privileges "
+    "(CVE-2026-61438, CVSS 3.1 7.3, GHSA-26mh-57q7-jfvr). The advisory's own proof, a "
+    "plain `import os` statement, fails when it runs, since the reduced builtins lack "
+    "`__import__`; the attribute route does not need it. The advisory names 4.6.78 as "
+    "the fix, but PyPI has no 4.6.78 and no later release changes the function: it is "
+    "byte-identical in every `praisonai` wheel from 4.6.81 to 4.6.102 and, from 4.6.103 "
+    "to 4.7.24 (2026-11-05), in every release of `praisonai-code` (0.0.1 to 0.1.21), "
+    "which `praisonai` requires from 4.6.103 and loads the executor from. Releases "
+    "below 4.6.78 are reported for this CVE by the 4.6.78 PraisonAI rule, so this one "
+    "starts at 4.6.78 and each release is reported for it once.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "No release fixes this, so an upgrade does not help. Leave "
+    "`PRAISONAI_ALLOW_JOB_WORKFLOWS` unset, which keeps PraisonAI from running job and "
+    "hybrid workflows at all, unless every such workflow file it runs is written and "
+    "reviewed by people you trust; never set it in a CI job that runs workflow files "
+    "from pull requests, templates or generated output. Watch "
+    "MervinPraison/PraisonAI#6368, which blocks attribute names that start with `_`, "
+    "and pin the first `praisonai` and `praisonai-code` releases that ship a fix.",
+    sarif_name="PraisonAiJobWorkflowSandboxEscape",
+    cve_references=["CVE-2026-61438"],
+    owasp_agentic_references=["ASI05", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads `praisonai` from 4.6.78 on in requirements*.txt at any depth and, at the "
+        "project root only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock and uv.lock "
+        "lockfiles, judging a range by the versions it admits. The dependency is not "
+        "read when it is declared in a sub-directory manifest "
+        "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
+        "parse (`pdm.lock`). `latest` is 4.7.24, affected, so a reference that states no "
+        "version is reported, beside the 4.6.78 rule's finding for its own records, "
+        "and so is a range that admits releases on both sides of 4.6.78. "
+        "It reads the version, not whether the project sets "
+        "`PRAISONAI_ALLOW_JOB_WORKFLOWS` or keeps job workflows, so a project that never "
+        "runs one is reported too. From 4.6.103 the executor is installed with "
+        "`praisonai-code`, which `praisonai` requires with only a lower bound, and the "
+        "rule reads `praisonai`'s version, not `praisonai-code`'s: a `praisonai-code` "
+        "release that fixes the executor would not clear a `praisonai` reference. A "
+        "project that names only `praisonai-code` is not reported, since neither the "
+        "advisory nor the CVE record names that package, though every release of it to "
+        "0.1.21 carries the same function. npm's `praisonai` is the TypeScript framework, "
+        "another project, and is not matched. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 

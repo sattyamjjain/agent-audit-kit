@@ -241,7 +241,10 @@ def test_out_of_scope_rows(cve: str, issue: str) -> None:
     assert not any(cve in rule.cve_references for rule in RULES.values())
 
 
-def test_the_deferred_record_has_no_row_and_no_rule() -> None:
-    """esp-mcp has no tag, no release and no registry package: a row is a coverage claim."""
-    assert _ledger_rows("CVE-2026-117567") == []
+def test_the_deferred_record_has_no_rule() -> None:
+    """esp-mcp has no tag, no release and no registry package. Deferred here with no
+    row; closed out of scope on 2026-11-14 (#1107), whose section holds its one row
+    (tests/test_cve_batch_2026_11_14_deferred.py)."""
+    (row,) = _ledger_rows("CVE-2026-117567")
+    assert row.rstrip().endswith("| #1107 |") and "Out of scope" in row
     assert not any("CVE-2026-117567" in rule.cve_references for rule in RULES.values())

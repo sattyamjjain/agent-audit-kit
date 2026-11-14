@@ -280,6 +280,154 @@ inbound user JWT across credentials with different upstream rights) are in the r
 CVSS is each record's CVSS 3.1 score from IBM, NVD's Primary metric, and the same score
 IBM's bulletin states.
 
+## 2026-11-14 (unreleased): the six dated deferrals and Penpot's npm fix, one new pin, five out of scope
+
+Six issues carried `cve-deferred` with a 2026-11-25 target: #850, #1097, #1107, #1110, #1114
+and #1144. Each is re-read here against NVD's API record, its CVE record, OSV, the upstream
+repository and the registries, all on 2026-11-14, and NVD text is quoted from the API
+records, none of which has changed since its last disposition. Under Sattyam's ruling for this
+batch, a record that would be deferred again only because no release exists is closed out of
+scope with a row, and reopened if one ships; the sections that deferred them stand as dated
+facts. PraisonAI's job-workflow sandbox gets a new pin, measured with the scanner on firing
+fixtures and negative ones (tests/test_cve_batch_2026_11_14_deferred.py), and five records
+are out of scope. Penpot's bridge rule from 0.6.14 is re-pointed at the npm release that
+carries its fix (#872).
+
+### CVE-2026-61438 (#1144): new pin 2026-11-14
+
+**PraisonAI's job-workflow sandbox gets `AAK-PRAISONAI-CVE-2026-61438-001`: PyPI `praisonai`
+from 4.6.78, every release, presence-only, HIGH.** NVD: "PraisonAI before 4.6.78 contains a
+remote code execution vulnerability in JobWorkflowExecutor._exec_inline_python() due to
+insufficient AST validation of workflow script steps." The 2026-11-11 section put the record
+on `AAK-MCP-PRAISONAI-CVE-2026-61427-001` for the range its advisory gives, below 4.6.78, and
+left the later releases unreported, because no published release fixes it; Sattyam ruled to
+report them. Checked in every PyPI wheel of `praisonai` from 4.6.70 to 4.7.24 (87 releases)
+and of `praisonai-code` from 0.0.1 to 0.1.21 (86), each against its PyPI SHA-256:
+`_exec_inline_python` is byte-identical in `praisonai` from 4.6.70 to 4.6.102 (PyPI has no
+4.6.78 to 4.6.80); from 4.6.103 the `praisonai` wheel carries no copy, requires
+`praisonai-code` (from 4.6.108 with a lower bound only, `>=0.1.21` in 4.7.24) and loads the
+executor from it; and every `praisonai-code` release has the same function. Its import
+allowlist holds `os` in all of them.
+OSV has no record for `praisonai` at 4.6.81 or 4.7.24, or for `praisonai-code` at 0.1.21.
+MervinPraison/PraisonAI#6368, opened on 14 Nov and unmerged, is the first change to the
+function.
+
+The advisory's proof does not run as written. Its `import os` step passes the AST check, but
+the step runs with builtins that leave out the import function, so the statement fails;
+reproduced on Python 3.9 and 3.12 with a namespace built as the wheel builds it, never with
+the wheel's own code. The sandbox is broken all the same: attribute access passes with no
+check on the attribute's name, and the attributes of an allowed builtin lead to the
+`builtins` module and from it to `os`, the route #6368 describes and blocks. So the record
+stands, and the new rule's text describes the route that works. The floor rule's description
+said the step reaches `os.system`; it now says only that it reaches `os`.
+
+It is a rule of its own, not a moved floor. The floor rule keeps reporting the record below
+4.6.78, and the new rule starts at 4.6.78, so each release is reported for it once and none
+under a flaw it does not have; raising the 4.6.78 floor would report every later release
+under the MCP and workflow records that 4.6.78 fixed. The executor is PraisonAI's own
+workflow runner, not MCP, so the rule has no MCP id, as Flowise's did. `praisonai-code` gets
+no pin: GHSA-26mh-57q7-jfvr and the CVE record name only `praisonai`, and #6368, which changes
+the function in `praisonai-code`'s file, names neither the record nor the advisory and is
+unmerged. A project that declares only `praisonai-code` is a stated limitation with a
+fixture. Measured with the scanner: 4.6.70 and 4.6.77 fire the floor rule, 4.6.78, 4.6.81,
+4.6.102, 4.6.103 and 4.7.24 fire the new rule, and each of those releases gets one finding
+that names the CVE. An unversioned `praisonai`, or a range that admits releases on both sides
+of 4.6.78, gets both rules' findings, as both limitations say. After `aak update` the feed
+holds the record from OSV and, through NVD's `pkg:pypi/praisonai` packageURL, from NVD, both
+below 4.6.78: the engine drops the feed's finding on the line where the floor rule reports it,
+and the feed is silent from 4.6.81. The bundled feed does not hold it. The record's CVSS 3.1
+7.3 sets HIGH.
+
+### CVE-2026-102243 (#850): out of scope 2026-11-14
+
+**SurfSense's MCP connector test route is out of scope: the backend that serves it was
+retired without a fix.** NVD: "A vulnerability was identified in MODSetter SurfSense up to
+2.0.3. This issue affects some unknown processing of the file
+/api/search-source/connectors/mcp/test of the component MCP Connector Integration. Such
+manipulation leads to command injection." On 2026-10-24 SurfSense moved its self-hosted
+backend to a `legacy` branch, tagged legacy-v0.0.41, and nothing has landed there since; at
+that tag `surfsense_backend/app/routes/search_source_connectors_routes.py` is byte-identical
+to v2.0.3 (blob 4dd7399d) and still registers `POST /connectors/mcp/test`. The last backend
+image, `ghcr.io/modsetter/surfsense-backend:0.0.41`, names that commit (1ce80fb6) in its
+revision label, and `latest` is the same build. `main` and the releases from v2.2.4 to v2.3.1 are a
+rewritten product shipped as `ghcr.io/modsetter/surfsense`, whose tree has no
+`surfsense_backend` and no such route. The repository has no security advisory. The route
+belongs to a research app's connector settings, not an MCP server, NVD's "up to 2.0.3"
+follows release tags that never matched the backend image's 0.0.x tags, and no fix is coming
+to the image a project would name, so it is closed under this batch's ruling. A backend
+image tag that fixes the route would make it an image pin, as Obot's was.
+
+### CVE-2026-116109 (#1097): out of scope 2026-11-14
+
+**Continue's MCP server transport is out of scope, non-pinnable.** NVD: "A vulnerability has
+been found in continuedev Continue 2.0.0. This vulnerability affects the function
+MCPManagerSingleton.setConnections of the file core/config/ConfigHandler.ts of the component
+MCP Server Transport. Such manipulation leads to os command injection." Continue 2.0.0 is the
+VS Code extension's `v2.0.0-vscode`, and an IDE extension's build is not something a project
+file declares. continuedev/continue has cut no release since v2.0.0-vscode and the
+v2.1.0-vscode pre-release (2026-06-19), the newest commit on `main` is from 2026-07-21,
+`core/context/mcp/MCPManagerSingleton.ts` last changed on 2025-10-01, and the repository has
+no security advisory. npm's `@continuedev/cli` is still 1.5.47, which the 2026-10-26 check
+found without `MCPManagerSingleton` or `setConnections`, and `@continuedev/core` 1.1.0
+(2025-03-14), the newest core on npm, has an older `MCPManagerSingleton` without
+`setConnections`; the record names neither package. VulDB's pages, NVD's only references,
+still answer 403 to an automated read. A fix shipped in an artifact a project declares would
+make it a pin.
+
+### CVE-2026-117567, CVE-2026-117573 and CVE-2026-117570 (#1107, #1110, #1114): out of scope 2026-11-14
+
+**Three VulnCheck records against a commit, each still with no release a project could
+name, are out of scope, non-pinnable.** NVD: "esp-mcp through commit 28afddf contains an OS
+command injection vulnerability that allows attackers to run arbitrary commands by supplying
+shell metacharacters in MCP tool parameters."; "hagent through commit 761eec6 contains an OS
+command injection vulnerability that allows MCP clients to execute shell commands by
+injecting metacharacters into the args parameter of the hagent_arduino and hagent_esp32
+tools."; "Vorota-ai nmap-mcp through commit 3636afa contains an improper allowlist validation
+vulnerability in the scan_vulnerabilities tool that lets callers run blocked NSE script
+categories." Re-checked on GitHub and the registries: horw/esp-mcp has no tags or releases,
+`main` is still 28afddf9 (2025-12-27), horw/esp-mcp#49 is open with no reply, and neither PyPI
+nor npm has `esp-mcp`; masc-ucsc/hagent has no tags or releases, `main` is still 761eec62
+(2026-10-16), masc-ucsc/hagent#98 is open with no reply, and PyPI's `hagent` (jbheeman/hagent
+0.0.1) and npm's `hagent` (avwo/hagent 0.9.3) are other projects; Vorota-ai/nmap-mcp has no
+tags or releases, `main` is still 3636afa6 (2026-02-11), Vorota-ai/nmap-mcp#3 is open with no
+reply, nothing named `nmap-mcp` is on PyPI or npm, and its server.json lists only a Docker
+image the README builds locally, which neither Docker Hub nor GHCR serves under the project's
+names. Each runs from a clone or a local build, so a project names nothing a pin reads. A
+release on PyPI or npm, a tag that holds the flawed server, or a published image would make
+each a pin on that name.
+
+### CVE-2026-100868 (#872): Penpot's bridge rule names its npm fix 2026-11-14
+
+**`AAK-MCP-PENPOT-CVE-2026-100868-001` now says where its fix is published, and its floor
+stays 2.18.0.** Checked in the npm tarballs on unpkg: 2.19.1 (10 Nov), published under the
+`next` dist-tag, creates the plugin bridge with `host: mcpServer.host`, which defaults to
+`localhost` (commit b5274a44); 2.17.0 and 2.15.4, `latest`, still pass only the port. npm has
+no 2.18.x and no 2.19.0. Every Penpot tag from 2.18.0 to 2.18.7 carries the fix but reads
+2.17.0 in `mcp/package.json` (penpot/penpot#12007, closed on 3 Nov), and 2.19.0 and 2.19.1
+read their own numbers. So the floor stays at 2.18.0, Penpot's fixed version, with no
+published release between it and 2.19.1. The fix label, description, remediation and
+limitations no longer say the fix is not on npm: they name 2.19.1 under `next` and say that
+`latest` is still affected, so an unpinned reference is still reported, and so is a launch
+that names the `next` dist-tag, which states no version. The negative fixture now holds
+2.19.1, a published release, where it held 2.18.0. OSV has no record for `@penpot/mcp` at
+2.17.0 or 2.19.1. The other half of #872 is unchanged: `AAK-MCP-OFFICEPPT-CVE-2025-71427-001`
+stays presence-only, since PyPI's `office-powerpoint-mcp-server` is still 2.0.7 (2025-12-31),
+v2.0.7 is still the newest tag, and GongRzhe/Office-PowerPoint-MCP-Server#33, the fix, is
+still open. A fixed PowerPoint release will be a floor edit.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-61438 | 7.3 | `praisonai` (PyPI) | **New pin** `AAK-PRAISONAI-CVE-2026-61438-001` (HIGH): every release from 4.6.78, 4.6.81 to 4.7.24 today, presence-only. Below 4.6.78 it stays on `AAK-MCP-PRAISONAI-CVE-2026-61427-001`. No fixed release. | #1144 |
+| CVE-2026-100868 | 6.3 | `@penpot/mcp` (npm) | **Text** of `AAK-MCP-PENPOT-CVE-2026-100868-001` (MEDIUM), floor unchanged at 2.18.0: npm's first fixed release is 2.19.1, under `next`, and `latest` (2.15.4) is still reported. | #872 |
+| CVE-2026-102243 | 7.4 | SurfSense backend (`ghcr.io/modsetter/surfsense-backend`) | **Out of scope**: the backend was retired to a legacy branch with the route unfixed, and no image tag fixes it. | #850 |
+| CVE-2026-116109 | 6.3 | Continue (IDE extension, `github.com/continuedev/continue`) | **Out of scope**, non-pinnable: IDE extension builds, which no project file declares. No vendor fix. | #1097 |
+| CVE-2026-117567 | 7.8 | esp-mcp (`github.com/horw/esp-mcp`) | **Out of scope**, non-pinnable: no tag, release or package; runs from a clone. Affected through 28afddf; no fix. | #1107 |
+| CVE-2026-117573 | 7.8 | hagent (`github.com/masc-ucsc/hagent`) | **Out of scope**, non-pinnable: no tag, release or package; runs from a clone. Affected through 761eec6; no fix. | #1110 |
+| CVE-2026-117570 | 5.2 | nmap-mcp (`github.com/Vorota-ai/nmap-mcp`) | **Out of scope**, non-pinnable: no tag, release, package or published image. Affected through 3636afa; no fix. | #1114 |
+
+CVSS is each record's CVSS 3.1 score: VulDB's for SurfSense and Continue, VulnCheck's for
+esp-mcp, hagent, nmap-mcp and PraisonAI, and Penpot's as its 0.6.14 row gives it.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI

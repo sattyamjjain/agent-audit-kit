@@ -2019,8 +2019,9 @@ def test_office_powerpoint_longer_name_is_another_package(tmp_path: Path) -> Non
 
 def test_penpot_bridge_fixtures_positive_and_negative() -> None:
     """CVE-2026-100868 (#867): the plugin WebSocket bridge listens on every interface
-    before Penpot 2.18.0, and npm has no @penpot/mcp 2.18.x yet. 2.17.0 is past the
-    REPL RCE's 2.15.0 fix, so only the bridge rule fires on it."""
+    before Penpot 2.18.0. npm has no @penpot/mcp 2.18.x, and the negative is 2.19.1,
+    its first fixed release (#872). 2.17.0 is past the REPL RCE's 2.15.0 fix, so only
+    the bridge rule fires on it."""
     vulnerable = {f.rule_id for f in scan(_PENPOT_FIXTURES / "vulnerable")[0]}
     assert _PENPOT_BRIDGE in vulnerable
     assert _PENPOT_REPL not in vulnerable
@@ -2052,25 +2053,26 @@ def test_penpot_bridge_stays_a_separate_lower_severity_rule() -> None:
     assert RULES[_PENPOT_REPL].cve_references == ["CVE-2026-45805"]
 
 
-def test_penpot_bridge_label_says_the_fix_is_not_on_npm_yet() -> None:
-    """Re-checked 2026-10-04 (#872). The fix, b5274a44 (2026-09-22), is in Penpot's
-    2.18.0 tag, but that tag's mcp/package.json reads 2.17.0 (penpot/penpot#12007)
-    and npm has no build from it: `latest` is 2.15.4, and `next` is 2.17.0, which
-    was published on 2026-07-08 and still binds every interface.
+def test_penpot_bridge_label_says_where_the_fix_is_published() -> None:
+    """Re-checked 2026-11-14 (#872). The fix, b5274a44 (2026-09-22), is in every
+    Penpot tag from 2.18.0 to 2.18.7, whose mcp/package.json reads 2.17.0
+    (penpot/penpot#12007), so npm never got a 2.18.x build. npm's first fixed release
+    is 2.19.1 (2026-11-10), under the `next` dist-tag; `latest` is still 2.15.4.
 
-    The wording is pinned on purpose. When npm publishes a fixed build, this label
-    and the 2.18.0 floor are both out of date (a fixed build numbered 2.17.x would
-    be reported), so changing either one should mean revisiting both."""
+    The wording is pinned on purpose. When `latest` moves to a fixed release, this
+    label, the rule text and the unpinned-reference behaviour are out of date
+    together, so changing one should mean revisiting all three."""
     pin = next(p for p in _PINS if p.rule_id == _PENPOT_BRIDGE)
     assert pin.floor == (2, 18, 0)
     assert pin.fix_label == (
-        "Penpot 2.18.0, but no npm build has been published from that tag yet "
-        "(its mcp/package.json reads 2.17.0, penpot/penpot#12007, and npm's 2.17.0 "
-        "predates the fix); meanwhile firewall the plugin WebSocket port, 4402 by default"
+        "Penpot 2.18.0; on npm, 2.19.1, published under the `next` dist-tag while "
+        "`latest` is still the affected 2.15.4; meanwhile firewall the plugin "
+        "WebSocket port, 4402 by default"
     )
     description = RULES[_PENPOT_BRIDGE].description
-    assert "no `@penpot/mcp` has been published to npm from that tag yet" in description
+    assert "The first `@penpot/mcp` on npm with the fix is 2.19.1 (2026-11-10)" in description
     assert "still reads 2.17.0 (penpot/penpot#12007)" in description
+    assert "not been published" not in description
 
 
 # --- 2026-10-03 wave, third batch (#879-#883) -------------------------------

@@ -74,8 +74,11 @@ def test_vulnerable_pypi_praisonai_still_fires_and_not_the_npm_pin(tmp_path):
     assert _rule_ids(_py(tmp_path, "praisonai==4.6.70")) == {PRAISONAI_PY}
 
 
-def test_patched_pypi_praisonai_is_silent(tmp_path):
-    assert _rule_ids(_py(tmp_path, "praisonai==4.6.78")) == set()
+def test_pypi_praisonai_at_the_floor_fires_neither_the_floor_nor_the_npm_pin(tmp_path):
+    """4.6.78 clears the 4.6.78 floor and is no npm release. Since 2026-11-14 (#1144)
+    it is reported by the presence-only CVE-2026-61438 rule, whose job-workflow
+    sandbox no release has fixed."""
+    assert _rule_ids(_py(tmp_path, "praisonai==4.6.78")) == {"AAK-PRAISONAI-CVE-2026-61438-001"}
 
 
 def test_mcp_config_is_unclassified_so_every_pin_still_applies(tmp_path):

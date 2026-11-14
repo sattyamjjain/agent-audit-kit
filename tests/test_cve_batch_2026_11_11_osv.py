@@ -224,7 +224,7 @@ def test_praisonai_rule_names_the_sandbox_record() -> None:
     rule = RULES[PRAISONAI]
     assert "CVE-2026-61438" in rule.cve_references and "GHSA-26mh-57q7-jfvr" in rule.description
     assert "PRAISONAI_ALLOW_JOB_WORKFLOWS" in rule.remediation
-    assert all(s in rule.limitations for s in ("PyPI has no 4.6.78", "4.6.81 to 4.6.102", "`praisonai-code`"))
+    assert all(s in rule.limitations for s in ("PyPI has no 4.6.78", "4.6.81 to 4.7.24", "`praisonai-code`"))
     assert rule.limitations.endswith("a lockfile entry keeps its line at any depth.")
 
 
@@ -232,13 +232,14 @@ def test_praisonai_below_the_floor_fires() -> None:
     assert PRAISONAI in _ids(CVES / "cve-2026-61438-praisonai" / "vulnerable")
 
 
-def test_praisonai_4_6_81_is_not_reported_although_it_ships_the_executor() -> None:
-    """The stated limitation: PyPI's next release after 4.6.77 is 4.6.81, and it still
-    allows `import os` in `_exec_inline_python`. The record says 4.6.78 fixed it, so
-    neither the rule nor the feed reports it."""
+def test_praisonai_4_6_81_is_left_to_the_rule_from_the_floor() -> None:
+    """PyPI's next release after 4.6.77 is 4.6.81, and it still ships the same
+    `_exec_inline_python`. The record says 4.6.78 fixed it, so neither this rule nor the
+    feed reports it; since 2026-11-14 (#1144) the presence-only CVE-2026-61438 rule
+    does (tests/test_cve_batch_2026_11_14_deferred.py)."""
     _cache(PR_26MH)
-    limitation = CVES / "cve-2026-61438-praisonai" / "limitation"
-    assert PRAISONAI not in _ids(limitation) and PR_26MH not in _feed_hits(limitation)
+    after_floor = CVES / "cve-2026-61438-praisonai" / "after-floor"
+    assert PRAISONAI not in _ids(after_floor) and PR_26MH not in _feed_hits(after_floor)
 
 
 def test_praisonai_feed_record_stands_down_for_the_rule() -> None:
@@ -302,6 +303,8 @@ def test_the_adapters_are_the_feed_s_alone() -> None:
     ("#1144", "CVE-2026-61438"),
 ])
 def test_every_issue_has_a_ledger_row(issue: str, ident: str) -> None:
+    """One row each in this batch's section. #1144 has a second, in the 2026-11-14
+    section, for the releases from 4.6.78 that its new rule reports."""
     rows = [line for line in LEDGER.read_text(encoding="utf-8").splitlines() if line.startswith(f"| {ident} ")]
-    assert len(rows) == 1 and rows[0].rstrip().endswith(f"| {issue} |")
-    assert "out of scope" not in rows[0].lower()
+    assert len(rows) == (2 if issue == "#1144" else 1)
+    assert all(row.rstrip().endswith(f"| {issue} |") and "out of scope" not in row.lower() for row in rows)
