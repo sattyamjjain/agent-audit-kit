@@ -357,7 +357,13 @@ available) before shipping:
   - mcp-contextforge-gateway       0.7.0 <= v < 1.1.0  (CVE-2026-18484; a federated tool
     whose computed name collides with an existing one makes `tools/call` fail for
     everyone. MEDIUM, its own rule beside the CRITICAL 1.0.9 row. A stated version is
-    required)
+    required. CVE-2026-110178, -110194, -110195, -110199 and CVE-2026-94407, MEDIUM
+    flaws fixed in 1.1.0 as well, are on the same row)
+  - mcp-contextforge-gateway       0.8.0 <= v < 1.1.1  (CVE-2026-110279, CVE-2026-110278
+    and CVE-2026-110189; a client's X-Upstream-Authorization replaces the gateway's
+    upstream credential, identity headers skip the per-gateway setting, and the jq
+    guard misses `halt` and the loop built-ins. HIGH, fixed only in 1.1.1. A stated
+    version is required)
   - mcp-atlassian                  0.22.0 <= v < 0.24.1  (CVE-2026-124503; the upload
     guard's boundary is the working directory, so an SSE or HTTP server started from
     `/` or a home directory reads any file there. Its own rule beside the 0.22.0
@@ -2105,9 +2111,25 @@ _PINS: tuple[_Pin, ...] = (
     # 1.0.9 floor, so it is its own rule. IBM names 1.0.0 to 1.0.11; the PyPI wheels
     # show the precondition from 0.7.0, where tool names became unique per team and
     # owner only, and 0.6.0 kept them unique across the database. `latest` is 1.1.1.
+    # 2026-11-14: five more MEDIUM records fixed in 1.1.0 join this row unchanged
+    # (CVE-2026-110178 import ownership, from 0.7.0; CVE-2026-110194 DCR SSRF and
+    # CVE-2026-110199 Admin UI banner XSS, from 0.8.0; CVE-2026-94407 schema ReDoS,
+    # from 0.9.0; CVE-2026-110195 token exchange cache key, by 1.0.7).
     _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "mcp-contextforge-gateway",
          ("mcp-contextforge-gateway",), (1, 1, 0), introduced=(0, 7, 0),
          fix_label="1.1.0 (affected from 0.7.0; IBM names 1.0.0 to 1.0.11)",
+         requires_version=True, ecosystem="py"),
+    # IBM ContextForge, 2026-11-14: three records fixed only in 1.1.1. A client's
+    # `X-Upstream-Authorization` is renamed to `Authorization` over the credential the
+    # gateway manages (CVE-2026-110279, HIGH; from 0.8.0, where the header arrives,
+    # 0.7.0 has none); identity headers ignore the per-gateway setting
+    # (CVE-2026-110278, HIGH; identity propagation arrives in 1.0.0); and 1.0.8's jq
+    # guard omits `halt`, `halt_error` and the loop built-ins (CVE-2026-110189,
+    # MEDIUM, 1.0.8 to 1.1.0). Above the 1.1.0 row's floor and HIGH, so its own rule;
+    # the jq record shares the fix and sits inside the range. `latest` is 1.1.1.
+    _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001", "mcp-contextforge-gateway",
+         ("mcp-contextforge-gateway",), (1, 1, 1), introduced=(0, 8, 0),
+         fix_label="1.1.1 (affected from 0.8.0; IBM names 1.0.0 to 1.1.0)",
          requires_version=True, ecosystem="py"),
     # mcp-atlassian 0.22.0 confined attachment upload sources with
     # `validate_safe_path`, whose boundary is `os.getcwd()`, so an SSE or HTTP server

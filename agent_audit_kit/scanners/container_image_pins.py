@@ -450,12 +450,27 @@ _PINS: tuple[_ImagePin, ...] = (
     # existing tool's makes `tools/call` fail for everyone, fixed in 1.1.0 (#6534). The
     # pin table's row reads the package from 0.7.0, where tool names became unique per
     # team and owner only; the image carries 0.7.0 and v0.7.0 tags. On 2026-11-11
-    # `latest` was the v1.1.1 digest, fixed.
+    # `latest` was the v1.1.1 digest, fixed. Five MEDIUM records fixed in 1.1.0 joined
+    # the rule on 2026-11-14, so the row names them too and its range does not move.
     _ImagePin(
         "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "IBM ContextForge MCP Gateway",
         "ghcr.io/ibm/mcp-context-forge",
-        (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.", ("CVE-2026-18484",),
+        (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-18484", "CVE-2026-110178", "CVE-2026-110194", "CVE-2026-110195",
+         "CVE-2026-110199", "CVE-2026-94407"),
         introduced=(0, 7, 0),
+    ),
+    # CVE-2026-110279 and CVE-2026-110278 (HIGH) and CVE-2026-110189 (MEDIUM), fixed
+    # only in 1.1.1: the pin table's row reads the package from 0.8.0, where the
+    # `X-Upstream-Authorization` rename arrives; the image carries 0.8.0 and v0.8.0
+    # tags (one digest). On 2026-11-14 `latest` was the v1.1.1 digest, whose label
+    # names the v1.1.1 tag's commit (dbc643be), fixed.
+    _ImagePin(
+        "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001", "IBM ContextForge MCP Gateway",
+        "ghcr.io/ibm/mcp-context-forge",
+        (1, 1, 1), "from 0.8.0 up to 1.1.1", "Fixed in 1.1.1.",
+        ("CVE-2026-110279", "CVE-2026-110278", "CVE-2026-110189"),
+        introduced=(0, 8, 0),
     ),
     # Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) runs
     # its registry API, and the nginx that proxies MCP traffic, in the `registry`

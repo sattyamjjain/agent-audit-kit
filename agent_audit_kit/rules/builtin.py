@@ -399,7 +399,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-AGENTSCOPE-CVE-2026-123023-001": ["AIS-07", "STA-08"],
-    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001": ["IAM-01", "STA-08"],
     "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123811-001": ["IAM-01", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123810-001": ["AIS-07", "STA-08"],
@@ -20316,16 +20317,18 @@ _r(
 
 _r(
     "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001",
-    "IBM ContextForge MCP Gateway 0.7.0 to 1.0.11: a colliding federated tool name makes tools/call fail for everyone",
+    "IBM ContextForge MCP Gateway 0.7.0 to 1.0.11: tool-name collision, cross-tenant import, DCR SSRF, token-exchange cache reuse, Admin UI XSS and schema ReDoS, fixed in 1.1.0",
     "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
-    "`ghcr.io/ibm/mcp-context-forge` image) names each tool a federated gateway brings in "
+    "`ghcr.io/ibm/mcp-context-forge` image) before 1.1.0 carries six flaws that 1.1.0 "
+    "fixes; IBM's bulletin for each names 1.0.0 through 1.0.11 and the fix as 1.1.0. "
+    "The gateway names each tool a federated gateway brings in "
     "by the gateway's slug and the tool's, and before 1.1.0 nothing checked that name "
     "against the tools already registered. A user allowed to create gateways registers "
     "one whose tool name equals an existing tool's (gateway `a` with tool `b-c` beside "
     "gateway `a-b` with tool `c`), and from then on an MCP `tools/call` for that name "
     "fails for every caller until an administrator renames or removes one of the two "
-    "(CVE-2026-18484, CVSS 3.1 6.5 from IBM, CWE-706). IBM's bulletin names 1.0.0 through "
-    "1.0.11 and the fix as 1.1.0, whose #6534 rejects a colliding name at registration, "
+    "(CVE-2026-18484, CVSS 3.1 6.5 from IBM, CWE-706). 1.1.0's #6534 rejects a colliding "
+    "name at registration, "
     "refresh, rename and visibility changes. Checked in the PyPI wheels: 1.1.0 has the "
     "check, and 1.0.11, 1.0.7.post20260921 and 1.0.0 do not. 0.7.0 builds the name with "
     "the same `slugify` and the same gateway-slug, separator and tool-slug composition as "
@@ -20333,19 +20336,73 @@ _r(
     "looks a tool up by name alone and fails on a duplicate, with `scalar_one_or_none()` "
     "before 1.0.0 and an explicit ambiguity error from 1.0.0, so 0.7.0 to 0.9.0 are "
     "reported too. 0.1.0 to 0.6.0 kept tool names unique across the database, so a "
-    "colliding registration failed instead.",
+    "colliding registration failed instead. "
+    "The configuration import (`POST /v1/import`) with `conflict_strategy=update` updates "
+    "an existing tool, resource or prompt it finds by name without checking who owns it, "
+    "so a user whose team role holds `admin.import` rewrites another tenant's public "
+    "entries, their endpoint URL, headers and credentials included, and that tenant's "
+    "later invocations go to a host the user chose (CVE-2026-110178, CVSS 3.1 4.1, "
+    "CWE-284). 0.7.0 to 0.9.0 update through `update_tool` without the caller, 1.0.0 to "
+    "1.0.11 through the bulk registration's name lookup, and 1.1.0 updates only what the "
+    "caller owns; 0.6.0 has the import but no teams. "
+    "OAuth Dynamic Client Registration, from 0.8.0, sends its registration, update and "
+    "delete requests to endpoints it reads from an authorization server's metadata "
+    "without checking them, so a user who can register gateways makes the gateway send "
+    "requests to internal hosts (CVE-2026-110194, CVSS 3.1 5.4, CWE-918); 1.1.0 requires "
+    "the issuer's origin and connects to the address it checked. "
+    "The RFC 8693 token exchange cache keys an exchanged upstream token by gateway, user "
+    "and audience only, so a credential of the same account with narrower upstream "
+    "rights, such as an API token, reuses a token that the account's session JWT "
+    "obtained (CVE-2026-110195, CVSS 3.1 5.4, CWE-287); the cache is in 1.0.7 and "
+    "1.0.11 and not in 1.0.0, and 1.1.0 adds the inbound JWT to the key. "
+    "From 0.8.0 the Admin UI writes the `error` and `success` URL parameters into its "
+    "notification banner as HTML, so an administrator who opens a crafted link runs the "
+    "sender's script in their session (CVE-2026-110199, CVSS 3.1 4.8, CWE-79; IBM "
+    "describes a mutation-XSS bypass of the client-side sanitizer); 1.1.0 shows a fixed "
+    "message for a known code, as text. "
+    "A `pattern` or `patternProperties` regular expression in a tool's JSON Schema runs "
+    "with no time bound when the gateway validates a tool's results (from 0.9.0) or "
+    "arguments (from 1.0.9) against it, so a user who registers tools stalls a worker "
+    "with a backtracking expression (CVE-2026-94407, CVSS 3.1 6.5, CWE-1333); 1.1.0 "
+    "validates a schema that holds one in a worker under a time limit.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
     "Upgrade `mcp-contextforge-gateway` to 1.1.0 or later and pin it, or run the "
-    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.0 or later. 1.1.0 refuses new "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.0 or later; 1.1.1, the current "
+    "release, also fixes three flaws 1.1.0 still has. 1.1.0 refuses new "
     "collisions but keeps duplicate rows that already exist: its release notes give the "
     "SQL that lists them, and an administrator must rename or remove one of each pair "
-    "before the name answers again. Until you upgrade, grant gateway creation only to "
-    "users you trust.",
+    "before the name answers again. Upgrading does not undo an import that already "
+    "rewrote another tenant's tools, resources or prompts, so check their endpoint URLs "
+    "and credentials. Until you upgrade, grant gateway creation only to users you "
+    "trust, keep `admin.import` for platform administrators, set `DCR_ALLOWED_ISSUERS` "
+    "to the authorization servers you trust (or `DCR_ENABLED=false`), and do not use "
+    "token exchange with `subject_token_source=inbound_user_jwt` where one account's "
+    "credentials carry different upstream rights.",
     sarif_name="ContextForgeToolNameCollision",
-    cve_references=["CVE-2026-18484"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI04", "ASI08"],
+    cve_references=[
+        "CVE-2026-18484",
+        # 2026-11-14: five more IBM records with the same fix release, 1.1.0, each
+        # MEDIUM and each inside this rule's range, so they join it rather than a
+        # second rule on the same releases. Read in the PyPI wheels of 0.6.0 to 1.1.0.
+        # CVE-2026-110178 (bulletin 7296701): the import's `update` strategy checks no
+        # owner; 1.1.0 passes the caller to the bulk registration (`user_email`).
+        "CVE-2026-110178",
+        # CVE-2026-110194 (bulletin 7296696): DCR endpoints from the authorization
+        # server's metadata go unchecked; 1.1.0's `_prepare_pinned_request`.
+        "CVE-2026-110194",
+        # CVE-2026-110195 (bulletin 7296695): `token_exchange_cache._key` is gateway,
+        # user and audience; 1.1.0 adds the subject token (`token_exchange:v2:`).
+        "CVE-2026-110195",
+        # CVE-2026-110199 (bulletin 7296694): admin.html puts `?error=` into innerHTML;
+        # 1.1.0 maps codes to fixed messages and sets textContent.
+        "CVE-2026-110199",
+        # CVE-2026-94407 (bulletin 7296667): unbounded `pattern` evaluation in schema
+        # validation; 1.1.0's `utils/safe_jsonschema.py`.
+        "CVE-2026-94407",
+    ],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI08", "ASI03"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Reads `mcp-contextforge-gateway` from 0.7.0 below 1.1.0 where a requirements*.txt "
@@ -20353,14 +20410,92 @@ _r(
         "MCP config entry, states the version, judging a range by the versions it admits. "
         "`latest` is 1.1.1, fixed, so a reference that states no version is not reported. "
         "The 1.0.0 betas and release candidates read as 1.0.0 and 1.0.7.post20260921 as "
-        "1.0.7, all inside the range. IBM's bulletin starts at 1.0.0, its supported line; "
-        "the range starts at 0.7.0, where the wheels show the precondition. It reads the "
-        "version, not who may create gateways, so a deployment where only an administrator "
-        "can is reported too. It also reads `ghcr.io/ibm/mcp-context-forge` tags from 0.7.0 "
+        "1.0.7, all inside the range. IBM's bulletins start at 1.0.0, its supported line; "
+        "the range starts at 0.7.0, where the wheels show the tool-name and import flaws, "
+        "and each later flaw is reported from 0.7.0 too, before its feature arrived (DCR "
+        "and the banner in 0.8.0, schema validation in 0.9.0, the token exchange cache "
+        "after 1.0.0 and by 1.0.7). It reads the version, not the deployment's settings "
+        "(who may create gateways or import, whether DCR or token exchange is on), so a "
+        "deployment that uses none of the affected features is reported too. It also "
+        "reads `ghcr.io/ibm/mcp-context-forge` tags from 0.7.0 "
         "below 1.1.0, with or without the `v`, in compose files, Kubernetes manifests, Helm "
-        "values, Dockerfiles and MCP configs; `latest` was the v1.1.1 digest on 2026-11-11, "
+        "values, Dockerfiles and MCP configs; `latest` was the v1.1.1 digest on 2026-11-11 "
+        "and 2026-11-14, "
         "fixed, so an untagged or `latest` reference is not reported. A file over 2 MB, or "
         "a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-14: three IBM ContextForge records fixed only in 1.1.1. Two are HIGH, so they
+# cannot join the MEDIUM 1.1.0 rule above, and a floor raise there would report 1.1.0
+# under the six flaws it fixes; the MEDIUM jq record (1.0.8 to 1.1.0) shares their fix
+# and sits inside their range, so it joins this rule rather than double-reporting.
+_r(
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001",
+    "IBM ContextForge MCP Gateway 0.8.0 to 1.1.0: X-Upstream-Authorization replaces the gateway's upstream credential, identity headers skip the per-gateway setting, jq guard DoS",
+    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
+    "`ghcr.io/ibm/mcp-context-forge` image) up to 1.1.0 carries three flaws that 1.1.1 "
+    "fixes. A client's `X-Upstream-Authorization` header is always renamed to "
+    "`Authorization` on the request the gateway sends upstream, after the gateway has set "
+    "the upstream credential it manages (a stored per-user OAuth token, a "
+    "client-credentials token, or the gateway's bearer, basic or custom auth headers), so "
+    "an authenticated user replaces that credential with another one and the upstream "
+    "server acts under it while the gateway's audit trail names only the user "
+    "(CVE-2026-110279, CVSS 3.1 8.1 from IBM, CWE-287). The rename arrives in 0.8.0, "
+    "always on and ahead of the `ENABLE_HEADER_PASSTHROUGH` check, and 0.7.0 has no such "
+    "header; 1.1.1 (#7341) drops it for a gateway whose auth type is `oauth`, `bearer`, "
+    "`basic` or `authheaders`. With identity propagation on, two tool invocation paths "
+    "and a resource read path build the identity headers without the gateway, so a "
+    "server whose per-gateway setting turns propagation off still receives the user's "
+    "id, email, groups and teams, and, where claims are signed, a signature over the "
+    "user id and email alone, the same on every request (CVE-2026-110278, CVSS 3.1 7.4, "
+    "CWE-294). "
+    "Identity propagation arrives in 1.0.0 (0.9.0 has none), and 1.1.1 (#7329) passes "
+    "the gateway's setting on those paths. The jq filter guard that 1.0.8 added omits "
+    "`halt`, `halt_error`, `builtins` and the unbounded-iteration built-ins (`while`, "
+    "`until`, `recurse`, `recurse_down`, `foreach`, `repeat`), so an authenticated user's "
+    "`jsonpath_filter` ends a gateway worker or keeps it busy (CVE-2026-110189, CVSS 3.1 "
+    "6.5, CWE-184); 1.0.8 to 1.1.0 carry the same guard, and 1.1.1 adds them. Checked in "
+    "the PyPI wheels of 0.7.0, 0.8.0, 0.9.0, 1.0.0, 1.0.7.post20260921, 1.0.8, 1.0.11, "
+    "1.1.0 and 1.1.1. IBM's bulletins name 1.0.0 through 1.1.0 for the first two and "
+    "1.0.8 through 1.1.0 for the third, and 1.1.1 as the fix for all three.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-contextforge-gateway` to 1.1.1 or later and pin it, or run the "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.1 or later. Until you can, remove the "
+    "`X-Upstream-Authorization` header from client requests at the reverse proxy in "
+    "front of the gateway's MCP endpoints, set `IDENTITY_PROPAGATION_ENABLED=false` "
+    "where any upstream server must not receive user identity, and keep the gateway "
+    "off networks you do not trust. 1.1.1 still signs identity claims over the user id "
+    "and email alone, so an upstream server should not treat the signature as proof "
+    "that a request is fresh.",
+    sarif_name="ContextForgeUpstreamCredentialOverride",
+    cve_references=["CVE-2026-110279", "CVE-2026-110278", "CVE-2026-110189"],
+    owasp_mcp_references=["MCP07:2025", "MCP01:2025", "MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads `mcp-contextforge-gateway` from 0.8.0 below 1.1.1 where a requirements*.txt "
+        "entry at any depth, or at the project root a pyproject.toml, Pipfile, lockfile or "
+        "MCP config entry, states the version, judging a range by the versions it admits. "
+        "`latest` is 1.1.1, fixed, so a reference that states no version is not reported. "
+        "The 1.0.0 betas and release candidates read as 1.0.0 and 1.0.7.post20260921 as "
+        "1.0.7, all inside the range. IBM's bulletins start at 1.0.0, its supported line; "
+        "the range starts at 0.8.0, where the wheels show the header rename, so 0.8.0 and "
+        "0.9.0 are reported under this rule's identity and jq records too, and 1.0.0 to "
+        "1.0.7 under its jq record, before those features arrived. It reads the version, "
+        "not the deployment's settings (which auth type a gateway uses, whether identity "
+        "propagation or jq filters are in use, what a proxy in front strips), so a "
+        "deployment that uses none of the affected features is reported too. It also reads "
+        "`ghcr.io/ibm/mcp-context-forge` tags from 0.8.0 below 1.1.1, with or without the "
+        "`v`, in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs; `latest` was the v1.1.1 digest on 2026-11-14, fixed, so an untagged or "
+        "`latest` reference is not reported. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."

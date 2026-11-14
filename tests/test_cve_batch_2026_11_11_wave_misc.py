@@ -43,12 +43,23 @@ NEW_RULES = (
 )
 OUT_OF_SCOPE = ("CVE-2026-119613", "CVE-2026-123779", "CVE-2026-82436")
 # A later batch's record joined the rule: CVE-2026-123024 (#1232, 2026-11-12), the
-# service's caller-set identity, has the same releases and no fix either.
-LATER_REFERENCES = {AGENTSCOPE_PIN: ["CVE-2026-123022", "CVE-2026-123024"]}
+# service's caller-set identity, has the same releases and no fix either. On 2026-11-14
+# five MEDIUM ContextForge records fixed in 1.1.0 joined the ContextForge rule.
+CONTEXTFORGE_JOINED = ("CVE-2026-110178", "CVE-2026-110194", "CVE-2026-110195",
+                       "CVE-2026-110199", "CVE-2026-94407")
+LATER_REFERENCES = {
+    AGENTSCOPE_PIN: ["CVE-2026-123022", "CVE-2026-123024"],
+    CONTEXTFORGE_PIN: ["CVE-2026-18484", *CONTEXTFORGE_JOINED],
+}
+# A later batch's rule reads the same releases: AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001
+# (2026-11-14) reports 0.8.0 below 1.1.1, so the ContextForge fixtures' 1.0.11 and 1.1.0
+# fire it as well; tests/test_cve_batch_2026_11_14_contextforge.py holds that rule.
+LATER_RULES = {"AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001"}
 
 
 def _pins(scanned: Path) -> list:
-    return mcp_cve_pins_2026_07.scan(scanned)[0] + container_image_pins.scan(scanned)[0]
+    found = mcp_cve_pins_2026_07.scan(scanned)[0] + container_image_pins.scan(scanned)[0]
+    return [f for f in found if f.rule_id not in LATER_RULES]
 
 
 def _ids(tmp_path: Path, name: str, content: str) -> set[str]:
@@ -91,7 +102,8 @@ def test_the_image_rows() -> None:
     `latest` was the v1.1.1 digest on 2026-11-11. mcp-atlassian's image sets
     `WORKDIR /app`, which holds as the guard's boundary, so its rule has no image row."""
     assert _image_rows(CONTEXTFORGE_PIN) == [
-        ("ghcr.io/ibm/mcp-context-forge", (1, 1, 0), (0, 7, 0), False, ("CVE-2026-18484",))]
+        ("ghcr.io/ibm/mcp-context-forge", (1, 1, 0), (0, 7, 0), False,
+         ("CVE-2026-18484", *CONTEXTFORGE_JOINED))]
     assert _image_rows(ATLASSIAN_PIN) == []
     assert _image_rows(AGENTSCOPE_PIN) == []
 

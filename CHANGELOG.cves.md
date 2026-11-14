@@ -137,6 +137,149 @@ and nothing names a package a feed can match.
 A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is each record's CVSS
 3.1 score from GitHub, which NVD carries as its only metric for the four CVEs.
 
+## 2026-11-14 (unreleased): eight held IBM ContextForge records, a new rule for three fixed in 1.1.1, five more on the 1.1.0 rule
+
+IBM published eight ContextForge MCP Gateway records on 13 Nov, each with a security
+bulletin that names the fixed release, and the watcher held all eight behind its cap. Each
+is read here against NVD's API record, its CVE record, IBM's bulletin, OSV and the PyPI
+wheels of `mcp-contextforge-gateway` 0.5.0, 0.6.0, 0.7.0, 0.8.0, 0.9.0, 1.0.0, 1.0.7,
+1.0.7.post20260921, 1.0.8, 1.0.9, 1.0.11, 1.1.0 and 1.1.1, all on 2026-11-14, and NVD text is
+quoted from the API records. NVD has all eight awaiting analysis, with IBM's CVSS 3.1 score
+as the Primary metric and no CPE configuration. The project's repository has no advisory for
+any of them, OSV has no record of any and none for the package at 1.0.11 or 1.1.0, and IBM's
+CNA data names the product with a bare version range and no packageURL, which no reviewed
+row of the CNA map maps, so the advisory feed holds none of them, after `aak update` either.
+Five are MEDIUM, fixed in 1.1.0 and inside the range of the 1.1.0 rule, so they join it;
+three are fixed only in 1.1.1, two of them HIGH, and get a rule of their own. Each is
+measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_14_contextforge.py).
+
+### CVE-2026-110279, CVE-2026-110278 and CVE-2026-110189 (not filed): new pin 2026-11-14
+
+**IBM ContextForge gets `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001`: PyPI
+`mcp-contextforge-gateway` and the `ghcr.io/ibm/mcp-context-forge` image from 0.8.0 below
+1.1.1, HIGH.** NVD, CVE-2026-110279: "IBM ContextForge MCP Gateway 1.0.0 through 1.1.0 is
+vulnerable to improper credential handling because the X-Upstream-Authorization request
+header can override the gateway-managed upstream credential for OAuth (authorization_code
+and client_credentials), bearer and basic authenticated gateways." IBM's bulletin (node
+7296490) gives CVSS 3.1 8.1, names v1.1.1 as the fix and cites IBM/mcp-context-forge#7341.
+The gateway builds the upstream request's headers from the credential it manages, a stored
+per-user OAuth token, a client-credentials token or the gateway's bearer, basic or custom
+headers, and then `get_passthrough_headers` renames a client's `X-Upstream-Authorization` to
+`Authorization` over it, ahead of the `ENABLE_HEADER_PASSTHROUGH` check, so an authenticated
+user makes the upstream server act under a credential of their choosing while the gateway's
+audit trail names only them. Checked in the wheels: the rename is in 0.8.0, 0.9.0, 1.0.0,
+1.0.7.post20260921, 1.0.11 and 1.1.0, and 0.8.0's tool invocation sets the gateway's OAuth or
+stored credential and then calls it with the client's headers; 0.7.0 has no such header;
+1.1.1 drops it for a gateway whose auth type is `oauth`, `bearer`, `basic` or `authheaders`
+and logs a warning. #7341 merged on 3 Nov and is in v1.1.1 and not in v1.1.0.
+
+NVD, CVE-2026-110278: "IBM ContextForge MCP Gateway 1.0.0 through 1.1.0 could allow an
+attacker to replay identity propagation claims signatures or expose sensitive user identity
+information to third-party MCP servers due to static signature payloads and missing
+per-gateway configuration checks during tool invocation." IBM's bulletin (node 7296489)
+gives CVSS 3.1 7.4, names v1.1.1 and cites #7329. With identity propagation on, two tool
+invocation paths and a resource read path call `build_identity_headers` without the gateway,
+so a server whose per-gateway setting turns propagation off still receives the user's id,
+email, groups and teams, and, where claims are signed, an HMAC over the user id and email
+alone. Checked in the wheels: identity propagation and its per-gateway column arrive in
+1.0.0, and 0.9.0 has neither; 1.0.0 to 1.1.0 have the calls without the gateway, and 1.1.1
+passes the gateway's setting on all three. 1.1.1 still signs only the user id and email;
+#7329's timestamp binding is for the webhook notification plugin's HMAC, outside the
+package and off by default (`hmac_include_timestamp`). The rule's remediation says not to
+take the identity signature as proof that a request is fresh.
+
+NVD, CVE-2026-110189: "IBM ContextForge MCP Gateway 1.0.8 through 1.0.11, and v1.1.0 is
+vulnerable to denial of service due to an incomplete denylist in the jq filter guard module
+(CWE-184)." IBM's bulletin (node 7296697) gives CVSS 3.1 6.5 and names v1.1.1. 1.0.8 added
+`utils/jq_guard.py` (1.0.7 has no guard, the gap CVE-2026-18486 named, below the 1.0.9
+rule's floor), and its denylist is the same file in 1.0.8, 1.0.9, 1.0.11 and 1.1.0; 1.1.1
+adds `halt`, `halt_error`, `builtins` and `while`, `until`, `recurse`, `recurse_down`,
+`foreach` and `repeat`. 1.0.7.post20260921 has no guard either.
+
+All three are fixed only in 1.1.1, above the 1.1.0 floor of
+`AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001`, a MEDIUM rule, so raising that floor would report
+1.1.0 under the six flaws it fixes, and two of the three are HIGH; they get a rule of their
+own at HIGH, as Penpot's bridge CVE did beside its CRITICAL pin. The jq record is MEDIUM but
+shares the fix and sits inside the range, so it joins the HIGH rule, as Langflow's lower
+records did, rather than a second rule reporting 1.0.8 to 1.1.0 twice. The range starts at
+0.8.0, where the wheels show the header rename, as the 1.1.0 rule's starts where the wheels
+show its precondition; IBM's bulletins start at 1.0.0, its supported line, and the rule's
+text says 0.8.0 and 0.9.0 are reported under the identity and jq records too. An image row
+reads tags from 0.8.0 below 1.1.1; on 2026-11-14 `latest` was the v1.1.1 digest, whose label
+names the v1.1.1 tag's commit (dbc643be), fixed, and PyPI's `latest` is 1.1.1, so a stated
+version is required. IBM's workaround until the upgrade, removing the header at a reverse
+proxy and setting `IDENTITY_PROPAGATION_ENABLED=false`, is in the remediation.
+
+### CVE-2026-110178, CVE-2026-110194, CVE-2026-110195, CVE-2026-110199 and CVE-2026-94407 (not filed): on the 1.1.0 rule 2026-11-14
+
+**Five MEDIUM records fixed in 1.1.0 join `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001`, 0.7.0
+below 1.1.0, MEDIUM.** Each bulletin names 1.0.0 through 1.0.11 and the fix as v1.1.0, the
+release that fixed CVE-2026-18484, and each flaw sits inside that rule's range, so a second
+rule would report the same releases twice. The rule's title, description, remediation,
+`cve_references` and image evidence now name all six, its range does not move, and it maps
+to MCP07 and ASI03 as well.
+
+NVD, CVE-2026-110178: "A remote authenticated attacker holding a team-scoped `admin.import`
+permission can overwrite the endpoint URL, request headers, and authentication credentials
+of public tools, resources, and prompts owned by other tenants by sending a crafted POST
+request to `/v1/import` with `conflict_strategy=update`." Bulletin 7296701, CVSS 3.1 4.1. In
+1.0.0 to 1.0.11 the import's bulk registration finds a public entry by name and updates it
+with no owner check; 1.1.0 passes the importing user and updates only what they own. 0.7.0
+to 0.9.0 update a conflicting tool through `update_tool` without the caller, which skips
+the owner check too, and 0.6.0 has the import but no teams, so no other tenant.
+
+NVD, CVE-2026-110194: "IBM ContextForge MCP Gateway 1.0.0 through 1.0.11 is vulnerable to
+server-side request forgery (SSRF)." Bulletin 7296696, CVSS 3.1 5.4, says the endpoints
+Dynamic Client Registration reads from an authorization server's metadata are not checked
+before the gateway sends requests to them. `dcr_service.py` arrives in 0.8.0, and 0.8.0,
+1.0.0 and 1.0.11 post to the metadata's `registration_endpoint` as they read it; 1.1.0
+requires the issuer's origin, checks the URL against the outbound policy and connects to
+the address it resolved.
+
+NVD, CVE-2026-110195: "an insufficiently specific cache key in the RFC 8693 token exchange
+cache, enabling reuse of cached upstream bearer tokens across different credentials
+belonging to the same user." Bulletin 7296695, CVSS 3.1 5.4. `token_exchange_cache.py` is in
+1.0.7 and 1.0.11 and not in 1.0.0, and keys a token by gateway, user and audience; 1.1.0 adds
+the inbound JWT to the key.
+
+NVD, CVE-2026-110199: "IBM ContextForge MCP Gateway 1.0.0 through 1.0.11 is vulnerable to
+cross-site scripting." Bulletin 7296694, CVSS 3.1 4.8, describes a mutation-XSS bypass of the
+client-side sanitizer in the dashboard's notifications, which come from the page URL. From
+0.8.0 `admin.html` decodes the `error` and `success` parameters into the banner's
+`innerHTML` (0.7.0 has no such banner); 1.1.0 maps an error code to a fixed message and sets
+it as text.
+
+NVD, CVE-2026-94407: "An authenticated user with tool-registration privileges can embed
+catastrophically backtracking regex patterns in a tool's JSON Schema `pattern` field."
+Bulletin 7296667, CVSS 3.1 6.5. The gateway validates a tool's results against its output
+schema from 0.9.0 (0.8.0 does not) and its arguments against its input schema from 1.0.9,
+with no time bound; 1.1.0's `utils/safe_jsonschema.py` validates a schema that holds a
+`pattern` or `patternProperties` in a worker under a time limit. 0.6.0 and older build each
+prompt's argument schema themselves, with no pattern.
+
+The 1.1.0 rule therefore reports DCR, the banner and the token cache from 0.7.0 and schema
+validation from 0.7.0 too, before those features arrived; its limitations say so, as the
+1.0.9 rule's text says which of its records reach which releases. Measured with the scanner:
+1.0.9 and 1.0.11 in a requirements file and the v1.0.0 and v1.0.11 image tags fire the rule,
+and 1.1.0 and v1.1.0 do not; 1.1.0 still gets the new HIGH rule above. IBM's workarounds (keep `admin.import` for platform
+administrators, `DCR_ALLOWED_ISSUERS` or `DCR_ENABLED=false`, no token exchange from the
+inbound user JWT across credentials with different upstream rights) are in the remediation.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-110279 | 8.1 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **New pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): 0.8.0 up to 1.1.1, a stated version required. | not filed |
+| CVE-2026-110278 | 7.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **On the new pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): fixed in 1.1.1; identity propagation arrives in 1.0.0. | not filed |
+| CVE-2026-110189 | 6.5 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **On the new pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): 1.0.8 to 1.1.0, fixed in 1.1.1, inside its range. | not filed |
+| CVE-2026-110178 | 4.1 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110194 | 5.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110195 | 5.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110199 | 4.8 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-94407 | 6.5 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+
+CVSS is each record's CVSS 3.1 score from IBM, NVD's Primary metric, and the same score
+IBM's bulletin states.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI
