@@ -14562,7 +14562,11 @@ _r(
     "10,000 frames, about 3,300 levels for the walk that takes the most "
     "frames a level; the deepest of 100,303 real files has 569), or YAML "
     "nested past 100 levels, or past 64 levels of `[ ]` or `{ }`, or grown by "
-    "its aliases past their bound. The scanner went on with every other "
+    "its aliases past their bound, or a file the scanner's size-capped read "
+    "finds over its cap although the file's size, read just before, said it "
+    "was not (one that grew in between, or a filesystem that misreports "
+    "sizes; a file whose size puts it over the cap is skipped, as the owning "
+    "rule states). The scanner went on with every other "
     "file, and the evidence names the scanner, the file and the reason.",
     Severity.INFO,
     Category.AGENT_CONFIG,
@@ -19232,7 +19236,8 @@ _r(
         "`site-packages` or `dist-packages` up to 12 directories below the scan root, "
         "the root itself included, and looks inside `.venv`, `venv`, `env`, `.tox` and "
         "`vendor` to find them; it follows no symlinked directory and skips "
-        "`node_modules`, `.git` and the other build and cache directories AAK skips. A "
+        "`node_modules`, `.git` and the other build and cache directories AAK skips, "
+        "and a Claude Code worktree under `.claude/worktrees/`. A "
         "`.pth` line is reported when it starts with `import ` or `import<TAB>` after "
         "optional whitespace: Python 3.15 strips the line first, while 3.9 to 3.14 test "
         "it as written, so an indented line runs only on 3.15 and later. Lines are split "
