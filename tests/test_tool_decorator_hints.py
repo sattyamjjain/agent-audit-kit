@@ -26,7 +26,8 @@ def _tool_patterns() -> list[tuple[str, re.Pattern[str]]]:
     for info in pkgutil.iter_modules(scanners_pkg.__path__):
         module = importlib.import_module(f"agent_audit_kit.scanners.{info.name}")
         for name, value in vars(module).items():
-            if isinstance(value, re.Pattern) and "@tool" in value.pattern:
+            # A bytes pattern (dns_rebind's DOCTYPE search) gates no source file.
+            if isinstance(value, re.Pattern) and isinstance(value.pattern, str) and "@tool" in value.pattern:
                 found.append((f"{info.name}.{name}", value))
     return found
 

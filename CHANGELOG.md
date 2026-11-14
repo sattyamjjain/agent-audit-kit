@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `AAK-DNS-REBIND-002` read the root `pom.xml` whole, with no size cap, though its text says a manifest over 2 MB is not read, and handed it to expat as it was. A POM that declares a DOCTYPE can declare entities that expat expands while it parses, and only expat 2.4 and later bound that, so an old system Python could spend minutes on a few hundred bytes. The POM is now read through the 2 MB manifest cap, and one that declares a DOCTYPE, which no Maven POM needs, is refused before it is parsed and reported as `AAK-INTERNAL-SCANNER-FAIL`; the search covers the UTF-8 and both UTF-16 spellings, with the parser's DOCTYPE hook behind it. Raised by Aikido ("blacklisted XML parsing function").
 - Rule text states the limits #1060 listed and no rule mentioned, each checked against the code and pinned by a test. What the rules report is unchanged.
 - AAK-INTERNAL-SCANNER-FAIL: before Python 3.11 the parse screen counts each operand of an `and`, `or` or comparison chain as a level, though Python builds the chain one level deep, so on 3.9 and 3.10 a flat chain of about 10,000 names is refused and reported here, while 3.11 and later parse it.
 - AAK-SSRF-001: `"".join(d)` is read as the keys of `d` only when the scope binds `d` once; bound twice, `d` is read whole, values included, a false-positive shape AAK-SSRF-004 and -005 share.

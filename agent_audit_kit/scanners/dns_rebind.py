@@ -85,7 +85,9 @@ from ._helpers import (
     find_line_number,
     in_skip_dir,
     make_finding,
+    read_bytes_capped,
     read_text_capped,
+    refuse,
     sub_comments,
 )
 from ._versions import exact_version, parse_range
@@ -257,18 +259,58 @@ def _check_package_json_pin(project_root: Path, scanned: set[str]) -> list[Findi
     return findings
 
 
+# A Maven POM never declares a DOCTYPE. One that does can declare entities, and
+# expat expands every reference to them while it parses: a few hundred bytes of
+# nested entities grow to gigabytes (the "billion laughs"). Expat bounds that
+# growth only from 2.4.0, and an old system Python may link an older one, so a POM
+# that declares a DOCTYPE is refused before expat sees a byte of it. Expat reads
+# UTF-8, UTF-16 and single-byte encodings that agree with ASCII, so the keyword's
+# ASCII and two UTF-16 spellings cover every POM it can parse; the keyword is
+# upper case by the XML grammar. The tree builder's `doctype` hook is a second
+# guard behind the search, not the first: a handler that raises does not stop
+# expat, which goes on through the rest of the buffer and expands what it finds.
+_POM_DOCTYPE = re.compile(b"|".join(
+    re.escape("<!DOCTYPE".encode(codec)) for codec in ("ascii", "utf-16-le", "utf-16-be")
+))
+
+
+class _PomDeclaresDoctype(Exception):
+    """Raised by the tree builder when the parser meets a DOCTYPE."""
+
+
+class _NoDoctypeTreeBuilder(ElementTree.TreeBuilder):
+    def doctype(self, name: str, pubid: str, system: str) -> None:
+        raise _PomDeclaresDoctype(name)
+
+
+def _read_pom(pom: Path) -> ElementTree.Element | None:
+    """The root of `pom`, or None when it is over the manifest cap, cannot be
+    read, does not parse, or declares a DOCTYPE (which is refused, see above)."""
+    try:
+        data = read_bytes_capped(pom, MANIFEST_MAX_BYTES)
+    except OSError:
+        return None
+    doctype = "declares a DOCTYPE, which a Maven POM never needs; not parsed, so no entity in it is expanded"
+    if _POM_DOCTYPE.search(data):
+        refuse(pom, doctype)
+        return None
+    try:
+        return ElementTree.fromstring(data, parser=ElementTree.XMLParser(target=_NoDoctypeTreeBuilder()))
+    except _PomDeclaresDoctype:
+        refuse(pom, doctype)
+    except ElementTree.ParseError:
+        pass
+    return None
+
+
 def _check_java_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     pom = project_root / "pom.xml"
     if pom.is_file():
         rel = str(pom.relative_to(project_root))
         scanned.add(rel)
-        try:
-            tree = ElementTree.parse(pom)
-        except ElementTree.ParseError:
-            tree = None
-        if tree is not None:
-            root = tree.getroot()
+        root = _read_pom(pom)
+        if root is not None:
             ns = {"m": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
             dep_xpath = ".//m:dependency" if ns else ".//dependency"
             for dep in root.findall(dep_xpath, ns) if ns else root.findall(dep_xpath):

@@ -442,6 +442,10 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "dns-rebind-open-imports": (dns_rebind.scan, lambda k: {"s.py": "from mcp.server import (\n" * k + _DNS_SERVER}, 2_000, False),
     "dns-rebind-hosts": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'host="127.0.0.1"\n' * k + _DNS_SERVER}, 2_000, False),
     "dns-rebind-wildcards": (dns_rebind.scan, lambda k: {"s.py": "TrustedHostMiddleware(app, allowed_hosts=[\n" * k + _DNS_SERVER}, 1_000, False),
+    # AAK-DNS-REBIND-002's pom.xml reader, before it was released: the DOCTYPE search
+    # and the parse each read the capped file once.
+    "dns-rebind-pom-dependencies": (dns_rebind.scan, lambda k: {"pom.xml": "<project>" + "<dependency><groupId>g</groupId><artifactId>a</artifactId><version>1.0.0</version></dependency>" * k + "</project>"}, 500, False),
+    "dns-rebind-pom-doctype-near-misses": (dns_rebind.scan, lambda k: {"pom.xml": "<project>" + "<!DOCTYP" * k + "</project>"}, 10_000, False),
     "dns-rebind-deep-files": (dns_rebind.scan, lambda k: {f"{'d/' * 60}s{i}.py": _DNS_IMPORT + _DNS_SERVER for i in range(k)}, 40, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
