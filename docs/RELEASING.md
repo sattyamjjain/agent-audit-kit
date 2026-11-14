@@ -25,7 +25,13 @@ hook). Most surfaces are anchor-pinned. **One surface is not** — see §3.
 
 - `git tag vX.Y.Z <merge-commit>` after the PR is squash-merged.
 - `git push origin vX.Y.Z` triggers `release.yml`.
-- Watch the 5 release jobs: CVE-response gate, Publish to PyPI, Push Docker image to GHCR, Rule bundle + SBOM (Sigstore), Create GitHub Release.
+- Watch the 10 release jobs, named as `release.yml` names them. Five start at once:
+  Test suite (tagged commit), CVE-response gate, Repo description liveness,
+  Repo-wide count liveness and CVE-to-rule latency doc. Publish to PyPI, Push
+  Docker image to GHCR and Rule bundle + SBOM (Sigstore) wait for the test suite
+  and the CVE gate; Create GitHub Release waits for those three; Sync repo
+  metadata runs last. The two liveness jobs and the latency doc turn the run red
+  but gate nothing.
 
 ## 3. Post-tag — re-PATCH the GitHub repo description
 

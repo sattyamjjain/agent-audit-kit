@@ -58,12 +58,14 @@ _BROAD_GRANTS: tuple[tuple[str, str], ...] = (
     ("*", "*"),
 )
 _COMMIT_SHA_RE = re.compile(r"^[a-f0-9]{40}$|^[a-f0-9]{7,40}$")
-# Where GitHub reads a SECURITY.md from: `.github/`, the root, then `docs/`, the
-# precedence its docs give for a community health file that can sit in more than
-# one place (https://docs.github.com/en/communities/setting-up-your-project-for-
-# healthy-contributions/creating-a-default-community-health-file). Only the root
-# and `.github/` were read, so a repository that kept its policy in `docs/` was
-# told it shipped none.
+# Where GitHub reads a SECURITY.md from: `.github/`, the root, then `docs/`. Its
+# page on default community health files lists SECURITY.md in the "Supported file
+# types" table and gives that order of precedence for a supported file that can
+# sit in more than one place (https://docs.github.com/en/communities/setting-up-
+# your-project-for-healthy-contributions/creating-a-default-community-health-file,
+# read 2026-11-14). "Adding a security policy to your repository" names no
+# folder. Only the root and `.github/` were read, so a repository that kept its
+# policy in `docs/` was told it shipped none.
 _SECURITY_MD_FOLDERS = (".github", ".", "docs")
 
 
