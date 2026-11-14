@@ -1,0 +1,9 @@
+# 1.1.0 (25c2aaed), the newest release: a plperl or plperlu pl-do tool still
+# embeds its JSON arguments in a double-quoted Perl literal (GHSA-jf8q-vh2f-mhq4).
+services:
+  postgres-mcp:
+    image: ghcr.io/pgedge/postgres-mcp:1.1.0
+    environment:
+      PGEDGE_DB_HOST: db
+      PGEDGE_DB_NAME: app
+      PGEDGE_DB_USER: mcp_reader

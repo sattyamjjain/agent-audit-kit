@@ -408,6 +408,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-FASTAGENT-CVE-2026-102610-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-PGEDGE-CVE-2026-125320-001": ["AIS-07", "IAM-01", "STA-08"],
     "AAK-MCP-PGEDGE-CVE-2026-126199-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-PGEDGE-PLPERL-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DAGU-CVE-2026-102943-001": ["AIS-07", "DSP-17", "STA-08"],
     "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
@@ -20823,6 +20824,73 @@ _r(
         "(`pgedge-postgres-mcp-cli_<version>_<os>_<arch>`, `pgedge-nla-web_<version>_noarch`), "
         "the RPM and DEB packages and a client built from source state no version AAK reads. "
         "Mirrors under another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-PGEDGE-PLPERL-001",
+    "pgEdge Postgres MCP Server image below 1.2.0: Perl code injection through the arguments of plperl and plperlu pl-do tools",
+    "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp), which ships as the image "
+    "`ghcr.io/pgedge/postgres-mcp`, runs a custom `pl-do` tool as a `DO` block in the "
+    "tool's procedural language. For `plperl` and `plperlu` it embedded the tool's "
+    "arguments, serialised to JSON, in the generated Perl as a double-quoted literal made "
+    "with Go's `%q`, which escapes double quotes and backslashes but not `$` or `@`, both of "
+    "which Perl interpolates inside double quotes. So an argument value holding an "
+    "interpolated Perl expression ran as Perl when the block did: under `plperl` it can run "
+    "any SQL the connecting role may through `spi_exec_query`, and under `plperlu` any "
+    "Perl, commands included, as the operating-system user of the database server, "
+    "whatever the transaction's read-only mode (GHSA-jf8q-vh2f-mhq4, CVSS 3.1 8.8, CWE-94, "
+    "no CVE id). It is a separate flaw from the dollar-quote injection fixed in 1.1.0, and "
+    "1.1.0 still has it. Checked in the source at the commit each image's label names: "
+    "`pl-do` tools in `plperl` and `plperlu` first ship in 1.0.0-beta3, which passes the "
+    "arguments through `%q`, as 1.0.0 (67121476) and 1.1.0 (25c2aaed) do in "
+    "`wrapPLDOPerl` and `wrapPLDOPerlu`; 1.2.0-beta1 (d3030c38), the first tag carrying "
+    "the fix (80d4c02c, 2026-11-11), embeds them through `perlSingleQuote`, a single-quoted "
+    "literal with backslashes and single quotes escaped. The advisory names 1.1.1 as the "
+    "patched release, but no 1.1.1 tag, release or image exists: on 2026-11-14 the fix is "
+    "published only in the 1.2.0-beta1 pre-release, and `latest` is the 1.1.0 image.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "On 2026-11-14 the only image with the fix is the 1.2.0-beta1 pre-release of "
+    "`ghcr.io/pgedge/postgres-mcp`: run it, or the first release that carries the fix, "
+    "pinned by version. Until then remove or disable custom `pl-do` tools written in "
+    "`plperl` or `plperlu`, or rewrite them as `pl-func` tools, which take their arguments "
+    "as a bind parameter, or leave `plperl` and `plperlu` out of the connection's "
+    "`allowed_pl_languages`. Review the database's audit logs, and for `plperlu` tools the "
+    "database server's host, for activity through the MCP connection that you did not "
+    "expect; upgrading does not say whether any happened.",
+    sarif_name="PgedgePostgresMcpPlperlArgumentInjection",
+    # GHSA-jf8q-vh2f-mhq4 has no CVE id and no NVD record on 2026-11-14, so the rule
+    # carries it as an incident reference, as the TypeScript SDK rule does
+    # GHSA-f897-62hf-6gxq, and its id names no CVE.
+    incident_references=["GHSA-jf8q-vh2f-mhq4"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-05"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/pgedge/postgres-mcp:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags below 1.2.0 are reported, from 1.0.0-beta2, the "
+        "first, with the two-part `1.0` and `1.1` and the `-with-kb` builds, and so is an "
+        "untagged or `latest` reference, since `latest` was the 1.1.0 digest on 2026-11-14; "
+        "`latest-with-kb`, the same 1.1.0 build with the knowledge base, states no version and "
+        "is not reported. AAK folds a pre-release into its release, so 1.2.0-beta1, the one "
+        "fixed image, reads as 1.2.0 and is not reported, while the 1.1.0 betas and release "
+        "candidate read as 1.1.0 and are. 1.0.0-beta2 is reported although it has no custom "
+        "tools, because it reads as 1.0.0; `pl-do` tools first ship in 1.0.0-beta3. The "
+        "advisory names 1.1.1 as the fix, and none existed on 2026-11-14: a 1.1.1 that "
+        "carries the fix reads below the floor and is reported until the floor moves, and "
+        "once `latest` moves to a fixed release an untagged reference is reported until this "
+        "rule changes. The rule reads the tag, not the configuration: the flaw needs a "
+        "`pl-do` tool in `plperl` or `plperlu`, a connection whose `allowed_pl_languages` "
+        "admits that language (the default admits only `plpgsql`) and the language installed "
+        "in the database, so a deployment with none of these is reported although the flaw "
+        "does not reach it. Tags below 1.1.0 also fire AAK-MCP-PGEDGE-CVE-2026-125320-001. The "
+        "release binaries and a server built from source state no version AAK reads. Mirrors "
+        "under another registry are not matched, and commented-out lines are skipped."
     ),
 )
 

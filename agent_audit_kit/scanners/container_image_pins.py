@@ -650,6 +650,23 @@ _PINS: tuple[_ImagePin, ...] = (
         (1, 1, 0), "below 1.1.0", "Fixed in 1.1.0.",
         ("CVE-2026-126199", "CVE-2026-126198"),
     ),
+    # pgEdge server: GHSA-jf8q-vh2f-mhq4 (no CVE id), a `plperl` or `plperlu` pl-do tool
+    # embeds its JSON arguments in the Perl through Go's `%q`, a double-quoted literal in
+    # which Perl interpolates `$` and `@`. The tools first ship in 1.0.0-beta3; 1.0.0
+    # (67121476) and 1.1.0 (25c2aaed) still use `%q`; 80d4c02c (`perlSingleQuote`) is in
+    # 1.2.0-beta1 (d3030c38) and in no other tag. The advisory names 1.1.1, which has no
+    # tag, release or image on 2026-11-14, so the floor is 1.2.0: 1.2.0-beta1 folds into
+    # 1.2.0 and is not reported. `latest` and `1.1` were the 1.1.0 digest on 2026-11-14,
+    # so `latest` is affected. A different flaw above the 1.1.0 rule's floor, so its own
+    # rule.
+    _ImagePin(
+        "AAK-MCP-PGEDGE-PLPERL-001", "pgEdge Postgres MCP Server",
+        "ghcr.io/pgedge/postgres-mcp",
+        (1, 2, 0), "below 1.2.0",
+        "Fixed only in the 1.2.0-beta1 pre-release; the advisory names 1.1.1, which was not "
+        "published, and `latest` is the 1.1.0 image.",
+        ("GHSA-jf8q-vh2f-mhq4",), floating_affected=True,
+    ),
     # Dagu: CVE-2026-102943, the MCP `dagu_read` dag_spec target reads YAML files
     # outside the DAG directories. `internal/service/mcp/server.go` is absent at
     # v2.6.10 and ships in v2.7.0; v2.11.0 confines `locateDAG`. The images carry no

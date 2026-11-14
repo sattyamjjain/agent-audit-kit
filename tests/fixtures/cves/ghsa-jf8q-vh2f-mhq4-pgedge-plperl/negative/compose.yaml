@@ -1,0 +1,9 @@
+# 1.2.0-beta1 (d3030c38) embeds the arguments through perlSingleQuote, the only
+# published image with the fix; it reads as 1.2.0.
+services:
+  postgres-mcp:
+    image: ghcr.io/pgedge/postgres-mcp:1.2.0-beta1
+    environment:
+      PGEDGE_DB_HOST: db
+      PGEDGE_DB_NAME: app
+      PGEDGE_DB_USER: mcp_reader

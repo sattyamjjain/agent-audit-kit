@@ -18,7 +18,7 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-11-14 (unreleased): #1238 to #1241, the pgEdge Postgres MCP Server's four GitHub records, two on its image rule and one new rule for its bundled clients
+## 2026-11-14 (unreleased): #1238 to #1241 and a fifth pgEdge advisory, two records on the server image rule, a new rule for its bundled clients and one for plperl tools
 
 The watcher filed #1238 to #1241 on 12 Nov: four records GitHub's CNA published for the pgEdge
 Postgres MCP Server, each fixed in 1.1.0. Each is read here against NVD's API record, its CVE
@@ -32,7 +32,9 @@ and three GHCR images built from one commit, which their labels name: the server
 three. NVD's CNA data names the product with a bare range and no packageURL, so `nvd_feed` keeps
 none of the four; OSV holds each only as an NVD import with git ranges, and the bundled advisory
 feed holds none, so only the image rules report them. Each claim is measured with the scanner on
-a firing fixture and a negative one (tests/test_cve_batch_2026_11_14_pgedge.py).
+a firing fixture and a negative one (tests/test_cve_batch_2026_11_14_pgedge.py). Reading the
+repository's advisories turned up a fifth, GHSA-jf8q-vh2f-mhq4, which has no CVE id and which the
+watcher has not filed; it affects 1.1.0, the newest release, and gets a rule of its own.
 
 ### CVE-2026-126196 (#1238) and CVE-2026-126197 (#1239): on the pgEdge server rule 2026-11-14
 
@@ -96,14 +98,44 @@ to misjudge; the advisories name every pre-release, and the rule reports them an
 the deploy guide's own, is not reported. The rule reads the tag, not `allow_writes`, so a
 deployment that never enables writes is reported though PostgreSQL refuses the writes there.
 
+### GHSA-jf8q-vh2f-mhq4 (not filed): new image pin 2026-11-14
+
+**Perl code injection through `plperl` and `plperlu` tools gets `AAK-MCP-PGEDGE-PLPERL-001`: the
+image `ghcr.io/pgedge/postgres-mcp` below 1.2.0, `latest` included, HIGH.** The repository
+advisory, published on 11 Nov with no CVE id and no NVD record: a custom `pl-do` tool written in
+`plperl` or `plperlu` embedded its JSON arguments in the generated Perl as a double-quoted literal
+made with Go's `%q`, which escapes double quotes and backslashes but not `$` or `@`, so an argument
+value holding an interpolated expression ran as Perl. Under `plperl` that code can run any SQL the
+connecting role may; under `plperlu` it runs as the database server's operating-system user,
+commands included, whatever the transaction's read-only mode. It is a separate flaw from
+CVE-2026-126197, the dollar-quote injection fixed in 1.1.0, and 1.1.0 still has it. The advisory
+gives "<= 1.1.0" and names 1.1.1 as patched, but no 1.1.1 tag, release, branch or image exists on
+2026-11-14. Checked in the source at the commit each image's label names: `pl-do` tools in both
+Perl languages first ship in 1.0.0-beta3, whose wrapper passes the arguments through `%q`; 1.0.0
+(67121476) and 1.1.0 (25c2aaed) do the same in `wrapPLDOPerl` and `wrapPLDOPerlu`; the fix,
+80d4c02c (11 Nov, `perlSingleQuote`, a single-quoted literal with backslashes and single quotes
+escaped), is in 1.2.0-beta1 (d3030c38) and in no other tag. So the floor is 1.2.0: AAK folds a
+pre-release into its release, 1.2.0-beta1 reads as 1.2.0 and is not reported, and the 1.1.0 betas
+and release candidate read as 1.1.0 and are. `latest` and `1.1` were the 1.1.0 digest on
+2026-11-14, so an untagged reference is reported too; `latest-with-kb`, the same build, states no
+version and is not. The 1.1.0 rule is HIGH too, but raising its floor would report the 1.1.0
+releases under five flaws they do not have, so this is a rule of its own, and tags below 1.1.0 fire
+both. The flaw needs a `pl-do` tool in a Perl
+language that the connection's `allowed_pl_languages` admits (the default admits only `plpgsql`);
+the rule reads the tag, not that configuration, and says so, and it says that a 1.1.1 carrying the
+fix would be reported until the floor moves. HIGH, from GitHub's CVSS 3.1 8.8. OSV has no record,
+and nothing names a package a feed can match.
+
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
 | CVE-2026-126196 | 8.1 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-j7mp-839j-jrm7. | #1238 |
 | CVE-2026-126197 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-r5pp-jx86-r6r9. | #1239 |
 | CVE-2026-126198 | 3.1 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-126199-001`, reported at MEDIUM: the same tags, below 1.1.0. | #1240 |
 | CVE-2026-126199 | 6.8 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-CVE-2026-126199-001` (MEDIUM): tags below 1.1.0, beside the HIGH server rule. | #1241 |
+| GHSA-jf8q-vh2f-mhq4 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-PLPERL-001` (HIGH): tags below 1.2.0, `latest` included; the fix is published only in the 1.2.0-beta1 pre-release, which is not reported. | not filed |
 
-CVSS is each record's CVSS 3.1 score from GitHub, which NVD carries as its only metric.
+A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is each record's CVSS
+3.1 score from GitHub, which NVD carries as its only metric for the four CVEs.
 
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 

@@ -29,6 +29,7 @@ from agent_audit_kit.scanners import container_image_pins, mcp_cve_pins_2026_07
 FASTAGENT_PIN = "AAK-MCP-FASTAGENT-CVE-2026-102610-001"
 PGEDGE_PIN = "AAK-MCP-PGEDGE-CVE-2026-125320-001"
 PGEDGE_CLIENTS_PIN = "AAK-MCP-PGEDGE-CVE-2026-126199-001"  # added 2026-11-14
+PGEDGE_PLPERL_PIN = "AAK-MCP-PGEDGE-PLPERL-001"  # added 2026-11-14, below 1.2.0
 DAGU_PIN = "AAK-MCP-DAGU-CVE-2026-102943-001"
 TRAWL_PIN = "AAK-MCP-TRAWL-CVE-2026-122140-001"
 SIYUAN_PIN = "AAK-MCP-SIYUAN-CVE-2026-123492-001"
@@ -244,14 +245,16 @@ def test_pgedge_beta2_is_reported_at_high_and_the_rule_says_why() -> None:
 
 def test_pgedge_fixtures_positive_and_negative() -> None:
     """1.0.0's image (67121476) predates all three fixes; 1.1.0's (25c2aaed) carries
-    them. The negative also runs the `nla-web` client image, which is not the server; since
-    2026-11-14 the client images' own rule reports its 1.0.0 tag, and this rule still does
-    not (tests/test_cve_batch_2026_11_14_pgedge.py)."""
+    them. The negative also runs the `nla-web` client image, which is not the server. Since
+    2026-11-14 two other rules report these trees, and this rule's results are unchanged:
+    the client images' rule reports the negative's nla-web 1.0.0, and the Perl argument
+    injection rule (GHSA-jf8q-vh2f-mhq4, fixed only in 1.2.0-beta1) reports server tags below
+    1.2.0, 1.1.0 included (tests/test_cve_batch_2026_11_14_pgedge.py)."""
     root = CVES / "cve-2026-125320-pgedge"
     assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]] == [
-        (PGEDGE_PIN, "compose.yaml", 3),
+        (PGEDGE_PIN, "compose.yaml", 3), (PGEDGE_PLPERL_PIN, "compose.yaml", 3),
     ]
-    assert _image_ids(root / "negative") == {PGEDGE_CLIENTS_PIN}
+    assert _image_ids(root / "negative") == {PGEDGE_CLIENTS_PIN, PGEDGE_PLPERL_PIN}
     assert PGEDGE_PIN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 

@@ -19,6 +19,13 @@ confirmation prompt, which the server image does not contain, so they get a rule
 own on the client images at the higher record's severity. The prompt first ships in 1.0.0,
 and both fixes are in 1.1.0-beta1, so the LOW record's affected releases sit inside the
 MEDIUM record's and it joins the same rule.
+
+GHSA-jf8q-vh2f-mhq4 (HIGH, no CVE id, not filed) is a sibling the batch found: a `plperl`
+or `plperlu` pl-do tool embeds its arguments in a double-quoted Perl literal, where `$`
+and `@` interpolate. It is still in 1.1.0, the newest release and `latest`; the fix is only
+in the 1.2.0-beta1 pre-release, and the 1.1.1 the advisory names was never published. It
+gets AAK-MCP-PGEDGE-PLPERL-001 with a 1.2.0 floor, so 1.2.0-beta1, which AAK folds into
+1.2.0, is not reported.
 """
 
 from __future__ import annotations
@@ -37,6 +44,8 @@ from agent_audit_kit.scanners import container_image_pins
 
 SERVER_PIN = "AAK-MCP-PGEDGE-CVE-2026-125320-001"
 CLIENTS_PIN = "AAK-MCP-PGEDGE-CVE-2026-126199-001"
+PLPERL_PIN = "AAK-MCP-PGEDGE-PLPERL-001"
+PLPERL_GHSA = "GHSA-jf8q-vh2f-mhq4"
 SERVER_IMAGE = "ghcr.io/pgedge/postgres-mcp"
 CLI_IMAGE = "ghcr.io/pgedge/nla-cli"
 WEB_IMAGE = "ghcr.io/pgedge/nla-web"
@@ -96,10 +105,11 @@ def test_the_server_row_keeps_its_range() -> None:
     ("cve-2026-126197-pgedge-pldo", ("Dockerfile", 3)),         # 1.0.0-beta3, the first with pl-do tools
 ])
 def test_server_fixtures(fixture: str, where: tuple[str, int]) -> None:
-    (finding,) = container_image_pins.scan(CVES / fixture / "vulnerable")[0]
-    assert (finding.rule_id, finding.file_path, finding.line_number) == (SERVER_PIN, *where)
+    (finding,) = [f for f in container_image_pins.scan(CVES / fixture / "vulnerable")[0] if f.rule_id == SERVER_PIN]
+    assert (finding.file_path, finding.line_number) == where
     assert READONLY_CVE in finding.evidence and PLDO_CVE in finding.evidence
-    assert _image_ids(CVES / fixture / "negative") == set()       # 1.1.0 and 1.1.0-beta1
+    # 1.1.0 and 1.1.0-beta1 carry both fixes; they still have the Perl flaw, below 1.2.0.
+    assert _image_ids(CVES / fixture / "negative") == {PLPERL_PIN}
 
 
 def test_the_server_finding_survives_the_full_engine_at_high() -> None:
@@ -196,7 +206,7 @@ def test_client_tags(tmp_path: Path, image: str, tag: str | None, fires: bool) -
 
 
 def test_each_rule_reads_only_its_own_images(tmp_path: Path) -> None:
-    assert _image_ids(_compose(tmp_path, f"{SERVER_IMAGE}:1.0.0")) == {SERVER_PIN}
+    assert _image_ids(_compose(tmp_path, f"{SERVER_IMAGE}:1.0.0")) == {SERVER_PIN, PLPERL_PIN}
     assert _image_ids(_compose(tmp_path, f"{WEB_IMAGE}:1.0.0")) == {CLIENTS_PIN}
     assert _image_ids(_compose(tmp_path, "ghcr.io/pgedge/nla-web-extra:1.0.0")) == set()
 
@@ -211,6 +221,79 @@ def test_the_stated_limits() -> None:
     assert "A 1.1.0 client still runs a custom tool's write unasked against a server below 1.1.0" in text
     assert SERVER_PIN in text
     assert CLIENTS_PIN in RULES[SERVER_PIN].limitations
+
+
+# ---- GHSA-jf8q-vh2f-mhq4: Perl argument injection, fixed only in 1.2.0-beta1 --------------------
+
+
+def test_the_plperl_rule_is_registered_at_high() -> None:
+    rule = RULES[PLPERL_PIN]
+    assert rule.severity is Severity.HIGH
+    assert rule.category is Category.SUPPLY_CHAIN
+    assert rule.cve_references == []                     # no CVE id on 2026-11-14
+    assert rule.incident_references == [PLPERL_GHSA]
+    assert f"{PLPERL_GHSA}, CVSS 3.1 8.8, CWE-94, no CVE id" in rule.description
+    assert "no 1.1.1 tag, release or image exists" in rule.description
+    assert "published only in the 1.2.0-beta1 pre-release" in rule.description
+    assert "STA-08" in rule.aicm_references
+
+
+def test_the_plperl_row() -> None:
+    (row,) = [p for p in container_image_pins._PINS if p.rule_id == PLPERL_PIN]
+    assert (row.image, row.introduced, row.floor, row.floating_affected, row.cves) == (
+        SERVER_IMAGE, None, (1, 2, 0), True, (PLPERL_GHSA,))
+
+
+@pytest.mark.parametrize(("tree", "where"), [
+    ("vulnerable", ("compose.yaml", 5)),          # 1.1.0, the newest release
+    ("vulnerable-latest", (".mcp.json", 5)),      # `latest`, the 1.1.0 digest, from an MCP config
+    ("negative", None),                           # 1.2.0-beta1, the one image with the fix
+])
+def test_plperl_fixtures(tree: str, where: tuple[str, int] | None) -> None:
+    found = [(f.file_path, f.line_number) for f in
+             container_image_pins.scan(CVES / "ghsa-jf8q-vh2f-mhq4-pgedge-plperl" / tree)[0]]
+    assert found == ([] if where is None else [where])
+
+
+def test_the_plperl_finding_survives_the_full_engine_at_high() -> None:
+    found = [f for f in run_scan(CVES / "ghsa-jf8q-vh2f-mhq4-pgedge-plperl" / "vulnerable").findings
+             if f.rule_id in (SERVER_PIN, PLPERL_PIN)]
+    assert [(f.rule_id, f.line_number, f.severity) for f in found] == [(PLPERL_PIN, 5, Severity.HIGH)]
+    assert found[0].evidence.endswith(
+        f"below 1.2.0 ({PLPERL_GHSA}). Fixed only in the 1.2.0-beta1 pre-release; the advisory "
+        "names 1.1.1, which was not published, and `latest` is the 1.1.0 image.")
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("1.0.0-beta2", True),          # reads as 1.0.0; no custom tools, which the limitations say
+    ("1.0.0-beta3", True),          # the first with plperl and plperlu pl-do tools
+    ("1.0.0", True), ("1.0", True),
+    ("1.1.0-beta1", True), ("1.1.0-rc1", True),   # pre-releases fold into 1.1.0, which is affected
+    ("1.1.0", True), ("1.1.0-with-kb", True), ("1.1", True),
+    ("1.1.1", True),                # never published; a 1.1.1 with the fix would read below the floor
+    ("1.2.0-beta1", False),         # d3030c38 carries perlSingleQuote and folds into 1.2.0
+    ("1.2.0-beta1-with-kb", False),
+    ("1.2.0", False), ("1.2", False),
+    ("latest", True), (None, True),  # `latest` was the 1.1.0 digest on 2026-11-14
+    ("latest-with-kb", False),       # the same 1.1.0 build, but the tag states no version
+    ("main", False),
+])
+def test_plperl_tags(tmp_path: Path, tag: str | None, fires: bool) -> None:
+    ref = SERVER_IMAGE if tag is None else f"{SERVER_IMAGE}:{tag}"
+    assert (PLPERL_PIN in _image_ids(_compose(tmp_path, ref))) is fires
+
+
+def test_the_plperl_rule_reads_only_the_server_image(tmp_path: Path) -> None:
+    assert PLPERL_PIN not in _image_ids(_compose(tmp_path, f"{CLI_IMAGE}:1.1.0"))
+    assert PLPERL_PIN not in _image_ids(_compose(tmp_path, f"{WEB_IMAGE}:1.1.0"))
+
+
+def test_the_plperl_limits_are_stated() -> None:
+    text = RULES[PLPERL_PIN].limitations
+    assert "1.2.0-beta1, the one fixed image, reads as 1.2.0 and is not reported" in text
+    assert "a 1.1.1 that carries the fix reads below the floor and is reported" in text
+    assert "`latest-with-kb`, the same 1.1.0 build with the knowledge base, states no version" in text
+    assert "the default admits only `plpgsql`" in text
 
 
 # ---- the feeds ---------------------------------------------------------------------------------
@@ -250,3 +333,11 @@ def test_each_record_has_one_ledger_row(cve: str, issue: int, rule_id: str) -> N
     assert len(rows) == 1 and rows[0].rstrip().endswith(f"| #{issue} |")
     assert rule_id in rows[0]
     assert "out of scope" not in rows[0].lower()
+
+
+def test_the_plperl_advisory_has_a_not_filed_row() -> None:
+    """The GHSA id in the ledger is what keeps the watcher from filing it later."""
+    rows = [line for line in LEDGER.read_text(encoding="utf-8").splitlines()
+            if line.startswith(f"| {PLPERL_GHSA} ")]
+    assert len(rows) == 1 and rows[0].rstrip().endswith("| not filed |")
+    assert PLPERL_PIN in rows[0] and "out of scope" not in rows[0].lower()

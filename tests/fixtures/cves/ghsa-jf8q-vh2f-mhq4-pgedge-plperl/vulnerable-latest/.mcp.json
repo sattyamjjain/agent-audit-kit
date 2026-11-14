@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "PGEDGE_DB_HOST", "ghcr.io/pgedge/postgres-mcp:latest"]
+    }
+  }
+}
