@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     # Not ubuntu-latest: actions/python-versions has no 3.9 build for Ubuntu 26.04, so

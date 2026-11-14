@@ -10,20 +10,22 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
-  attestations: write
-  # Required by github/codeql-action/upload-sarif. Its absence is why this
-  # workflow went red for six consecutive nights (2026-08-16 .. 08-21) while the
-  # image itself built and pushed fine every time -- only the Security-tab upload
-  # failed. An explicit permissions block replaces the defaults rather than
-  # extending them, so omitting this scope silently removed it.
-  security-events: write
-  issues: write
 
 jobs:
   rebuild:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      # Required by github/codeql-action/upload-sarif. Its absence is why this
+      # workflow went red for six consecutive nights (2026-08-16 .. 08-21) while the
+      # image itself built and pushed fine every time -- only the Security-tab upload
+      # failed. An explicit permissions block replaces the defaults rather than
+      # extending them, so omitting this scope silently removed it.
+      security-events: write
+      issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
