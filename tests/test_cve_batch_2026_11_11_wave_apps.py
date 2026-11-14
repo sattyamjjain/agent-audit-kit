@@ -28,6 +28,8 @@ from agent_audit_kit.scanners import container_image_pins, mcp_cve_pins_2026_07
 
 FASTAGENT_PIN = "AAK-MCP-FASTAGENT-CVE-2026-102610-001"
 PGEDGE_PIN = "AAK-MCP-PGEDGE-CVE-2026-125320-001"
+PGEDGE_CLIENTS_PIN = "AAK-MCP-PGEDGE-CVE-2026-126199-001"  # added 2026-11-14
+PGEDGE_PLPERL_PIN = "AAK-MCP-PGEDGE-PLPERL-001"  # added 2026-11-14, below 1.2.0
 DAGU_PIN = "AAK-MCP-DAGU-CVE-2026-102943-001"
 TRAWL_PIN = "AAK-MCP-TRAWL-CVE-2026-122140-001"
 SIYUAN_PIN = "AAK-MCP-SIYUAN-CVE-2026-123492-001"
@@ -97,7 +99,9 @@ def _uv_lock(root: Path, name: str, version: str) -> None:
 
 @pytest.mark.parametrize(("rule_id", "cves", "severity"), [
     (FASTAGENT_PIN, ["CVE-2026-102610"], Severity.MEDIUM),
-    (PGEDGE_PIN, ["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"], Severity.HIGH),
+    # The two GHSA records got CVE ids on 2026-11-12 (#1238, #1239), which joined on 2026-11-14.
+    (PGEDGE_PIN, ["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322",
+                  "CVE-2026-126196", "CVE-2026-126197"], Severity.HIGH),
     (DAGU_PIN, ["CVE-2026-102943"], Severity.MEDIUM),
     (TRAWL_PIN, ["CVE-2026-122140"], Severity.MEDIUM),
     (SIYUAN_PIN, ["CVE-2026-123492"], Severity.MEDIUM),
@@ -241,12 +245,16 @@ def test_pgedge_beta2_is_reported_at_high_and_the_rule_says_why() -> None:
 
 def test_pgedge_fixtures_positive_and_negative() -> None:
     """1.0.0's image (67121476) predates all three fixes; 1.1.0's (25c2aaed) carries
-    them. The negative also runs the `nla-web` client image, which is not the server."""
+    them. The negative also runs the `nla-web` client image, which is not the server. Since
+    2026-11-14 two other rules report these trees, and this rule's results are unchanged:
+    the client images' rule reports the negative's nla-web 1.0.0, and the Perl argument
+    injection rule (GHSA-jf8q-vh2f-mhq4, fixed only in 1.2.0-beta1) reports server tags below
+    1.2.0, 1.1.0 included (tests/test_cve_batch_2026_11_14_pgedge.py)."""
     root = CVES / "cve-2026-125320-pgedge"
     assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]] == [
-        (PGEDGE_PIN, "compose.yaml", 3),
+        (PGEDGE_PIN, "compose.yaml", 3), (PGEDGE_PLPERL_PIN, "compose.yaml", 3),
     ]
-    assert _image_ids(root / "negative") == set()
+    assert _image_ids(root / "negative") == {PGEDGE_CLIENTS_PIN, PGEDGE_PLPERL_PIN}
     assert PGEDGE_PIN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 
@@ -438,11 +446,14 @@ def test_siyuan_image_row() -> None:
 
 
 def test_siyuan_fixtures_positive_and_negative() -> None:
+    """v3.8.8 and v3.8.9 also fire the CVE-2026-126393 rule (3.7.0 below 3.8.10), a
+    different flaw on the same image, so only this rule is compared."""
     root = CVES / "cve-2026-123492-siyuan"
-    assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]] == [
+    assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]
+            if f.rule_id == SIYUAN_PIN] == [
         (SIYUAN_PIN, "compose.yaml", 3),
     ]
-    assert _image_ids(root / "negative") == set()
+    assert SIYUAN_PIN not in _image_ids(root / "negative")
     assert SIYUAN_PIN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 

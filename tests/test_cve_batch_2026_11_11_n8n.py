@@ -93,13 +93,18 @@ def test_each_n8n_record_reaches_the_advisory_feed_rule(tmp_path: Path, cve: str
 
 
 def test_the_releases_the_watcher_named_are_reported_with_all_five_cached(tmp_path: Path) -> None:
-    """2.41.4 sits on the MCP rule's floor: no pin reports it, the feed reports all five."""
+    """2.41.4 sits on the MCP rule's floor: no pin reports these five, the feed reports all five.
+
+    Since 2026-11-14 the MEDIUM rule for CVE-2026-126386 and CVE-2026-126387 reports 2.41.4
+    for its own MCP flaws; it names none of these five, so the feed's findings stand."""
     _cache(*N8N_CVES)
     _lockfile(tmp_path, "n8n", "2.41.4")
     result = run_scan(tmp_path)
     assert sorted(cve for f in result.findings if f.rule_id == FEED_RULE for cve in evidence_cves(f.evidence)) \
         == N8N_CVES
-    assert not [f for f in result.findings if f.rule_id.startswith("AAK-MCP-N8N-")]
+    pinned = {f.rule_id for f in result.findings if f.rule_id.startswith("AAK-MCP-N8N-")}
+    assert pinned == {"AAK-MCP-N8N-CVE-2026-126386-001"}
+    assert not set(RULES["AAK-MCP-N8N-CVE-2026-126386-001"].cve_references) & set(N8N_CVES)
 
 
 def test_without_aak_update_the_n8n_records_are_not_reported(tmp_path: Path) -> None:

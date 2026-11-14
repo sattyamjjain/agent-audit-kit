@@ -23,7 +23,8 @@ available) before shipping:
   - praisonai                      >= 4.6.78  (CVE-2026-61427; CVE-2026-61438 names the
     same floor, which no published release reaches: PyPI has no 4.6.78, and every
     later release still ships its job-workflow executor, from 4.6.103 through the
-    required `praisonai-code`. The rule's limitations say so)
+    required `praisonai-code`. Those later releases are a presence-only row of their
+    own for CVE-2026-61438, further down)
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
   - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
@@ -65,6 +66,9 @@ available) before shipping:
   - n8n (MCP Client node)          >= 2.41.4, and 2.42.0  (CVE-2026-72768; SSRF-protection
     bypass. The floor rose for CVE-2026-77068, -77073, -85166 and, on 2026-10-16,
     CVE-2026-110842, the MCP workflow-validation tool's prototype pollution)
+  - n8n (MCP OAuth, Browser Use)   1.120.0 to 1.123.89, 2.0.0 to 2.45.5, and 2.46.0
+    (CVE-2026-126386, CVE-2026-126387; MEDIUM, its own rule beside the HIGH one
+    above, a stated version required)
   - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
   - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
     arbitrary file read via unvalidated file_path)
@@ -159,9 +163,9 @@ available) before shipping:
     newest and the fix, upstream PR #33, is unmerged)
   - @penpot/mcp                    >= 2.18.0  (CVE-2026-100868; the plugin WebSocket
     bridge listens on every interface. Its own MEDIUM rule beside the CRITICAL 2.15.0
-    REPL pin above. The fix is in Penpot's 2.18.0 tag, whose mcp/package.json reads
-    2.17.0, and no npm build has been published from it, so every published release
-    is reported)
+    REPL pin above. The fix is in Penpot's 2.18.x tags, whose mcp/package.json reads
+    2.17.0, so npm never got a 2.18.x build; the first fixed npm release is 2.19.1,
+    under the `next` dist-tag, while `latest` is still 2.15.4)
   - voice-mode                     >= 8.10.2  (CVE-2026-79535; update_config writes the
     caller's value into a sourced env file, double-quoted at best)
   - @0xshariq/github-mcp-server    presence-only (CVE-2026-102906; git tools run
@@ -357,7 +361,13 @@ available) before shipping:
   - mcp-contextforge-gateway       0.7.0 <= v < 1.1.0  (CVE-2026-18484; a federated tool
     whose computed name collides with an existing one makes `tools/call` fail for
     everyone. MEDIUM, its own rule beside the CRITICAL 1.0.9 row. A stated version is
-    required)
+    required. CVE-2026-110178, -110194, -110195, -110199 and CVE-2026-94407, MEDIUM
+    flaws fixed in 1.1.0 as well, are on the same row)
+  - mcp-contextforge-gateway       0.8.0 <= v < 1.1.1  (CVE-2026-110279, CVE-2026-110278
+    and CVE-2026-110189; a client's X-Upstream-Authorization replaces the gateway's
+    upstream credential, identity headers skip the per-gateway setting, and the jq
+    guard misses `halt` and the loop built-ins. HIGH, fixed only in 1.1.1. A stated
+    version is required)
   - mcp-atlassian                  0.22.0 <= v < 0.24.1  (CVE-2026-124503; the upload
     guard's boundary is the working directory, so an SSE or HTTP server started from
     `/` or a home directory reads any file there. Its own rule beside the 0.22.0
@@ -370,6 +380,11 @@ available) before shipping:
     `dagu_read` dag_spec target reads YAML files outside the DAG directories. The MCP
     server arrives in 2.7.0; the image is a row in container_image_pins. A stated
     version is required)
+  - praisonai                      >= 4.6.78, presence-only  (CVE-2026-61438; the
+    job-workflow executor's inline Python sandbox, unchanged in every release from
+    4.6.81, the first on PyPI at or above the advisory's 4.6.78, to 4.7.24, from
+    4.6.103 through the required `praisonai-code`. Below 4.6.78 the 61427 row reports
+    it. No fixed release. Not an MCP surface)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -860,6 +875,25 @@ _PINS: tuple[_Pin, ...] = (
     # unversioned n8n twice.
     _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 41, 4),
          also=(((2, 42, 0), (2, 42, 1)),), fix_label="2.41.4 / 2.42.1"),
+    # --- 2026-11-14 (CVE-2026-126386, CVE-2026-126387) ---
+    # Two MCP-surface flaws fixed in the same releases, MEDIUM. The MCP OAuth
+    # endpoints (`/mcp-oauth/register`, `/mcp-oauth/authorize`) registered any
+    # client's redirect_uri and redirected there before the authorization request
+    # was checked; they first ship in 1.120.0, and `authorizationRequestValidator`
+    # arrives in 1.123.89, 2.45.5 and 2.46.1. Instance AI's Browser Use served
+    # `@n8n/mcp-browser`'s `browser_upload` tool in remote mode, where Playwright
+    # reads the path on the n8n server; it first ships in 2.29.0 (mcp-browser
+    # 0.12.0), and mcp-browser 0.25.1 (n8n 2.45.5, 2.46.1) drops the tool in remote
+    # mode. The floor is the 1.x fix, `introduced` keeps 1.119.x and older off, and
+    # the 2.x line is two `also` ranges. The HIGH rule above reports below 2.41.4
+    # for its own flaws, and raising its floor would report 2.41.4 to 2.45.4 under
+    # them, so this is a rule of its own. `latest` (2.47.7) is fixed, so a stated
+    # version is required, and an unversioned n8n is not reported a fourth time.
+    # npm has no 3.x release, so the records' 3.0.0 is not a range here.
+    _Pin("AAK-MCP-N8N-CVE-2026-126386-001", "n8n", ("n8n",), (1, 123, 89),
+         introduced=(1, 120, 0), also=(((2, 0, 0), (2, 45, 5)), ((2, 46, 0), (2, 46, 1))),
+         fix_label="2.45.5 / 2.46.1 (1.123.89 on 1.x)", requires_version=True,
+         ecosystem="js"),
     # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
     # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
     # and no authentication. `POST /api/execute` (the `prompt` body field) and
@@ -1320,19 +1354,20 @@ _PINS: tuple[_Pin, ...] = (
     # @penpot/mcp's plugin WebSocket bridge is `new WebSocketServer({ port })` with
     # no host, so it listens on every interface, unauthenticated in single-user
     # mode (CVE-2026-100868, CVSS 6.3, GHSA-ch2q-6x56-qg5r). The fix, b5274a44
-    # (2026-09-22), is in Penpot's 2.18.0 tag, but that tag's mcp/package.json still
-    # reads 2.17.0 (penpot/penpot#12007) and npm has no build from it. npm's own
-    # 2.17.0 (2026-07-08) predates the fix, and `latest` is 2.15.4: both affected,
-    # re-checked from the tarball on 2026-10-04. A fixed npm build numbered below
-    # 2.18.0 would be reported until this floor follows it (#872). A rule of its
-    # own, not a raised floor on the 45805 pin above: that one is a CRITICAL RCE
-    # fixed in 2.15.0, and raising its floor would report 2.15.0-2.17.x as critical.
+    # (2026-09-22), is in every Penpot tag from 2.18.0 to 2.18.7, but their
+    # mcp/package.json still reads 2.17.0 (penpot/penpot#12007), so npm never got a
+    # 2.18.x build. Re-checked 2026-11-14 (#872): npm's first fixed release is 2.19.1
+    # (2026-11-10), which passes `host` to the bridge and is published under the
+    # `next` dist-tag; `latest` is still 2.15.4 and npm's 2.17.0 (2026-07-08) predates
+    # the fix, both read from the tarballs. The floor stays 2.18.0, Penpot's fixed
+    # version; no published release lies between it and 2.19.1. A rule of its own,
+    # not a raised floor on the 45805 pin above: that one is a CRITICAL RCE fixed in
+    # 2.15.0, and raising its floor would report 2.15.0-2.17.x as critical.
     _Pin("AAK-MCP-PENPOT-CVE-2026-100868-001", "@penpot/mcp", ("@penpot/mcp",),
          (2, 18, 0),
-         fix_label="Penpot 2.18.0, but no npm build has been published from that "
-                   "tag yet (its mcp/package.json reads 2.17.0, penpot/penpot#12007, "
-                   "and npm's 2.17.0 predates the fix); meanwhile firewall the plugin "
-                   "WebSocket port, 4402 by default"),
+         fix_label="Penpot 2.18.0; on npm, 2.19.1, published under the `next` "
+                   "dist-tag while `latest` is still the affected 2.15.4; meanwhile "
+                   "firewall the plugin WebSocket port, 4402 by default"),
     # --- 2026-10-03 wave, third batch (#879-#883) ---
     # VoiceMode's update_config MCP tool writes the caller's value into
     # ~/.voicemode/voicemode.env, which the service scripts `source`; before 8.10.2
@@ -2105,9 +2140,25 @@ _PINS: tuple[_Pin, ...] = (
     # 1.0.9 floor, so it is its own rule. IBM names 1.0.0 to 1.0.11; the PyPI wheels
     # show the precondition from 0.7.0, where tool names became unique per team and
     # owner only, and 0.6.0 kept them unique across the database. `latest` is 1.1.1.
+    # 2026-11-14: five more MEDIUM records fixed in 1.1.0 join this row unchanged
+    # (CVE-2026-110178 import ownership, from 0.7.0; CVE-2026-110194 DCR SSRF and
+    # CVE-2026-110199 Admin UI banner XSS, from 0.8.0; CVE-2026-94407 schema ReDoS,
+    # from 0.9.0; CVE-2026-110195 token exchange cache key, by 1.0.7).
     _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "mcp-contextforge-gateway",
          ("mcp-contextforge-gateway",), (1, 1, 0), introduced=(0, 7, 0),
          fix_label="1.1.0 (affected from 0.7.0; IBM names 1.0.0 to 1.0.11)",
+         requires_version=True, ecosystem="py"),
+    # IBM ContextForge, 2026-11-14: three records fixed only in 1.1.1. A client's
+    # `X-Upstream-Authorization` is renamed to `Authorization` over the credential the
+    # gateway manages (CVE-2026-110279, HIGH; from 0.8.0, where the header arrives,
+    # 0.7.0 has none); identity headers ignore the per-gateway setting
+    # (CVE-2026-110278, HIGH; identity propagation arrives in 1.0.0); and 1.0.8's jq
+    # guard omits `halt`, `halt_error` and the loop built-ins (CVE-2026-110189,
+    # MEDIUM, 1.0.8 to 1.1.0). Above the 1.1.0 row's floor and HIGH, so its own rule;
+    # the jq record shares the fix and sits inside the range. `latest` is 1.1.1.
+    _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001", "mcp-contextforge-gateway",
+         ("mcp-contextforge-gateway",), (1, 1, 1), introduced=(0, 8, 0),
+         fix_label="1.1.1 (affected from 0.8.0; IBM names 1.0.0 to 1.1.0)",
          requires_version=True, ecosystem="py"),
     # mcp-atlassian 0.22.0 confined attachment upload sources with
     # `validate_safe_path`, whose boundary is `os.getcwd()`, so an SSE or HTTP server
@@ -2199,6 +2250,24 @@ _PINS: tuple[_Pin, ...] = (
     # 0.16.0, fixed, so a stated version is required.
     _Pin("AAK-MCP-HELIO-CVE-2026-65957-001", "@gethelio/proxy", ("@gethelio/proxy",),
          (0, 8, 0), fix_label="0.8.0", requires_version=True, ecosystem="js"),
+    # --- 2026-11-14 wave (deferred) ---
+    # PraisonAI's job-workflow executor runs a YAML workflow's inline `script:` steps
+    # under an AST allowlist that never looks at attribute names (CVE-2026-61438,
+    # GHSA-26mh-57q7-jfvr). The advisory names 4.6.78 as the fix, the 61427 row's
+    # floor, and that row reports every release below it for this CVE too. PyPI has no
+    # 4.6.78, and `_exec_inline_python` is byte-identical in every wheel from 4.6.81 to
+    # 4.6.102 and, from 4.6.103 to 4.7.24, in the `praisonai-code` (0.0.1 to 0.1.21)
+    # that `praisonai` requires and loads it from, so this row reports from 4.6.78 on,
+    # presence-only (#1144). `latest` (4.7.24) is affected, so an unversioned
+    # reference is reported. `praisonai-code` alone is not a name here: neither the
+    # advisory nor the CVE record names it.
+    _Pin("AAK-PRAISONAI-CVE-2026-61438-001", "praisonai", ("praisonai",), None,
+         introduced=(4, 6, 78),
+         fix_label="no fixed release (4.7.24, 2026-11-05, and `praisonai-code` 0.1.21 "
+                   "are the newest, and MervinPraison/PraisonAI#6368 is unmerged); "
+                   "leave PRAISONAI_ALLOW_JOB_WORKFLOWS unset unless every job "
+                   "workflow it runs is trusted",
+         ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

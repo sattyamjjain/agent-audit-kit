@@ -87,19 +87,39 @@ def test_no_second_pin_was_added_for_an_already_covered_package() -> None:
     for pkg in ("praisonai", "mcp-atlassian"):
         holders = [p for p in _PINS if pkg in p.names]
         keys = {(pkg, p.ecosystem) for p in holders}
-        assert len(keys) == len(holders), (
-            f"{pkg}: two pins share one (name, ecosystem) key"
-        )
+        rule_ids = [p.rule_id for p in holders]
+        assert len(set(rule_ids)) == len(rule_ids), f"{pkg}: one rule has two rows"
+        # Since 2026-11-12 one registry's package may carry two rules for two flaws
+        # (mcp-atlassian's 124503 row, 2026-11-11) or for one flaw's disjoint ranges
+        # (PyPI praisonai's CVE-2026-61438, below and from 4.6.78, #1144). What must
+        # not happen is one CVE on two rows of one key whose ranges overlap: that
+        # reports one release twice for one flaw.
+        for key in keys:
+            rows = [p for p in holders if (pkg, p.ecosystem) == key]
+            for i, a in enumerate(rows):
+                for b in rows[i + 1:]:
+                    shared = set(RULES[a.rule_id].cve_references) & set(RULES[b.rule_id].cve_references)
+                    if not shared:
+                        continue
+                    a_lo, b_lo = a.introduced or (0, 0, 0), b.introduced or (0, 0, 0)
+                    disjoint = (a.floor is not None and a.floor <= b_lo) or (
+                        b.floor is not None and b.floor <= a_lo)
+                    assert disjoint and not a.also and not b.also, (
+                        f"{pkg}: {sorted(shared)} on two overlapping rows")
 
 
-def test_the_two_praisonai_pins_are_scoped_to_different_registries() -> None:
-    """Without the scoping they would both fire on one manifest."""
+def test_the_praisonai_pins_are_scoped_to_their_registries() -> None:
+    """Without the scoping the npm pin would fire on a PyPI manifest and the PyPI
+    rows on an npm one. PyPI has two rows since 2026-11-14 (#1144): the 4.6.78 floor
+    and the presence-only CVE-2026-61438 rule from 4.6.78."""
     from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
 
-    ecosystems = sorted(
-        p.ecosystem for p in _PINS if "praisonai" in p.names
-    )
-    assert ecosystems == ["js", "py"]
+    rows = sorted((p.ecosystem, p.rule_id) for p in _PINS if "praisonai" in p.names)
+    assert rows == [
+        ("js", "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001"),
+        ("py", "AAK-MCP-PRAISONAI-CVE-2026-61427-001"),
+        ("py", "AAK-PRAISONAI-CVE-2026-61438-001"),
+    ]
 
 
 # ---------------------------------------------------------------------------

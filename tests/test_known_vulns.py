@@ -276,7 +276,8 @@ def test_the_engine_drops_this_rule_only_where_a_rule_reports_its_cves(known: ob
 
 def test_the_bundled_feed_is_osv_s_records_unedited() -> None:
     data = json.loads(advisory_feed.BUNDLED_FEED.read_text())
-    assert [r["id"] for r in data["records"]] == [VLLM, MLFLOW, "GHSA-82r6-8w77-94w6", "GHSA-5p39-cfhj-2xmp"]
+    assert [r["id"] for r in data["records"]] == [VLLM, MLFLOW, "GHSA-82r6-8w77-94w6", "GHSA-5p39-cfhj-2xmp",
+                                                  "GHSA-mf5v-w3w3-f6cg"]
     for record in data["records"]:
         assert record["schema_version"] and record["details"] and record["published"]  # as OSV returns it
     feed = advisory_feed.load_feed()

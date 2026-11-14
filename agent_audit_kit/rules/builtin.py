@@ -399,7 +399,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001": ["IVS-04", "STA-08"],
     "AAK-MCP-AGENTSCOPE-CVE-2026-123022-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-AGENTSCOPE-CVE-2026-123023-001": ["AIS-07", "STA-08"],
-    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["STA-08"],
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001": ["IAM-01", "STA-08"],
     "AAK-MCP-ATLASSIAN-CVE-2026-124503-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123811-001": ["IAM-01", "STA-08"],
     "AAK-MCP-DYNATRACE-CVE-2026-123810-001": ["AIS-07", "STA-08"],
@@ -407,12 +408,17 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001": ["AIS-07", "STA-08"],
     "AAK-MCP-FASTAGENT-CVE-2026-102610-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-PGEDGE-CVE-2026-125320-001": ["AIS-07", "IAM-01", "STA-08"],
+    "AAK-MCP-PGEDGE-CVE-2026-126199-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-PGEDGE-PLPERL-001": ["AIS-07", "STA-08"],
     "AAK-MCP-DAGU-CVE-2026-102943-001": ["AIS-07", "DSP-17", "STA-08"],
     "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
     "AAK-MCP-EZBOOKKEEPING-CVE-2026-86041-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HEYM-CVE-2026-67546-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-PRAISONAI-CVE-2026-61438-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-SIYUAN-CVE-2026-126393-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-APISIX-CVE-2026-124726-001": ["AIS-07", "IAM-01", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -433,6 +439,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-GHA-PUBLISH-GATE-001": ["STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-N8N-CVE-2026-126386-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
@@ -10706,10 +10713,10 @@ _r(
     "Actions runner. The 4.6.78 floor is the highest of the three, so a project "
     "pinned below it is exposed to all of them. CVE-2026-61438 (CVSS 7.3, "
     "GHSA-26mh-57q7-jfvr) names the same 4.6.78 as its fix: the job-workflow "
-    "executor's AST sandbox keeps `os` on its import allowlist, so the inline "
-    "`script:` step of a YAML workflow run with `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` "
-    "reaches `os.system` (the limitations say which later releases still ship it). "
-    "Default bind is 127.0.0.1, so "
+    "executor's AST sandbox lets the inline `script:` step of a YAML workflow run "
+    "with `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` reach `os`. No published release fixes "
+    "it, so this rule reports it below 4.6.78 and a presence-only rule of its own "
+    "reports the releases from 4.6.78. Default bind is 127.0.0.1, so "
     "remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
@@ -10734,7 +10741,9 @@ _r(
         # 2026-11-11 (#1144): CVE-2026-61438, the job-workflow executor's AST
         # sandbox allows `import os`. Its advisory names 4.6.78 as the fix, this
         # rule's floor, so every release it scopes already fires. No published
-        # release removes the executor, which the limitations say.
+        # release removes the executor, so from 2026-11-14 (#1144) the releases
+        # from 4.6.78 are AAK-PRAISONAI-CVE-2026-61438-001's, and each release
+        # is reported for this CVE by one rule.
         "CVE-2026-61438",
     ],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
@@ -10748,12 +10757,12 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). CVE-2026-61438 is "
-        "read as its advisory scopes it, below 4.6.78, though no release fixed it: "
-        "PyPI has no 4.6.78 (4.6.81 follows 4.6.77) and the v4.6.78 tag still allows "
-        "`os`, 4.6.81 to 4.6.102 ship the same `_exec_inline_python`, and from 4.6.103 "
-        "`praisonai` loads it from its required dependency `praisonai-code`, which this "
-        "rule does not read and whose newest release, 0.1.21, still allows `os`. Those "
-        "releases are not reported for it. A file over 2 MB, "
+        "read here below 4.6.78, as its advisory scopes it. No release fixed it: PyPI "
+        "has no 4.6.78 (4.6.81 follows 4.6.77), and 4.6.81 to 4.7.24 ship the same "
+        "`_exec_inline_python`, from 4.6.103 through the required `praisonai-code`. "
+        "Those releases are reported for it by a presence-only rule of their own, so "
+        "a reference that states no version, or a range that admits releases on both "
+        "sides of 4.6.78, gets both rules' findings. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
@@ -15957,17 +15966,21 @@ _r(
     "an adjacent network can connect as the plugin, receive the agent's task "
     "payloads and return forged results (CVE-2026-100868, CVSS 3.1 6.3, "
     "GHSA-ch2q-6x56-qg5r). The fix, commit `b5274a44` (2026-09-22), is in Penpot's "
-    "2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag yet, "
-    "and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). "
-    "npm's own 2.17.0 was published on 2026-07-08, before the fix, and still binds "
-    "every interface, so every published version is reported. The older "
-    "`@penpot/mcp` pin, for the REPL RCE fixed in 2.15.0, stays a separate rule "
-    "because that one is critical and this one is not.",
+    "2.18.0 tag and every 2.18.x tag after it, but their `mcp/package.json` still "
+    "reads 2.17.0 (penpot/penpot#12007), so npm never got a 2.18.x build. The first "
+    "`@penpot/mcp` on npm with the fix is 2.19.1 (2026-11-10), which binds the bridge "
+    "to `PENPOT_MCP_SERVER_HOST`, `localhost` by default. It is published under the "
+    "`next` dist-tag, and `latest` is still 2.15.4, which binds every interface, as "
+    "npm's 2.17.0 (2026-07-08) does. The older `@penpot/mcp` pin, for the REPL RCE "
+    "fixed in 2.15.0, stays a separate rule because that one is critical and this "
+    "one is not.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@penpot/mcp` to the first npm release built from Penpot 2.18.0 or "
-    "later once one is published, and pin it. Until then, block the plugin "
-    "WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by default) from every "
+    "Upgrade `@penpot/mcp` to 2.19.1 or later and pin that version: it is published "
+    "under the `next` dist-tag, so `npx @penpot/mcp` with no version still installs "
+    "the affected 2.15.4. Leave `PENPOT_MCP_SERVER_HOST` at `localhost` unless the "
+    "bridge must be reached from another host. Until you can upgrade, block the "
+    "plugin WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by default) from every "
     "other host, or run the server only on a machine that is not reachable from a "
     "shared network.",
     sarif_name="PenpotMcpPluginBridgeAllInterfaces",
@@ -15979,10 +15992,12 @@ _r(
         "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
         "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference "
         "is reported because what npm installs by default is affected (re-checked "
-        "2026-10-04: `latest` is 2.15.4 and `next` is 2.17.0, both without the fix). "
-        "The floor is 2.18.0, but the fixed tag's package.json reads 2.17.0 and npm "
-        "already holds a 2.17.0, so a fixed build published under a lower number "
-        "would be reported until the floor follows it. It reads the npm version, not "
+        "2026-11-14: `latest` is 2.15.4, without the fix, and the fixed 2.19.1 is "
+        "under `next`). A launch that names a dist-tag, such as `npx @penpot/mcp@next`, "
+        "states no version the rule reads and is reported, though `next` is fixed "
+        "today. The floor is 2.18.0, Penpot's fixed version; npm has no release "
+        "between 2.17.0 and 2.19.1, and a build from a Penpot 2.18.x tag calls itself "
+        "2.17.0 and would be reported. It reads the npm version, not "
         "Penpot's: a self-hosted Penpot 2.18.0 server does not clear an older "
         "`@penpot/mcp`, since the bridge runs in the MCP server. A file over 2 MB, "
         "or a lockfile over 32 MiB, is not read."
@@ -20314,16 +20329,18 @@ _r(
 
 _r(
     "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001",
-    "IBM ContextForge MCP Gateway 0.7.0 to 1.0.11: a colliding federated tool name makes tools/call fail for everyone",
+    "IBM ContextForge MCP Gateway 0.7.0 to 1.0.11: tool-name collision, cross-tenant import, DCR SSRF, token-exchange cache reuse, Admin UI XSS and schema ReDoS, fixed in 1.1.0",
     "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
-    "`ghcr.io/ibm/mcp-context-forge` image) names each tool a federated gateway brings in "
+    "`ghcr.io/ibm/mcp-context-forge` image) before 1.1.0 carries six flaws that 1.1.0 "
+    "fixes; IBM's bulletin for each names 1.0.0 through 1.0.11 and the fix as 1.1.0. "
+    "The gateway names each tool a federated gateway brings in "
     "by the gateway's slug and the tool's, and before 1.1.0 nothing checked that name "
     "against the tools already registered. A user allowed to create gateways registers "
     "one whose tool name equals an existing tool's (gateway `a` with tool `b-c` beside "
     "gateway `a-b` with tool `c`), and from then on an MCP `tools/call` for that name "
     "fails for every caller until an administrator renames or removes one of the two "
-    "(CVE-2026-18484, CVSS 3.1 6.5 from IBM, CWE-706). IBM's bulletin names 1.0.0 through "
-    "1.0.11 and the fix as 1.1.0, whose #6534 rejects a colliding name at registration, "
+    "(CVE-2026-18484, CVSS 3.1 6.5 from IBM, CWE-706). 1.1.0's #6534 rejects a colliding "
+    "name at registration, "
     "refresh, rename and visibility changes. Checked in the PyPI wheels: 1.1.0 has the "
     "check, and 1.0.11, 1.0.7.post20260921 and 1.0.0 do not. 0.7.0 builds the name with "
     "the same `slugify` and the same gateway-slug, separator and tool-slug composition as "
@@ -20331,19 +20348,73 @@ _r(
     "looks a tool up by name alone and fails on a duplicate, with `scalar_one_or_none()` "
     "before 1.0.0 and an explicit ambiguity error from 1.0.0, so 0.7.0 to 0.9.0 are "
     "reported too. 0.1.0 to 0.6.0 kept tool names unique across the database, so a "
-    "colliding registration failed instead.",
+    "colliding registration failed instead. "
+    "The configuration import (`POST /v1/import`) with `conflict_strategy=update` updates "
+    "an existing tool, resource or prompt it finds by name without checking who owns it, "
+    "so a user whose team role holds `admin.import` rewrites another tenant's public "
+    "entries, their endpoint URL, headers and credentials included, and that tenant's "
+    "later invocations go to a host the user chose (CVE-2026-110178, CVSS 3.1 4.1, "
+    "CWE-284). 0.7.0 to 0.9.0 update through `update_tool` without the caller, 1.0.0 to "
+    "1.0.11 through the bulk registration's name lookup, and 1.1.0 updates only what the "
+    "caller owns; 0.6.0 has the import but no teams. "
+    "OAuth Dynamic Client Registration, from 0.8.0, sends its registration, update and "
+    "delete requests to endpoints it reads from an authorization server's metadata "
+    "without checking them, so a user who can register gateways makes the gateway send "
+    "requests to internal hosts (CVE-2026-110194, CVSS 3.1 5.4, CWE-918); 1.1.0 requires "
+    "the issuer's origin and connects to the address it checked. "
+    "The RFC 8693 token exchange cache keys an exchanged upstream token by gateway, user "
+    "and audience only, so a credential of the same account with narrower upstream "
+    "rights, such as an API token, reuses a token that the account's session JWT "
+    "obtained (CVE-2026-110195, CVSS 3.1 5.4, CWE-287); the cache is in 1.0.7 and "
+    "1.0.11 and not in 1.0.0, and 1.1.0 adds the inbound JWT to the key. "
+    "From 0.8.0 the Admin UI writes the `error` and `success` URL parameters into its "
+    "notification banner as HTML, so an administrator who opens a crafted link runs the "
+    "sender's script in their session (CVE-2026-110199, CVSS 3.1 4.8, CWE-79; IBM "
+    "describes a mutation-XSS bypass of the client-side sanitizer); 1.1.0 shows a fixed "
+    "message for a known code, as text. "
+    "A `pattern` or `patternProperties` regular expression in a tool's JSON Schema runs "
+    "with no time bound when the gateway validates a tool's results (from 0.9.0) or "
+    "arguments (from 1.0.9) against it, so a user who registers tools stalls a worker "
+    "with a backtracking expression (CVE-2026-94407, CVSS 3.1 6.5, CWE-1333); 1.1.0 "
+    "validates a schema that holds one in a worker under a time limit.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
     "Upgrade `mcp-contextforge-gateway` to 1.1.0 or later and pin it, or run the "
-    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.0 or later. 1.1.0 refuses new "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.0 or later; 1.1.1, the current "
+    "release, also fixes three flaws 1.1.0 still has. 1.1.0 refuses new "
     "collisions but keeps duplicate rows that already exist: its release notes give the "
     "SQL that lists them, and an administrator must rename or remove one of each pair "
-    "before the name answers again. Until you upgrade, grant gateway creation only to "
-    "users you trust.",
+    "before the name answers again. Upgrading does not undo an import that already "
+    "rewrote another tenant's tools, resources or prompts, so check their endpoint URLs "
+    "and credentials. Until you upgrade, grant gateway creation only to users you "
+    "trust, keep `admin.import` for platform administrators, set `DCR_ALLOWED_ISSUERS` "
+    "to the authorization servers you trust (or `DCR_ENABLED=false`), and do not use "
+    "token exchange with `subject_token_source=inbound_user_jwt` where one account's "
+    "credentials carry different upstream rights.",
     sarif_name="ContextForgeToolNameCollision",
-    cve_references=["CVE-2026-18484"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI04", "ASI08"],
+    cve_references=[
+        "CVE-2026-18484",
+        # 2026-11-14: five more IBM records with the same fix release, 1.1.0, each
+        # MEDIUM and each inside this rule's range, so they join it rather than a
+        # second rule on the same releases. Read in the PyPI wheels of 0.6.0 to 1.1.0.
+        # CVE-2026-110178 (bulletin 7296701): the import's `update` strategy checks no
+        # owner; 1.1.0 passes the caller to the bulk registration (`user_email`).
+        "CVE-2026-110178",
+        # CVE-2026-110194 (bulletin 7296696): DCR endpoints from the authorization
+        # server's metadata go unchecked; 1.1.0's `_prepare_pinned_request`.
+        "CVE-2026-110194",
+        # CVE-2026-110195 (bulletin 7296695): `token_exchange_cache._key` is gateway,
+        # user and audience; 1.1.0 adds the subject token (`token_exchange:v2:`).
+        "CVE-2026-110195",
+        # CVE-2026-110199 (bulletin 7296694): admin.html puts `?error=` into innerHTML;
+        # 1.1.0 maps codes to fixed messages and sets textContent.
+        "CVE-2026-110199",
+        # CVE-2026-94407 (bulletin 7296667): unbounded `pattern` evaluation in schema
+        # validation; 1.1.0's `utils/safe_jsonschema.py`.
+        "CVE-2026-94407",
+    ],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI08", "ASI03"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Reads `mcp-contextforge-gateway` from 0.7.0 below 1.1.0 where a requirements*.txt "
@@ -20351,14 +20422,92 @@ _r(
         "MCP config entry, states the version, judging a range by the versions it admits. "
         "`latest` is 1.1.1, fixed, so a reference that states no version is not reported. "
         "The 1.0.0 betas and release candidates read as 1.0.0 and 1.0.7.post20260921 as "
-        "1.0.7, all inside the range. IBM's bulletin starts at 1.0.0, its supported line; "
-        "the range starts at 0.7.0, where the wheels show the precondition. It reads the "
-        "version, not who may create gateways, so a deployment where only an administrator "
-        "can is reported too. It also reads `ghcr.io/ibm/mcp-context-forge` tags from 0.7.0 "
+        "1.0.7, all inside the range. IBM's bulletins start at 1.0.0, its supported line; "
+        "the range starts at 0.7.0, where the wheels show the tool-name and import flaws, "
+        "and each later flaw is reported from 0.7.0 too, before its feature arrived (DCR "
+        "and the banner in 0.8.0, schema validation in 0.9.0, the token exchange cache "
+        "after 1.0.0 and by 1.0.7). It reads the version, not the deployment's settings "
+        "(who may create gateways or import, whether DCR or token exchange is on), so a "
+        "deployment that uses none of the affected features is reported too. It also "
+        "reads `ghcr.io/ibm/mcp-context-forge` tags from 0.7.0 "
         "below 1.1.0, with or without the `v`, in compose files, Kubernetes manifests, Helm "
-        "values, Dockerfiles and MCP configs; `latest` was the v1.1.1 digest on 2026-11-11, "
+        "values, Dockerfiles and MCP configs; `latest` was the v1.1.1 digest on 2026-11-11 "
+        "and 2026-11-14, "
         "fixed, so an untagged or `latest` reference is not reported. A file over 2 MB, or "
         "a lockfile over 32 MiB, is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# 2026-11-14: three IBM ContextForge records fixed only in 1.1.1. Two are HIGH, so they
+# cannot join the MEDIUM 1.1.0 rule above, and a floor raise there would report 1.1.0
+# under the six flaws it fixes; the MEDIUM jq record (1.0.8 to 1.1.0) shares their fix
+# and sits inside their range, so it joins this rule rather than double-reporting.
+_r(
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001",
+    "IBM ContextForge MCP Gateway 0.8.0 to 1.1.0: X-Upstream-Authorization replaces the gateway's upstream credential, identity headers skip the per-gateway setting, jq guard DoS",
+    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway` on PyPI, and the "
+    "`ghcr.io/ibm/mcp-context-forge` image) up to 1.1.0 carries three flaws that 1.1.1 "
+    "fixes. A client's `X-Upstream-Authorization` header is always renamed to "
+    "`Authorization` on the request the gateway sends upstream, after the gateway has set "
+    "the upstream credential it manages (a stored per-user OAuth token, a "
+    "client-credentials token, or the gateway's bearer, basic or custom auth headers), so "
+    "an authenticated user replaces that credential with another one and the upstream "
+    "server acts under it while the gateway's audit trail names only the user "
+    "(CVE-2026-110279, CVSS 3.1 8.1 from IBM, CWE-287). The rename arrives in 0.8.0, "
+    "always on and ahead of the `ENABLE_HEADER_PASSTHROUGH` check, and 0.7.0 has no such "
+    "header; 1.1.1 (#7341) drops it for a gateway whose auth type is `oauth`, `bearer`, "
+    "`basic` or `authheaders`. With identity propagation on, two tool invocation paths "
+    "and a resource read path build the identity headers without the gateway, so a "
+    "server whose per-gateway setting turns propagation off still receives the user's "
+    "id, email, groups and teams, and, where claims are signed, a signature over the "
+    "user id and email alone, the same on every request (CVE-2026-110278, CVSS 3.1 7.4, "
+    "CWE-294). "
+    "Identity propagation arrives in 1.0.0 (0.9.0 has none), and 1.1.1 (#7329) passes "
+    "the gateway's setting on those paths. The jq filter guard that 1.0.8 added omits "
+    "`halt`, `halt_error`, `builtins` and the unbounded-iteration built-ins (`while`, "
+    "`until`, `recurse`, `recurse_down`, `foreach`, `repeat`), so an authenticated user's "
+    "`jsonpath_filter` ends a gateway worker or keeps it busy (CVE-2026-110189, CVSS 3.1 "
+    "6.5, CWE-184); 1.0.8 to 1.1.0 carry the same guard, and 1.1.1 adds them. Checked in "
+    "the PyPI wheels of 0.7.0, 0.8.0, 0.9.0, 1.0.0, 1.0.7.post20260921, 1.0.8, 1.0.11, "
+    "1.1.0 and 1.1.1. IBM's bulletins name 1.0.0 through 1.1.0 for the first two and "
+    "1.0.8 through 1.1.0 for the third, and 1.1.1 as the fix for all three.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-contextforge-gateway` to 1.1.1 or later and pin it, or run the "
+    "`ghcr.io/ibm/mcp-context-forge` image at v1.1.1 or later. Until you can, remove the "
+    "`X-Upstream-Authorization` header from client requests at the reverse proxy in "
+    "front of the gateway's MCP endpoints, set `IDENTITY_PROPAGATION_ENABLED=false` "
+    "where any upstream server must not receive user identity, and keep the gateway "
+    "off networks you do not trust. 1.1.1 still signs identity claims over the user id "
+    "and email alone, so an upstream server should not treat the signature as proof "
+    "that a request is fresh.",
+    sarif_name="ContextForgeUpstreamCredentialOverride",
+    cve_references=["CVE-2026-110279", "CVE-2026-110278", "CVE-2026-110189"],
+    owasp_mcp_references=["MCP07:2025", "MCP01:2025", "MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads `mcp-contextforge-gateway` from 0.8.0 below 1.1.1 where a requirements*.txt "
+        "entry at any depth, or at the project root a pyproject.toml, Pipfile, lockfile or "
+        "MCP config entry, states the version, judging a range by the versions it admits. "
+        "`latest` is 1.1.1, fixed, so a reference that states no version is not reported. "
+        "The 1.0.0 betas and release candidates read as 1.0.0 and 1.0.7.post20260921 as "
+        "1.0.7, all inside the range. IBM's bulletins start at 1.0.0, its supported line; "
+        "the range starts at 0.8.0, where the wheels show the header rename, so 0.8.0 and "
+        "0.9.0 are reported under this rule's identity and jq records too, and 1.0.0 to "
+        "1.0.7 under its jq record, before those features arrived. It reads the version, "
+        "not the deployment's settings (which auth type a gateway uses, whether identity "
+        "propagation or jq filters are in use, what a proxy in front strips), so a "
+        "deployment that uses none of the affected features is reported too. It also reads "
+        "`ghcr.io/ibm/mcp-context-forge` tags from 0.8.0 below 1.1.1, with or without the "
+        "`v`, in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs; `latest` was the v1.1.1 digest on 2026-11-14, fixed, so an untagged or "
+        "`latest` reference is not reported. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
@@ -20685,11 +20834,12 @@ _r(
     "pgEdge Postgres MCP Server image below 1.1.0: read-only bypass, SQL injection through pl-do tools, DNS rebinding, a spoofable rate-limit address and a count_rows oracle",
     "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp) runs SQL against "
     "PostgreSQL for MCP clients and ships as the image `ghcr.io/pgedge/postgres-mcp`. Five "
-    "flaws are fixed in 1.1.0. GHSA-j7mp-839j-jrm7 (CVSS 3.1 8.1, CWE-693, no CVE id): on a "
-    "read-only connection a caller of the `query_database` tool could write anyway, because "
-    "a statement the guard did not take for a read went to `tx.Exec` with no bind "
-    "parameters, over the simple query protocol, so several statements, transaction control "
-    "among them, ran in one message. GHSA-r5pp-jx86-r6r9 (8.8, CWE-89, no CVE id): a custom "
+    "flaws are fixed in 1.1.0. CVE-2026-126196 (CVSS 3.1 8.1, CWE-89 and CWE-693, "
+    "GHSA-j7mp-839j-jrm7): on a read-only connection a caller of the `query_database` tool "
+    "could write anyway, because a statement the guard did not take for a read went to "
+    "`tx.Exec` with no bind parameters, over the simple query protocol, so several "
+    "statements, transaction control among them, ran in one message. CVE-2026-126197 (8.8, "
+    "CWE-89, GHSA-r5pp-jx86-r6r9): a custom "
     "`pl-do` tool put its arguments inside a `DO` block delimited by a fixed dollar-quote "
     "tag, so an argument holding that tag ran the caller's own SQL as the connecting role. "
     "CVE-2026-125320 (5.3, CWE-346, GHSA-6hg5-9f3w-c886): the HTTP transport did not check "
@@ -20704,7 +20854,8 @@ _r(
     "carries every fix (the read-only guard and `BEGIN` access mode of b5b92930, per-call "
     "dollar-quote tags, the Origin check, the client-address resolver and the subquery "
     "rejection), and every later image keeps them. 1.0.0-beta2 (6830caeb), the first image, "
-    "has the three CVE flaws but neither GHSA route: it has no custom tools, and it runs "
+    "has the three MEDIUM flaws but neither high-severity route: it has no custom tools, "
+    "and it runs "
     "each `query_database` statement with `tx.Query`, one statement per message, after "
     "`SET TRANSACTION READ ONLY`; the `tx.Exec` path and `pl-do` tools arrive in "
     "1.0.0-beta3.",
@@ -20718,11 +20869,16 @@ _r(
     "overwrites X-Forwarded-For and refuses cross-origin requests, and grant SELECT only on "
     "the tables MCP clients may read.",
     sarif_name="PgedgePostgresMcpPre110Flaws",
-    cve_references=["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"],
-    # GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9 have no CVE id. Both are fixed in
-    # 1.1.0-beta1, like the three CVEs, and both routes are in every image the rule
-    # reports but 1.0.0-beta2, which reads as 1.0.0 (the limitations say so). They
-    # make the rule HIGH; the three MEDIUM records ride along, the Langflow precedent.
+    cve_references=["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322",
+                    "CVE-2026-126196", "CVE-2026-126197"],
+    # GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9 had no CVE id when this rule shipped
+    # (0.6.35); GitHub assigned CVE-2026-126196 and CVE-2026-126197, published on
+    # 2026-11-12 (#1238, #1239), and they join `cve_references` with no range change.
+    # Both are fixed in 1.1.0-beta1, like the three earlier CVEs, and both routes are in
+    # every image the rule reports but 1.0.0-beta2, which reads as 1.0.0 (the
+    # limitations say so). They make the rule HIGH; the three MEDIUM records ride
+    # along, the Langflow precedent. The GHSA ids stay as incident references, so
+    # `aak rule lint --incident` still finds the rule by them.
     incident_references=["GHSA-j7mp-839j-jrm7", "GHSA-r5pp-jx86-r6r9"],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
@@ -20739,15 +20895,149 @@ _r(
         "it has no `custom_tool.go`, and its `query_database` uses the single-statement "
         "extended protocol; the advisories name every pre-release. `latest` was the 1.1.0 "
         "digest on 2026-11-11, so an untagged reference is not reported. The rule reads the "
-        "tag, not the transport or the configuration: GHSA-j7mp-839j-jrm7 needs a read-only "
-        "connection whose role can write, GHSA-r5pp-jx86-r6r9 a `pl-do` custom tool, "
+        "tag, not the transport or the configuration: CVE-2026-126196 needs a read-only "
+        "connection whose role can write, CVE-2026-126197 a `pl-do` custom tool, "
         "CVE-2026-125320 the HTTP transport and CVE-2026-125321 HTTP with authentication on, "
         "so a deployment that has none of these, such as a stdio one, the image's default, "
         "with no custom tools, is reported although only CVE-2026-125322 reaches it. The "
-        "write-confirmation prompts of the bundled CLI and web client are other artifacts and "
-        "not read. The release binaries and a server built from source state no version AAK "
-        "reads, and the `ghcr.io/pgedge/nla-web` client image is not matched. Mirrors under "
+        "write-confirmation prompts of the bundled CLI and web client are in their own "
+        "images, `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web`, which "
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001 reads; this rule does not match them. The "
+        "release binaries and a server built from source state no version AAK reads, and "
+        "the go.mod at every tag declares the module `pgedge-postgres-mcp`, a path no other "
+        "go.mod can require. Mirrors under "
         "another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-PGEDGE-CVE-2026-126199-001",
+    "pgEdge Postgres MCP Server's CLI and web client images below 1.1.0: database writes run without the write-confirmation prompt",
+    "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp) bundles two MCP clients "
+    "that run an LLM chat agent against it: a CLI, shipped as the image "
+    "`ghcr.io/pgedge/nla-cli`, and a web client, shipped as `ghcr.io/pgedge/nla-web`. On a "
+    "connection with `allow_writes`, each asks the user to confirm a write before the "
+    "model's tool call runs, and before 1.1.0 each decided wrongly what to ask about. "
+    "CVE-2026-126199 (CVSS 3.1 6.8, CWE-357, GHSA-5gmh-9683-hhq9): a `query_database` "
+    "statement was classified by its first keyword alone, so `SELECT ... INTO`, a "
+    "data-modifying common table expression behind a leading `WITH`, and `EXPLAIN ANALYZE` "
+    "of a write were taken for reads and ran unconfirmed. CVE-2026-126198 (3.1, CWE-357, "
+    "GHSA-v44x-hxg7-5cgc): only a tool named `query_database` was considered at all, so "
+    "custom `pl-do`, `pl-func` and writing `sql` tools ran unconfirmed. Either way a write "
+    "the model issued, for example on instructions planted in content it retrieved, ran "
+    "without the user approving it. Checked in the source at the commit each image's label "
+    "names: the prompt (`internal/chat/query_classify.go`, `web/src/utils/queryClassify.js` "
+    "and `WriteQueryConfirmDialog.jsx`) first ships in 1.0.0 (67121476), where the CLI "
+    "prompts only when the tool is `query_database` and its statement's first keyword is "
+    "not a read, and the web client the same; 1.0.0-test1 (cc13a18a) is unchanged. "
+    "1.1.0-beta1 (b971c413) carries both fixes, c86d5cbe and 310c0280: the clients "
+    "classify the statement with comments removed and literals blanked, treat those three "
+    "forms as writes, and prompt for any tool whose `readOnlyHint` annotation is false, an "
+    "annotation the server sets on writing custom tools from the same release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web` 1.1.0 or later, pinned by "
+    "version, with the server image `ghcr.io/pgedge/postgres-mcp` at 1.1.0 or later too: a "
+    "1.1.0 client treats a tool with no write annotation as read-only, and a server below "
+    "1.1.0 sets none on its custom tools. Review the database's audit logs for writes "
+    "through the MCP connection that nobody confirmed, in particular statements beginning "
+    "with `WITH`, `SELECT ... INTO` or `EXPLAIN ANALYZE` and calls to custom tools. Until "
+    "then leave `allow_writes` off, or connect with a role that has no write privileges, so "
+    "the database refuses the write whether or not a client asks.",
+    sarif_name="PgedgeNlaClientsPre110WriteConfirmation",
+    cve_references=["CVE-2026-126199", "CVE-2026-126198"],
+    owasp_mcp_references=["MCP06:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI09", "ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/pgedge/nla-cli:TAG` or `ghcr.io/pgedge/nla-web:TAG` in YAML (compose files, "
+        "Kubernetes manifests, MCP configs), a Helm values mapping of `repository` and `tag`, "
+        "Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags below 1.1.0 are reported, with the two-part `1.0`; "
+        "the 1.1.0 betas and release candidate read as 1.1.0 and carry the fixes. Every tag "
+        "before 1.0.0, from 1.0.0-alpha3, the first, to 1.0.0-beta3a, reads as 1.0.0 and is "
+        "reported, although none has a write-confirmation prompt to misjudge: from "
+        "1.0.0-beta2 an `allow_writes` connection runs every write unasked, and before it no "
+        "connection allows writes; the advisories name every pre-release. `latest` was the "
+        "1.1.0 digest of both images on 2026-11-14, so an untagged reference is not reported. "
+        "The rule reads the tag, not the configuration: a deployment whose connections all "
+        "leave `allow_writes` off is reported, although PostgreSQL's read-only transaction "
+        "refuses the writes there. A 1.1.0 client still runs a custom tool's write unasked "
+        "against a server below 1.1.0, which publishes no write annotation for custom tools; "
+        "this rule does not read the server image, and AAK-MCP-PGEDGE-CVE-2026-125320-001 "
+        "reports server tags below 1.1.0. The release archives "
+        "(`pgedge-postgres-mcp-cli_<version>_<os>_<arch>`, `pgedge-nla-web_<version>_noarch`), "
+        "the RPM and DEB packages and a client built from source state no version AAK reads. "
+        "Mirrors under another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-PGEDGE-PLPERL-001",
+    "pgEdge Postgres MCP Server image below 1.2.0: Perl code injection through the arguments of plperl and plperlu pl-do tools",
+    "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp), which ships as the image "
+    "`ghcr.io/pgedge/postgres-mcp`, runs a custom `pl-do` tool as a `DO` block in the "
+    "tool's procedural language. For `plperl` and `plperlu` it embedded the tool's "
+    "arguments, serialised to JSON, in the generated Perl as a double-quoted literal made "
+    "with Go's `%q`, which escapes double quotes and backslashes but not `$` or `@`, both of "
+    "which Perl interpolates inside double quotes. So an argument value holding an "
+    "interpolated Perl expression ran as Perl when the block did: under `plperl` it can run "
+    "any SQL the connecting role may through `spi_exec_query`, and under `plperlu` any "
+    "Perl, commands included, as the operating-system user of the database server, "
+    "whatever the transaction's read-only mode (GHSA-jf8q-vh2f-mhq4, CVSS 3.1 8.8, CWE-94, "
+    "no CVE id). It is a separate flaw from the dollar-quote injection fixed in 1.1.0, and "
+    "1.1.0 still has it. Checked in the source at the commit each image's label names: "
+    "`pl-do` tools in `plperl` and `plperlu` first ship in 1.0.0-beta3, which passes the "
+    "arguments through `%q`, as 1.0.0 (67121476) and 1.1.0 (25c2aaed) do in "
+    "`wrapPLDOPerl` and `wrapPLDOPerlu`; 1.2.0-beta1 (d3030c38), the first tag carrying "
+    "the fix (80d4c02c, 2026-11-11), embeds them through `perlSingleQuote`, a single-quoted "
+    "literal with backslashes and single quotes escaped. The advisory names 1.1.1 as the "
+    "patched release, but no 1.1.1 tag, release or image exists: on 2026-11-14 the fix is "
+    "published only in the 1.2.0-beta1 pre-release, and `latest` is the 1.1.0 image.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "On 2026-11-14 the only image with the fix is the 1.2.0-beta1 pre-release of "
+    "`ghcr.io/pgedge/postgres-mcp`: run it, or the first release that carries the fix, "
+    "pinned by version. Until then remove or disable custom `pl-do` tools written in "
+    "`plperl` or `plperlu`, or rewrite them as `pl-func` tools, which take their arguments "
+    "as a bind parameter, or leave `plperl` and `plperlu` out of the connection's "
+    "`allowed_pl_languages`. Review the database's audit logs, and for `plperlu` tools the "
+    "database server's host, for activity through the MCP connection that you did not "
+    "expect; upgrading does not say whether any happened.",
+    sarif_name="PgedgePostgresMcpPlperlArgumentInjection",
+    # GHSA-jf8q-vh2f-mhq4 has no CVE id and no NVD record on 2026-11-14, so the rule
+    # carries it as an incident reference, as the TypeScript SDK rule does
+    # GHSA-f897-62hf-6gxq, and its id names no CVE.
+    incident_references=["GHSA-jf8q-vh2f-mhq4"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-05"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/pgedge/postgres-mcp:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags below 1.2.0 are reported, from 1.0.0-beta2, the "
+        "first, with the two-part `1.0` and `1.1` and the `-with-kb` builds, and so is an "
+        "untagged or `latest` reference, since `latest` was the 1.1.0 digest on 2026-11-14; "
+        "`latest-with-kb`, the same 1.1.0 build with the knowledge base, states no version and "
+        "is not reported. AAK folds a pre-release into its release, so 1.2.0-beta1, the one "
+        "fixed image, reads as 1.2.0 and is not reported, while the 1.1.0 betas and release "
+        "candidate read as 1.1.0 and are. 1.0.0-beta2 is reported although it has no custom "
+        "tools, because it reads as 1.0.0; `pl-do` tools first ship in 1.0.0-beta3. The "
+        "advisory names 1.1.1 as the fix, and none existed on 2026-11-14: a 1.1.1 that "
+        "carries the fix reads below the floor and is reported until the floor moves, and "
+        "once `latest` moves to a fixed release an untagged reference is reported until this "
+        "rule changes. The rule reads the tag, not the configuration: the flaw needs a "
+        "`pl-do` tool in `plperl` or `plperlu`, a connection whose `allowed_pl_languages` "
+        "admits that language (the default admits only `plpgsql`) and the language installed "
+        "in the database, so a deployment with none of these is reported although the flaw "
+        "does not reach it. Tags below 1.1.0 also fire AAK-MCP-PGEDGE-CVE-2026-125320-001. The "
+        "release binaries and a server built from source state no version AAK reads. Mirrors "
+        "under another registry are not matched, and commented-out lines are skipped."
     ),
 )
 
@@ -21051,6 +21341,258 @@ _r(
         "which states no version. Tags below 0.0.75 also fire "
         "AAK-MCP-HEYM-CVE-2026-100858-001, a different flaw. Mirrors under another "
         "registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 batch, group "deferred" (#1144). PraisonAI's job-workflow sandbox
+# (CVE-2026-61438) has no fixed release: the 4.6.78 rule reports it below its
+# floor, as the advisory scopes it, and this presence-only rule reports every
+# release from 4.6.78, so each release is reported for it once. The executor is
+# PraisonAI's own workflow runner, not MCP, so no MCP area and no MCP id.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-PRAISONAI-CVE-2026-61438-001",
+    "PraisonAI 4.6.78 and later: a job workflow's inline Python step gets out of the executor's AST sandbox (no fixed release)",
+    "PraisonAI (PyPI `praisonai`, MervinPraison/PraisonAI) runs the inline `script:` "
+    "steps of a `type: job` YAML workflow through "
+    "`JobWorkflowExecutor._exec_inline_python` once `PRAISONAI_ALLOW_JOB_WORKFLOWS=true` "
+    "is set. The function checks the step's AST against an allowlist of node types and "
+    "imported module names, then runs it with a reduced set of builtins, and the check "
+    "falls short twice: the import allowlist holds `os`, and attribute access passes "
+    "with no check on the attribute's name, so a step walks from an allowed builtin to "
+    "the `builtins` module and from there to `os`. Whoever writes or changes a workflow "
+    "file that a user or a CI job runs gets commands run with that process's privileges "
+    "(CVE-2026-61438, CVSS 3.1 7.3, GHSA-26mh-57q7-jfvr). The advisory's own proof, a "
+    "plain `import os` statement, fails when it runs, since the reduced builtins lack "
+    "`__import__`; the attribute route does not need it. The advisory names 4.6.78 as "
+    "the fix, but PyPI has no 4.6.78 and no later release changes the function: it is "
+    "byte-identical in every `praisonai` wheel from 4.6.81 to 4.6.102 and, from 4.6.103 "
+    "to 4.7.24 (2026-11-05), in every release of `praisonai-code` (0.0.1 to 0.1.21), "
+    "which `praisonai` requires from 4.6.103 and loads the executor from. Releases "
+    "below 4.6.78 are reported for this CVE by the 4.6.78 PraisonAI rule, so this one "
+    "starts at 4.6.78 and each release is reported for it once.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "No release fixes this, so an upgrade does not help. Leave "
+    "`PRAISONAI_ALLOW_JOB_WORKFLOWS` unset, which keeps PraisonAI from running job and "
+    "hybrid workflows at all, unless every such workflow file it runs is written and "
+    "reviewed by people you trust; never set it in a CI job that runs workflow files "
+    "from pull requests, templates or generated output. Watch "
+    "MervinPraison/PraisonAI#6368, which blocks attribute names that start with `_`, "
+    "and pin the first `praisonai` and `praisonai-code` releases that ship a fix.",
+    sarif_name="PraisonAiJobWorkflowSandboxEscape",
+    cve_references=["CVE-2026-61438"],
+    owasp_agentic_references=["ASI05", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads `praisonai` from 4.6.78 on in requirements*.txt at any depth and, at the "
+        "project root only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock and uv.lock "
+        "lockfiles, judging a range by the versions it admits. The dependency is not "
+        "read when it is declared in a sub-directory manifest "
+        "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
+        "parse (`pdm.lock`). `latest` is 4.7.24, affected, so a reference that states no "
+        "version is reported, beside the 4.6.78 rule's finding for its own records, "
+        "and so is a range that admits releases on both sides of 4.6.78. "
+        "It reads the version, not whether the project sets "
+        "`PRAISONAI_ALLOW_JOB_WORKFLOWS` or keeps job workflows, so a project that never "
+        "runs one is reported too. From 4.6.103 the executor is installed with "
+        "`praisonai-code`, which `praisonai` requires with only a lower bound, and the "
+        "rule reads `praisonai`'s version, not `praisonai-code`'s: a `praisonai-code` "
+        "release that fixes the executor would not clear a `praisonai` reference. A "
+        "project that names only `praisonai-code` is not reported, since neither the "
+        "advisory nor the CVE record names that package, though every release of it to "
+        "0.1.21 carries the same function. npm's `praisonai` is the TypeScript framework, "
+        "another project, and is not matched. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
+        " A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 wave, group "n8n" (#1242 to #1245 and seven held VulnCheck records).
+# One new pin: n8n's MCP OAuth endpoints redirected to any registered client's URI
+# (CVE-2026-126386) and Instance AI's Browser Use served a file-reading MCP tool
+# (CVE-2026-126387), both MEDIUM and fixed in the same releases, beside the HIGH
+# 2.41.4 rule. The other nine records are workflow nodes, credentials, the
+# expression sandbox and the Docker image's GraphicsMagick, not n8n's MCP surface,
+# and AAK-KNOWN-VULN-001 reports them after `aak update`; the ledger has the reasons.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-N8N-CVE-2026-126386-001",
+    "n8n 1.120.0 to 1.123.88, 2.x below 2.45.5 and 2.46.0 (MCP OAuth open redirect, "
+    "Browser Use upload tool reads the server's files)",
+    "Two MCP-surface flaws in `n8n` (npm), fixed in the same releases and carried by one "
+    "pin. n8n's MCP server registers OAuth clients at `/mcp-oauth/register` without "
+    "authentication and with any `redirect_uri`, and `/mcp-oauth/authorize` sent the "
+    "visitor to that URI before the authorization request was checked, so a crafted link "
+    "on the instance's own host lands on an attacker's site (CVE-2026-126386, CVSS 3.1 "
+    "4.7, GHSA-rc3w-8jc8-7x3w). With Browser Use on, n8n's Instance AI assistant drives a "
+    "member's browser through `@n8n/mcp-browser` tools that n8n serves as a local MCP "
+    "server, and their `browser_upload` tool took absolute paths that Playwright resolved "
+    "on the n8n server, so a member could have any file the n8n process reads, its "
+    "configuration included, put into the page the assistant drives (CVE-2026-126387, "
+    "CVSS 3.1 5.3, GHSA-9qx8-fhxv-w794). Read in the npm releases: the MCP OAuth "
+    "endpoints first ship in 1.120.0 and Browser Use in 2.29.0; the authorization-request "
+    "check (`authorizationRequestValidator`) is absent at 1.120.0, 1.123.88, 2.0.0, "
+    "2.41.4, 2.45.4 and 2.46.0 and present at 1.123.89, 2.45.5 and 2.46.1; n8n pins "
+    "`@n8n/mcp-browser` 0.12.0 at 2.29.0 and 0.25.0 at 2.45.4 and 2.46.0, which list "
+    "`browser_upload` in remote mode, and 0.25.1 at 2.45.5 and 2.46.1, which leaves it out "
+    "there.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n` to 2.45.5 or later and pin it, or to 2.46.1 or later on the 2.46.x "
+    "line (2.46.0 is newer than 2.45.5 and still affected), or to 1.123.89 on 1.x. Until "
+    "then, block unauthenticated requests to `/mcp-oauth/register` and "
+    "`/mcp-oauth/authorize` at the reverse proxy, and leave Browser Use off "
+    "(`N8N_INSTANCE_AI_BROWSER_USE_ENABLED` unset or `false`).",
+    sarif_name="N8nMcpOAuthRedirectBrowserUploadRead",
+    cve_references=["CVE-2026-126386", "CVE-2026-126387"],
+    owasp_mcp_references=["MCP07:2025", "MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01", "ADV-INJECT-06"],
+    limitations=(
+        "Reads `n8n` in requirements*.txt at any depth and, at the project root only, in "
+        "pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, reporting a range that "
+        "admits an affected version, so `^2.45.5`, which admits 2.46.0, is reported. Only "
+        "a stated version is reported: `latest` was 2.47.7 on 2026-11-14, a fixed release. "
+        "Releases below 1.120.0 are not reported, though both records start at the first "
+        "release: they have neither the MCP OAuth endpoints nor Browser Use. 1.120.0 to "
+        "1.123.88 and 2.0.0 to 2.28.x carry only the open redirect. The rule reads the "
+        "version, not whether MCP access or Browser Use is turned on: 1.123.88 answers the "
+        "OAuth endpoints only while MCP access is enabled, and Browser Use needs "
+        "`N8N_INSTANCE_AI_BROWSER_USE_ENABLED=true`. npm has no 3.x release, so the "
+        "records' 3.0.0 is not reported. The dependency is not read when it is declared in "
+        "a sub-directory manifest (`packages/app/package.json`) or in a lockfile format the "
+        "reader does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` or "
+        "`docker.n8n.io/n8nio/n8n` image tag is not read. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read. A declaration nested more than 64 levels deep in "
+        "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 batch, group "misc" (#1237, #1246 and two held records). Two new image
+# pins: SiYuan's MCP `skill` tool downloads a skill past its SSRF guard
+# (CVE-2026-126393, below 3.8.10), and Apache APISIX's `openapi-to-mcp` plugin lets a
+# tool call reach undeclared API paths with the Route's credentials (CVE-2026-124726,
+# 3.19.0). OpenTelemetry's traceparent ReDoS (CVE-2026-126360) joins the bundled
+# advisory feed, and Opera Neon's MCP Hub (CVE-2026-123139) is out of scope; the
+# ledger has the reasons.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SIYUAN-CVE-2026-126393-001",
+    "SiYuan image from 3.7.0 below 3.8.10: the MCP skill tool's install download follows a redirect or a rebinding name to internal addresses",
+    "SiYuan (siyuan-note/siyuan), a self-hosted notes app, serves MCP from its own "
+    "kernel, and the Docker Hub image `b3log/siyuan` is how it runs on a server. Its "
+    "`skill` MCP tool has an `install` action that takes a URL (an `owner/repo` "
+    "shorthand, a GitHub URL, a raw SKILL.md URL or a release zip) and downloads it in "
+    "the kernel. `downloadSkillSource` checks the URL's host once, with "
+    "`CheckHostSSRF` when the URL is parsed, and `fetchBytes` then downloads through "
+    "`httpclient.NewBrowserRequest()`, which resolves the name again when it connects "
+    "and follows redirects without checking them, so a public URL that redirects to a "
+    "loopback, private or metadata address, or a name that re-resolves to one, reaches "
+    "internal services from the kernel (CVE-2026-126393, CVSS 3.1 6.1, CWE-918, "
+    "GHSA-6pg3-pqxw-jm82). The advisory notes that `install` is declared a local write, "
+    "so an agent steered by injected text needs a confirmation or a pre-approved "
+    "setting. Checked in the source: `kernel/mcp/tools/skill.go` with `install` and "
+    "`kernel/util/skill.go` with that `fetchBytes` ship in v3.7.0-rc.1 (`kernel/mcp` is "
+    "absent through v3.6.5) and are unchanged in that respect through v3.8.9; 3e1b977e "
+    "(\"Route skill downloads through the SSRF-safe client\", 2026-10-29) downloads "
+    "through `ssrfSafeClient`, which dials only the checked address, and checks every "
+    "redirect, in v3.8.10 and not v3.8.9.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `b3log/siyuan` v3.8.10 or later, pinned by version. Until then keep the "
+    "`skill` tool's `install` action behind a confirmation for every MCP client, and "
+    "block the kernel's egress to loopback, private and cloud metadata addresses.",
+    sarif_name="SiyuanMcpSkillInstallDownloadSsrf",
+    cve_references=["CVE-2026-126393"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`b3log/siyuan:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a "
+        "Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from v3.7.0 below v3.8.10 are reported, "
+        "pre-release tags included (v3.7.0-rc.1 reads as 3.7.0); tags below v3.7.0 "
+        "predate the MCP `skill` tool and are not. Every v3.8.10 pre-release tag was "
+        "pushed after the fix, and `latest` was the v3.8.10 image on 2026-11-14, so an "
+        "untagged reference is not reported. Tags from v3.7.0 below v3.8.7 also fire "
+        "AAK-MCP-SIYUAN-CVE-2026-116168-001, and tags from v3.8.0 below v3.8.9 "
+        "AAK-MCP-SIYUAN-CVE-2026-123492-001, different flaws; v3.8.9 fires this rule "
+        "alone. The rule reads the tag, not whether any MCP client holds a token for the "
+        "kernel or may install skills without a confirmation, so a container no agent "
+        "talks to is reported too. A desktop install, or a kernel built from source, "
+        "states no version AAK reads, and npm's and PyPI's `siyuan` are other projects. "
+        "`docker.io/b3log/siyuan` and mirrors under another registry are not matched, "
+        "and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-APISIX-CVE-2026-124726-001",
+    "Apache APISIX image 3.19.0: an openapi-to-mcp tool call can reach API paths the OpenAPI document never declared, with the Route's credentials",
+    "Apache APISIX, an API gateway, ships as the Docker Hub image `apache/apisix`. Its "
+    "`openapi-to-mcp` plugin, new in 3.19.0, serves the operations of an OpenAPI "
+    "document as MCP tools on a Route and sends each tool call to the Route's "
+    "`base_url` with the headers the Route adds, typically the upstream API's "
+    "credentials. It fills an operation's path template with the caller's path "
+    "parameters after `ngx.escape_uri`, which leaves dots alone, and checks nothing "
+    "else, so a value of `..` fills a whole segment that the receiving server resolves "
+    "away, and an encoded separator that the server decodes splits one: a caller of "
+    "the MCP endpoint reaches an endpoint the document never declared, under the "
+    "declared tool's HTTP method, with the Route's credentials (CVE-2026-124726, "
+    "CVSS 4.0 6.9, CWE-23). Checked in the source and the images: "
+    "`apisix/plugins/openapi-to-mcp` is absent at 3.18.0 and ships in 3.19.0, whose "
+    "`build_path` in `tools/handler.lua` substitutes each value with no segment check, "
+    "and the 3.19.0-debian image carries that same file; 77055643 (#14154, \"confine a "
+    "path parameter to one path segment\") refuses a value holding a separator unless "
+    "the Route sets `allow_encoded_path_separators`, and any value that leaves an empty "
+    "or dot segment, in 3.20.0 and its images.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `apache/apisix` 3.20.0 or later, pinned by version. Until then remove "
+    "`openapi-to-mcp` from Routes whose upstream credentials reach more than the "
+    "OpenAPI document declares, or scope those credentials to the declared operations.",
+    sarif_name="ApisixOpenapiToMcpPathParamTraversal",
+    cve_references=["CVE-2026-124726"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`apache/apisix:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a "
+        "Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 3.19.0 below 3.20.0 are reported, which "
+        "on Docker Hub are 3.19.0-debian, 3.19.0-ubuntu and 3.19.0-redhat; tags below "
+        "3.19.0 predate the plugin and are not. `latest` was the 3.20.0 image on "
+        "2026-11-14, so an untagged reference is not reported, nor is `dev`. A tag taken "
+        "from a variable, as in the apisix-docker example's "
+        "`${APISIX_IMAGE_TAG:-...}`, states no version AAK reads, and the official Helm "
+        "chart leaves `image.tag` empty so that its appVersion decides, which the values "
+        "file does not state. The rule reads the tag, not whether any Route enables "
+        "`openapi-to-mcp`, so a gateway with no MCP Route is reported too. An install "
+        "from the RPM or DEB packages states no version AAK reads. "
+        "`docker.io/apache/apisix` and mirrors under another registry are not matched, "
+        "and commented-out lines are skipped."
     ),
 )
 

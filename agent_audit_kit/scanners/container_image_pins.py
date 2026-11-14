@@ -43,7 +43,9 @@ installers and the image `ghcr.io/tinyhumansai/openhuman-core`; its Rust crate
 is not on crates.io, where `openhuman` is a 2023 crate of OpenHuman-ai's, and
 npm's and PyPI's `openhuman` are 2023 packages of other projects as well.
 The pgEdge Postgres MCP Server is a Go server on neither registry; it ships as
-release binaries and `ghcr.io/pgedge/postgres-mcp`. Trawl, a scraping engine with
+release binaries and `ghcr.io/pgedge/postgres-mcp`, and its two bundled MCP clients,
+an agent CLI and a web client, as `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web`.
+Trawl, a scraping engine with
 an MCP endpoint, ships as `ghcr.io/germondai/trawl`; npm's and PyPI's `trawl` are
 other projects. Dagu, a workflow engine with a built-in MCP server, ships as
 `ghcr.io/dagucloud/dagu` and as the npm launcher `@dagucloud/dagu`, which has a
@@ -51,7 +53,10 @@ row in `mcp_cve_pins_2026_07` for the same rule. ezBookkeeping, a personal finan
 app that serves MCP, is a Go server whose README runs the Docker Hub image
 `mayswind/ezbookkeeping`, tagged by release. Helio, an MCP governance proxy, ships as
 `ghcr.io/gethelio/helio` and as the npm package `@gethelio/proxy`, which has a row in
-`mcp_cve_pins_2026_07` for the same rule.
+`mcp_cve_pins_2026_07` for the same rule. Apache APISIX, an API gateway whose
+`openapi-to-mcp` plugin serves an OpenAPI document's operations as MCP tools, ships as
+the Docker Hub image `apache/apisix`, tagged `X.Y.Z-debian`, `-ubuntu` and `-redhat` by
+release, and as RPM and DEB packages; npm and PyPI have no `apisix`.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -448,12 +453,27 @@ _PINS: tuple[_ImagePin, ...] = (
     # existing tool's makes `tools/call` fail for everyone, fixed in 1.1.0 (#6534). The
     # pin table's row reads the package from 0.7.0, where tool names became unique per
     # team and owner only; the image carries 0.7.0 and v0.7.0 tags. On 2026-11-11
-    # `latest` was the v1.1.1 digest, fixed.
+    # `latest` was the v1.1.1 digest, fixed. Five MEDIUM records fixed in 1.1.0 joined
+    # the rule on 2026-11-14, so the row names them too and its range does not move.
     _ImagePin(
         "AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001", "IBM ContextForge MCP Gateway",
         "ghcr.io/ibm/mcp-context-forge",
-        (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.", ("CVE-2026-18484",),
+        (1, 1, 0), "from 0.7.0 up to 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-18484", "CVE-2026-110178", "CVE-2026-110194", "CVE-2026-110195",
+         "CVE-2026-110199", "CVE-2026-94407"),
         introduced=(0, 7, 0),
+    ),
+    # CVE-2026-110279 and CVE-2026-110278 (HIGH) and CVE-2026-110189 (MEDIUM), fixed
+    # only in 1.1.1: the pin table's row reads the package from 0.8.0, where the
+    # `X-Upstream-Authorization` rename arrives; the image carries 0.8.0 and v0.8.0
+    # tags (one digest). On 2026-11-14 `latest` was the v1.1.1 digest, whose label
+    # names the v1.1.1 tag's commit (dbc643be), fixed.
+    _ImagePin(
+        "AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001", "IBM ContextForge MCP Gateway",
+        "ghcr.io/ibm/mcp-context-forge",
+        (1, 1, 1), "from 0.8.0 up to 1.1.1", "Fixed in 1.1.1.",
+        ("CVE-2026-110279", "CVE-2026-110278", "CVE-2026-110189"),
+        introduced=(0, 8, 0),
     ),
     # Amazon's MCP Gateway & Registry (agentic-community/mcp-gateway-registry) runs
     # its registry API, and the nginx that proxies MCP traffic, in the `registry`
@@ -610,17 +630,60 @@ _PINS: tuple[_ImagePin, ...] = (
     # image) and 1.0.0 (67121476) have all three flaws; 1.1.0-beta1 (b971c413) carries
     # all three fixes (6a19e46a, 933f1b4c, 5571bd49), as rc1 and 1.1.0 (25c2aaed) do.
     # 1.0.0-test1 (cc13a18a, June) predates the fixes and reads as 1.0.0. `1.0` is the
-    # 1.0.0 digest; `latest` was the 1.1.0 digest on 2026-11-11. GHSA-j7mp-839j-jrm7
-    # (read-only bypass through `tx.Exec`) and GHSA-r5pp-jx86-r6r9 (pl-do dollar-quote
-    # injection), HIGH and with no CVE id, are fixed in 1.1.0-beta1 too and make the rule
-    # HIGH; 1.0.0-beta2 has neither route but reads as 1.0.0.
+    # 1.0.0 digest; `latest` was the 1.1.0 digest on 2026-11-11 and 2026-11-14.
+    # CVE-2026-126196 (GHSA-j7mp-839j-jrm7, read-only bypass through `tx.Exec`) and
+    # CVE-2026-126197 (GHSA-r5pp-jx86-r6r9, pl-do dollar-quote injection), HIGH, are
+    # fixed in 1.1.0-beta1 too and make the rule HIGH; 1.0.0-beta2 has neither route but
+    # reads as 1.0.0. Their CVE ids were published on 2026-11-12, after this row shipped
+    # under the GHSA ids, and join it with no range change.
     _ImagePin(
         "AAK-MCP-PGEDGE-CVE-2026-125320-001", "pgEdge Postgres MCP Server",
         "ghcr.io/pgedge/postgres-mcp",
         (1, 1, 0), "below 1.1.0",
-        "Fixed in 1.1.0, as are GHSA-j7mp-839j-jrm7 (read-only bypass) and "
-        "GHSA-r5pp-jx86-r6r9 (SQL injection through pl-do tools).",
+        "Fixed in 1.1.0, as are CVE-2026-126196 (GHSA-j7mp-839j-jrm7, read-only bypass) and "
+        "CVE-2026-126197 (GHSA-r5pp-jx86-r6r9, SQL injection through pl-do tools).",
         ("CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"),
+    ),
+    # --- 2026-11-14 batch (pgedge) ---
+    # pgEdge's two bundled MCP clients: CVE-2026-126199 (the write-confirmation prompt
+    # classified a `query_database` statement by its first keyword, so `SELECT ... INTO`,
+    # a data-modifying CTE and `EXPLAIN ANALYZE` of a write ran unasked) and
+    # CVE-2026-126198 (only `query_database` was ever prompted for, so writing custom
+    # tools ran unasked), both fixed in 1.1.0, one rule at the higher record's MEDIUM.
+    # The images are built from the same commits as the server's, and their labels name
+    # them: the prompt is absent at 1.0.0-beta3a (f1bb9986) and earlier and first ships in
+    # 1.0.0 (67121476); 1.0.0-test1 (cc13a18a, June) predates both fixes; 1.1.0-beta1
+    # (b971c413) carries both (c86d5cbe, 310c0280). Every tag from 1.0.0-alpha3, the
+    # first, reads as 1.0.0. `1.0` is the 1.0.0 digest; `latest` and `1.1` were the
+    # 1.1.0 digest of both images on 2026-11-14.
+    _ImagePin(
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001", "pgEdge NLA CLI client",
+        "ghcr.io/pgedge/nla-cli",
+        (1, 1, 0), "below 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-126199", "CVE-2026-126198"),
+    ),
+    _ImagePin(
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001", "pgEdge NLA web client",
+        "ghcr.io/pgedge/nla-web",
+        (1, 1, 0), "below 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-126199", "CVE-2026-126198"),
+    ),
+    # pgEdge server: GHSA-jf8q-vh2f-mhq4 (no CVE id), a `plperl` or `plperlu` pl-do tool
+    # embeds its JSON arguments in the Perl through Go's `%q`, a double-quoted literal in
+    # which Perl interpolates `$` and `@`. The tools first ship in 1.0.0-beta3; 1.0.0
+    # (67121476) and 1.1.0 (25c2aaed) still use `%q`; 80d4c02c (`perlSingleQuote`) is in
+    # 1.2.0-beta1 (d3030c38) and in no other tag. The advisory names 1.1.1, which has no
+    # tag, release or image on 2026-11-14, so the floor is 1.2.0: 1.2.0-beta1 folds into
+    # 1.2.0 and is not reported. `latest` and `1.1` were the 1.1.0 digest on 2026-11-14,
+    # so `latest` is affected. A different flaw above the 1.1.0 rule's floor, so its own
+    # rule.
+    _ImagePin(
+        "AAK-MCP-PGEDGE-PLPERL-001", "pgEdge Postgres MCP Server",
+        "ghcr.io/pgedge/postgres-mcp",
+        (1, 2, 0), "below 1.2.0",
+        "Fixed only in the 1.2.0-beta1 pre-release; the advisory names 1.1.1, which was not "
+        "published, and `latest` is the 1.1.0 image.",
+        ("GHSA-jf8q-vh2f-mhq4",), floating_affected=True,
     ),
     # Dagu: CVE-2026-102943, the MCP `dagu_read` dag_spec target reads YAML files
     # outside the DAG directories. `internal/service/mcp/server.go` is absent at
@@ -683,6 +746,37 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-HELIO-CVE-2026-65957-001", "Helio", "ghcr.io/gethelio/helio",
         (0, 8, 0), "below 0.8.0", "Fixed in 0.8.0.",
         ("CVE-2026-65957",),
+    ),
+    # --- 2026-11-14 wave (misc) ---
+    # SiYuan: CVE-2026-126393, the MCP `skill` tool's `install` action downloads a skill
+    # with a client that follows redirects and resolves the host again at connect time,
+    # after a parse-time hostname check, so a redirect or a rebinding name reaches
+    # loopback and metadata addresses. `kernel/mcp/tools/skill.go` (with `install`) and
+    # `kernel/util/skill.go` (`fetchBytes` on `httpclient.NewBrowserRequest()`) arrive in
+    # v3.7.0-rc.1 (`kernel/mcp` is absent through v3.6.5) and are unchanged in that
+    # respect through v3.8.9; 3e1b977e (2026-10-29) moves the download onto
+    # `ssrfSafeClient` with a redirect check, in v3.8.10-alpha.1 and later and not v3.8.9.
+    # Every v3.8.10 pre-release tag was pushed after the fix; `latest` was the v3.8.10
+    # digest on 2026-11-14. A different flaw from the two SiYuan rows above.
+    _ImagePin(
+        "AAK-MCP-SIYUAN-CVE-2026-126393-001", "SiYuan", "b3log/siyuan",
+        (3, 8, 10), "from 3.7.0 below 3.8.10", "Fixed in 3.8.10.",
+        ("CVE-2026-126393",), introduced=(3, 7, 0),
+    ),
+    # Apache APISIX: CVE-2026-124726, the `openapi-to-mcp` plugin fills an OpenAPI path
+    # template with the caller's path parameters, and a value of `..` (which
+    # `ngx.escape_uri` leaves alone) or a separator the upstream decodes moves the request
+    # to a path the document never declared, sent with the Route's own credentials.
+    # The plugin is absent at 3.18.0 and ships in 3.19.0; 77055643 (#14154, 2026-11-06)
+    # confines each value to one path segment, in 3.20.0 and not 3.19.0. Docker Hub tags
+    # releases `X.Y.Z-debian`, `-ubuntu` and `-redhat`, with no two-part tags; the
+    # handler in the 3.19.0-debian image is byte-identical to the 3.19.0 tag's, and the
+    # 3.20.0-debian image's to the 3.20.0 tag's. `latest` was the 3.20.0-ubuntu build on
+    # 2026-11-14.
+    _ImagePin(
+        "AAK-MCP-APISIX-CVE-2026-124726-001", "Apache APISIX", "apache/apisix",
+        (3, 20, 0), "from 3.19.0 below 3.20.0", "Fixed in 3.20.0.",
+        ("CVE-2026-124726",), introduced=(3, 19, 0),
     ),
 )
 

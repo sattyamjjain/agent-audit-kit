@@ -18,6 +18,699 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-14 (unreleased): #1238 to #1241 and a fifth pgEdge advisory, two records on the server image rule, a new rule for its bundled clients and one for plperl tools
+
+The watcher filed #1238 to #1241 on 12 Nov: four records GitHub's CNA published for the pgEdge
+Postgres MCP Server, each fixed in 1.1.0. Each is read here against NVD's API record, its CVE
+record, the repository's advisory, OSV, the published images and the source at each git tag, all
+on 2026-11-14, and NVD text is quoted from the API records. The server is Go, on neither npm nor
+PyPI. Its go.mod declares the module `pgedge-postgres-mcp`, and `go get` of the repository's path
+fails because the declared path differs, so no go.mod can require it. Each release ships archives
+and three GHCR images built from one commit, which their labels name: the server,
+`ghcr.io/pgedge/postgres-mcp`, and the two MCP clients the project bundles, the agent CLI
+`ghcr.io/pgedge/nla-cli` and the web client `ghcr.io/pgedge/nla-web`. Docker Hub has none of the
+three. NVD's CNA data names the product with a bare range and no packageURL, so `nvd_feed` keeps
+none of the four; OSV holds each only as an NVD import with git ranges, and the bundled advisory
+feed holds none, so only the image rules report them. Each claim is measured with the scanner on
+a firing fixture and a negative one (tests/test_cve_batch_2026_11_14_pgedge.py). Reading the
+repository's advisories turned up a fifth, GHSA-jf8q-vh2f-mhq4, which has no CVE id and which the
+watcher has not filed; it affects 1.1.0, the newest release, and gets a rule of its own.
+
+### CVE-2026-126196 (#1238) and CVE-2026-126197 (#1239): on the pgEdge server rule 2026-11-14
+
+**The two server records join `AAK-MCP-PGEDGE-CVE-2026-125320-001`, the image
+`ghcr.io/pgedge/postgres-mcp` below 1.1.0, HIGH, with no range change.** NVD on CVE-2026-126196:
+"Prior to 1.1.0, query_database on a read_only connection could send unrecognized statements
+through pgx Exec without bind parameters, selecting PostgreSQL's simple query protocol and
+allowing multiple semicolon-separated statements in one request." On CVE-2026-126197: "Prior to
+1.1.0, custom pl-do tools interpolated JSON arguments into a PostgreSQL DO block delimited by
+fixed dollar-quote tags." Their CVE records cite GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9, the
+two advisories the 0.6.35 section below put on that rule while they had no CVE id, and GitHub's
+advisory API now gives each its CVE id. The rule has reported every affected tag since 0.6.35, so
+only its references change. Re-read in the source today: 1.0.0 (67121476) sends a statement it
+does not take for a read, on a read-only connection, to `tx.Exec` after a separate
+`SET TRANSACTION READ ONLY`, and puts a `pl-do` tool's arguments inside a fixed dollar-quote tag;
+1.1.0-beta1 (b971c413) sets the access mode on `BEGIN`, sends read-only statements through
+`tx.Query` and draws the tags per call (`newDollarQuoteTags`). The `tx.Exec` path and `pl-do`
+tools both first ship in 1.0.0-beta3, so 1.0.0-beta2, the first image, has neither route, reads as
+1.0.0 and is reported, as the rule already says. `latest` and `1.1` were the 1.1.0 digest on
+2026-11-14. The rule's description, limitations and evidence now name both CVE ids beside their
+GHSA ids, which stay as incident references.
+
+### CVE-2026-126199 (#1241) and CVE-2026-126198 (#1240): new image pin 2026-11-14
+
+**The bundled clients get `AAK-MCP-PGEDGE-CVE-2026-126199-001`: the images
+`ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web` below 1.1.0, MEDIUM.** NVD on
+CVE-2026-126199: "Prior to 1.1.0, the bundled CLI and web clients classified query_database
+statements only by their first keyword before deciding whether to display a write
+confirmation." On CVE-2026-126198, the clients "decided whether to request write confirmation by
+checking only for the query_database tool name instead of server-published write annotations."
+Both clients run an LLM agent against the server over MCP, and on a connection with
+`allow_writes` each asks the user before a write the model requests. GHSA-5gmh-9683-hhq9 lists
+`SELECT ... INTO`, a data-modifying common table expression behind a leading `WITH`, and
+`EXPLAIN ANALYZE` of a write as statements taken for reads that ran unasked, and
+GHSA-v44x-hxg7-5cgc custom `pl-do`, `pl-func` and writing `sql` tools, which were never asked
+about. The vendor calls the prompt a feature of the bundled clients and not a server control,
+since any other MCP client holding a token calls the same tools unprompted. It is still the human
+approval step of an agent, the step a model steered by retrieved content gets past, so it is in
+scope as an approval bypass in an agent client, as Codex's parser desync and obsidian-tc's
+declined elicitation were, and the artifact a deployment names is the client image. The server
+image holds neither client, so the records cannot join the HIGH server rule without reporting
+client images under server flaws they do not have; they get a rule of their own at
+CVE-2026-126199's MEDIUM.
+
+Checked in the source at the commit each image's label names. No tag before 1.0.0 has the prompt:
+`internal/chat/query_classify.go`, `web/src/utils/queryClassify.js` and
+`WriteQueryConfirmDialog.jsx` are absent at 1.0.0-beta3a (f1bb9986). 1.0.0 (67121476) adds them,
+and both clients prompt only for `query_database`, and only when the statement's first keyword is
+not a read; 1.0.0-test1 (cc13a18a, June) is the same. The fixes, c86d5cbe (#198, 28 Jul) and
+310c0280 (#233, 7 Aug), are both in 1.1.0-beta1 (b971c413), which classifies the statement with
+comments removed and literals blanked, and prompts for any tool whose `readOnlyHint` is false. The
+CVE-2026-126198 fix needs the server too: a 1.1.0 client treats a tool with no annotation as
+read-only, and only a 1.1.0 server annotates writing custom tools. So the remediation says to run
+all three images at 1.1.0, and the limitations say a 1.1.0 client beside an older server is left
+to the server rule. The two records cover the same releases with the same fix, so the LOW one
+joins the MEDIUM rule, whose range covers every release it affects. The image tags start at
+1.0.0-alpha3, and every pre-release reads as 1.0.0. From 1.0.0-beta2 they run every write on an
+`allow_writes` connection unasked, and before it no connection allows writes, so none has a prompt
+to misjudge; the advisories name every pre-release, and the rule reports them and says so.
+`latest` and `1.1` were the 1.1.0 digest of both images on 2026-11-14, so an untagged reference,
+the deploy guide's own, is not reported. The rule reads the tag, not `allow_writes`, so a
+deployment that never enables writes is reported though PostgreSQL refuses the writes there.
+
+### GHSA-jf8q-vh2f-mhq4 (not filed): new image pin 2026-11-14
+
+**Perl code injection through `plperl` and `plperlu` tools gets `AAK-MCP-PGEDGE-PLPERL-001`: the
+image `ghcr.io/pgedge/postgres-mcp` below 1.2.0, `latest` included, HIGH.** The repository
+advisory, published on 11 Nov with no CVE id and no NVD record: a custom `pl-do` tool written in
+`plperl` or `plperlu` embedded its JSON arguments in the generated Perl as a double-quoted literal
+made with Go's `%q`, which escapes double quotes and backslashes but not `$` or `@`, so an argument
+value holding an interpolated expression ran as Perl. Under `plperl` that code can run any SQL the
+connecting role may; under `plperlu` it runs as the database server's operating-system user,
+commands included, whatever the transaction's read-only mode. It is a separate flaw from
+CVE-2026-126197, the dollar-quote injection fixed in 1.1.0, and 1.1.0 still has it. The advisory
+gives "<= 1.1.0" and names 1.1.1 as patched, but no 1.1.1 tag, release, branch or image exists on
+2026-11-14. Checked in the source at the commit each image's label names: `pl-do` tools in both
+Perl languages first ship in 1.0.0-beta3, whose wrapper passes the arguments through `%q`; 1.0.0
+(67121476) and 1.1.0 (25c2aaed) do the same in `wrapPLDOPerl` and `wrapPLDOPerlu`; the fix,
+80d4c02c (11 Nov, `perlSingleQuote`, a single-quoted literal with backslashes and single quotes
+escaped), is in 1.2.0-beta1 (d3030c38) and in no other tag. So the floor is 1.2.0: AAK folds a
+pre-release into its release, 1.2.0-beta1 reads as 1.2.0 and is not reported, and the 1.1.0 betas
+and release candidate read as 1.1.0 and are. `latest` and `1.1` were the 1.1.0 digest on
+2026-11-14, so an untagged reference is reported too; `latest-with-kb`, the same build, states no
+version and is not. The 1.1.0 rule is HIGH too, but raising its floor would report the 1.1.0
+releases under five flaws they do not have, so this is a rule of its own, and tags below 1.1.0 fire
+both. The flaw needs a `pl-do` tool in a Perl
+language that the connection's `allowed_pl_languages` admits (the default admits only `plpgsql`);
+the rule reads the tag, not that configuration, and says so, and it says that a 1.1.1 carrying the
+fix would be reported until the floor moves. HIGH, from GitHub's CVSS 3.1 8.8. OSV has no record,
+and nothing names a package a feed can match.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126196 | 8.1 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-j7mp-839j-jrm7. | #1238 |
+| CVE-2026-126197 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-r5pp-jx86-r6r9. | #1239 |
+| CVE-2026-126198 | 3.1 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-126199-001`, reported at MEDIUM: the same tags, below 1.1.0. | #1240 |
+| CVE-2026-126199 | 6.8 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-CVE-2026-126199-001` (MEDIUM): tags below 1.1.0, beside the HIGH server rule. | #1241 |
+| GHSA-jf8q-vh2f-mhq4 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-PLPERL-001` (HIGH): tags below 1.2.0, `latest` included; the fix is published only in the 1.2.0-beta1 pre-release, which is not reported. | not filed |
+
+A GHSA id stands in the CVE column where the advisory has no CVE id. CVSS is each record's CVSS
+3.1 score from GitHub, which NVD carries as its only metric for the four CVEs.
+
+## 2026-11-14 (unreleased): eight held IBM ContextForge records, a new rule for three fixed in 1.1.1, five more on the 1.1.0 rule
+
+IBM published eight ContextForge MCP Gateway records on 13 Nov, each with a security
+bulletin that names the fixed release, and the watcher held all eight behind its cap. Each
+is read here against NVD's API record, its CVE record, IBM's bulletin, OSV and the PyPI
+wheels of `mcp-contextforge-gateway` 0.5.0, 0.6.0, 0.7.0, 0.8.0, 0.9.0, 1.0.0, 1.0.7,
+1.0.7.post20260921, 1.0.8, 1.0.9, 1.0.11, 1.1.0 and 1.1.1, all on 2026-11-14, and NVD text is
+quoted from the API records. NVD has all eight awaiting analysis, with IBM's CVSS 3.1 score
+as the Primary metric and no CPE configuration. The project's repository has no advisory for
+any of them, OSV has no record of any and none for the package at 1.0.11 or 1.1.0, and IBM's
+CNA data names the product with a bare version range and no packageURL, which no reviewed
+row of the CNA map maps, so the advisory feed holds none of them, after `aak update` either.
+Five are MEDIUM, fixed in 1.1.0 and inside the range of the 1.1.0 rule, so they join it;
+three are fixed only in 1.1.1, two of them HIGH, and get a rule of their own. Each is
+measured with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_14_contextforge.py).
+
+### CVE-2026-110279, CVE-2026-110278 and CVE-2026-110189 (not filed): new pin 2026-11-14
+
+**IBM ContextForge gets `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001`: PyPI
+`mcp-contextforge-gateway` and the `ghcr.io/ibm/mcp-context-forge` image from 0.8.0 below
+1.1.1, HIGH.** NVD, CVE-2026-110279: "IBM ContextForge MCP Gateway 1.0.0 through 1.1.0 is
+vulnerable to improper credential handling because the X-Upstream-Authorization request
+header can override the gateway-managed upstream credential for OAuth (authorization_code
+and client_credentials), bearer and basic authenticated gateways." IBM's bulletin (node
+7296490) gives CVSS 3.1 8.1, names v1.1.1 as the fix and cites IBM/mcp-context-forge#7341.
+The gateway builds the upstream request's headers from the credential it manages, a stored
+per-user OAuth token, a client-credentials token or the gateway's bearer, basic or custom
+headers, and then `get_passthrough_headers` renames a client's `X-Upstream-Authorization` to
+`Authorization` over it, ahead of the `ENABLE_HEADER_PASSTHROUGH` check, so an authenticated
+user makes the upstream server act under a credential of their choosing while the gateway's
+audit trail names only them. Checked in the wheels: the rename is in 0.8.0, 0.9.0, 1.0.0,
+1.0.7.post20260921, 1.0.11 and 1.1.0, and 0.8.0's tool invocation sets the gateway's OAuth or
+stored credential and then calls it with the client's headers; 0.7.0 has no such header;
+1.1.1 drops it for a gateway whose auth type is `oauth`, `bearer`, `basic` or `authheaders`
+and logs a warning. #7341 merged on 3 Nov and is in v1.1.1 and not in v1.1.0.
+
+NVD, CVE-2026-110278: "IBM ContextForge MCP Gateway 1.0.0 through 1.1.0 could allow an
+attacker to replay identity propagation claims signatures or expose sensitive user identity
+information to third-party MCP servers due to static signature payloads and missing
+per-gateway configuration checks during tool invocation." IBM's bulletin (node 7296489)
+gives CVSS 3.1 7.4, names v1.1.1 and cites #7329. With identity propagation on, two tool
+invocation paths and a resource read path call `build_identity_headers` without the gateway,
+so a server whose per-gateway setting turns propagation off still receives the user's id,
+email, groups and teams, and, where claims are signed, an HMAC over the user id and email
+alone. Checked in the wheels: identity propagation and its per-gateway column arrive in
+1.0.0, and 0.9.0 has neither; 1.0.0 to 1.1.0 have the calls without the gateway, and 1.1.1
+passes the gateway's setting on all three. 1.1.1 still signs only the user id and email;
+#7329's timestamp binding is for the webhook notification plugin's HMAC, outside the
+package and off by default (`hmac_include_timestamp`). The rule's remediation says not to
+take the identity signature as proof that a request is fresh.
+
+NVD, CVE-2026-110189: "IBM ContextForge MCP Gateway 1.0.8 through 1.0.11, and v1.1.0 is
+vulnerable to denial of service due to an incomplete denylist in the jq filter guard module
+(CWE-184)." IBM's bulletin (node 7296697) gives CVSS 3.1 6.5 and names v1.1.1. 1.0.8 added
+`utils/jq_guard.py` (1.0.7 has no guard, the gap CVE-2026-18486 named, below the 1.0.9
+rule's floor), and its denylist is the same file in 1.0.8, 1.0.9, 1.0.11 and 1.1.0; 1.1.1
+adds `halt`, `halt_error`, `builtins` and `while`, `until`, `recurse`, `recurse_down`,
+`foreach` and `repeat`. 1.0.7.post20260921 has no guard either.
+
+All three are fixed only in 1.1.1, above the 1.1.0 floor of
+`AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001`, a MEDIUM rule, so raising that floor would report
+1.1.0 under the six flaws it fixes, and two of the three are HIGH; they get a rule of their
+own at HIGH, as Penpot's bridge CVE did beside its CRITICAL pin. The jq record is MEDIUM but
+shares the fix and sits inside the range, so it joins the HIGH rule, as Langflow's lower
+records did, rather than a second rule reporting 1.0.8 to 1.1.0 twice. The range starts at
+0.8.0, where the wheels show the header rename, as the 1.1.0 rule's starts where the wheels
+show its precondition; IBM's bulletins start at 1.0.0, its supported line, and the rule's
+text says 0.8.0 and 0.9.0 are reported under the identity and jq records too. An image row
+reads tags from 0.8.0 below 1.1.1; on 2026-11-14 `latest` was the v1.1.1 digest, whose label
+names the v1.1.1 tag's commit (dbc643be), fixed, and PyPI's `latest` is 1.1.1, so a stated
+version is required. IBM's workaround until the upgrade, removing the header at a reverse
+proxy and setting `IDENTITY_PROPAGATION_ENABLED=false`, is in the remediation.
+
+### CVE-2026-110178, CVE-2026-110194, CVE-2026-110195, CVE-2026-110199 and CVE-2026-94407 (not filed): on the 1.1.0 rule 2026-11-14
+
+**Five MEDIUM records fixed in 1.1.0 join `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001`, 0.7.0
+below 1.1.0, MEDIUM.** Each bulletin names 1.0.0 through 1.0.11 and the fix as v1.1.0, the
+release that fixed CVE-2026-18484, and each flaw sits inside that rule's range, so a second
+rule would report the same releases twice. The rule's title, description, remediation,
+`cve_references` and image evidence now name all six, its range does not move, and it maps
+to MCP07 and ASI03 as well.
+
+NVD, CVE-2026-110178: "A remote authenticated attacker holding a team-scoped `admin.import`
+permission can overwrite the endpoint URL, request headers, and authentication credentials
+of public tools, resources, and prompts owned by other tenants by sending a crafted POST
+request to `/v1/import` with `conflict_strategy=update`." Bulletin 7296701, CVSS 3.1 4.1. In
+1.0.0 to 1.0.11 the import's bulk registration finds a public entry by name and updates it
+with no owner check; 1.1.0 passes the importing user and updates only what they own. 0.7.0
+to 0.9.0 update a conflicting tool through `update_tool` without the caller, which skips
+the owner check too, and 0.6.0 has the import but no teams, so no other tenant.
+
+NVD, CVE-2026-110194: "IBM ContextForge MCP Gateway 1.0.0 through 1.0.11 is vulnerable to
+server-side request forgery (SSRF)." Bulletin 7296696, CVSS 3.1 5.4, says the endpoints
+Dynamic Client Registration reads from an authorization server's metadata are not checked
+before the gateway sends requests to them. `dcr_service.py` arrives in 0.8.0, and 0.8.0,
+1.0.0 and 1.0.11 post to the metadata's `registration_endpoint` as they read it; 1.1.0
+requires the issuer's origin, checks the URL against the outbound policy and connects to
+the address it resolved.
+
+NVD, CVE-2026-110195: "an insufficiently specific cache key in the RFC 8693 token exchange
+cache, enabling reuse of cached upstream bearer tokens across different credentials
+belonging to the same user." Bulletin 7296695, CVSS 3.1 5.4. `token_exchange_cache.py` is in
+1.0.7 and 1.0.11 and not in 1.0.0, and keys a token by gateway, user and audience; 1.1.0 adds
+the inbound JWT to the key.
+
+NVD, CVE-2026-110199: "IBM ContextForge MCP Gateway 1.0.0 through 1.0.11 is vulnerable to
+cross-site scripting." Bulletin 7296694, CVSS 3.1 4.8, describes a mutation-XSS bypass of the
+client-side sanitizer in the dashboard's notifications, which come from the page URL. From
+0.8.0 `admin.html` decodes the `error` and `success` parameters into the banner's
+`innerHTML` (0.7.0 has no such banner); 1.1.0 maps an error code to a fixed message and sets
+it as text.
+
+NVD, CVE-2026-94407: "An authenticated user with tool-registration privileges can embed
+catastrophically backtracking regex patterns in a tool's JSON Schema `pattern` field."
+Bulletin 7296667, CVSS 3.1 6.5. The gateway validates a tool's results against its output
+schema from 0.9.0 (0.8.0 does not) and its arguments against its input schema from 1.0.9,
+with no time bound; 1.1.0's `utils/safe_jsonschema.py` validates a schema that holds a
+`pattern` or `patternProperties` in a worker under a time limit. 0.6.0 and older build each
+prompt's argument schema themselves, with no pattern.
+
+The 1.1.0 rule therefore reports DCR, the banner and the token cache from 0.7.0 and schema
+validation from 0.7.0 too, before those features arrived; its limitations say so, as the
+1.0.9 rule's text says which of its records reach which releases. Measured with the scanner:
+1.0.9 and 1.0.11 in a requirements file and the v1.0.0 and v1.0.11 image tags fire the rule,
+and 1.1.0 and v1.1.0 do not; 1.1.0 still gets the new HIGH rule above. IBM's workarounds (keep `admin.import` for platform
+administrators, `DCR_ALLOWED_ISSUERS` or `DCR_ENABLED=false`, no token exchange from the
+inbound user JWT across credentials with different upstream rights) are in the remediation.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-110279 | 8.1 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **New pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): 0.8.0 up to 1.1.1, a stated version required. | not filed |
+| CVE-2026-110278 | 7.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **On the new pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): fixed in 1.1.1; identity propagation arrives in 1.0.0. | not filed |
+| CVE-2026-110189 | 6.5 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **On the new pin** `AAK-MCP-CONTEXTFORGE-CVE-2026-110279-001` (HIGH): 1.0.8 to 1.1.0, fixed in 1.1.1, inside its range. | not filed |
+| CVE-2026-110178 | 4.1 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110194 | 5.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110195 | 5.4 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-110199 | 4.8 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+| CVE-2026-94407 | 6.5 | `mcp-contextforge-gateway` (PyPI), `ghcr.io/ibm/mcp-context-forge` (image) | **Joins** `AAK-MCP-CONTEXTFORGE-CVE-2026-18484-001` (MEDIUM), no range change: fixed in 1.1.0. | not filed |
+
+CVSS is each record's CVSS 3.1 score from IBM, NVD's Primary metric, and the same score
+IBM's bulletin states.
+
+## 2026-11-14 (unreleased): the six dated deferrals and Penpot's npm fix, one new pin, five out of scope
+
+Six issues carried `cve-deferred` with a 2026-11-25 target: #850, #1097, #1107, #1110, #1114
+and #1144. Each is re-read here against NVD's API record, its CVE record, OSV, the upstream
+repository and the registries, all on 2026-11-14, and NVD text is quoted from the API
+records, none of which has changed since its last disposition. Under Sattyam's ruling for this
+batch, a record that would be deferred again only because no release exists is closed out of
+scope with a row, and reopened if one ships; the sections that deferred them stand as dated
+facts. PraisonAI's job-workflow sandbox gets a new pin, measured with the scanner on firing
+fixtures and negative ones (tests/test_cve_batch_2026_11_14_deferred.py), and five records
+are out of scope. Penpot's bridge rule from 0.6.14 is re-pointed at the npm release that
+carries its fix (#872).
+
+### CVE-2026-61438 (#1144): new pin 2026-11-14
+
+**PraisonAI's job-workflow sandbox gets `AAK-PRAISONAI-CVE-2026-61438-001`: PyPI `praisonai`
+from 4.6.78, every release, presence-only, HIGH.** NVD: "PraisonAI before 4.6.78 contains a
+remote code execution vulnerability in JobWorkflowExecutor._exec_inline_python() due to
+insufficient AST validation of workflow script steps." The 2026-11-11 section put the record
+on `AAK-MCP-PRAISONAI-CVE-2026-61427-001` for the range its advisory gives, below 4.6.78, and
+left the later releases unreported, because no published release fixes it; Sattyam ruled to
+report them. Checked in every PyPI wheel of `praisonai` from 4.6.70 to 4.7.24 (87 releases)
+and of `praisonai-code` from 0.0.1 to 0.1.21 (86), each against its PyPI SHA-256:
+`_exec_inline_python` is byte-identical in `praisonai` from 4.6.70 to 4.6.102 (PyPI has no
+4.6.78 to 4.6.80); from 4.6.103 the `praisonai` wheel carries no copy, requires
+`praisonai-code` (from 4.6.108 with a lower bound only, `>=0.1.21` in 4.7.24) and loads the
+executor from it; and every `praisonai-code` release has the same function. Its import
+allowlist holds `os` in all of them.
+OSV has no record for `praisonai` at 4.6.81 or 4.7.24, or for `praisonai-code` at 0.1.21.
+MervinPraison/PraisonAI#6368, opened on 14 Nov and unmerged, is the first change to the
+function.
+
+The advisory's proof does not run as written. Its `import os` step passes the AST check, but
+the step runs with builtins that leave out the import function, so the statement fails;
+reproduced on Python 3.9 and 3.12 with a namespace built as the wheel builds it, never with
+the wheel's own code. The sandbox is broken all the same: attribute access passes with no
+check on the attribute's name, and the attributes of an allowed builtin lead to the
+`builtins` module and from it to `os`, the route #6368 describes and blocks. So the record
+stands, and the new rule's text describes the route that works. The floor rule's description
+said the step reaches `os.system`; it now says only that it reaches `os`.
+
+It is a rule of its own, not a moved floor. The floor rule keeps reporting the record below
+4.6.78, and the new rule starts at 4.6.78, so each release is reported for it once and none
+under a flaw it does not have; raising the 4.6.78 floor would report every later release
+under the MCP and workflow records that 4.6.78 fixed. The executor is PraisonAI's own
+workflow runner, not MCP, so the rule has no MCP id, as Flowise's did. `praisonai-code` gets
+no pin: GHSA-26mh-57q7-jfvr and the CVE record name only `praisonai`, and #6368, which changes
+the function in `praisonai-code`'s file, names neither the record nor the advisory and is
+unmerged. A project that declares only `praisonai-code` is a stated limitation with a
+fixture. Measured with the scanner: 4.6.70 and 4.6.77 fire the floor rule, 4.6.78, 4.6.81,
+4.6.102, 4.6.103 and 4.7.24 fire the new rule, and each of those releases gets one finding
+that names the CVE. An unversioned `praisonai`, or a range that admits releases on both sides
+of 4.6.78, gets both rules' findings, as both limitations say. After `aak update` the feed
+holds the record from OSV and, through NVD's `pkg:pypi/praisonai` packageURL, from NVD, both
+below 4.6.78: the engine drops the feed's finding on the line where the floor rule reports it,
+and the feed is silent from 4.6.81. The bundled feed does not hold it. The record's CVSS 3.1
+7.3 sets HIGH.
+
+### CVE-2026-102243 (#850): out of scope 2026-11-14
+
+**SurfSense's MCP connector test route is out of scope: the backend that serves it was
+retired without a fix.** NVD: "A vulnerability was identified in MODSetter SurfSense up to
+2.0.3. This issue affects some unknown processing of the file
+/api/search-source/connectors/mcp/test of the component MCP Connector Integration. Such
+manipulation leads to command injection." On 2026-10-24 SurfSense moved its self-hosted
+backend to a `legacy` branch, tagged legacy-v0.0.41, and nothing has landed there since; at
+that tag `surfsense_backend/app/routes/search_source_connectors_routes.py` is byte-identical
+to v2.0.3 (blob 4dd7399d) and still registers `POST /connectors/mcp/test`. The last backend
+image, `ghcr.io/modsetter/surfsense-backend:0.0.41`, names that commit (1ce80fb6) in its
+revision label, and `latest` is the same build. `main` and the releases from v2.2.4 to v2.3.1 are a
+rewritten product shipped as `ghcr.io/modsetter/surfsense`, whose tree has no
+`surfsense_backend` and no such route. The repository has no security advisory. The route
+belongs to a research app's connector settings, not an MCP server, NVD's "up to 2.0.3"
+follows release tags that never matched the backend image's 0.0.x tags, and no fix is coming
+to the image a project would name, so it is closed under this batch's ruling. A backend
+image tag that fixes the route would make it an image pin, as Obot's was.
+
+### CVE-2026-116109 (#1097): out of scope 2026-11-14
+
+**Continue's MCP server transport is out of scope, non-pinnable.** NVD: "A vulnerability has
+been found in continuedev Continue 2.0.0. This vulnerability affects the function
+MCPManagerSingleton.setConnections of the file core/config/ConfigHandler.ts of the component
+MCP Server Transport. Such manipulation leads to os command injection." Continue 2.0.0 is the
+VS Code extension's `v2.0.0-vscode`, and an IDE extension's build is not something a project
+file declares. continuedev/continue has cut no release since v2.0.0-vscode and the
+v2.1.0-vscode pre-release (2026-06-19), the newest commit on `main` is from 2026-07-21,
+`core/context/mcp/MCPManagerSingleton.ts` last changed on 2025-10-01, and the repository has
+no security advisory. npm's `@continuedev/cli` is still 1.5.47, which the 2026-10-26 check
+found without `MCPManagerSingleton` or `setConnections`, and `@continuedev/core` 1.1.0
+(2025-03-14), the newest core on npm, has an older `MCPManagerSingleton` without
+`setConnections`; the record names neither package. VulDB's pages, NVD's only references,
+still answer 403 to an automated read. A fix shipped in an artifact a project declares would
+make it a pin.
+
+### CVE-2026-117567, CVE-2026-117573 and CVE-2026-117570 (#1107, #1110, #1114): out of scope 2026-11-14
+
+**Three VulnCheck records against a commit, each still with no release a project could
+name, are out of scope, non-pinnable.** NVD: "esp-mcp through commit 28afddf contains an OS
+command injection vulnerability that allows attackers to run arbitrary commands by supplying
+shell metacharacters in MCP tool parameters."; "hagent through commit 761eec6 contains an OS
+command injection vulnerability that allows MCP clients to execute shell commands by
+injecting metacharacters into the args parameter of the hagent_arduino and hagent_esp32
+tools."; "Vorota-ai nmap-mcp through commit 3636afa contains an improper allowlist validation
+vulnerability in the scan_vulnerabilities tool that lets callers run blocked NSE script
+categories." Re-checked on GitHub and the registries: horw/esp-mcp has no tags or releases,
+`main` is still 28afddf9 (2025-12-27), horw/esp-mcp#49 is open with no reply, and neither PyPI
+nor npm has `esp-mcp`; masc-ucsc/hagent has no tags or releases, `main` is still 761eec62
+(2026-10-16), masc-ucsc/hagent#98 is open with no reply, and PyPI's `hagent` (jbheeman/hagent
+0.0.1) and npm's `hagent` (avwo/hagent 0.9.3) are other projects; Vorota-ai/nmap-mcp has no
+tags or releases, `main` is still 3636afa6 (2026-02-11), Vorota-ai/nmap-mcp#3 is open with no
+reply, nothing named `nmap-mcp` is on PyPI or npm, and its server.json lists only a Docker
+image the README builds locally, which neither Docker Hub nor GHCR serves under the project's
+names. Each runs from a clone or a local build, so a project names nothing a pin reads. A
+release on PyPI or npm, a tag that holds the flawed server, or a published image would make
+each a pin on that name.
+
+### CVE-2026-100868 (#872): Penpot's bridge rule names its npm fix 2026-11-14
+
+**`AAK-MCP-PENPOT-CVE-2026-100868-001` now says where its fix is published, and its floor
+stays 2.18.0.** Checked in the npm tarballs on unpkg: 2.19.1 (10 Nov), published under the
+`next` dist-tag, creates the plugin bridge with `host: mcpServer.host`, which defaults to
+`localhost` (commit b5274a44); 2.17.0 and 2.15.4, `latest`, still pass only the port. npm has
+no 2.18.x and no 2.19.0. Every Penpot tag from 2.18.0 to 2.18.7 carries the fix but reads
+2.17.0 in `mcp/package.json` (penpot/penpot#12007, closed on 3 Nov), and 2.19.0 and 2.19.1
+read their own numbers. So the floor stays at 2.18.0, Penpot's fixed version, with no
+published release between it and 2.19.1. The fix label, description, remediation and
+limitations no longer say the fix is not on npm: they name 2.19.1 under `next` and say that
+`latest` is still affected, so an unpinned reference is still reported, and so is a launch
+that names the `next` dist-tag, which states no version. The negative fixture now holds
+2.19.1, a published release, where it held 2.18.0. OSV has no record for `@penpot/mcp` at
+2.17.0 or 2.19.1. The other half of #872 is unchanged: `AAK-MCP-OFFICEPPT-CVE-2025-71427-001`
+stays presence-only, since PyPI's `office-powerpoint-mcp-server` is still 2.0.7 (2025-12-31),
+v2.0.7 is still the newest tag, and GongRzhe/Office-PowerPoint-MCP-Server#33, the fix, is
+still open. A fixed PowerPoint release will be a floor edit.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-61438 | 7.3 | `praisonai` (PyPI) | **New pin** `AAK-PRAISONAI-CVE-2026-61438-001` (HIGH): every release from 4.6.78, 4.6.81 to 4.7.24 today, presence-only. Below 4.6.78 it stays on `AAK-MCP-PRAISONAI-CVE-2026-61427-001`. No fixed release. | #1144 |
+| CVE-2026-100868 | 6.3 | `@penpot/mcp` (npm) | **Text** of `AAK-MCP-PENPOT-CVE-2026-100868-001` (MEDIUM), floor unchanged at 2.18.0: npm's first fixed release is 2.19.1, under `next`, and `latest` (2.15.4) is still reported. | #872 |
+| CVE-2026-102243 | 7.4 | SurfSense backend (`ghcr.io/modsetter/surfsense-backend`) | **Out of scope**: the backend was retired to a legacy branch with the route unfixed, and no image tag fixes it. | #850 |
+| CVE-2026-116109 | 6.3 | Continue (IDE extension, `github.com/continuedev/continue`) | **Out of scope**, non-pinnable: IDE extension builds, which no project file declares. No vendor fix. | #1097 |
+| CVE-2026-117567 | 7.8 | esp-mcp (`github.com/horw/esp-mcp`) | **Out of scope**, non-pinnable: no tag, release or package; runs from a clone. Affected through 28afddf; no fix. | #1107 |
+| CVE-2026-117573 | 7.8 | hagent (`github.com/masc-ucsc/hagent`) | **Out of scope**, non-pinnable: no tag, release or package; runs from a clone. Affected through 761eec6; no fix. | #1110 |
+| CVE-2026-117570 | 5.2 | nmap-mcp (`github.com/Vorota-ai/nmap-mcp`) | **Out of scope**, non-pinnable: no tag, release, package or published image. Affected through 3636afa; no fix. | #1114 |
+
+CVSS is each record's CVSS 3.1 score: VulDB's for SurfSense and Continue, VulnCheck's for
+esp-mcp, hagent, nmap-mcp and PraisonAI, and Penpot's as its 0.6.14 row gives it.
+
+## 2026-11-14 (unreleased): eleven VulnCheck n8n records, one new MCP pin and nine in the advisory feed
+
+VulnCheck published eleven records for npm `n8n` on 13 Nov, CVE-2026-126381 to CVE-2026-126391,
+from advisories n8n published on 28 Oct. The watcher filed four as `pin floor stale` against
+`AAK-MCP-N8N-CVE-2026-72768-001` (#1242 to #1245), whose floor is 2.41.4 with 2.42.0 as an
+`also` range, and holds seven behind its back-pressure cap. Each is read here against NVD's API
+record, its CVE record, the repository's GitHub advisory, OSV and the published npm packages, all
+on 2026-11-14. NVD text is quoted from the API records, which are saved unedited under
+tests/fixtures/nvd_cna. n8n pins its internal packages (`n8n-nodes-base`,
+`@n8n/n8n-nodes-langchain`, `@n8n/backend-network`, `@n8n/expression-runtime`, `@n8n/mcp-browser`)
+to exact versions, so each fix was read in the package an n8n release pins, at 1.123.88 and
+1.123.89, 2.45.4 and 2.45.5, 2.46.0 and 2.46.1, and on the other lines a record names; the image
+record was read in the n8n Dockerfile at each release tag. Lower bounds are the records' unless a
+paragraph says it read one. npm has no 3.x release, so each record's 3.0.0 range is untested on a
+real artifact. OSV holds each record only as an NVD import under its CVE id with git commit
+ranges, which AAK's OSV half does not read. Measured with the scanner in
+tests/test_cve_batch_2026_11_14_n8n.py.
+
+**n8n's MCP OAuth open redirect and Browser Use file read (CVE-2026-126386, CVE-2026-126387) get
+`AAK-MCP-N8N-CVE-2026-126386-001`: npm `n8n` from 1.120.0 below 1.123.89, from 2.0.0 below
+2.45.5, and 2.46.0, MEDIUM.** NVD, CVE-2026-126386: "n8n before 1.123.89, 2.x before 2.45.5,
+2.46.x before 2.46.1, and 3.x before 3.0.1 contains an open redirect vulnerability in the
+unauthenticated MCP OAuth dynamic client registration flow, which accepts arbitrary redirect_uri
+values via the /mcp-oauth/register endpoint." CVE-2026-126387: "n8n before 2.46.1 contains an
+arbitrary file read vulnerability that allows authenticated members to read server files by
+supplying absolute paths to the Browser Use browser_upload tool." Its CNA data and
+GHSA-9qx8-fhxv-w794 also name 2.45.5. Both are on n8n's MCP surface: the first is the OAuth
+server n8n's MCP server authorizes clients through (GHSA-rc3w-8jc8-7x3w), and the second is a
+tool of `@n8n/mcp-browser`, which n8n serves to its Instance AI assistant as a local MCP server
+and which, in remote mode, Playwright resolves on the n8n server. Checked in the npm packages: the
+`/mcp-oauth/register` and `/mcp-oauth/authorize` routes first ship in 1.120.0 (1.119.2 has
+neither), and the authorization-request check that 1.123.89, 2.45.5 and 2.46.1 put in front of
+the MCP SDK's authorize handler (`authorizationRequestValidator`) is absent at 1.120.0, 1.121.0,
+1.123.88, 2.0.0, 2.10.0, 2.30.0, 2.41.4, 2.44.7, 2.45.4 and 2.46.0 and present at 1.123.89,
+2.45.5, 2.45.7, 2.46.1, 2.47.7 and 2.48.4. Browser Use first ships in 2.29.0 (2.28.0 and 2.28.7
+have none), which pins `@n8n/mcp-browser` 0.12.0 and builds its tools in remote mode;
+`browser_upload` is listed unconditionally in mcp-browser 0.12.0, 0.19.0 and 0.25.0, the release
+n8n 2.45.4 and 2.46.0 pin, and 0.25.1, which 2.45.5 and 2.46.1 pin, leaves it out in remote mode.
+The HIGH rule reports below 2.41.4 for its own flaws, and raising its floor would report 2.41.4 to
+2.45.4 under them; these two are lower and of another class, so they get a rule of their own, one
+for both since they share the package, the severity and the fixed releases, with the file read's
+range inside the redirect's. Both records start at the first release, which the source does not
+bear out, so the rule starts at 1.120.0, and 2.0.0 to 2.28.x carry only the redirect. `latest` is
+2.47.7, fixed, so a stated version is required, and an unversioned n8n is still reported by three
+rules, not four. The rule reads the version, not whether MCP access or Browser Use is turned on
+(1.123.88 answers the OAuth endpoints only while MCP access is on). Measured with the scanner:
+1.120.0, 1.123.88, 2.0.0, 2.29.0, 2.45.4, 2.46.0 and `^2.45.5` fire, and 1.119.2, 1.123.89,
+2.45.5, 2.46.1, 2.47.7 and `latest` do not. After `aak update` the advisory feed reads both
+records from the first release: where the rule reports the line the engine drops the feed's
+finding, and below 1.120.0, and for the file read on 1.123.89 and later 1.x releases, the feed
+reports them alone.
+
+**#1242 to #1245 and five held records stay in the advisory feed: `AAK-KNOWN-VULN-001` reports
+all nine after `aak update`, and no pin moves.** None is on n8n's MCP surface, and none of their
+advisories names an MCP path. The watcher titled four against the HIGH rule because their ranges
+run past its 2.41.4 floor; that rule reports defects on n8n's MCP surface, and a floor raise would
+report 2.41.4 to 2.45.4 under its flaws, so the floor stays, as on 2026-11-07 and 2026-11-11.
+
+- CVE-2026-126383 (#1242), NVD: "n8n before 1.123.89, 2.x before 2.45.5, 2.46.x before 2.46.1,
+  and 3.x before 3.0.1 contains a NoSQL injection vulnerability in the MongoDB node's Update and
+  Find And Replace operations". The node's `buildUpdateFilter` is absent in the n8n-nodes-base
+  releases n8n 1.123.88, 2.45.4 and 2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and
+  2.47.0 pin.
+- CVE-2026-126385 (#1243): "contains a flaw in the OAuth2 credential callback of the
+  dynamic-credential connect flow, which does not verify that the completing browser belongs to
+  the user who started the flow." The callback for a dynamic credential checks the signed-in user
+  against the one who started the flow in `oauth.service.js` at 2.45.5, 2.46.1 and 2.47.0, and
+  skips the check when no one is signed in at 2.45.4 and 2.46.0. It is the OAuth of credentials
+  that workflow nodes use, not the MCP OAuth server, and 1.123.89 ships no dynamic-credentials
+  module, though the record starts at the first release.
+- CVE-2026-126384 (#1244): "bundles a GraphicsMagick version with known vulnerabilities in its
+  official Docker image, which the Edit Image node uses to process images." The fix is in the
+  image alone: the n8n Dockerfile at the 1.123.89, 2.45.5, 2.46.1 and 2.47.0 tags restricts
+  GraphicsMagick to its primary coders and deletes the msl, mvg, pcd, svg and url coder modules,
+  and at 1.123.88, 2.45.4 and 2.46.0 does neither; the Edit Image node is the same file in the
+  n8n-nodes-base releases n8n 2.45.4 and 2.45.5 pin. The feed reads the CNA's `pkg:npm/n8n`, so it
+  reports an npm declaration of n8n by version, while an npm install's exposure depends on the
+  host's own GraphicsMagick. AAK reads no `n8nio/n8n` or `docker.n8n.io/n8nio/n8n` image tag: a
+  compose file and a Dockerfile naming 2.45.4 get no n8n finding with every record cached, as the
+  n8n rules' limitations say. The Edit Image node is a workflow node, so no image pin is added.
+- CVE-2026-126391 (#1245): "n8n before 1.123.89 contains an insufficient isolation vulnerability
+  in workflow expression evaluation that allows authenticated users to escape the sandbox." Its
+  CNA data and GHSA-gx3v-3x3v-f8r5 also name 2.45.5, 2.46.1 and 3.0.1. The fix widens the list of
+  property names the runtime sanitizer of `@n8n/expression-runtime` denies, absent in the
+  releases n8n 1.123.88, 2.45.4 and 2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and
+  2.47.0 pin. Any path that writes a workflow reaches it, and the advisory names none.
+- CVE-2026-126381 (not filed): "n8n before 2.43.5, 2.44.x before 2.44.1, and 3.x before 3.0.1
+  contains an SQL injection vulnerability in the Vector Store (OracleDB) node". The node's filter
+  key check is absent in the n8n-nodes-langchain releases n8n 2.43.4 and 2.44.0 pin and present in
+  those 2.43.5, 2.44.1 and 2.45.4 pin; the releases 1.123.88 and 1.123.89 pin have no OracleDB
+  vector store node, though the record starts at the first release. The node can serve an AI
+  Agent as a retrieval tool, but the filter key is a node parameter the workflow fills, and the
+  advisory names webhook input.
+- CVE-2026-126382 (not filed): "n8n before 2.38.0 and 3.x before 3.0.1 contains a missing
+  authentication vulnerability in the Asana Trigger". From 2.38.0 the trigger takes the secret
+  from Asana's create-webhook response instead of any request's header: absent in the
+  n8n-nodes-base release n8n 2.37.11 pins, present in those 2.38.0 and 2.45.4 pin.
+- CVE-2026-126388 (not filed): "n8n before 2.46.1 contains a credential exposure vulnerability
+  that forwards Authorization headers and basic auth credentials on cross-origin redirects". Its
+  CNA data also names 2.45.5. `@n8n/backend-network` defaults the option to on in 1.19.3 and
+  1.20.0, which n8n 2.45.4 and 2.46.0 pin, and to off in 1.19.4, 1.20.1 and 1.21.0, which 2.45.5,
+  2.46.1 and 2.47.0 pin. The 1.x line, for which the record names no fix, was not read.
+- CVE-2026-126389 (not filed): "n8n before 1.123.89 contains an authentication bypass
+  vulnerability in the Chat Trigger"; its CNA data also names 2.45.5, 2.46.1 and 3.0.1. From the
+  fixed releases the setup route answers 404 outside hosted chat: absent in the
+  n8n-nodes-langchain releases n8n 1.123.88, 2.45.4 and 2.46.0 pin, present in those 1.123.89,
+  2.45.5, 2.46.1 and 2.47.0 pin. A Chat Trigger often fronts an AI Agent, and the bypass reads a
+  named session's history, but the defect is the trigger's webhook authentication, the class of
+  the Asana Trigger record, not an agent node or MCP code, and the LangChain Code node's
+  CVE-2026-119408 went to the feed on 2026-11-07.
+- CVE-2026-126390 (not filed): "n8n before 1.123.89 contains a credential leakage vulnerability in
+  the NocoDB node"; its CNA data also names 2.45.5, 2.46.1 and 3.0.1. The node's same-origin check
+  before it sends its token is absent in the n8n-nodes-base releases n8n 1.123.88, 2.45.4 and
+  2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and 2.47.0 pin.
+
+VulnCheck's CNA records name `pkg:npm/n8n`, so `aak update` maps all eleven with no map row.
+Measured with the scanner on a feed holding each record as `nvd_feed` converts it: an npm
+lockfile resolving n8n 2.45.4 reports seven of the nine and the new rule, and no older n8n pin
+fires; 2.45.5, 2.46.1 and 2.47.7 report none; 1.123.89 reports CVE-2026-126381,
+CVE-2026-126382, CVE-2026-126385 and CVE-2026-126388, whose records name no 1.x fix. The feed
+reports CVE-2026-126383, -126384, -126385 and -126391 at HIGH and the rest at MEDIUM; it has no
+LOW, so CVE-2026-126388 and CVE-2026-126390, CVSS 3.7, report at MEDIUM. None is bundled, since
+tests/test_pin_floors_vs_advisories.py holds the bundled feed to the pins, so without
+`aak update` none is reported. With the new rule's rows read, the only releases the eleven records
+list that no n8n row reports are the 3.x line, which npm does not have, and this section names
+all eleven, so the watcher does not file them again.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126381 | 6.3 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.43.5, 2.44.0 to 2.44.1 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126382 | 5.4 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.38.0 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126383 | 8.2 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1242 |
+| CVE-2026-126384 | 7.5 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports an npm `n8n` below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1; the `n8nio/n8n` image tag, where the fix is, is not read. No pin. | #1244 |
+| CVE-2026-126385 | 7.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1243 |
+| CVE-2026-126386 | 4.7 | `n8n` (npm) | **New pin** `AAK-MCP-N8N-CVE-2026-126386-001` (MEDIUM): 1.120.0 up to 1.123.89, 2.0.0 up to 2.45.5, and 2.46.0, a stated version required. | not filed |
+| CVE-2026-126387 | 5.3 | `n8n` (npm) | **New pin**, the same rule `AAK-MCP-N8N-CVE-2026-126386-001`: Browser Use ships from 2.29.0, inside the rule's range, and is fixed in 2.45.5 and 2.46.1. | not filed |
+| CVE-2026-126388 | 3.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1, at MEDIUM. No pin. | not filed |
+| CVE-2026-126389 | 5.4 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126390 | 3.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1, at MEDIUM. No pin. | not filed |
+| CVE-2026-126391 | 7.5 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1245 |
+
+CVSS is each record's CVSS 3.1 score, VulnCheck's.
+
+Dispositioned at 2026-11-14T05:30:00Z.
+
+## 2026-11-14 (unreleased): #1237, #1246 and two held records, two new image pins, one record in the bundled advisory feed, one out of scope
+
+The watcher filed #1237 on 12 Nov and #1246 on 13 Nov, and holds CVE-2026-126360 and
+CVE-2026-126393 behind its back-pressure cap, so those two have no issue yet. Each is read
+here against NVD's API record, its CVE record, OSV and the published artifacts, all on
+2026-11-14, and NVD text is quoted from the API records. Two get image pins, each measured
+with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_14_misc.py) after its range was read in the source at the
+tags: SiYuan's MCP `skill` tool, on the image AAK already reads for SiYuan, and Apache
+APISIX's `openapi-to-mcp` plugin, whose 3.19.0 and 3.20.0 images were read too.
+OpenTelemetry's record is a flaw in the tracing library that the MCP Python SDK 2.x
+requires, so its OSV record joins the bundled advisory feed, as anyio's two did on
+2026-11-07. Opera Neon's MCP Hub is a browser built-in that no project file declares. None of
+the four CVE records names a package that `nvd_feed` maps.
+
+### CVE-2026-126393 (not filed): new image pin 2026-11-14
+
+**SiYuan gets `AAK-MCP-SIYUAN-CVE-2026-126393-001`: the image `b3log/siyuan` from v3.7.0
+below v3.8.10, MEDIUM.** NVD: "SiYuan before 3.8.10 contains a server-side request forgery
+vulnerability in the skill-install download path because fetchBytes performs only a
+parse-time hostname check instead of using ssrfSafeClient. Attackers can supply a skill URL
+via the MCP skill install action that redirects or DNS-rebinds to loopback addresses,
+reaching internal services and metadata endpoints." GHSA-6pg3-pqxw-jm82 traces it from the
+MCP `skill` tool's `install` action to `downloadSkillSource`, which checks the host once with
+`CheckHostSSRF`, and `fetchBytes`, which downloads through `httpclient.NewBrowserRequest()`, a
+client that resolves the name again when it connects and follows a redirect without checking
+it. The advisory notes that `install` is declared a local write, so an agent steered by
+injected text needs a confirmation or a pre-approved setting. This one differs from
+CVE-2026-126776 (#1230), ruled out of scope on 2026-11-12: that traversal needed Windows path
+rules, while this download behaves the same on the Linux builds the image carries, and its
+entry point is one of the kernel's MCP tools, the surface the two SiYuan image rules already
+pin. Checked in the source at the tags: `kernel/mcp` is absent at v3.6.5;
+`kernel/mcp/tools/skill.go` with `install` and `kernel/util/skill.go` with that `fetchBytes`
+ship in v3.7.0-rc.1 and are the same in that respect at v3.7.0, v3.8.0, v3.8.8 and v3.8.9;
+3e1b977e ("Route skill downloads through the SSRF-safe client", 2026-10-29) downloads through
+`ssrfSafeClient`, which dials only the checked address, and checks every redirect, and is in
+v3.8.10 and not v3.8.9. The advisory gives no lower bound and NVD starts at 0, so the pin
+starts where the MCP tool ships, as the CVE-2026-116168 rule does. Docker Hub has no v3.7.0
+dev or beta image; v3.7.0-rc.1 and rc.2 read as 3.7.0 and are reported. Every v3.8.10
+pre-release tag, from alpha.1 on 31 Oct, was pushed after the fix and contains it, and
+`latest` was the v3.8.10 digest on 2026-11-14, so an untagged reference is not reported. Tags
+from v3.7.0 below v3.8.9 also fire one or both of the other SiYuan image rules, for their own
+flaws; v3.8.9 fires this one alone. OSV has no record of the CVE or the GHSA, and the CVE
+record names a vendor and a product with no packageURL, so the advisory feed does not report
+it.
+
+### CVE-2026-124726 (#1246): new image pin 2026-11-14
+
+**Apache APISIX gets `AAK-MCP-APISIX-CVE-2026-124726-001`: the image `apache/apisix` from
+3.19.0 below 3.20.0, MEDIUM.** NVD: "A caller of the MCP endpoint can invoke endpoints the
+OpenAPI document never declared, under the declared tool's HTTP method, using the credentials
+the Route adds. This issue affects Apache APISIX: from 3.19.0 before 3.20.0." The CVE record
+is titled "openapi-to-mcp tool call can reach an API path the document does not declare".
+APISIX is a general API gateway, but the flaw is in its MCP code: the `openapi-to-mcp` plugin
+serves an OpenAPI document's operations as MCP tools on a Route and sends each call to the
+Route's `base_url` with the Route's headers, and in 3.19.0 it fills the path template with the
+caller's path parameters after `ngx.escape_uri`, which leaves dots alone, and checks no
+segment, so a value of two dots fills a segment the receiving server resolves away. That is
+the line the self-hosted apps of 2026-11-11 drew: a flaw in an app's own MCP code is pinned by
+image tag (SiYuan, ezBookkeeping, Trawl, Dagu), and a flaw in general code that MCP shares is
+not (Vikunja, and ByteStash on 2026-11-12). The MCP gateways AAK reads by image (IBM
+ContextForge, Unla, Amazon's MCP Gateway & Registry) are pinned the same way. Checked in the
+source and the images: `apisix/plugins/openapi-to-mcp` is absent at 3.18.0 and ships in
+3.19.0 (e564adb8, #13942); 77055643 (#14154, "confine a path parameter to one path segment",
+2026-11-06) refuses a value holding a separator unless the Route sets
+`allow_encoded_path_separators`, and any value that leaves an empty or dot segment, and is in
+3.20.0 and not in 3.19.0, which was cut from a branch without it. `tools/handler.lua` in the
+amd64 3.19.0-debian image is byte-identical to the 3.19.0 tag's, and in the 3.20.0-debian
+image to the 3.20.0 tag's. Docker Hub tags each release `X.Y.Z-debian`, `-ubuntu` and
+`-redhat`, with no two-part tags, and `latest` was the 3.20.0-ubuntu build on 2026-11-14 (the
+same amd64 config), so only the three 3.19.0 tags are reported. The apisix-docker example
+takes its tag from a variable with a default, and the official Helm chart leaves `image.tag`
+empty for its appVersion; neither states a version this reader trusts, and the RPM and DEB
+packages state none in a file AAK reads. The plugin is in the default plugin list but serves
+MCP only on a Route that configures it, and the rule reads the tag, not the Routes; the
+limitations say so. npm and PyPI have no `apisix`. OSV has no record of the CVE, and the CVE
+record's `pkg:software-id/apache.org/apisix` maps to no feed.
+
+### CVE-2026-126360 (not filed): advisory feed 2026-11-14
+
+**OpenTelemetry's `opentelemetry-api` gets no pin; its OSV record joins the bundled advisory
+feed, so `AAK-KNOWN-VULN-001` reports every release below 1.45.2, MEDIUM, without
+`aak update`.** NVD: "Prior to 1.45.2, TraceContextTextMapPropagator.extract() in
+opentelemetry-api can perform quadratic-time regular-expression backtracking on a malformed
+traceparent value containing a trace-context prefix, a long whitespace sequence, and an
+embedded newline." And: "JSON-based carriers, including applicable MCP request metadata
+integrations, can preserve the required newline depending on the SDK, instrumentation, and
+message-size limits." The watcher found it through NVD's keyword feed, on that sentence's
+"MCP"; the package is in no pin table. The MCP surface is real. Checked in the PyPI wheels:
+the MCP Python SDK, `mcp`, has no OpenTelemetry code from 1.20.0 to 1.29.1, the newest 1.x;
+every 2.x release from 2.0.0a1 to 2.3.0, the newest, requires `opentelemetry-api>=1.28.0` and
+has a server middleware that passes each request's `params._meta` to
+`opentelemetry.propagate.extract`, and from 2.0.0b1 that middleware, `OpenTelemetryMiddleware`,
+is installed on every low-level server by default. The API's default propagators
+(`tracecontext,baggage`) run the trace-context parser on it, so a client of a Python MCP
+server on SDK 2.x that resolves `opentelemetry-api` below 1.45.2 can delay the server's other
+requests with one large message. The flaw and the fix are the tracing library's, not the
+SDK's, the shape of anyio's two advisories, which joined the bundled feed because Python MCP
+servers get anyio through the SDK. The parser's pattern is the same in the 1.28.0 and 1.45.1
+wheels, and 1.45.2 (29 Oct) refuses a `traceparent` longer than 512 characters before
+matching; `mcp` sets no upper bound, so a fresh resolution takes 1.45.2, and a lockfile
+written before 29 Oct may not. GHSA-mf5v-w3w3-f6cg, as OSV returns it, names
+`opentelemetry-api` from 0 below 1.45.2 with GitHub's CVSS 3.1 vector, and it is bundled
+unedited (saved under tests/fixtures/cves/cve-2026-126360-opentelemetry/osv). Measured with
+the scanner on the bundled feed in an empty HOME: an MCP server's uv.lock resolving `mcp`
+2.3.0 and `opentelemetry-api` 1.45.1 fires once at MEDIUM and names 1.45.2, a
+requirements.txt pinning 1.45.1 fires, 1.28.0 is in the range, and 1.45.2 does not fire.
+AAK-KNOWN-VULN-001 reports the package in any project that locks it, MCP server or not, as it
+does anyio. OSV also holds the CVE as an NVD import with only git ranges, which the feed does
+not read.
+
+### CVE-2026-123139 (#1237): out of scope 2026-11-14
+
+**Opera Neon's MCP Hub is out of scope.** NVD: "Improper verification of the source of a
+communication channel vulnerability in Opera Neon on macOS and Windows allows a malicious
+browser extension to take control of the browser by sending commands through MCP Hub to the
+built-in Browser Operator extension. This issue affects Opera Neon MCP Hub extension: 0.0.1."
+Opera's advisory repeats the description and names no fixed release, and the CVE record's
+affected version is a custom "1.0.0" beside the description's 0.0.1. The MCP Hub is an
+extension built into the Opera Neon browser, which ships and updates it with the browser, so
+nothing a project declares names it or its version. Opera describes its MCP Connector, the way
+external AI clients reach Neon, as an MCP server URL, and a URL states no extension version.
+AAK-MALICIOUS-EXTENSION-001 reads the extension folders of VS Code and the editors built on
+it, not a browser's, and AAK-MCP-BROWSER-ATTACH-001 reads MCP configs that attach a
+browser-automation server to the user's own browser, which this is not. npm's `mcp-hub` is
+ravitemer's MCP server manager, at 4.2.1, another project, and PyPI has no `mcp-hub`. OSV has
+no record.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126393 | 6.1 | `b3log/siyuan` (Docker Hub) | **New image pin** `AAK-MCP-SIYUAN-CVE-2026-126393-001` (MEDIUM): tags from v3.7.0 below v3.8.10. | not filed |
+| CVE-2026-124726 | 6.9 (4.0) | `apache/apisix` (Docker Hub) | **New image pin** `AAK-MCP-APISIX-CVE-2026-124726-001` (MEDIUM): tags from 3.19.0 below 3.20.0. | #1246 |
+| CVE-2026-126360 | 5.3 | `opentelemetry-api` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 1.45.2 from the bundled OSV record, MEDIUM. No pin. | not filed |
+| CVE-2026-123139 | 5.8 (4.0) | Opera Neon MCP Hub (browser built-in) | **Out of scope**: an extension built into the browser, which no project file declares. No fixed release named. | #1237 |
+
+CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for SiYuan (its CVSS 4.0
+score is 5.3) and GitHub's for OpenTelemetry. Apache and Opera scored theirs in CVSS 4.0 only.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI

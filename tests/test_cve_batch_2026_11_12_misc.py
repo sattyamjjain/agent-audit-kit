@@ -31,6 +31,7 @@ from agent_audit_kit.scanners import container_image_pins, mcp_cve_pins_2026_07
 HELIO_PIN = "AAK-MCP-HELIO-CVE-2026-65957-001"
 SIYUAN_ASSET_PIN = "AAK-MCP-SIYUAN-CVE-2026-116168-001"
 SIYUAN_PANIC_PIN = "AAK-MCP-SIYUAN-CVE-2026-123492-001"
+SIYUAN_SKILL_PIN = "AAK-MCP-SIYUAN-CVE-2026-126393-001"
 KNOWN_VULN_RULE = "AAK-KNOWN-VULN-001"
 
 HERE = Path(__file__).parent
@@ -237,14 +238,15 @@ def test_bytestash_claims_nothing(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(("tag", "ids"), [
-    ("v3.7.0", {SIYUAN_ASSET_PIN}),
-    ("v3.8.0", {SIYUAN_ASSET_PIN, SIYUAN_PANIC_PIN}),
-    ("v3.8.9", set()),
+    ("v3.7.0", {SIYUAN_ASSET_PIN, SIYUAN_SKILL_PIN}),
+    ("v3.8.0", {SIYUAN_ASSET_PIN, SIYUAN_PANIC_PIN, SIYUAN_SKILL_PIN}),
+    ("v3.8.9", {SIYUAN_SKILL_PIN}),
     ("v3.8.10", set()),
 ])
 def test_siyuan_image_rules_do_not_claim_the_windows_flaw(tmp_path: Path, tag: str, ids: set[str]) -> None:
     """The image is Linux-only, where a backslash is a file-name character, so the
-    two SiYuan image rules keep their own CVEs, v3.8.9 fires neither, and no finding
+    SiYuan image rules keep their own CVEs (the CVE-2026-126393 rule, added on
+    2026-11-14, also ends at 3.8.10, for the skill-install SSRF), and no finding
     names this record."""
     assert _compose(tmp_path, f"b3log/siyuan:{tag}") == ids
     assert _mentions(tmp_path, SIYUAN) == []
