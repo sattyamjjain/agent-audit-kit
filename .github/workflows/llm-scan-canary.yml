@@ -42,6 +42,8 @@ jobs:
         run: echo "LLM_CANARY_ANTHROPIC_API_KEY is not set; the canary did not run."
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
         if: env.ANTHROPIC_API_KEY != ''
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0

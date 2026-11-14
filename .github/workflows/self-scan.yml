@@ -39,6 +39,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: AgentAuditKit MCP Security Scan
         uses: ./  # local action — exercises this PR's Dockerfile + entrypoint, not the published v0.3.6
         with:
@@ -97,6 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: AgentAuditKit MCP Security Scan (OX preset)
         uses: ./  # local action — exercises this PR's Dockerfile + entrypoint, not the published v0.3.6
         with:
