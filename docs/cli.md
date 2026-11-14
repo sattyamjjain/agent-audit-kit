@@ -62,6 +62,13 @@ Nothing here was cut; it is the same content with a home of its own.
 | 1 | Scan failed — findings meet or exceed `--fail-on` severity |
 | 2 | Error — invalid path, malformed config, etc. |
 
+`AAK-AGENT-001`, `AAK-AGENT-003` and `AAK-AGENT-006` read instruction files
+(`CLAUDE.md`, `AGENTS.md` and the like). They report at their severities, but
+they don't count toward `--fail-on` (or `--ci`, `aak diff --fail-on-new` and the
+GitHub Action) until their precision is published in
+[`benchmarks/false_positive/RESULTS.md`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md).
+The scan lists them under "Reported, not gating", so a passing build says why.
+
 ---
 ## Configuration
 

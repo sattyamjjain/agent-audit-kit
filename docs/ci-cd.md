@@ -30,6 +30,10 @@ repos:
         # args: ['--fail-on', 'medium']
 ```
 
+The hook runs `scan --ci`, so it fails on HIGH and CRITICAL findings, except the
+instruction-file rules `AAK-AGENT-001`, `-003` and `-006`, which report but don't
+fail it until their precision is published (see the [CLI exit codes](cli.md#exit-codes)).
+
 ## GitLab CI
 
 ```yaml

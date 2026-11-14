@@ -92,6 +92,7 @@ FINDINGS_COUNT=0
 CRITICAL_COUNT=0
 HIGH_COUNT=0
 INCOMPLETE_COUNT=0
+NOT_GATING_COUNT=0
 
 if [ -f "${SARIF_FILE}" ]; then
     FINDINGS_COUNT=$(python3 -c "
@@ -154,6 +155,21 @@ try:
 except Exception:
     print(0)
 ")
+
+    # Results from rules that report but do not fail a build yet
+    # (agent_audit_kit/rules/gating.py). They are counted in Critical/High
+    # above, so a PASSED run with a High count says why it passed.
+    NOT_GATING_COUNT=$(python3 -c "
+import json
+try:
+    from agent_audit_kit.rules.gating import gates_build
+    with open('${SARIF_FILE}') as f:
+        sarif = json.load(f)
+    results = sarif.get('runs', [{}])[0].get('results', [])
+    print(sum(1 for r in results if not gates_build(r.get('ruleId', ''))))
+except Exception:
+    print(0)
+")
 fi
 
 # ---------------------------------------------------------------------------
@@ -196,6 +212,9 @@ echo "========================================="
 echo "  Findings:  ${FINDINGS_COUNT}"
 echo "  Critical:  ${CRITICAL_COUNT}"
 echo "  High:      ${HIGH_COUNT}"
+if [ "${NOT_GATING_COUNT}" -gt 0 ]; then
+    echo "  Not gating: ${NOT_GATING_COUNT} (instruction-file rules, precision not published yet)"
+fi
 echo "  SARIF:     ${SARIF_FILE}"
 echo "  Exit code: ${SCAN_EXIT}"
 echo "========================================="
@@ -225,6 +244,10 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         echo "| Critical | ${CRITICAL_COUNT} |"
         echo "| High | ${HIGH_COUNT} |"
         echo ""
+        if [ "${NOT_GATING_COUNT}" -gt 0 ]; then
+            echo "${NOT_GATING_COUNT} finding(s) come from instruction-file rules that are reported but do not fail the build until their precision is published (see the scan log)."
+            echo ""
+        fi
         if [ "${SCAN_EXIT}" -eq 0 ]; then
             echo "**Result: PASSED**"
         elif [ "${SCAN_EXIT}" -eq 1 ] && [ "${INCOMPLETE_COUNT}" -gt 0 ]; then

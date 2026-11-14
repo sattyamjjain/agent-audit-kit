@@ -434,7 +434,10 @@ def corpus_update_cmd(
     "--fail-on-new",
     is_flag=True,
     default=False,
-    help="Exit 1 if any results are tagged `newly_introduced`.",
+    help=(
+        "Exit 1 if any results are tagged `newly_introduced`. Results from rules "
+        "that do not gate builds yet (instruction-file rules) are reported, not counted."
+    ),
 )
 def diff_cmd(
     baseline_path: str, current_path: str, output_path: str | None, fail_on_new: bool
@@ -463,8 +466,24 @@ def diff_cmd(
         f"{summary.get('still_present', 0)} still present.",
         err=True,
     )
-    if fail_on_new and summary.get("newly_introduced", 0) > 0:
-        sys.exit(EXIT_FINDINGS)
+    if fail_on_new:
+        # The same gate as `scan --fail-on`: rules in rules.gating.NOT_GATING
+        # report but do not fail a build until their precision is published.
+        from agent_audit_kit.rules.gating import NOT_GATING_REASON, gates_build
+
+        new = [
+            r for r in out.get("runs", [{}])[0].get("results", [])
+            if (r.get("properties") or {}).get("aak_diff_state") == "newly_introduced"
+        ]
+        held = [r for r in new if not gates_build(r.get("ruleId", ""))]
+        if held:
+            click.echo(
+                f"diff: {len(held)} new result(s) from {NOT_GATING_REASON} "
+                "are reported, not gating.",
+                err=True,
+            )
+        if len(new) > len(held):
+            sys.exit(EXIT_FINDINGS)
 
 
 @cli.command("suggest")

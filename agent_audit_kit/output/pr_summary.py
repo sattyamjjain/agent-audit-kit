@@ -14,6 +14,7 @@ The same renderer is used for two surfaces:
 from __future__ import annotations
 
 from agent_audit_kit.models import ScanResult, Severity
+from agent_audit_kit.rules.gating import gates_build
 
 
 PR_COMMENT_MARKER = "<!-- agent-audit-kit:pr-summary -->"
@@ -99,6 +100,15 @@ def render_markdown(result: ScanResult, max_rows: int = 50) -> str:
         lines.append(
             f"_Table truncated to {max_rows} of {total} findings. "
             "Full SARIF is uploaded to the Security tab._"
+        )
+    held = sorted({f.rule_id for f in result.findings if not gates_build(f.rule_id)})
+    if held:
+        lines.append("")
+        lines.append(
+            "_Reported, not gating: "
+            + ", ".join(f"`{rid}`" for rid in held)
+            + " read instruction files, and do not fail a build until their "
+            "precision is published (benchmarks/false_positive/RESULTS.md)._"
         )
     return "\n".join(lines) + "\n"
 

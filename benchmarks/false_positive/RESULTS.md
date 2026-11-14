@@ -289,7 +289,11 @@ rate, and neither does this page.
   930-repository corpus of the outside report
   ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) that
   exposed `AAK-AGENT-002` on them, fixed in v0.6.8. That slice is pending
-  adjudication, so there is still no false-positive rate for instruction files.
+  adjudication. There is no number for instruction files yet. Until there is,
+  the HIGH and CRITICAL instruction-file rules (`AAK-AGENT-001`, `-003` and
+  `-006`) report at their severities but do not fail a build (`--fail-on`,
+  `--ci`, the GitHub Action, the pre-commit hook); from v0.6.8, when that was
+  promised, to v0.6.36 they did.
 
 ## History
 
