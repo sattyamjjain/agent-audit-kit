@@ -437,6 +437,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-GHA-PUBLISH-GATE-001": ["STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-N8N-CVE-2026-126386-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
@@ -21408,6 +21409,74 @@ _r(
         " A declaration nested more than 64 levels deep in package.json, a TOML "
         "manifest or an MCP config (an MCP server more than 62) is still judged, and "
         "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 wave, group "n8n" (#1242 to #1245 and seven held VulnCheck records).
+# One new pin: n8n's MCP OAuth endpoints redirected to any registered client's URI
+# (CVE-2026-126386) and Instance AI's Browser Use served a file-reading MCP tool
+# (CVE-2026-126387), both MEDIUM and fixed in the same releases, beside the HIGH
+# 2.41.4 rule. The other nine records are workflow nodes, credentials, the
+# expression sandbox and the Docker image's GraphicsMagick, not n8n's MCP surface,
+# and AAK-KNOWN-VULN-001 reports them after `aak update`; the ledger has the reasons.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-N8N-CVE-2026-126386-001",
+    "n8n 1.120.0 to 1.123.88, 2.x below 2.45.5 and 2.46.0 (MCP OAuth open redirect, "
+    "Browser Use upload tool reads the server's files)",
+    "Two MCP-surface flaws in `n8n` (npm), fixed in the same releases and carried by one "
+    "pin. n8n's MCP server registers OAuth clients at `/mcp-oauth/register` without "
+    "authentication and with any `redirect_uri`, and `/mcp-oauth/authorize` sent the "
+    "visitor to that URI before the authorization request was checked, so a crafted link "
+    "on the instance's own host lands on an attacker's site (CVE-2026-126386, CVSS 3.1 "
+    "4.7, GHSA-rc3w-8jc8-7x3w). With Browser Use on, n8n's Instance AI assistant drives a "
+    "member's browser through `@n8n/mcp-browser` tools that n8n serves as a local MCP "
+    "server, and their `browser_upload` tool took absolute paths that Playwright resolved "
+    "on the n8n server, so a member could have any file the n8n process reads, its "
+    "configuration included, put into the page the assistant drives (CVE-2026-126387, "
+    "CVSS 3.1 5.3, GHSA-9qx8-fhxv-w794). Read in the npm releases: the MCP OAuth "
+    "endpoints first ship in 1.120.0 and Browser Use in 2.29.0; the authorization-request "
+    "check (`authorizationRequestValidator`) is absent at 1.120.0, 1.123.88, 2.0.0, "
+    "2.41.4, 2.45.4 and 2.46.0 and present at 1.123.89, 2.45.5 and 2.46.1; n8n pins "
+    "`@n8n/mcp-browser` 0.12.0 at 2.29.0 and 0.25.0 at 2.45.4 and 2.46.0, which list "
+    "`browser_upload` in remote mode, and 0.25.1 at 2.45.5 and 2.46.1, which leaves it out "
+    "there.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n` to 2.45.5 or later and pin it, or to 2.46.1 or later on the 2.46.x "
+    "line (2.46.0 is newer than 2.45.5 and still affected), or to 1.123.89 on 1.x. Until "
+    "then, block unauthenticated requests to `/mcp-oauth/register` and "
+    "`/mcp-oauth/authorize` at the reverse proxy, and leave Browser Use off "
+    "(`N8N_INSTANCE_AI_BROWSER_USE_ENABLED` unset or `false`).",
+    sarif_name="N8nMcpOAuthRedirectBrowserUploadRead",
+    cve_references=["CVE-2026-126386", "CVE-2026-126387"],
+    owasp_mcp_references=["MCP07:2025", "MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01", "ADV-INJECT-06"],
+    limitations=(
+        "Reads `n8n` in requirements*.txt at any depth and, at the project root only, in "
+        "pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, reporting a range that "
+        "admits an affected version, so `^2.45.5`, which admits 2.46.0, is reported. Only "
+        "a stated version is reported: `latest` was 2.47.7 on 2026-11-14, a fixed release. "
+        "Releases below 1.120.0 are not reported, though both records start at the first "
+        "release: they have neither the MCP OAuth endpoints nor Browser Use. 1.120.0 to "
+        "1.123.88 and 2.0.0 to 2.28.x carry only the open redirect. The rule reads the "
+        "version, not whether MCP access or Browser Use is turned on: 1.123.88 answers the "
+        "OAuth endpoints only while MCP access is enabled, and Browser Use needs "
+        "`N8N_INSTANCE_AI_BROWSER_USE_ENABLED=true`. npm has no 3.x release, so the "
+        "records' 3.0.0 is not reported. The dependency is not read when it is declared in "
+        "a sub-directory manifest (`packages/app/package.json`) or in a lockfile format the "
+        "reader does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` or "
+        "`docker.n8n.io/n8nio/n8n` image tag is not read. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read. A declaration nested more than 64 levels deep in "
+        "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
     ),
 )
 

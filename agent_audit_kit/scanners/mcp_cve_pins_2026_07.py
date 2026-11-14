@@ -66,6 +66,9 @@ available) before shipping:
   - n8n (MCP Client node)          >= 2.41.4, and 2.42.0  (CVE-2026-72768; SSRF-protection
     bypass. The floor rose for CVE-2026-77068, -77073, -85166 and, on 2026-10-16,
     CVE-2026-110842, the MCP workflow-validation tool's prototype pollution)
+  - n8n (MCP OAuth, Browser Use)   1.120.0 to 1.123.89, 2.0.0 to 2.45.5, and 2.46.0
+    (CVE-2026-126386, CVE-2026-126387; MEDIUM, its own rule beside the HIGH one
+    above, a stated version required)
   - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
   - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
     arbitrary file read via unvalidated file_path)
@@ -872,6 +875,25 @@ _PINS: tuple[_Pin, ...] = (
     # unversioned n8n twice.
     _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 41, 4),
          also=(((2, 42, 0), (2, 42, 1)),), fix_label="2.41.4 / 2.42.1"),
+    # --- 2026-11-14 (CVE-2026-126386, CVE-2026-126387) ---
+    # Two MCP-surface flaws fixed in the same releases, MEDIUM. The MCP OAuth
+    # endpoints (`/mcp-oauth/register`, `/mcp-oauth/authorize`) registered any
+    # client's redirect_uri and redirected there before the authorization request
+    # was checked; they first ship in 1.120.0, and `authorizationRequestValidator`
+    # arrives in 1.123.89, 2.45.5 and 2.46.1. Instance AI's Browser Use served
+    # `@n8n/mcp-browser`'s `browser_upload` tool in remote mode, where Playwright
+    # reads the path on the n8n server; it first ships in 2.29.0 (mcp-browser
+    # 0.12.0), and mcp-browser 0.25.1 (n8n 2.45.5, 2.46.1) drops the tool in remote
+    # mode. The floor is the 1.x fix, `introduced` keeps 1.119.x and older off, and
+    # the 2.x line is two `also` ranges. The HIGH rule above reports below 2.41.4
+    # for its own flaws, and raising its floor would report 2.41.4 to 2.45.4 under
+    # them, so this is a rule of its own. `latest` (2.47.7) is fixed, so a stated
+    # version is required, and an unversioned n8n is not reported a fourth time.
+    # npm has no 3.x release, so the records' 3.0.0 is not a range here.
+    _Pin("AAK-MCP-N8N-CVE-2026-126386-001", "n8n", ("n8n",), (1, 123, 89),
+         introduced=(1, 120, 0), also=(((2, 0, 0), (2, 45, 5)), ((2, 46, 0), (2, 46, 1))),
+         fix_label="2.45.5 / 2.46.1 (1.123.89 on 1.x)", requires_version=True,
+         ecosystem="js"),
     # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
     # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
     # and no authentication. `POST /api/execute` (the `prompt` body field) and

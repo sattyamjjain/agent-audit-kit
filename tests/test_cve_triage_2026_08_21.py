@@ -231,13 +231,26 @@ def test_n8n_floor_moved_rather_than_gaining_a_fifth_pin(tmp_path: Path) -> None
     2.42.0 release as a further range on the same row instead of a second row, and
     AAK-MCP-N8N-CVE-2026-65594-001 folded its two rows the same way, so an
     unversioned n8n is no longer reported twice by either rule.
+
+    Updated 2026-11-14: a fourth rule id, AAK-MCP-N8N-CVE-2026-126386-001 (MEDIUM),
+    carries two MCP-surface flaws fixed at 2.45.5 and 2.46.1. Raising this rule's
+    floor to them would report 2.41.4 to 2.45.4 under this rule's HIGH flaws, which
+    those releases do not have, so it is a rule of its own. It reports only a stated
+    version, so an unversioned n8n is still reported by three rules, not four.
     """
     n8n_rule_ids = {p.rule_id for p in _PINS if p.display == "n8n"}
     assert n8n_rule_ids == {
         "AAK-MCP-N8N-CVE-2026-59207-001",
         "AAK-MCP-N8N-CVE-2026-65594-001",
         N8N_RULE,
-    }, "a fourth n8n rule id would report the same dependency one more time"
+        "AAK-MCP-N8N-CVE-2026-126386-001",
+    }, "a further n8n rule id reports the same dependency one more time"
+    unversioned = {p.rule_id for p in _PINS if p.display == "n8n" and not p.requires_version}
+    assert unversioned == {
+        "AAK-MCP-N8N-CVE-2026-59207-001",
+        "AAK-MCP-N8N-CVE-2026-65594-001",
+        N8N_RULE,
+    }, "an unversioned n8n is reported by three rules, no more"
     floors = {p.floor for p in _PINS if p.rule_id == N8N_RULE}
     assert floors == {(2, 41, 4)}
     assert N8N_RULE in _ids(tmp_path, "package.json", '{"dependencies":{"n8n":"2.33.5"}}')

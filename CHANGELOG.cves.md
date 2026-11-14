@@ -428,6 +428,151 @@ still open. A fixed PowerPoint release will be a floor edit.
 CVSS is each record's CVSS 3.1 score: VulDB's for SurfSense and Continue, VulnCheck's for
 esp-mcp, hagent, nmap-mcp and PraisonAI, and Penpot's as its 0.6.14 row gives it.
 
+## 2026-11-14 (unreleased): eleven VulnCheck n8n records, one new MCP pin and nine in the advisory feed
+
+VulnCheck published eleven records for npm `n8n` on 13 Nov, CVE-2026-126381 to CVE-2026-126391,
+from advisories n8n published on 28 Oct. The watcher filed four as `pin floor stale` against
+`AAK-MCP-N8N-CVE-2026-72768-001` (#1242 to #1245), whose floor is 2.41.4 with 2.42.0 as an
+`also` range, and holds seven behind its back-pressure cap. Each is read here against NVD's API
+record, its CVE record, the repository's GitHub advisory, OSV and the published npm packages, all
+on 2026-11-14. NVD text is quoted from the API records, which are saved unedited under
+tests/fixtures/nvd_cna. n8n pins its internal packages (`n8n-nodes-base`,
+`@n8n/n8n-nodes-langchain`, `@n8n/backend-network`, `@n8n/expression-runtime`, `@n8n/mcp-browser`)
+to exact versions, so each fix was read in the package an n8n release pins, at 1.123.88 and
+1.123.89, 2.45.4 and 2.45.5, 2.46.0 and 2.46.1, and on the other lines a record names; the image
+record was read in the n8n Dockerfile at each release tag. Lower bounds are the records' unless a
+paragraph says it read one. npm has no 3.x release, so each record's 3.0.0 range is untested on a
+real artifact. OSV holds each record only as an NVD import under its CVE id with git commit
+ranges, which AAK's OSV half does not read. Measured with the scanner in
+tests/test_cve_batch_2026_11_14_n8n.py.
+
+**n8n's MCP OAuth open redirect and Browser Use file read (CVE-2026-126386, CVE-2026-126387) get
+`AAK-MCP-N8N-CVE-2026-126386-001`: npm `n8n` from 1.120.0 below 1.123.89, from 2.0.0 below
+2.45.5, and 2.46.0, MEDIUM.** NVD, CVE-2026-126386: "n8n before 1.123.89, 2.x before 2.45.5,
+2.46.x before 2.46.1, and 3.x before 3.0.1 contains an open redirect vulnerability in the
+unauthenticated MCP OAuth dynamic client registration flow, which accepts arbitrary redirect_uri
+values via the /mcp-oauth/register endpoint." CVE-2026-126387: "n8n before 2.46.1 contains an
+arbitrary file read vulnerability that allows authenticated members to read server files by
+supplying absolute paths to the Browser Use browser_upload tool." Its CNA data and
+GHSA-9qx8-fhxv-w794 also name 2.45.5. Both are on n8n's MCP surface: the first is the OAuth
+server n8n's MCP server authorizes clients through (GHSA-rc3w-8jc8-7x3w), and the second is a
+tool of `@n8n/mcp-browser`, which n8n serves to its Instance AI assistant as a local MCP server
+and which, in remote mode, Playwright resolves on the n8n server. Checked in the npm packages: the
+`/mcp-oauth/register` and `/mcp-oauth/authorize` routes first ship in 1.120.0 (1.119.2 has
+neither), and the authorization-request check that 1.123.89, 2.45.5 and 2.46.1 put in front of
+the MCP SDK's authorize handler (`authorizationRequestValidator`) is absent at 1.120.0, 1.121.0,
+1.123.88, 2.0.0, 2.10.0, 2.30.0, 2.41.4, 2.44.7, 2.45.4 and 2.46.0 and present at 1.123.89,
+2.45.5, 2.45.7, 2.46.1, 2.47.7 and 2.48.4. Browser Use first ships in 2.29.0 (2.28.0 and 2.28.7
+have none), which pins `@n8n/mcp-browser` 0.12.0 and builds its tools in remote mode;
+`browser_upload` is listed unconditionally in mcp-browser 0.12.0, 0.19.0 and 0.25.0, the release
+n8n 2.45.4 and 2.46.0 pin, and 0.25.1, which 2.45.5 and 2.46.1 pin, leaves it out in remote mode.
+The HIGH rule reports below 2.41.4 for its own flaws, and raising its floor would report 2.41.4 to
+2.45.4 under them; these two are lower and of another class, so they get a rule of their own, one
+for both since they share the package, the severity and the fixed releases, with the file read's
+range inside the redirect's. Both records start at the first release, which the source does not
+bear out, so the rule starts at 1.120.0, and 2.0.0 to 2.28.x carry only the redirect. `latest` is
+2.47.7, fixed, so a stated version is required, and an unversioned n8n is still reported by three
+rules, not four. The rule reads the version, not whether MCP access or Browser Use is turned on
+(1.123.88 answers the OAuth endpoints only while MCP access is on). Measured with the scanner:
+1.120.0, 1.123.88, 2.0.0, 2.29.0, 2.45.4, 2.46.0 and `^2.45.5` fire, and 1.119.2, 1.123.89,
+2.45.5, 2.46.1, 2.47.7 and `latest` do not. After `aak update` the advisory feed reads both
+records from the first release: where the rule reports the line the engine drops the feed's
+finding, and below 1.120.0, and for the file read on 1.123.89 and later 1.x releases, the feed
+reports them alone.
+
+**#1242 to #1245 and five held records stay in the advisory feed: `AAK-KNOWN-VULN-001` reports
+all nine after `aak update`, and no pin moves.** None is on n8n's MCP surface, and none of their
+advisories names an MCP path. The watcher titled four against the HIGH rule because their ranges
+run past its 2.41.4 floor; that rule reports defects on n8n's MCP surface, and a floor raise would
+report 2.41.4 to 2.45.4 under its flaws, so the floor stays, as on 2026-11-07 and 2026-11-11.
+
+- CVE-2026-126383 (#1242), NVD: "n8n before 1.123.89, 2.x before 2.45.5, 2.46.x before 2.46.1,
+  and 3.x before 3.0.1 contains a NoSQL injection vulnerability in the MongoDB node's Update and
+  Find And Replace operations". The node's `buildUpdateFilter` is absent in the n8n-nodes-base
+  releases n8n 1.123.88, 2.45.4 and 2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and
+  2.47.0 pin.
+- CVE-2026-126385 (#1243): "contains a flaw in the OAuth2 credential callback of the
+  dynamic-credential connect flow, which does not verify that the completing browser belongs to
+  the user who started the flow." The callback for a dynamic credential checks the signed-in user
+  against the one who started the flow in `oauth.service.js` at 2.45.5, 2.46.1 and 2.47.0, and
+  skips the check when no one is signed in at 2.45.4 and 2.46.0. It is the OAuth of credentials
+  that workflow nodes use, not the MCP OAuth server, and 1.123.89 ships no dynamic-credentials
+  module, though the record starts at the first release.
+- CVE-2026-126384 (#1244): "bundles a GraphicsMagick version with known vulnerabilities in its
+  official Docker image, which the Edit Image node uses to process images." The fix is in the
+  image alone: the n8n Dockerfile at the 1.123.89, 2.45.5, 2.46.1 and 2.47.0 tags restricts
+  GraphicsMagick to its primary coders and deletes the msl, mvg, pcd, svg and url coder modules,
+  and at 1.123.88, 2.45.4 and 2.46.0 does neither; the Edit Image node is the same file in the
+  n8n-nodes-base releases n8n 2.45.4 and 2.45.5 pin. The feed reads the CNA's `pkg:npm/n8n`, so it
+  reports an npm declaration of n8n by version, while an npm install's exposure depends on the
+  host's own GraphicsMagick. AAK reads no `n8nio/n8n` or `docker.n8n.io/n8nio/n8n` image tag: a
+  compose file and a Dockerfile naming 2.45.4 get no n8n finding with every record cached, as the
+  n8n rules' limitations say. The Edit Image node is a workflow node, so no image pin is added.
+- CVE-2026-126391 (#1245): "n8n before 1.123.89 contains an insufficient isolation vulnerability
+  in workflow expression evaluation that allows authenticated users to escape the sandbox." Its
+  CNA data and GHSA-gx3v-3x3v-f8r5 also name 2.45.5, 2.46.1 and 3.0.1. The fix widens the list of
+  property names the runtime sanitizer of `@n8n/expression-runtime` denies, absent in the
+  releases n8n 1.123.88, 2.45.4 and 2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and
+  2.47.0 pin. Any path that writes a workflow reaches it, and the advisory names none.
+- CVE-2026-126381 (not filed): "n8n before 2.43.5, 2.44.x before 2.44.1, and 3.x before 3.0.1
+  contains an SQL injection vulnerability in the Vector Store (OracleDB) node". The node's filter
+  key check is absent in the n8n-nodes-langchain releases n8n 2.43.4 and 2.44.0 pin and present in
+  those 2.43.5, 2.44.1 and 2.45.4 pin; the releases 1.123.88 and 1.123.89 pin have no OracleDB
+  vector store node, though the record starts at the first release. The node can serve an AI
+  Agent as a retrieval tool, but the filter key is a node parameter the workflow fills, and the
+  advisory names webhook input.
+- CVE-2026-126382 (not filed): "n8n before 2.38.0 and 3.x before 3.0.1 contains a missing
+  authentication vulnerability in the Asana Trigger". From 2.38.0 the trigger takes the secret
+  from Asana's create-webhook response instead of any request's header: absent in the
+  n8n-nodes-base release n8n 2.37.11 pins, present in those 2.38.0 and 2.45.4 pin.
+- CVE-2026-126388 (not filed): "n8n before 2.46.1 contains a credential exposure vulnerability
+  that forwards Authorization headers and basic auth credentials on cross-origin redirects". Its
+  CNA data also names 2.45.5. `@n8n/backend-network` defaults the option to on in 1.19.3 and
+  1.20.0, which n8n 2.45.4 and 2.46.0 pin, and to off in 1.19.4, 1.20.1 and 1.21.0, which 2.45.5,
+  2.46.1 and 2.47.0 pin. The 1.x line, for which the record names no fix, was not read.
+- CVE-2026-126389 (not filed): "n8n before 1.123.89 contains an authentication bypass
+  vulnerability in the Chat Trigger"; its CNA data also names 2.45.5, 2.46.1 and 3.0.1. From the
+  fixed releases the setup route answers 404 outside hosted chat: absent in the
+  n8n-nodes-langchain releases n8n 1.123.88, 2.45.4 and 2.46.0 pin, present in those 1.123.89,
+  2.45.5, 2.46.1 and 2.47.0 pin. A Chat Trigger often fronts an AI Agent, and the bypass reads a
+  named session's history, but the defect is the trigger's webhook authentication, the class of
+  the Asana Trigger record, not an agent node or MCP code, and the LangChain Code node's
+  CVE-2026-119408 went to the feed on 2026-11-07.
+- CVE-2026-126390 (not filed): "n8n before 1.123.89 contains a credential leakage vulnerability in
+  the NocoDB node"; its CNA data also names 2.45.5, 2.46.1 and 3.0.1. The node's same-origin check
+  before it sends its token is absent in the n8n-nodes-base releases n8n 1.123.88, 2.45.4 and
+  2.46.0 pin and present in those 1.123.89, 2.45.5, 2.46.1 and 2.47.0 pin.
+
+VulnCheck's CNA records name `pkg:npm/n8n`, so `aak update` maps all eleven with no map row.
+Measured with the scanner on a feed holding each record as `nvd_feed` converts it: an npm
+lockfile resolving n8n 2.45.4 reports seven of the nine and the new rule, and no older n8n pin
+fires; 2.45.5, 2.46.1 and 2.47.7 report none; 1.123.89 reports CVE-2026-126381,
+CVE-2026-126382, CVE-2026-126385 and CVE-2026-126388, whose records name no 1.x fix. The feed
+reports CVE-2026-126383, -126384, -126385 and -126391 at HIGH and the rest at MEDIUM; it has no
+LOW, so CVE-2026-126388 and CVE-2026-126390, CVSS 3.7, report at MEDIUM. None is bundled, since
+tests/test_pin_floors_vs_advisories.py holds the bundled feed to the pins, so without
+`aak update` none is reported. With the new rule's rows read, the only releases the eleven records
+list that no n8n row reports are the 3.x line, which npm does not have, and this section names
+all eleven, so the watcher does not file them again.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126381 | 6.3 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.43.5, 2.44.0 to 2.44.1 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126382 | 5.4 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.38.0 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126383 | 8.2 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1242 |
+| CVE-2026-126384 | 7.5 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports an npm `n8n` below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1; the `n8nio/n8n` image tag, where the fix is, is not read. No pin. | #1244 |
+| CVE-2026-126385 | 7.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1243 |
+| CVE-2026-126386 | 4.7 | `n8n` (npm) | **New pin** `AAK-MCP-N8N-CVE-2026-126386-001` (MEDIUM): 1.120.0 up to 1.123.89, 2.0.0 up to 2.45.5, and 2.46.0, a stated version required. | not filed |
+| CVE-2026-126387 | 5.3 | `n8n` (npm) | **New pin**, the same rule `AAK-MCP-N8N-CVE-2026-126386-001`: Browser Use ships from 2.29.0, inside the rule's range, and is fixed in 2.45.5 and 2.46.1. | not filed |
+| CVE-2026-126388 | 3.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1, at MEDIUM. No pin. | not filed |
+| CVE-2026-126389 | 5.4 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | not filed |
+| CVE-2026-126390 | 3.7 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1, at MEDIUM. No pin. | not filed |
+| CVE-2026-126391 | 7.5 | `n8n` (npm) | **Advisory feed, after `aak update`**: `AAK-KNOWN-VULN-001` reports below 1.123.89, 2.0.0 to 2.45.5, 2.46.0 to 2.46.1 and 3.0.0 to 3.0.1. No pin. | #1245 |
+
+CVSS is each record's CVSS 3.1 score, VulnCheck's.
+
+Dispositioned at 2026-11-14T05:30:00Z.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI
