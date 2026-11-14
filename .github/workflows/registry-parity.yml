@@ -36,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          persist-credentials: false
           # The age check reads the commit that introduced the declared version
           # into pyproject.toml, so the history has to be here. With a shallow
           # clone git cannot answer and the script fails closed rather than
