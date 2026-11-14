@@ -225,7 +225,7 @@
     },
     {
       "rule_id": "AAK-MCP-SERENA-CVE-2026-49471-001",
-      "title": "Serena MCP toolkit < 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)",
+      "title": "Serena MCP toolkit below 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)",
       "severity": "high",
       "configs": 19,
       "config_pct": 0.8
