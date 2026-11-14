@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- New rule AAK-MCP-PGEDGE-CVE-2026-126199-001 (MEDIUM): the pgEdge Postgres MCP Server's two bundled MCP clients, the images `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web`, below 1.1.0 (CVE-2026-126199, CVE-2026-126198, #1241, #1240). On a connection with `allow_writes`, their write-confirmation prompt classified a `query_database` statement by its first keyword, so `SELECT ... INTO`, a data-modifying common table expression and `EXPLAIN ANALYZE` of a write ran without asking, and it was never shown for custom tools at all, so a write the model was steered into ran without the user approving it. The server image holds neither client and keeps its own HIGH rule. Every pre-release tag reads as 1.0.0 and is reported, though none before 1.0.0 has the prompt, and `latest` is fixed, so only a stated tag is reported.
+
 ### Changed
 
 - The instruction-file rules AAK-AGENT-001 (CRITICAL), AAK-AGENT-003 and AAK-AGENT-006 (both HIGH) no longer fail a build (#945). `scan --fail-on` and `--ci`, the GitHub Action, the pre-commit hook (which runs `--ci`) and `aak diff --fail-on-new` skip them and list them under "Reported, not gating", and the Action's job summary counts them. Their severities, scores and SARIF levels are unchanged. The 2026-09-25 post promised that no rule reading `CLAUDE.md` or `AGENTS.md` would fail a build at HIGH before the instruction-file benign slice had a published false-positive rate; the slice exists but is not adjudicated, and from 0.6.8 to 0.6.36 these three failed builds anyway. They gate again in the change that publishes the rate in `benchmarks/false_positive/RESULTS.md`, which `tests/test_gating.py` holds together with `agent_audit_kit/rules/gating.py`.
+- `AAK-MCP-PGEDGE-CVE-2026-125320-001` names CVE-2026-126196 and CVE-2026-126197 (#1238, #1239), the CVE ids GitHub gave GHSA-j7mp-839j-jrm7 (a read-only bypass through `query_database`) and GHSA-r5pp-jx86-r6r9 (SQL injection through a `pl-do` tool's arguments). The rule has reported both since 0.6.35 under the GHSA ids, which it keeps as incident references; its range and severity do not change.
 
 ## [0.6.36] - 2026-11-12
 

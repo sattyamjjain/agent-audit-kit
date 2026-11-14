@@ -28,6 +28,7 @@ from agent_audit_kit.scanners import container_image_pins, mcp_cve_pins_2026_07
 
 FASTAGENT_PIN = "AAK-MCP-FASTAGENT-CVE-2026-102610-001"
 PGEDGE_PIN = "AAK-MCP-PGEDGE-CVE-2026-125320-001"
+PGEDGE_CLIENTS_PIN = "AAK-MCP-PGEDGE-CVE-2026-126199-001"  # added 2026-11-14
 DAGU_PIN = "AAK-MCP-DAGU-CVE-2026-102943-001"
 TRAWL_PIN = "AAK-MCP-TRAWL-CVE-2026-122140-001"
 SIYUAN_PIN = "AAK-MCP-SIYUAN-CVE-2026-123492-001"
@@ -97,7 +98,9 @@ def _uv_lock(root: Path, name: str, version: str) -> None:
 
 @pytest.mark.parametrize(("rule_id", "cves", "severity"), [
     (FASTAGENT_PIN, ["CVE-2026-102610"], Severity.MEDIUM),
-    (PGEDGE_PIN, ["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"], Severity.HIGH),
+    # The two GHSA records got CVE ids on 2026-11-12 (#1238, #1239), which joined on 2026-11-14.
+    (PGEDGE_PIN, ["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322",
+                  "CVE-2026-126196", "CVE-2026-126197"], Severity.HIGH),
     (DAGU_PIN, ["CVE-2026-102943"], Severity.MEDIUM),
     (TRAWL_PIN, ["CVE-2026-122140"], Severity.MEDIUM),
     (SIYUAN_PIN, ["CVE-2026-123492"], Severity.MEDIUM),
@@ -241,12 +244,14 @@ def test_pgedge_beta2_is_reported_at_high_and_the_rule_says_why() -> None:
 
 def test_pgedge_fixtures_positive_and_negative() -> None:
     """1.0.0's image (67121476) predates all three fixes; 1.1.0's (25c2aaed) carries
-    them. The negative also runs the `nla-web` client image, which is not the server."""
+    them. The negative also runs the `nla-web` client image, which is not the server; since
+    2026-11-14 the client images' own rule reports its 1.0.0 tag, and this rule still does
+    not (tests/test_cve_batch_2026_11_14_pgedge.py)."""
     root = CVES / "cve-2026-125320-pgedge"
     assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]] == [
         (PGEDGE_PIN, "compose.yaml", 3),
     ]
-    assert _image_ids(root / "negative") == set()
+    assert _image_ids(root / "negative") == {PGEDGE_CLIENTS_PIN}
     assert PGEDGE_PIN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 

@@ -407,6 +407,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CODEGRAPHRAG-CVE-2026-87008-001": ["AIS-07", "STA-08"],
     "AAK-MCP-FASTAGENT-CVE-2026-102610-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-PGEDGE-CVE-2026-125320-001": ["AIS-07", "IAM-01", "STA-08"],
+    "AAK-MCP-PGEDGE-CVE-2026-126199-001": ["IAM-01", "STA-08"],
     "AAK-MCP-DAGU-CVE-2026-102943-001": ["AIS-07", "DSP-17", "STA-08"],
     "AAK-MCP-TRAWL-CVE-2026-122140-001": ["IVS-04", "STA-08"],
     "AAK-MCP-SIYUAN-CVE-2026-123492-001": ["AIS-07", "BCR-01", "STA-08"],
@@ -20685,11 +20686,12 @@ _r(
     "pgEdge Postgres MCP Server image below 1.1.0: read-only bypass, SQL injection through pl-do tools, DNS rebinding, a spoofable rate-limit address and a count_rows oracle",
     "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp) runs SQL against "
     "PostgreSQL for MCP clients and ships as the image `ghcr.io/pgedge/postgres-mcp`. Five "
-    "flaws are fixed in 1.1.0. GHSA-j7mp-839j-jrm7 (CVSS 3.1 8.1, CWE-693, no CVE id): on a "
-    "read-only connection a caller of the `query_database` tool could write anyway, because "
-    "a statement the guard did not take for a read went to `tx.Exec` with no bind "
-    "parameters, over the simple query protocol, so several statements, transaction control "
-    "among them, ran in one message. GHSA-r5pp-jx86-r6r9 (8.8, CWE-89, no CVE id): a custom "
+    "flaws are fixed in 1.1.0. CVE-2026-126196 (CVSS 3.1 8.1, CWE-89 and CWE-693, "
+    "GHSA-j7mp-839j-jrm7): on a read-only connection a caller of the `query_database` tool "
+    "could write anyway, because a statement the guard did not take for a read went to "
+    "`tx.Exec` with no bind parameters, over the simple query protocol, so several "
+    "statements, transaction control among them, ran in one message. CVE-2026-126197 (8.8, "
+    "CWE-89, GHSA-r5pp-jx86-r6r9): a custom "
     "`pl-do` tool put its arguments inside a `DO` block delimited by a fixed dollar-quote "
     "tag, so an argument holding that tag ran the caller's own SQL as the connecting role. "
     "CVE-2026-125320 (5.3, CWE-346, GHSA-6hg5-9f3w-c886): the HTTP transport did not check "
@@ -20704,7 +20706,8 @@ _r(
     "carries every fix (the read-only guard and `BEGIN` access mode of b5b92930, per-call "
     "dollar-quote tags, the Origin check, the client-address resolver and the subquery "
     "rejection), and every later image keeps them. 1.0.0-beta2 (6830caeb), the first image, "
-    "has the three CVE flaws but neither GHSA route: it has no custom tools, and it runs "
+    "has the three MEDIUM flaws but neither high-severity route: it has no custom tools, "
+    "and it runs "
     "each `query_database` statement with `tx.Query`, one statement per message, after "
     "`SET TRANSACTION READ ONLY`; the `tx.Exec` path and `pl-do` tools arrive in "
     "1.0.0-beta3.",
@@ -20718,11 +20721,16 @@ _r(
     "overwrites X-Forwarded-For and refuses cross-origin requests, and grant SELECT only on "
     "the tables MCP clients may read.",
     sarif_name="PgedgePostgresMcpPre110Flaws",
-    cve_references=["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"],
-    # GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9 have no CVE id. Both are fixed in
-    # 1.1.0-beta1, like the three CVEs, and both routes are in every image the rule
-    # reports but 1.0.0-beta2, which reads as 1.0.0 (the limitations say so). They
-    # make the rule HIGH; the three MEDIUM records ride along, the Langflow precedent.
+    cve_references=["CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322",
+                    "CVE-2026-126196", "CVE-2026-126197"],
+    # GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9 had no CVE id when this rule shipped
+    # (0.6.35); GitHub assigned CVE-2026-126196 and CVE-2026-126197, published on
+    # 2026-11-12 (#1238, #1239), and they join `cve_references` with no range change.
+    # Both are fixed in 1.1.0-beta1, like the three earlier CVEs, and both routes are in
+    # every image the rule reports but 1.0.0-beta2, which reads as 1.0.0 (the
+    # limitations say so). They make the rule HIGH; the three MEDIUM records ride
+    # along, the Langflow precedent. The GHSA ids stay as incident references, so
+    # `aak rule lint --incident` still finds the rule by them.
     incident_references=["GHSA-j7mp-839j-jrm7", "GHSA-r5pp-jx86-r6r9"],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
@@ -20739,15 +20747,82 @@ _r(
         "it has no `custom_tool.go`, and its `query_database` uses the single-statement "
         "extended protocol; the advisories name every pre-release. `latest` was the 1.1.0 "
         "digest on 2026-11-11, so an untagged reference is not reported. The rule reads the "
-        "tag, not the transport or the configuration: GHSA-j7mp-839j-jrm7 needs a read-only "
-        "connection whose role can write, GHSA-r5pp-jx86-r6r9 a `pl-do` custom tool, "
+        "tag, not the transport or the configuration: CVE-2026-126196 needs a read-only "
+        "connection whose role can write, CVE-2026-126197 a `pl-do` custom tool, "
         "CVE-2026-125320 the HTTP transport and CVE-2026-125321 HTTP with authentication on, "
         "so a deployment that has none of these, such as a stdio one, the image's default, "
         "with no custom tools, is reported although only CVE-2026-125322 reaches it. The "
-        "write-confirmation prompts of the bundled CLI and web client are other artifacts and "
-        "not read. The release binaries and a server built from source state no version AAK "
-        "reads, and the `ghcr.io/pgedge/nla-web` client image is not matched. Mirrors under "
+        "write-confirmation prompts of the bundled CLI and web client are in their own "
+        "images, `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web`, which "
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001 reads; this rule does not match them. The "
+        "release binaries and a server built from source state no version AAK reads, and "
+        "the go.mod at every tag declares the module `pgedge-postgres-mcp`, a path no other "
+        "go.mod can require. Mirrors under "
         "another registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-PGEDGE-CVE-2026-126199-001",
+    "pgEdge Postgres MCP Server's CLI and web client images below 1.1.0: database writes run without the write-confirmation prompt",
+    "The pgEdge Postgres MCP Server (pgEdge/pgedge-postgres-mcp) bundles two MCP clients "
+    "that run an LLM chat agent against it: a CLI, shipped as the image "
+    "`ghcr.io/pgedge/nla-cli`, and a web client, shipped as `ghcr.io/pgedge/nla-web`. On a "
+    "connection with `allow_writes`, each asks the user to confirm a write before the "
+    "model's tool call runs, and before 1.1.0 each decided wrongly what to ask about. "
+    "CVE-2026-126199 (CVSS 3.1 6.8, CWE-357, GHSA-5gmh-9683-hhq9): a `query_database` "
+    "statement was classified by its first keyword alone, so `SELECT ... INTO`, a "
+    "data-modifying common table expression behind a leading `WITH`, and `EXPLAIN ANALYZE` "
+    "of a write were taken for reads and ran unconfirmed. CVE-2026-126198 (3.1, CWE-357, "
+    "GHSA-v44x-hxg7-5cgc): only a tool named `query_database` was considered at all, so "
+    "custom `pl-do`, `pl-func` and writing `sql` tools ran unconfirmed. Either way a write "
+    "the model issued, for example on instructions planted in content it retrieved, ran "
+    "without the user approving it. Checked in the source at the commit each image's label "
+    "names: the prompt (`internal/chat/query_classify.go`, `web/src/utils/queryClassify.js` "
+    "and `WriteQueryConfirmDialog.jsx`) first ships in 1.0.0 (67121476), where the CLI "
+    "prompts only when the tool is `query_database` and its statement's first keyword is "
+    "not a read, and the web client the same; 1.0.0-test1 (cc13a18a) is unchanged. "
+    "1.1.0-beta1 (b971c413) carries both fixes, c86d5cbe and 310c0280: the clients "
+    "classify the statement with comments removed and literals blanked, treat those three "
+    "forms as writes, and prompt for any tool whose `readOnlyHint` annotation is false, an "
+    "annotation the server sets on writing custom tools from the same release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web` 1.1.0 or later, pinned by "
+    "version, with the server image `ghcr.io/pgedge/postgres-mcp` at 1.1.0 or later too: a "
+    "1.1.0 client treats a tool with no write annotation as read-only, and a server below "
+    "1.1.0 sets none on its custom tools. Review the database's audit logs for writes "
+    "through the MCP connection that nobody confirmed, in particular statements beginning "
+    "with `WITH`, `SELECT ... INTO` or `EXPLAIN ANALYZE` and calls to custom tools. Until "
+    "then leave `allow_writes` off, or connect with a role that has no write privileges, so "
+    "the database refuses the write whether or not a client asks.",
+    sarif_name="PgedgeNlaClientsPre110WriteConfirmation",
+    cve_references=["CVE-2026-126199", "CVE-2026-126198"],
+    owasp_mcp_references=["MCP06:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI09", "ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/pgedge/nla-cli:TAG` or `ghcr.io/pgedge/nla-web:TAG` in YAML (compose files, "
+        "Kubernetes manifests, MCP configs), a Helm values mapping of `repository` and `tag`, "
+        "Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags below 1.1.0 are reported, with the two-part `1.0`; "
+        "the 1.1.0 betas and release candidate read as 1.1.0 and carry the fixes. Every tag "
+        "before 1.0.0, from 1.0.0-alpha3, the first, to 1.0.0-beta3a, reads as 1.0.0 and is "
+        "reported, although none has a write-confirmation prompt to misjudge: from "
+        "1.0.0-beta2 an `allow_writes` connection runs every write unasked, and before it no "
+        "connection allows writes; the advisories name every pre-release. `latest` was the "
+        "1.1.0 digest of both images on 2026-11-14, so an untagged reference is not reported. "
+        "The rule reads the tag, not the configuration: a deployment whose connections all "
+        "leave `allow_writes` off is reported, although PostgreSQL's read-only transaction "
+        "refuses the writes there. A 1.1.0 client still runs a custom tool's write unasked "
+        "against a server below 1.1.0, which publishes no write annotation for custom tools; "
+        "this rule does not read the server image, and AAK-MCP-PGEDGE-CVE-2026-125320-001 "
+        "reports server tags below 1.1.0. The release archives "
+        "(`pgedge-postgres-mcp-cli_<version>_<os>_<arch>`, `pgedge-nla-web_<version>_noarch`), "
+        "the RPM and DEB packages and a client built from source state no version AAK reads. "
+        "Mirrors under another registry are not matched, and commented-out lines are skipped."
     ),
 )
 

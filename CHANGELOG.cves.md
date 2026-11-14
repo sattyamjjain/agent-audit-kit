@@ -18,6 +18,93 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-14 (unreleased): #1238 to #1241, the pgEdge Postgres MCP Server's four GitHub records, two on its image rule and one new rule for its bundled clients
+
+The watcher filed #1238 to #1241 on 12 Nov: four records GitHub's CNA published for the pgEdge
+Postgres MCP Server, each fixed in 1.1.0. Each is read here against NVD's API record, its CVE
+record, the repository's advisory, OSV, the published images and the source at each git tag, all
+on 2026-11-14, and NVD text is quoted from the API records. The server is Go, on neither npm nor
+PyPI. Its go.mod declares the module `pgedge-postgres-mcp`, and `go get` of the repository's path
+fails because the declared path differs, so no go.mod can require it. Each release ships archives
+and three GHCR images built from one commit, which their labels name: the server,
+`ghcr.io/pgedge/postgres-mcp`, and the two MCP clients the project bundles, the agent CLI
+`ghcr.io/pgedge/nla-cli` and the web client `ghcr.io/pgedge/nla-web`. Docker Hub has none of the
+three. NVD's CNA data names the product with a bare range and no packageURL, so `nvd_feed` keeps
+none of the four; OSV holds each only as an NVD import with git ranges, and the bundled advisory
+feed holds none, so only the image rules report them. Each claim is measured with the scanner on
+a firing fixture and a negative one (tests/test_cve_batch_2026_11_14_pgedge.py).
+
+### CVE-2026-126196 (#1238) and CVE-2026-126197 (#1239): on the pgEdge server rule 2026-11-14
+
+**The two server records join `AAK-MCP-PGEDGE-CVE-2026-125320-001`, the image
+`ghcr.io/pgedge/postgres-mcp` below 1.1.0, HIGH, with no range change.** NVD on CVE-2026-126196:
+"Prior to 1.1.0, query_database on a read_only connection could send unrecognized statements
+through pgx Exec without bind parameters, selecting PostgreSQL's simple query protocol and
+allowing multiple semicolon-separated statements in one request." On CVE-2026-126197: "Prior to
+1.1.0, custom pl-do tools interpolated JSON arguments into a PostgreSQL DO block delimited by
+fixed dollar-quote tags." Their CVE records cite GHSA-j7mp-839j-jrm7 and GHSA-r5pp-jx86-r6r9, the
+two advisories the 0.6.35 section below put on that rule while they had no CVE id, and GitHub's
+advisory API now gives each its CVE id. The rule has reported every affected tag since 0.6.35, so
+only its references change. Re-read in the source today: 1.0.0 (67121476) sends a statement it
+does not take for a read, on a read-only connection, to `tx.Exec` after a separate
+`SET TRANSACTION READ ONLY`, and puts a `pl-do` tool's arguments inside a fixed dollar-quote tag;
+1.1.0-beta1 (b971c413) sets the access mode on `BEGIN`, sends read-only statements through
+`tx.Query` and draws the tags per call (`newDollarQuoteTags`). The `tx.Exec` path and `pl-do`
+tools both first ship in 1.0.0-beta3, so 1.0.0-beta2, the first image, has neither route, reads as
+1.0.0 and is reported, as the rule already says. `latest` and `1.1` were the 1.1.0 digest on
+2026-11-14. The rule's description, limitations and evidence now name both CVE ids beside their
+GHSA ids, which stay as incident references.
+
+### CVE-2026-126199 (#1241) and CVE-2026-126198 (#1240): new image pin 2026-11-14
+
+**The bundled clients get `AAK-MCP-PGEDGE-CVE-2026-126199-001`: the images
+`ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web` below 1.1.0, MEDIUM.** NVD on
+CVE-2026-126199: "Prior to 1.1.0, the bundled CLI and web clients classified query_database
+statements only by their first keyword before deciding whether to display a write
+confirmation." On CVE-2026-126198, the clients "decided whether to request write confirmation by
+checking only for the query_database tool name instead of server-published write annotations."
+Both clients run an LLM agent against the server over MCP, and on a connection with
+`allow_writes` each asks the user before a write the model requests. GHSA-5gmh-9683-hhq9 lists
+`SELECT ... INTO`, a data-modifying common table expression behind a leading `WITH`, and
+`EXPLAIN ANALYZE` of a write as statements taken for reads that ran unasked, and
+GHSA-v44x-hxg7-5cgc custom `pl-do`, `pl-func` and writing `sql` tools, which were never asked
+about. The vendor calls the prompt a feature of the bundled clients and not a server control,
+since any other MCP client holding a token calls the same tools unprompted. It is still the human
+approval step of an agent, the step a model steered by retrieved content gets past, so it is in
+scope as an approval bypass in an agent client, as Codex's parser desync and obsidian-tc's
+declined elicitation were, and the artifact a deployment names is the client image. The server
+image holds neither client, so the records cannot join the HIGH server rule without reporting
+client images under server flaws they do not have; they get a rule of their own at
+CVE-2026-126199's MEDIUM.
+
+Checked in the source at the commit each image's label names. No tag before 1.0.0 has the prompt:
+`internal/chat/query_classify.go`, `web/src/utils/queryClassify.js` and
+`WriteQueryConfirmDialog.jsx` are absent at 1.0.0-beta3a (f1bb9986). 1.0.0 (67121476) adds them,
+and both clients prompt only for `query_database`, and only when the statement's first keyword is
+not a read; 1.0.0-test1 (cc13a18a, June) is the same. The fixes, c86d5cbe (#198, 28 Jul) and
+310c0280 (#233, 7 Aug), are both in 1.1.0-beta1 (b971c413), which classifies the statement with
+comments removed and literals blanked, and prompts for any tool whose `readOnlyHint` is false. The
+CVE-2026-126198 fix needs the server too: a 1.1.0 client treats a tool with no annotation as
+read-only, and only a 1.1.0 server annotates writing custom tools. So the remediation says to run
+all three images at 1.1.0, and the limitations say a 1.1.0 client beside an older server is left
+to the server rule. The two records cover the same releases with the same fix, so the LOW one
+joins the MEDIUM rule, whose range covers every release it affects. The image tags start at
+1.0.0-alpha3, and every pre-release reads as 1.0.0. From 1.0.0-beta2 they run every write on an
+`allow_writes` connection unasked, and before it no connection allows writes, so none has a prompt
+to misjudge; the advisories name every pre-release, and the rule reports them and says so.
+`latest` and `1.1` were the 1.1.0 digest of both images on 2026-11-14, so an untagged reference,
+the deploy guide's own, is not reported. The rule reads the tag, not `allow_writes`, so a
+deployment that never enables writes is reported though PostgreSQL refuses the writes there.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126196 | 8.1 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-j7mp-839j-jrm7. | #1238 |
+| CVE-2026-126197 | 8.8 | `ghcr.io/pgedge/postgres-mcp` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-125320-001` (HIGH), no range change: tags below 1.1.0, reported since 0.6.35 as GHSA-r5pp-jx86-r6r9. | #1239 |
+| CVE-2026-126198 | 3.1 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **Joins** `AAK-MCP-PGEDGE-CVE-2026-126199-001`, reported at MEDIUM: the same tags, below 1.1.0. | #1240 |
+| CVE-2026-126199 | 6.8 | `ghcr.io/pgedge/nla-cli`, `ghcr.io/pgedge/nla-web` (GHCR) | **New image pin** `AAK-MCP-PGEDGE-CVE-2026-126199-001` (MEDIUM): tags below 1.1.0, beside the HIGH server rule. | #1241 |
+
+CVSS is each record's CVSS 3.1 score from GitHub, which NVD carries as its only metric.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI

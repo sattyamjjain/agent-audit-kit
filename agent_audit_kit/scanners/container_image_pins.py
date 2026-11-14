@@ -43,7 +43,9 @@ installers and the image `ghcr.io/tinyhumansai/openhuman-core`; its Rust crate
 is not on crates.io, where `openhuman` is a 2023 crate of OpenHuman-ai's, and
 npm's and PyPI's `openhuman` are 2023 packages of other projects as well.
 The pgEdge Postgres MCP Server is a Go server on neither registry; it ships as
-release binaries and `ghcr.io/pgedge/postgres-mcp`. Trawl, a scraping engine with
+release binaries and `ghcr.io/pgedge/postgres-mcp`, and its two bundled MCP clients,
+an agent CLI and a web client, as `ghcr.io/pgedge/nla-cli` and `ghcr.io/pgedge/nla-web`.
+Trawl, a scraping engine with
 an MCP endpoint, ships as `ghcr.io/germondai/trawl`; npm's and PyPI's `trawl` are
 other projects. Dagu, a workflow engine with a built-in MCP server, ships as
 `ghcr.io/dagucloud/dagu` and as the npm launcher `@dagucloud/dagu`, which has a
@@ -610,17 +612,43 @@ _PINS: tuple[_ImagePin, ...] = (
     # image) and 1.0.0 (67121476) have all three flaws; 1.1.0-beta1 (b971c413) carries
     # all three fixes (6a19e46a, 933f1b4c, 5571bd49), as rc1 and 1.1.0 (25c2aaed) do.
     # 1.0.0-test1 (cc13a18a, June) predates the fixes and reads as 1.0.0. `1.0` is the
-    # 1.0.0 digest; `latest` was the 1.1.0 digest on 2026-11-11. GHSA-j7mp-839j-jrm7
-    # (read-only bypass through `tx.Exec`) and GHSA-r5pp-jx86-r6r9 (pl-do dollar-quote
-    # injection), HIGH and with no CVE id, are fixed in 1.1.0-beta1 too and make the rule
-    # HIGH; 1.0.0-beta2 has neither route but reads as 1.0.0.
+    # 1.0.0 digest; `latest` was the 1.1.0 digest on 2026-11-11 and 2026-11-14.
+    # CVE-2026-126196 (GHSA-j7mp-839j-jrm7, read-only bypass through `tx.Exec`) and
+    # CVE-2026-126197 (GHSA-r5pp-jx86-r6r9, pl-do dollar-quote injection), HIGH, are
+    # fixed in 1.1.0-beta1 too and make the rule HIGH; 1.0.0-beta2 has neither route but
+    # reads as 1.0.0. Their CVE ids were published on 2026-11-12, after this row shipped
+    # under the GHSA ids, and join it with no range change.
     _ImagePin(
         "AAK-MCP-PGEDGE-CVE-2026-125320-001", "pgEdge Postgres MCP Server",
         "ghcr.io/pgedge/postgres-mcp",
         (1, 1, 0), "below 1.1.0",
-        "Fixed in 1.1.0, as are GHSA-j7mp-839j-jrm7 (read-only bypass) and "
-        "GHSA-r5pp-jx86-r6r9 (SQL injection through pl-do tools).",
+        "Fixed in 1.1.0, as are CVE-2026-126196 (GHSA-j7mp-839j-jrm7, read-only bypass) and "
+        "CVE-2026-126197 (GHSA-r5pp-jx86-r6r9, SQL injection through pl-do tools).",
         ("CVE-2026-125320", "CVE-2026-125321", "CVE-2026-125322"),
+    ),
+    # --- 2026-11-14 batch (pgedge) ---
+    # pgEdge's two bundled MCP clients: CVE-2026-126199 (the write-confirmation prompt
+    # classified a `query_database` statement by its first keyword, so `SELECT ... INTO`,
+    # a data-modifying CTE and `EXPLAIN ANALYZE` of a write ran unasked) and
+    # CVE-2026-126198 (only `query_database` was ever prompted for, so writing custom
+    # tools ran unasked), both fixed in 1.1.0, one rule at the higher record's MEDIUM.
+    # The images are built from the same commits as the server's, and their labels name
+    # them: the prompt is absent at 1.0.0-beta3a (f1bb9986) and earlier and first ships in
+    # 1.0.0 (67121476); 1.0.0-test1 (cc13a18a, June) predates both fixes; 1.1.0-beta1
+    # (b971c413) carries both (c86d5cbe, 310c0280). Every tag from 1.0.0-alpha3, the
+    # first, reads as 1.0.0. `1.0` is the 1.0.0 digest; `latest` and `1.1` were the
+    # 1.1.0 digest of both images on 2026-11-14.
+    _ImagePin(
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001", "pgEdge NLA CLI client",
+        "ghcr.io/pgedge/nla-cli",
+        (1, 1, 0), "below 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-126199", "CVE-2026-126198"),
+    ),
+    _ImagePin(
+        "AAK-MCP-PGEDGE-CVE-2026-126199-001", "pgEdge NLA web client",
+        "ghcr.io/pgedge/nla-web",
+        (1, 1, 0), "below 1.1.0", "Fixed in 1.1.0.",
+        ("CVE-2026-126199", "CVE-2026-126198"),
     ),
     # Dagu: CVE-2026-102943, the MCP `dagu_read` dag_spec target reads YAML files
     # outside the DAG directories. `internal/service/mcp/server.go` is absent at
