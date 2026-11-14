@@ -446,11 +446,14 @@ def test_siyuan_image_row() -> None:
 
 
 def test_siyuan_fixtures_positive_and_negative() -> None:
+    """v3.8.8 and v3.8.9 also fire the CVE-2026-126393 rule (3.7.0 below 3.8.10), a
+    different flaw on the same image, so only this rule is compared."""
     root = CVES / "cve-2026-123492-siyuan"
-    assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]] == [
+    assert [(f.rule_id, f.file_path, f.line_number) for f in container_image_pins.scan(root / "vulnerable")[0]
+            if f.rule_id == SIYUAN_PIN] == [
         (SIYUAN_PIN, "compose.yaml", 3),
     ]
-    assert _image_ids(root / "negative") == set()
+    assert SIYUAN_PIN not in _image_ids(root / "negative")
     assert SIYUAN_PIN in {f.rule_id for f in run_scan(root / "vulnerable").findings}
 
 

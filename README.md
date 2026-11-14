@@ -7,7 +7,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-501-blue.svg" alt="Rules: 501"></a>
+  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-503-blue.svg" alt="Rules: 503"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.3-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.3"></a>
   <!-- fp-badge --><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
@@ -71,12 +71,12 @@ until their precision is published in
 
 ## What it finds
 
-<!-- rule-count:total -->501<!-- /rule-count --> rules across 14 security categories:
+<!-- rule-count:total -->503<!-- /rule-count --> rules across 14 security categories:
 
 | Category | Rules | What it detects |
 |----------|:-----:|-----------------|
 | **MCP Configuration** | <!-- category-count:MCP_CONFIG -->70<!-- /category-count --> | Missing auth, wildcard CORS, `0.0.0.0` binds, SSRF, OAuth 2.1 and RFC 9728 gaps |
-| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->236<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
+| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->238<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
 | **Tool Poisoning** | <!-- category-count:TOOL_POISONING -->34<!-- /category-count --> | Invisible Unicode, prompt injection in tool and parameter descriptions, rug pulls |
 | **Secret Exposure** | <!-- category-count:SECRET_EXPOSURE -->22<!-- /category-count --> | Provider keys, tokens in configs and env files, credentials in logs |
 | **Agent Config** | <!-- category-count:AGENT_CONFIG -->21<!-- /category-count --> | Permission escalation, auto-approve, headless trust in CI |
@@ -147,7 +147,7 @@ agent-audit-kit vex  . -o vex.openvex.json
 ```
 
 Every control row cites a real clause, and a row the scanner cannot evidence
-says so instead of printing a tick. Full list of the <!-- rule-count:total -->501<!-- /rule-count -->
+says so instead of printing a tick. Full list of the <!-- rule-count:total -->503<!-- /rule-count -->
 rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/owasp-mapping.md).
 
 ### OWASP Agentic Top 10 coverage
@@ -160,9 +160,9 @@ it detects the risk, or the absence of a control the entry prescribes for it.
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Agent Goal Hijack | 19 |
-| **ASI02** | Tool Misuse and Exploitation | 123 |
-| **ASI03** | Identity and Privilege Abuse | 142 |
-| **ASI04** | Agentic Supply Chain Vulnerabilities | 263 |
+| **ASI02** | Tool Misuse and Exploitation | 125 |
+| **ASI03** | Identity and Privilege Abuse | 143 |
+| **ASI04** | Agentic Supply Chain Vulnerabilities | 265 |
 | **ASI05** | Unexpected Code Execution (RCE) | 115 |
 | **ASI06** | Memory & Context Poisoning | 6 |
 | **ASI07** | Insecure Inter-Agent Communication | 26 |
@@ -217,7 +217,7 @@ Four of them read what an install leaves behind, not only what the repository de
 <!-- test-count:total -->5,778<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
-Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->501<!-- /rule-count --> rules
+Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->503<!-- /rule-count --> rules
 (<!-- fix-recipe-coverage:pct -->2.2<!-- /fix-recipe-coverage -->%), applied by `agent-audit-kit fix`. That is a scope
 decision, not a coverage gap: a recipe ships only where the remediation is
 **deterministic and one-line** — exactly one correct edit, confirmable from the

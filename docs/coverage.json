@@ -3465,6 +3465,38 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-124726"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-APISIX-CVE-2026-124726-001",
+      "severity": "medium",
+      "title": "Apache APISIX image 3.19.0: an openapi-to-mcp tool call can reach API paths the OpenAPI document never declared, with the Route's credentials"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-58500"
       ],
       "eu_ai_act": [
@@ -8757,6 +8789,36 @@
       "title": "SiYuan image 3.8.0 to 3.8.8: an MCP resources/read of a missing resource crashes the kernel"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-126393"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-MCP-SIYUAN-CVE-2026-126393-001",
+      "severity": "medium",
+      "title": "SiYuan image from 3.7.0 below 3.8.10: the MCP skill tool's install download follows a redirect or a rebinding name to internal addresses"
+    },
+    {
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-104120",
@@ -12632,35 +12694,35 @@
       "mcp-config": 70,
       "mcp-server-card": 4,
       "secret-exposure": 22,
-      "supply-chain": 236,
+      "supply-chain": 238,
       "taint-analysis": 15,
       "tool-poisoning": 34,
       "transport-security": 17,
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 266,
+      "Art. 10 - Data Governance": 268,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 21,
-      "Art. 15 - Robustness & Security": 383,
-      "Art. 9 - Risk Management": 255
+      "Art. 15 - Robustness & Security": 385,
+      "Art. 9 - Risk Management": 257
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 265,
-      "Constrain and sandbox tool execution (p.11)": 236,
-      "Design for boundaries (p.10)": 368,
+      "Choose supported MCP projects when possible (p.10)": 267,
+      "Constrain and sandbox tool execution (p.11)": 238,
+      "Design for boundaries (p.10)": 370,
       "Filter and monitor output pipelines and chained execution (p.12)": 135,
       "Instrument for logging and detection (p.13)": 25,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 337,
-      "Sign and verify MCP messages (p.12)": 349,
-      "Track and patch MCP related vulnerabilities (p.13)": 270,
-      "Validate parameters (p.11)": 240
+      "Scan local network for open or vulnerable MCP servers (p.14)": 339,
+      "Sign and verify MCP messages (p.12)": 351,
+      "Track and patch MCP related vulnerabilities (p.13)": 272,
+      "Validate parameters (p.11)": 242
     },
     "by_owasp_agentic": {
       "ASI01": 19,
-      "ASI02": 123,
-      "ASI03": 142,
-      "ASI04": 263,
+      "ASI02": 125,
+      "ASI03": 143,
+      "ASI04": 265,
       "ASI05": 115,
       "ASI06": 6,
       "ASI07": 26,
@@ -12672,10 +12734,10 @@
       "MCP01:2025": 40,
       "MCP02:2025": 19,
       "MCP03:2025": 16,
-      "MCP04:2025": 205,
+      "MCP04:2025": 207,
       "MCP05:2025": 133,
       "MCP06:2025": 4,
-      "MCP07:2025": 107,
+      "MCP07:2025": 108,
       "MCP08:2025": 2,
       "MCP09:2025": 5,
       "MCP10:2025": 18
@@ -12685,10 +12747,10 @@
       "high": 223,
       "info": 5,
       "low": 22,
-      "medium": 148
+      "medium": 150
     },
-    "total_cves_covered": 495,
-    "total_rules": 501
+    "total_cves_covered": 497,
+    "total_rules": 503
   },
   "tool": "agent-audit-kit"
 }

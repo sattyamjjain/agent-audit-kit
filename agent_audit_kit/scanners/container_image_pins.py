@@ -53,7 +53,10 @@ row in `mcp_cve_pins_2026_07` for the same rule. ezBookkeeping, a personal finan
 app that serves MCP, is a Go server whose README runs the Docker Hub image
 `mayswind/ezbookkeeping`, tagged by release. Helio, an MCP governance proxy, ships as
 `ghcr.io/gethelio/helio` and as the npm package `@gethelio/proxy`, which has a row in
-`mcp_cve_pins_2026_07` for the same rule.
+`mcp_cve_pins_2026_07` for the same rule. Apache APISIX, an API gateway whose
+`openapi-to-mcp` plugin serves an OpenAPI document's operations as MCP tools, ships as
+the Docker Hub image `apache/apisix`, tagged `X.Y.Z-debian`, `-ubuntu` and `-redhat` by
+release, and as RPM and DEB packages; npm and PyPI have no `apisix`.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -743,6 +746,37 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-HELIO-CVE-2026-65957-001", "Helio", "ghcr.io/gethelio/helio",
         (0, 8, 0), "below 0.8.0", "Fixed in 0.8.0.",
         ("CVE-2026-65957",),
+    ),
+    # --- 2026-11-14 wave (misc) ---
+    # SiYuan: CVE-2026-126393, the MCP `skill` tool's `install` action downloads a skill
+    # with a client that follows redirects and resolves the host again at connect time,
+    # after a parse-time hostname check, so a redirect or a rebinding name reaches
+    # loopback and metadata addresses. `kernel/mcp/tools/skill.go` (with `install`) and
+    # `kernel/util/skill.go` (`fetchBytes` on `httpclient.NewBrowserRequest()`) arrive in
+    # v3.7.0-rc.1 (`kernel/mcp` is absent through v3.6.5) and are unchanged in that
+    # respect through v3.8.9; 3e1b977e (2026-10-29) moves the download onto
+    # `ssrfSafeClient` with a redirect check, in v3.8.10-alpha.1 and later and not v3.8.9.
+    # Every v3.8.10 pre-release tag was pushed after the fix; `latest` was the v3.8.10
+    # digest on 2026-11-14. A different flaw from the two SiYuan rows above.
+    _ImagePin(
+        "AAK-MCP-SIYUAN-CVE-2026-126393-001", "SiYuan", "b3log/siyuan",
+        (3, 8, 10), "from 3.7.0 below 3.8.10", "Fixed in 3.8.10.",
+        ("CVE-2026-126393",), introduced=(3, 7, 0),
+    ),
+    # Apache APISIX: CVE-2026-124726, the `openapi-to-mcp` plugin fills an OpenAPI path
+    # template with the caller's path parameters, and a value of `..` (which
+    # `ngx.escape_uri` leaves alone) or a separator the upstream decodes moves the request
+    # to a path the document never declared, sent with the Route's own credentials.
+    # The plugin is absent at 3.18.0 and ships in 3.19.0; 77055643 (#14154, 2026-11-06)
+    # confines each value to one path segment, in 3.20.0 and not 3.19.0. Docker Hub tags
+    # releases `X.Y.Z-debian`, `-ubuntu` and `-redhat`, with no two-part tags; the
+    # handler in the 3.19.0-debian image is byte-identical to the 3.19.0 tag's, and the
+    # 3.20.0-debian image's to the 3.20.0 tag's. `latest` was the 3.20.0-ubuntu build on
+    # 2026-11-14.
+    _ImagePin(
+        "AAK-MCP-APISIX-CVE-2026-124726-001", "Apache APISIX", "apache/apisix",
+        (3, 20, 0), "from 3.19.0 below 3.20.0", "Fixed in 3.20.0.",
+        ("CVE-2026-124726",), introduced=(3, 19, 0),
     ),
 )
 

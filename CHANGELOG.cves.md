@@ -573,6 +573,144 @@ CVSS is each record's CVSS 3.1 score, VulnCheck's.
 
 Dispositioned at 2026-11-14T05:30:00Z.
 
+## 2026-11-14 (unreleased): #1237, #1246 and two held records, two new image pins, one record in the bundled advisory feed, one out of scope
+
+The watcher filed #1237 on 12 Nov and #1246 on 13 Nov, and holds CVE-2026-126360 and
+CVE-2026-126393 behind its back-pressure cap, so those two have no issue yet. Each is read
+here against NVD's API record, its CVE record, OSV and the published artifacts, all on
+2026-11-14, and NVD text is quoted from the API records. Two get image pins, each measured
+with the scanner on a firing fixture and a negative one
+(tests/test_cve_batch_2026_11_14_misc.py) after its range was read in the source at the
+tags: SiYuan's MCP `skill` tool, on the image AAK already reads for SiYuan, and Apache
+APISIX's `openapi-to-mcp` plugin, whose 3.19.0 and 3.20.0 images were read too.
+OpenTelemetry's record is a flaw in the tracing library that the MCP Python SDK 2.x
+requires, so its OSV record joins the bundled advisory feed, as anyio's two did on
+2026-11-07. Opera Neon's MCP Hub is a browser built-in that no project file declares. None of
+the four CVE records names a package that `nvd_feed` maps.
+
+### CVE-2026-126393 (not filed): new image pin 2026-11-14
+
+**SiYuan gets `AAK-MCP-SIYUAN-CVE-2026-126393-001`: the image `b3log/siyuan` from v3.7.0
+below v3.8.10, MEDIUM.** NVD: "SiYuan before 3.8.10 contains a server-side request forgery
+vulnerability in the skill-install download path because fetchBytes performs only a
+parse-time hostname check instead of using ssrfSafeClient. Attackers can supply a skill URL
+via the MCP skill install action that redirects or DNS-rebinds to loopback addresses,
+reaching internal services and metadata endpoints." GHSA-6pg3-pqxw-jm82 traces it from the
+MCP `skill` tool's `install` action to `downloadSkillSource`, which checks the host once with
+`CheckHostSSRF`, and `fetchBytes`, which downloads through `httpclient.NewBrowserRequest()`, a
+client that resolves the name again when it connects and follows a redirect without checking
+it. The advisory notes that `install` is declared a local write, so an agent steered by
+injected text needs a confirmation or a pre-approved setting. This one differs from
+CVE-2026-126776 (#1230), ruled out of scope on 2026-11-12: that traversal needed Windows path
+rules, while this download behaves the same on the Linux builds the image carries, and its
+entry point is one of the kernel's MCP tools, the surface the two SiYuan image rules already
+pin. Checked in the source at the tags: `kernel/mcp` is absent at v3.6.5;
+`kernel/mcp/tools/skill.go` with `install` and `kernel/util/skill.go` with that `fetchBytes`
+ship in v3.7.0-rc.1 and are the same in that respect at v3.7.0, v3.8.0, v3.8.8 and v3.8.9;
+3e1b977e ("Route skill downloads through the SSRF-safe client", 2026-10-29) downloads through
+`ssrfSafeClient`, which dials only the checked address, and checks every redirect, and is in
+v3.8.10 and not v3.8.9. The advisory gives no lower bound and NVD starts at 0, so the pin
+starts where the MCP tool ships, as the CVE-2026-116168 rule does. Docker Hub has no v3.7.0
+dev or beta image; v3.7.0-rc.1 and rc.2 read as 3.7.0 and are reported. Every v3.8.10
+pre-release tag, from alpha.1 on 31 Oct, was pushed after the fix and contains it, and
+`latest` was the v3.8.10 digest on 2026-11-14, so an untagged reference is not reported. Tags
+from v3.7.0 below v3.8.9 also fire one or both of the other SiYuan image rules, for their own
+flaws; v3.8.9 fires this one alone. OSV has no record of the CVE or the GHSA, and the CVE
+record names a vendor and a product with no packageURL, so the advisory feed does not report
+it.
+
+### CVE-2026-124726 (#1246): new image pin 2026-11-14
+
+**Apache APISIX gets `AAK-MCP-APISIX-CVE-2026-124726-001`: the image `apache/apisix` from
+3.19.0 below 3.20.0, MEDIUM.** NVD: "A caller of the MCP endpoint can invoke endpoints the
+OpenAPI document never declared, under the declared tool's HTTP method, using the credentials
+the Route adds. This issue affects Apache APISIX: from 3.19.0 before 3.20.0." The CVE record
+is titled "openapi-to-mcp tool call can reach an API path the document does not declare".
+APISIX is a general API gateway, but the flaw is in its MCP code: the `openapi-to-mcp` plugin
+serves an OpenAPI document's operations as MCP tools on a Route and sends each call to the
+Route's `base_url` with the Route's headers, and in 3.19.0 it fills the path template with the
+caller's path parameters after `ngx.escape_uri`, which leaves dots alone, and checks no
+segment, so a value of two dots fills a segment the receiving server resolves away. That is
+the line the self-hosted apps of 2026-11-11 drew: a flaw in an app's own MCP code is pinned by
+image tag (SiYuan, ezBookkeeping, Trawl, Dagu), and a flaw in general code that MCP shares is
+not (Vikunja, and ByteStash on 2026-11-12). The MCP gateways AAK reads by image (IBM
+ContextForge, Unla, Amazon's MCP Gateway & Registry) are pinned the same way. Checked in the
+source and the images: `apisix/plugins/openapi-to-mcp` is absent at 3.18.0 and ships in
+3.19.0 (e564adb8, #13942); 77055643 (#14154, "confine a path parameter to one path segment",
+2026-11-06) refuses a value holding a separator unless the Route sets
+`allow_encoded_path_separators`, and any value that leaves an empty or dot segment, and is in
+3.20.0 and not in 3.19.0, which was cut from a branch without it. `tools/handler.lua` in the
+amd64 3.19.0-debian image is byte-identical to the 3.19.0 tag's, and in the 3.20.0-debian
+image to the 3.20.0 tag's. Docker Hub tags each release `X.Y.Z-debian`, `-ubuntu` and
+`-redhat`, with no two-part tags, and `latest` was the 3.20.0-ubuntu build on 2026-11-14 (the
+same amd64 config), so only the three 3.19.0 tags are reported. The apisix-docker example
+takes its tag from a variable with a default, and the official Helm chart leaves `image.tag`
+empty for its appVersion; neither states a version this reader trusts, and the RPM and DEB
+packages state none in a file AAK reads. The plugin is in the default plugin list but serves
+MCP only on a Route that configures it, and the rule reads the tag, not the Routes; the
+limitations say so. npm and PyPI have no `apisix`. OSV has no record of the CVE, and the CVE
+record's `pkg:software-id/apache.org/apisix` maps to no feed.
+
+### CVE-2026-126360 (not filed): advisory feed 2026-11-14
+
+**OpenTelemetry's `opentelemetry-api` gets no pin; its OSV record joins the bundled advisory
+feed, so `AAK-KNOWN-VULN-001` reports every release below 1.45.2, MEDIUM, without
+`aak update`.** NVD: "Prior to 1.45.2, TraceContextTextMapPropagator.extract() in
+opentelemetry-api can perform quadratic-time regular-expression backtracking on a malformed
+traceparent value containing a trace-context prefix, a long whitespace sequence, and an
+embedded newline." And: "JSON-based carriers, including applicable MCP request metadata
+integrations, can preserve the required newline depending on the SDK, instrumentation, and
+message-size limits." The watcher found it through NVD's keyword feed, on that sentence's
+"MCP"; the package is in no pin table. The MCP surface is real. Checked in the PyPI wheels:
+the MCP Python SDK, `mcp`, has no OpenTelemetry code from 1.20.0 to 1.29.1, the newest 1.x;
+every 2.x release from 2.0.0a1 to 2.3.0, the newest, requires `opentelemetry-api>=1.28.0` and
+has a server middleware that passes each request's `params._meta` to
+`opentelemetry.propagate.extract`, and from 2.0.0b1 that middleware, `OpenTelemetryMiddleware`,
+is installed on every low-level server by default. The API's default propagators
+(`tracecontext,baggage`) run the trace-context parser on it, so a client of a Python MCP
+server on SDK 2.x that resolves `opentelemetry-api` below 1.45.2 can delay the server's other
+requests with one large message. The flaw and the fix are the tracing library's, not the
+SDK's, the shape of anyio's two advisories, which joined the bundled feed because Python MCP
+servers get anyio through the SDK. The parser's pattern is the same in the 1.28.0 and 1.45.1
+wheels, and 1.45.2 (29 Oct) refuses a `traceparent` longer than 512 characters before
+matching; `mcp` sets no upper bound, so a fresh resolution takes 1.45.2, and a lockfile
+written before 29 Oct may not. GHSA-mf5v-w3w3-f6cg, as OSV returns it, names
+`opentelemetry-api` from 0 below 1.45.2 with GitHub's CVSS 3.1 vector, and it is bundled
+unedited (saved under tests/fixtures/cves/cve-2026-126360-opentelemetry/osv). Measured with
+the scanner on the bundled feed in an empty HOME: an MCP server's uv.lock resolving `mcp`
+2.3.0 and `opentelemetry-api` 1.45.1 fires once at MEDIUM and names 1.45.2, a
+requirements.txt pinning 1.45.1 fires, 1.28.0 is in the range, and 1.45.2 does not fire.
+AAK-KNOWN-VULN-001 reports the package in any project that locks it, MCP server or not, as it
+does anyio. OSV also holds the CVE as an NVD import with only git ranges, which the feed does
+not read.
+
+### CVE-2026-123139 (#1237): out of scope 2026-11-14
+
+**Opera Neon's MCP Hub is out of scope.** NVD: "Improper verification of the source of a
+communication channel vulnerability in Opera Neon on macOS and Windows allows a malicious
+browser extension to take control of the browser by sending commands through MCP Hub to the
+built-in Browser Operator extension. This issue affects Opera Neon MCP Hub extension: 0.0.1."
+Opera's advisory repeats the description and names no fixed release, and the CVE record's
+affected version is a custom "1.0.0" beside the description's 0.0.1. The MCP Hub is an
+extension built into the Opera Neon browser, which ships and updates it with the browser, so
+nothing a project declares names it or its version. Opera describes its MCP Connector, the way
+external AI clients reach Neon, as an MCP server URL, and a URL states no extension version.
+AAK-MALICIOUS-EXTENSION-001 reads the extension folders of VS Code and the editors built on
+it, not a browser's, and AAK-MCP-BROWSER-ATTACH-001 reads MCP configs that attach a
+browser-automation server to the user's own browser, which this is not. npm's `mcp-hub` is
+ravitemer's MCP server manager, at 4.2.1, another project, and PyPI has no `mcp-hub`. OSV has
+no record.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-126393 | 6.1 | `b3log/siyuan` (Docker Hub) | **New image pin** `AAK-MCP-SIYUAN-CVE-2026-126393-001` (MEDIUM): tags from v3.7.0 below v3.8.10. | not filed |
+| CVE-2026-124726 | 6.9 (4.0) | `apache/apisix` (Docker Hub) | **New image pin** `AAK-MCP-APISIX-CVE-2026-124726-001` (MEDIUM): tags from 3.19.0 below 3.20.0. | #1246 |
+| CVE-2026-126360 | 5.3 | `opentelemetry-api` (PyPI) | **Advisory feed**: `AAK-KNOWN-VULN-001` reports below 1.45.2 from the bundled OSV record, MEDIUM. No pin. | not filed |
+| CVE-2026-123139 | 5.8 (4.0) | Opera Neon MCP Hub (browser built-in) | **Out of scope**: an extension built into the browser, which no project file declares. No fixed release named. | #1237 |
+
+CVSS is each record's CVSS 3.1 score where it has one: VulnCheck's for SiYuan (its CVSS 4.0
+score is 5.3) and GitHub's for OpenTelemetry. Apache and Opera scored theirs in CVSS 4.0 only.
+
 ## 2026-11-12 (v0.6.36): #1231 and #1232, AgentScope's Bash tool and its service's identity, one new pin and one record on an existing rule
 
 The watcher filed #1231 and #1232 at 19:58Z on 11 Nov: two VulDB records for PyPI

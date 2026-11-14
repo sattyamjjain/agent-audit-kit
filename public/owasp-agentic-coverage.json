@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-12T08:06:33Z",
+  "last_updated": "2026-11-14T05:27:20Z",
   "aak_version": "0.6.36",
-  "rule_count": 501,
+  "rule_count": 503,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -173,7 +173,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 123,
+      "rule_density": 125,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -433,6 +433,18 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-APISIX-CVE-2026-124726-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-124726"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -1025,6 +1037,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-SIYUAN-CVE-2026-126393-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-126393"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-SSRF-001",
           "severity": "medium",
           "cve_references": [
@@ -1403,7 +1426,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 142,
+      "rule_density": 143,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1658,6 +1681,18 @@
             "CVE-2026-71563"
           ],
           "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-APISIX-CVE-2026-124726-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-124726"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "IAM-01",
             "STA-08"
           ]
@@ -2865,7 +2900,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 263,
+      "rule_density": 265,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -3347,6 +3382,18 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-APISIX-CVE-2026-124726-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-124726"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -5172,6 +5219,17 @@
           "aicm_references": [
             "AIS-07",
             "BCR-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SIYUAN-CVE-2026-126393-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-126393"
+          ],
+          "aicm_references": [
+            "IVS-04",
             "STA-08"
           ]
         },

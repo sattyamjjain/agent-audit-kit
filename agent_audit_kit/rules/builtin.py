@@ -417,6 +417,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-HELIO-CVE-2026-65957-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HEYM-CVE-2026-67546-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-PRAISONAI-CVE-2026-61438-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-SIYUAN-CVE-2026-126393-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-APISIX-CVE-2026-124726-001": ["AIS-07", "IAM-01", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -21477,6 +21479,120 @@ _r(
         "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
         "still judged, and reported without a line; a lockfile entry keeps its line at any "
         "depth."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-14 batch, group "misc" (#1237, #1246 and two held records). Two new image
+# pins: SiYuan's MCP `skill` tool downloads a skill past its SSRF guard
+# (CVE-2026-126393, below 3.8.10), and Apache APISIX's `openapi-to-mcp` plugin lets a
+# tool call reach undeclared API paths with the Route's credentials (CVE-2026-124726,
+# 3.19.0). OpenTelemetry's traceparent ReDoS (CVE-2026-126360) joins the bundled
+# advisory feed, and Opera Neon's MCP Hub (CVE-2026-123139) is out of scope; the
+# ledger has the reasons.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SIYUAN-CVE-2026-126393-001",
+    "SiYuan image from 3.7.0 below 3.8.10: the MCP skill tool's install download follows a redirect or a rebinding name to internal addresses",
+    "SiYuan (siyuan-note/siyuan), a self-hosted notes app, serves MCP from its own "
+    "kernel, and the Docker Hub image `b3log/siyuan` is how it runs on a server. Its "
+    "`skill` MCP tool has an `install` action that takes a URL (an `owner/repo` "
+    "shorthand, a GitHub URL, a raw SKILL.md URL or a release zip) and downloads it in "
+    "the kernel. `downloadSkillSource` checks the URL's host once, with "
+    "`CheckHostSSRF` when the URL is parsed, and `fetchBytes` then downloads through "
+    "`httpclient.NewBrowserRequest()`, which resolves the name again when it connects "
+    "and follows redirects without checking them, so a public URL that redirects to a "
+    "loopback, private or metadata address, or a name that re-resolves to one, reaches "
+    "internal services from the kernel (CVE-2026-126393, CVSS 3.1 6.1, CWE-918, "
+    "GHSA-6pg3-pqxw-jm82). The advisory notes that `install` is declared a local write, "
+    "so an agent steered by injected text needs a confirmation or a pre-approved "
+    "setting. Checked in the source: `kernel/mcp/tools/skill.go` with `install` and "
+    "`kernel/util/skill.go` with that `fetchBytes` ship in v3.7.0-rc.1 (`kernel/mcp` is "
+    "absent through v3.6.5) and are unchanged in that respect through v3.8.9; 3e1b977e "
+    "(\"Route skill downloads through the SSRF-safe client\", 2026-10-29) downloads "
+    "through `ssrfSafeClient`, which dials only the checked address, and checks every "
+    "redirect, in v3.8.10 and not v3.8.9.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `b3log/siyuan` v3.8.10 or later, pinned by version. Until then keep the "
+    "`skill` tool's `install` action behind a confirmation for every MCP client, and "
+    "block the kernel's egress to loopback, private and cloud metadata addresses.",
+    sarif_name="SiyuanMcpSkillInstallDownloadSsrf",
+    cve_references=["CVE-2026-126393"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`b3log/siyuan:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a "
+        "Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from v3.7.0 below v3.8.10 are reported, "
+        "pre-release tags included (v3.7.0-rc.1 reads as 3.7.0); tags below v3.7.0 "
+        "predate the MCP `skill` tool and are not. Every v3.8.10 pre-release tag was "
+        "pushed after the fix, and `latest` was the v3.8.10 image on 2026-11-14, so an "
+        "untagged reference is not reported. Tags from v3.7.0 below v3.8.7 also fire "
+        "AAK-MCP-SIYUAN-CVE-2026-116168-001, and tags from v3.8.0 below v3.8.9 "
+        "AAK-MCP-SIYUAN-CVE-2026-123492-001, different flaws; v3.8.9 fires this rule "
+        "alone. The rule reads the tag, not whether any MCP client holds a token for the "
+        "kernel or may install skills without a confirmation, so a container no agent "
+        "talks to is reported too. A desktop install, or a kernel built from source, "
+        "states no version AAK reads, and npm's and PyPI's `siyuan` are other projects. "
+        "`docker.io/b3log/siyuan` and mirrors under another registry are not matched, "
+        "and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-APISIX-CVE-2026-124726-001",
+    "Apache APISIX image 3.19.0: an openapi-to-mcp tool call can reach API paths the OpenAPI document never declared, with the Route's credentials",
+    "Apache APISIX, an API gateway, ships as the Docker Hub image `apache/apisix`. Its "
+    "`openapi-to-mcp` plugin, new in 3.19.0, serves the operations of an OpenAPI "
+    "document as MCP tools on a Route and sends each tool call to the Route's "
+    "`base_url` with the headers the Route adds, typically the upstream API's "
+    "credentials. It fills an operation's path template with the caller's path "
+    "parameters after `ngx.escape_uri`, which leaves dots alone, and checks nothing "
+    "else, so a value of `..` fills a whole segment that the receiving server resolves "
+    "away, and an encoded separator that the server decodes splits one: a caller of "
+    "the MCP endpoint reaches an endpoint the document never declared, under the "
+    "declared tool's HTTP method, with the Route's credentials (CVE-2026-124726, "
+    "CVSS 4.0 6.9, CWE-23). Checked in the source and the images: "
+    "`apisix/plugins/openapi-to-mcp` is absent at 3.18.0 and ships in 3.19.0, whose "
+    "`build_path` in `tools/handler.lua` substitutes each value with no segment check, "
+    "and the 3.19.0-debian image carries that same file; 77055643 (#14154, \"confine a "
+    "path parameter to one path segment\") refuses a value holding a separator unless "
+    "the Route sets `allow_encoded_path_separators`, and any value that leaves an empty "
+    "or dot segment, in 3.20.0 and its images.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `apache/apisix` 3.20.0 or later, pinned by version. Until then remove "
+    "`openapi-to-mcp` from Routes whose upstream credentials reach more than the "
+    "OpenAPI document declares, or scope those credentials to the declared operations.",
+    sarif_name="ApisixOpenapiToMcpPathParamTraversal",
+    cve_references=["CVE-2026-124726"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`apache/apisix:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a "
+        "Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile "
+        "`FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 3.19.0 below 3.20.0 are reported, which "
+        "on Docker Hub are 3.19.0-debian, 3.19.0-ubuntu and 3.19.0-redhat; tags below "
+        "3.19.0 predate the plugin and are not. `latest` was the 3.20.0 image on "
+        "2026-11-14, so an untagged reference is not reported, nor is `dev`. A tag taken "
+        "from a variable, as in the apisix-docker example's "
+        "`${APISIX_IMAGE_TAG:-...}`, states no version AAK reads, and the official Helm "
+        "chart leaves `image.tag` empty so that its appVersion decides, which the values "
+        "file does not state. The rule reads the tag, not whether any Route enables "
+        "`openapi-to-mcp`, so a gateway with no MCP Route is reported too. An install "
+        "from the RPM or DEB packages states no version AAK reads. "
+        "`docker.io/apache/apisix` and mirrors under another registry are not matched, "
+        "and commented-out lines are skipped."
     ),
 )
 
