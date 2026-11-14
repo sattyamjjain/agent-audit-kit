@@ -7189,7 +7189,9 @@ _r(
         "that does not parse, and a manifest in a sub-directory or over 2 MB are not read."
         " A source file over 512 KB is not read. A pyproject.toml with a key of more "
         "than 64 dotted parts, or holding an integer Python cannot convert (one past "
-        "4,300 digits), is refused and reported as AAK-INTERNAL-SCANNER-FAIL."
+        "4,300 digits), is refused and reported as AAK-INTERNAL-SCANNER-FAIL, and so is "
+        "a pom.xml that declares a DOCTYPE, which no Maven POM needs: it is not parsed, "
+        "so no entity it declares is expanded."
     ),
 )
 
@@ -14566,7 +14568,9 @@ _r(
     "finds over its cap although the file's size, read just before, said it "
     "was not (one that grew in between, or a filesystem that misreports "
     "sizes; a file whose size puts it over the cap is skipped, as the owning "
-    "rule states). The scanner went on with every other "
+    "rule states), or a pom.xml that declares a DOCTYPE (no Maven POM needs "
+    "one, and the entities it can declare grow a small file past any cap as "
+    "they are expanded). The scanner went on with every other "
     "file, and the evidence names the scanner, the file and the reason.",
     Severity.INFO,
     Category.AGENT_CONFIG,
