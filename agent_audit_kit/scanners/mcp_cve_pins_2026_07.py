@@ -410,7 +410,13 @@ except ImportError:  # Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, loads_toml, make_finding, strip_jsonc
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    loads_toml,
+    make_finding,
+    read_text_refusing,
+    strip_jsonc,
+)
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
@@ -2808,7 +2814,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > limit:
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_refusing(path, limit, errors="replace")
         except OSError:
             continue
         rel = str(path.relative_to(project_root))

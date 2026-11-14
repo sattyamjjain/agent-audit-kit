@@ -40,8 +40,8 @@ from typing import Iterator, NamedTuple
 from agent_audit_kit.models import Finding
 
 from ._helpers import (
-    SKIP_DIRS,
     SOURCE_MAX_BYTES,
+    kept_dirs,
     make_finding,
     parse_python,
     read_text_capped,
@@ -593,7 +593,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if not name.endswith(".py"):
                 continue

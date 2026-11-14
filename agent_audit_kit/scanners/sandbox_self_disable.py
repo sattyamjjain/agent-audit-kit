@@ -28,7 +28,13 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_json, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    read_text_refusing,
+)
 
 _RULE_ID = "AAK-MCP-SANDBOX-SELFDISABLE-001"
 
@@ -186,7 +192,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if json_path.stat().st_size > 1_000_000:
                 continue
-            raw_text = json_path.read_text(encoding="utf-8", errors="ignore")
+            raw_text = read_text_refusing(json_path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

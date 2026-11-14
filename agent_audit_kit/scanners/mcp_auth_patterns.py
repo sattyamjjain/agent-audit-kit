@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, read_text_refusing
 
 
 _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go"}
@@ -212,7 +212,7 @@ def _iter_source(project_root: Path) -> list[Path]:
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return findings
     if not _MCP_SERVER_HINT.search(text):

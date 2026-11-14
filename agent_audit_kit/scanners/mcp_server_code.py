@@ -35,9 +35,9 @@ from agent_audit_kit.models import Finding
 
 from ._helpers import (
     CONFIG_MAX_BYTES,
-    SKIP_DIRS,
     SOURCE_MAX_BYTES,
     iter_mcp_servers,
+    kept_dirs,
     loads_jsonc,
     make_finding,
     parse_python,
@@ -549,7 +549,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             path = Path(dirpath) / name
             lowered = name.lower()

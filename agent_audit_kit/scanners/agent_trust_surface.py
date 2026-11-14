@@ -51,6 +51,7 @@ from agent_audit_kit.scanners._helpers import (
     find_line_number,
     load_yaml,
     make_finding,
+    read_text_refusing,
 )
 
 _WORKFLOWS_DIR = ".github/workflows"
@@ -162,7 +163,7 @@ def _read(path: Path) -> str | None:
     try:
         if path.stat().st_size > _MAX_FILE_BYTES:
             return None
-        return path.read_text(encoding="utf-8", errors="ignore")
+        return read_text_refusing(path, _MAX_FILE_BYTES, errors="ignore")
     except OSError:
         return None
 

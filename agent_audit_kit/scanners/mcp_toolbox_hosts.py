@@ -23,7 +23,7 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import CONFIG_MAX_BYTES, SKIP_DIRS, iter_mcp_servers, loads_jsonc, make_finding, read_text_capped
+from ._helpers import CONFIG_MAX_BYTES, iter_mcp_servers, kept_dirs, loads_jsonc, make_finding, read_text_capped
 from ._launchers import basename, invocation_packages, npm_spec
 from ._versions import parse_version
 
@@ -121,7 +121,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             lowered = name.lower()
             if lowered not in _CONFIG_NAMES and not lowered.endswith(".mcp.json"):

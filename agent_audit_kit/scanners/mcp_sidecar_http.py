@@ -57,7 +57,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding, read_text_refusing
 
 NOAUTH_RULE = "AAK-MCP-SIDECAR-NOAUTH-001"
 REBIND_RULE = "AAK-MCP-SIDECAR-REBIND-001"
@@ -223,7 +223,7 @@ def _iter_source_files(project_root: Path):
         try:
             if path.stat().st_size > _MAX_BYTES:
                 continue
-            yield path, path.read_text(encoding="utf-8", errors="ignore")
+            yield path, read_text_refusing(path, _MAX_BYTES, errors="ignore")
         except OSError:  # pragma: no cover - unreadable file
             continue
 

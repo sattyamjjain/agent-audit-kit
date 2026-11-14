@@ -927,6 +927,12 @@ def _read_gitignore(project_root: Path) -> str | None:
             data = handle.read(_GITIGNORE_MAX_BYTES + 1)
     except OSError:
         return None
+    return gitignore_text(data)
+
+
+def gitignore_text(data: bytes) -> str:
+    """A `.gitignore`'s bytes as `_read_gitignore` reads them, for `aak fix --dry-run`,
+    which reads the file as a fix earlier in the run would have left it."""
     if len(data) > _GITIGNORE_MAX_BYTES:
         data = data[: data.rfind(b"\n", 0, _GITIGNORE_MAX_BYTES) + 1]
     return data.decode("utf-8-sig", errors="surrogateescape")

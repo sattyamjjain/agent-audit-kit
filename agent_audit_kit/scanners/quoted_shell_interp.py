@@ -65,6 +65,7 @@ from agent_audit_kit.scanners._helpers import (
     parse_python,
     refusing_overflow,
     walk_tree,
+    read_text_refusing,
 )
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
@@ -1944,7 +1945,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > _MAX_BYTES:
                 continue
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_text_refusing(path, _MAX_BYTES, errors="ignore")
         except OSError:  # pragma: no cover - unreadable file
             continue
 

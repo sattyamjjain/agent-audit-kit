@@ -72,6 +72,7 @@ from agent_audit_kit.scanners._helpers import (
     load_yaml_all,
     make_finding,
     read_text_capped,
+    read_text_refusing,
 )
 
 
@@ -400,7 +401,7 @@ def _check_committed_tunnel_pem_keys(project_root: Path) -> list[Finding]:
         except OSError:
             continue
         try:
-            raw = p.read_text(encoding="utf-8")
+            raw = read_text_refusing(p, 100_000)
         except (OSError, UnicodeDecodeError):
             continue
         if not _PEM_PRIVATE_KEY_RE.search(raw):

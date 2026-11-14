@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, read_text_refusing
 from agent_audit_kit.scanners._http_routes import (
     GO_TEST_SERVER_RE,
     TEST_FILE_RE,
@@ -337,7 +337,7 @@ def _iter_files(project_root: Path) -> Iterable[Path]:
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     rel = str(path.relative_to(project_root))

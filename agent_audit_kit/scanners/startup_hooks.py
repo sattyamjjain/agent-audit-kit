@@ -69,10 +69,10 @@ from agent_audit_kit.models import Finding
 from ._helpers import (
     CONFIG_MAX_BYTES,
     MCP_TS_SDK_NAMES,
-    SKIP_DIRS,
     FileNotRead,
     declares_mcp_sdk,
     iter_mcp_servers,
+    kept_dirs,
     loads_json,
     loads_jsonc,
     make_finding,
@@ -693,7 +693,7 @@ def _lockfile_findings(path: Path, state: _ScanState) -> list[Finding]:
 def _project_files(project_root: Path) -> Iterator[Path]:
     """Dockerfiles and npm lockfiles under the root, outside `SKIP_DIRS`."""
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if _dockerfile_kind(name) or name in _LOCKFILE_NAMES:
                 yield Path(dirpath) / name

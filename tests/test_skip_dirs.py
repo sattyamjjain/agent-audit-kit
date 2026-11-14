@@ -36,7 +36,7 @@ from unittest import mock
 import pytest
 
 from agent_audit_kit.engine import run_scan
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, in_skip_dir
+from agent_audit_kit.scanners._helpers import SKIP_DIRS, in_skip_dir, kept_dirs
 
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "tests" / "fixtures"
@@ -472,3 +472,64 @@ def test_no_scanner_tests_a_skip_set_against_parts_by_hand() -> None:
         "testing every part of an absolute path also tests the directories the "
         f"project lives in: {offenders}"
     )
+
+
+# ---------------------------------------------------------------------------
+# A Claude Code worktree inside the project is not scanned again (#1060)
+# ---------------------------------------------------------------------------
+#
+# Claude Code keeps each worktree it makes, a full checkout of the project, at
+# `.claude/worktrees/<name>/`, and every scanner reported every finding once more
+# per worktree. `.claude/worktrees` is skipped as a pair: `.claude/` itself and a
+# `worktrees/` anywhere else are read as before.
+
+def test_the_claude_worktrees_pair_is_a_skip_and_its_halves_are_not(tmp_path: Path) -> None:
+    root = tmp_path / "proj"
+    assert in_skip_dir(root / ".claude" / "worktrees" / "feature" / ".mcp.json", root)
+    assert in_skip_dir(root / "pkg" / ".claude" / "worktrees" / "x" / "server.py", root)
+    assert in_skip_dir(root / ".claude" / "worktrees" / "x" / "a.py", root, frozenset())
+    assert not in_skip_dir(root / ".claude" / "settings.json", root)
+    assert not in_skip_dir(root / ".claude" / "skills" / "s" / "SKILL.md", root)
+    assert not in_skip_dir(root / "worktrees" / "server.py", root)
+    assert not in_skip_dir(root / "docs" / "worktrees" / ".claude" / "x.json", root)
+
+
+def test_a_scan_run_inside_a_worktree_reads_that_worktree(tmp_path: Path) -> None:
+    """Only the parts below the root count, as for every skip: the worktree a user
+    scans, and a `.claude` directory scanned as the root, are read."""
+    worktree = tmp_path / "proj" / ".claude" / "worktrees" / "feature"
+    assert not in_skip_dir(worktree / ".mcp.json", worktree)
+    claude_dir = tmp_path / "proj" / ".claude"
+    assert not in_skip_dir(claude_dir / "worktrees" / "x" / "a.py", claude_dir)
+    assert kept_dirs(str(claude_dir), ["worktrees", "skills"], claude_dir) == ["skills", "worktrees"]
+    assert kept_dirs(str(claude_dir), ["worktrees", "skills"], tmp_path / "proj") == ["skills"]
+    assert kept_dirs(str(tmp_path / "proj" / "x"), ["worktrees", "node_modules"], tmp_path / "proj") == [
+        "worktrees"
+    ]
+
+
+def test_a_claude_code_worktree_adds_no_finding_and_no_file(
+    rich_baseline: _Scan, tmp_path: Path,
+) -> None:
+    """The rich project with a full copy of itself as a Claude Code worktree
+    scans exactly as the project alone does."""
+    copy = tmp_path / "copy"
+    _build_rich(copy)
+    root = tmp_path / "proj"
+    _build_rich(root)
+    shutil.copytree(copy, root / ".claude" / "worktrees" / "feature")
+    _assert_same(_scan(root), rich_baseline, ".claude/worktrees/feature beside it")
+
+
+# A walk that prunes by the child's name alone never sees the `.claude` it sits
+# in; `kept_dirs` judges the pair.
+_NAME_ONLY_PRUNE = re.compile(r"dirnames\[:\]\s*=\s*sorted\(\s*d\s+for\s+d\s+in\s+dirnames\s+if\s+d\s+not\s+in\b")
+
+
+def test_no_scanner_walk_prunes_by_a_name_alone() -> None:
+    offenders = [
+        f"{py.relative_to(REPO)}:{py.read_text(encoding='utf-8').count(chr(10), 0, m.start()) + 1}"
+        for py in sorted((REPO / "agent_audit_kit").rglob("*.py"))
+        for m in _NAME_ONLY_PRUNE.finditer(py.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, f"prune an os.walk with _helpers.kept_dirs(dirpath, dirnames, root): {offenders}"

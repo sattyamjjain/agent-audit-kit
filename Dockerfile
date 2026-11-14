@@ -1,5 +1,9 @@
 # Pin to specific digest for supply chain security
-# Multi-arch index digest of python:3.11-slim as of 2026-10-20 (`crane digest python:3.11-slim`).
+# Multi-arch index digest of python:3.15-slim (Python 3.15.2, images built
+# 2026-10-28), pinned by #1164; `crane manifest python@<digest>` lists its platforms.
+# .dockerignore keeps the build context to what `pip install .` and the Action
+# bridge read, so `COPY . /app` no longer puts the tests and their fixtures in
+# the image.
 FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS base
 
 LABEL maintainer="AgentAuditKit"

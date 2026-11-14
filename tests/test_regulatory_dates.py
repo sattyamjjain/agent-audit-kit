@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from agent_audit_kit.scanners._helpers import in_skip_dir
+
 REPO = Path(__file__).parent.parent
 
 # Historical records are excluded on purpose. The repository's discipline is to
@@ -42,8 +44,10 @@ def _prose_files() -> list[Path]:
             continue
         # Below REPO only: on a checkout under `/home/travis/build/...` the
         # absolute parts held "build" and this list came back empty, so the
-        # test passed having read nothing.
-        if any(part in _SKIP_DIRS for part in path.relative_to(REPO).parts):
+        # test passed having read nothing. `in_skip_dir` also skips a Claude
+        # Code worktree (`.claude/worktrees/<name>/`), another copy of every
+        # file here, which this test used to find its own strings in (#1060).
+        if in_skip_dir(path, REPO, _SKIP_DIRS):
             continue
         rel = str(path.relative_to(REPO))
         if any(rel.startswith(h) or h in rel for h in _HISTORICAL):

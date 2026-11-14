@@ -235,3 +235,202 @@ def test_a_project_of_symlinks_to_a_200_mb_file_reads_none_of_it(tmp_path: Path)
     assert len(failures) == 1 and "PinFileError" in failures[0] and "larger than 1,000,000 bytes" in failures[0]
     assert peak < 100_000_000, f"the scan allocated {peak / 1e6:.0f} MB at its peak: a scanner read the file"
     assert seconds < 60
+
+
+# ---------------------------------------------------------------------------
+# A reader that skips a file over its cap by a stat holds the cap in the read
+# too (#1060)
+# ---------------------------------------------------------------------------
+#
+# These readers decided by `path.stat().st_size` and then read the file whole,
+# so a file whose stat understated its size (one that grew after the stat, or a
+# filesystem that misreports it) was read past the cap their rules state. Each
+# now reads through `read_text_refusing`: the stat still skips a file over the
+# cap in silence, as the rules state, and a file the read finds over the cap
+# anyway is refused, so `run_scan` reports it as not read.
+
+# (scanner module, file it reads, the cap it states, other files its walk needs)
+_STAT_THEN_READ: tuple[tuple[str, str, int, dict[str, str]], ...] = (
+    ("agent_trust_surface", ".github/workflows/ci.yml", 1_000_000, {}),
+    ("approval_parser_desync", "src/approve.go", 1_000_000, {}),
+    ("composition", ".claude/skills/s/run.py", 512_000, {".claude/skills/s/SKILL.md": "---\nname: s\n---\n"}),
+    ("india_pii", "notes.md", 512_000, {}),
+    ("llm_sql_rce", "server.py", 1_000_000, {}),
+    ("mcp_apps_ui", "ui/app.tsx", 1_000_000, {}),
+    ("mcp_auth_pathtraversal", "server.py", 1_000_000, {}),
+    ("mcp_auth_patterns", "server.go", 512_000, {}),
+    ("mcp_cve_pins_2026_07", "requirements.txt", 2_000_000, {}),
+    ("mcp_deprecated_features", "server.kt", 1_000_000, {}),
+    ("mcp_env_placeholder_exfil", "server.py", 1_000_000, {}),
+    ("mcp_http_noauth_server", "server.py", 1_000_000, {}),
+    ("mcp_middleware", "server.go", 512_000, {}),
+    ("mcp_noauth_default", "server.py", 1_000_000, {}),
+    ("mcp_routing_desync", "Server.java", 1_000_000, {}),
+    ("mcp_sidecar_http", "server.py", 400_000, {}),
+    ("mcp_ssrf_toolarg", "server.py", 1_000_000, {}),
+    ("mcp_tasks", "server.py", 512_000, {}),
+    ("mcp_toolgate_asymmetry", "server.py", 1_000_000, {}),
+    ("mcp_tools_list_unbounded", "server.py", 1_000_000, {}),
+    ("mcp_transport_session_unauth", "server.py", 1_000_000, {}),
+    ("mcp_tunnel", "mcp-tunnel/key.pem", 100_000, {}),
+    ("oauth_misconfig", "oauth.toml", 512_000, {}),
+    ("policy_truncation", "server.py", 1_000_000, {}),
+    ("quoted_shell_interp", "server.py", 400_000, {}),
+    ("rust_pattern_scan", "src/main.rs", 1_000_000, {}),
+    ("sandbox_self_disable", "settings.json", 1_000_000, {}),
+    ("shared_resource_authz", "manifest.json", 1_000_000, {}),
+    ("skill_untrusted_exec_path", "install.sh", 1_000_000, {}),
+    ("ssrf_bracketed_host", "fetch.ts", 1_000_000, {}),
+    ("ssrf_patterns", "tools.rs", 512_000, {}),
+    ("state_privacy", "privacy.md", 512_000, {}),
+    ("stdio_injection", "server.mjs", 512_000, {}),
+    ("taint_analysis", "server.py", 1_000_000, {}),
+    ("typescript_pattern_scan", "server.ts", 1_000_000, {}),
+    ("ufo_mobile_mcp", "server.py", 1_000_000, {}),
+)
+
+_UNDERSTATED_REASON = "bytes when read, although its size said it was not"
+
+
+def _padded(size: int) -> bytes:
+    """`size` bytes of comment lines, which every reader here reads as nothing."""
+    line = b"# " + b"x" * 70 + b"\n"
+    body = line * (size // len(line))
+    return body + b"#" * (size - len(body) - 1) + b"\n"
+
+
+def _understate(monkeypatch: pytest.MonkeyPatch, target: Path) -> None:
+    """Make `Path.stat` say `target` is 1,000 bytes. `read_bytes_capped` stats
+    and reads through `os` itself, so it still sees what the file holds."""
+    real = Path.stat
+
+    def stat(self: Path, *args: object, **kwargs: object) -> os.stat_result:
+        st = real(self, *args, **kwargs)  # type: ignore[arg-type]
+        if os.path.abspath(self) != str(target):
+            return st
+        return os.stat_result((st.st_mode, st.st_ino, st.st_dev, st.st_nlink, st.st_uid,
+                               st.st_gid, 1_000, st.st_atime, st.st_mtime, st.st_ctime))
+
+    monkeypatch.setattr(Path, "stat", stat)
+
+
+def _scan_refusals(module: object, project: Path) -> dict[str, str]:
+    with _helpers.collecting_refusals() as refused:
+        module.scan(project)  # type: ignore[attr-defined]
+    return refused
+
+
+def _project(tmp_path: Path, rel: str, others: dict[str, str]) -> tuple[Path, Path]:
+    project = tmp_path / "proj"
+    target = project / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for other, text in others.items():
+        (project / other).parent.mkdir(parents=True, exist_ok=True)
+        (project / other).write_text(text, encoding="utf-8")
+    return project, target
+
+
+_IDS = [row[0] for row in _STAT_THEN_READ]
+
+
+@pytest.mark.parametrize(("name", "rel", "cap", "others"), _STAT_THEN_READ, ids=_IDS)
+def test_a_file_whose_stat_understates_its_size_is_refused_not_read_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, rel: str, cap: int, others: dict[str, str]
+) -> None:
+    """One byte over the cap with an honest stat, the file is skipped in silence,
+    as the rule states. One byte over with a stat that says it is small, it is
+    refused, where the stat-then-read read it whole and refused nothing."""
+    import importlib
+
+    module = importlib.import_module(f"agent_audit_kit.scanners.{name}")
+    project, target = _project(tmp_path, rel, others)
+    target.write_bytes(_padded(cap + 1))
+    assert _scan_refusals(module, project) == {}
+    _understate(monkeypatch, target)
+    refused = _scan_refusals(module, project)
+    assert refused == {str(target): f"larger than {cap:,} {_UNDERSTATED_REASON}"}
+
+
+@pytest.mark.parametrize(("name", "rel", "cap", "others"), _STAT_THEN_READ, ids=_IDS)
+def test_a_stat_then_read_reader_reads_a_file_at_its_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, rel: str, cap: int, others: dict[str, str]
+) -> None:
+    """A file of exactly the cap is read, through `read_text_refusing` with the
+    cap the rule states, and refused by nothing."""
+    import importlib
+
+    module = importlib.import_module(f"agent_audit_kit.scanners.{name}")
+    project, target = _project(tmp_path, rel, others)
+    reads: list[tuple[str, int, int]] = []
+    real_read = module.read_text_refusing
+
+    def spy(path: Path | str, max_bytes: int, *args: object, **kwargs: object) -> str:
+        text = real_read(path, max_bytes, *args, **kwargs)
+        reads.append((os.path.abspath(path), max_bytes, len(text)))
+        return text
+
+    monkeypatch.setattr(module, "read_text_refusing", spy)
+    target.write_bytes(_padded(cap))
+    assert _scan_refusals(module, project) == {}
+    assert (str(target), cap, cap) in reads
+
+
+def test_a_session_transcript_holds_its_cap_in_the_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--sessions` reads a transcript of up to 20 MB, decided by a stat; one the
+    read finds over the cap is refused, and `aak scan` reports refusals there."""
+    from agent_audit_kit.sessions import adapters
+
+    monkeypatch.setattr(adapters, "_MAX_FILE_BYTES", 5_000)
+    path = tmp_path / "t.jsonl"
+    path.write_bytes(b'{"tool": "a", "args": {}}\n' * 400)
+    assert path.stat().st_size > 5_000
+    with _helpers.collecting_refusals() as refused:
+        assert adapters.normalize_path(path) is None
+    assert refused == {}
+    _understate(monkeypatch, path)
+    with _helpers.collecting_refusals() as refused:
+        assert adapters.normalize_path(path) is None
+    assert refused == {str(path): f"larger than 5,000 {_UNDERSTATED_REASON}"}
+
+
+def test_an_extension_file_is_hashed_only_up_to_its_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AAK-MALICIOUS-EXTENSION-001 hashes the file a feed entry names up to
+    64 MiB, decided by a stat; the stream now stops at the cap too, and a file
+    it finds over the cap is refused rather than hashed whole."""
+    import hashlib
+
+    from agent_audit_kit.scanners import malicious_extensions
+
+    monkeypatch.setattr(malicious_extensions, "MAX_HASHED_BYTES", 5_000)
+    at_cap = tmp_path / "at.js"
+    at_cap.write_bytes(b"x" * 5_000)
+    over = tmp_path / "over.js"
+    over.write_bytes(b"x" * 5_001)
+    with _helpers.collecting_refusals() as refused:
+        assert malicious_extensions._sha256(at_cap) == hashlib.sha256(b"x" * 5_000).hexdigest()
+        assert malicious_extensions._sha256(over) is None
+    assert refused == {}
+    _understate(monkeypatch, over)
+    with _helpers.collecting_refusals() as refused:
+        assert malicious_extensions._sha256(over) is None
+    assert refused == {str(over): f"larger than 5,000 {_UNDERSTATED_REASON}"}
+
+
+def test_read_text_refusing_reads_as_read_text_capped_and_refuses_only_an_oversized_file(
+    tmp_path: Path,
+) -> None:
+    """Text is decoded as `read_text_capped` decodes it; a FIFO or a directory is
+    skipped without a refusal, as there."""
+    path = tmp_path / "f.txt"
+    path.write_bytes(b"crlf\r\nbad \xff byte\n")
+    with _helpers.collecting_refusals() as refused:
+        assert _helpers.read_text_refusing(path, 100, errors="replace") == path.read_text("utf-8", "replace")
+        with pytest.raises(FileNotRead):
+            _helpers.read_text_refusing(tmp_path, 100)
+        with pytest.raises(FileNotRead):
+            _helpers.read_text_refusing(path, 10)
+    assert refused == {str(path): f"larger than 10 {_UNDERSTATED_REASON}"}

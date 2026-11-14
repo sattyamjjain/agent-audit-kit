@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, read_text_refusing
 
 # ---- Patterns that indicate an MCP / tool implementation in Rust ----
 _MCP_TOOL_RE = re.compile(
@@ -146,7 +146,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if rs_path.stat().st_size > 1_000_000:
                 continue
-            source = rs_path.read_text(encoding="utf-8", errors="ignore")
+            source = read_text_refusing(rs_path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

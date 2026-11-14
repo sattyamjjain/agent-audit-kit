@@ -28,7 +28,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last, read_text_refusing
 
 _RULE_ID = "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001"
 
@@ -212,7 +212,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > 1_000_000:
                 continue
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_text_refusing(path, 1_000_000, errors="ignore")
         except OSError:
             continue
 
