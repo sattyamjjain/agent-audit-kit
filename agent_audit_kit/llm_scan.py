@@ -50,8 +50,8 @@ import yaml
 from agent_audit_kit.models import LLM_INCOMPLETE_RULE_ID, Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
-    SKIP_DIRS,
     find_line_number,
+    kept_dirs,
     loads_jsonc,
     make_finding,
     read_text_capped,
@@ -641,7 +641,7 @@ _MAX_SOURCE_BYTES = 2_000_000
 def _iter_files(project_root: Path, suffixes: tuple[str, ...]) -> Iterator[Path]:
     """Files under ``project_root`` with one of ``suffixes``, skipping SKIP_DIRS."""
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if name.lower().endswith(suffixes):
                 path = Path(dirpath) / name

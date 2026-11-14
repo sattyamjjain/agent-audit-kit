@@ -48,7 +48,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_audit_kit.scanners._helpers import collecting_refusals, loads_json, refuse
+from agent_audit_kit.scanners._helpers import collecting_refusals, loads_json, read_text_refusing, refuse
 
 SUPPORTED_FORMATS = ("openai-agents", "langgraph", "jsonl", "aak")
 
@@ -304,7 +304,7 @@ def normalize_path(path: Path) -> tuple[str, list[dict]] | None:
     try:
         if path.stat().st_size > _MAX_FILE_BYTES:
             return None
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return None
 

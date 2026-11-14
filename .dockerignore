@@ -1,0 +1,22 @@
+# The image needs only what `pip install .` builds the wheel from and the Action
+# bridge, so everything else stays out of the build context. With no
+# .dockerignore, `COPY . /app` put the whole checkout in the image, test
+# fixtures included, and Trivy reported the fake mlflow install under
+# tests/fixtures/known_vulns as the image's own (#1060).
+#
+# The wheel reads pyproject.toml, README.md (the long description), LICENSE
+# (hatchling's default license files), .gitignore (which hatchling honours when
+# it picks the package's files) and agent_audit_kit/. /entrypoint.sh is copied
+# by name. tests/test_dockerignore.py pins this list.
+*
+!pyproject.toml
+!README.md
+!LICENSE
+!.gitignore
+!entrypoint.sh
+!agent_audit_kit
+
+# Never package data: bytecode, and the contributor notes the wheel excludes too.
+**/__pycache__
+**/*.pyc
+**/CLAUDE.md

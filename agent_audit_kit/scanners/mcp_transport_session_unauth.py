@@ -58,7 +58,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    find_line_number,
+    make_finding,
+    sub_up_to_last,
+    read_text_refusing,
+)
 
 # Reuse the generic rule's own predicates so the deferral below tracks it
 # automatically rather than restating it and drifting.
@@ -253,7 +259,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > 1_000_000:
                 continue
-            raw = path.read_text(encoding="utf-8", errors="ignore")
+            raw = read_text_refusing(path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

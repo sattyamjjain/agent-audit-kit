@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, placed
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, placed, read_text_refusing
 
 
 _SCAN_EXTS = {
@@ -157,7 +157,7 @@ def _masked(value: str) -> str:
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     unplaced: list[tuple[Finding, str]] = []
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     rel = str(path.relative_to(project_root))

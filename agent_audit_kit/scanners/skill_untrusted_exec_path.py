@@ -34,7 +34,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, make_finding, parse_python
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_refusing,
+)
 
 _RULE_ID = "AAK-SKILL-UNTRUSTED-EXEC-PATH"
 
@@ -277,7 +283,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > 1_000_000:
                 continue
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_text_refusing(path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

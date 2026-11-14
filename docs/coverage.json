@@ -516,7 +516,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
       "severity": "medium",
-      "title": "Multi-agent shared state mutated by >=2 agents without a lock primitive (Code-as-Harness, research-grade)"
+      "title": "Multi-agent shared state mutated by two or more agents without a lock primitive (Code-as-Harness, research-grade)"
     },
     {
       "category": "agent-config",
@@ -924,7 +924,7 @@
       ],
       "rule_id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
       "severity": "high",
-      "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm <=1.1.1)"
+      "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm 1.1.1 or earlier)"
     },
     {
       "category": "trust-boundary",
@@ -1053,7 +1053,7 @@
       ],
       "rule_id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
       "severity": "high",
-      "title": "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git <=0.1.0)"
+      "title": "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git 0.1.0 or earlier)"
     },
     {
       "category": "agent-config",
@@ -1082,7 +1082,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-CLAUDE-WIN-001",
       "severity": "high",
-      "title": "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path"
+      "title": "Claude Code below 2.1.75 reads managed-settings.json from unsafe ProgramData path"
     },
     {
       "category": "supply-chain",
@@ -1419,7 +1419,7 @@
       ],
       "rule_id": "AAK-DORIS-001",
       "severity": "high",
-      "title": "apache-doris-mcp-server < 0.6.1 SQL injection"
+      "title": "apache-doris-mcp-server below 0.6.1 SQL injection"
     },
     {
       "category": "legal-compliance",
@@ -1461,7 +1461,7 @@
       ],
       "rule_id": "AAK-EXCEL-MCP-001",
       "severity": "critical",
-      "title": "excel-mcp-server <= 0.1.7 path traversal"
+      "title": "excel-mcp-server 0.1.7 or earlier path traversal"
     },
     {
       "category": "supply-chain",
@@ -1499,7 +1499,7 @@
       ],
       "rule_id": "AAK-FLOWISE-001",
       "severity": "critical",
-      "title": "Flowise < 3.1.2 MCP adapter authenticated RCE"
+      "title": "Flowise below 3.1.2 MCP adapter authenticated RCE"
     },
     {
       "category": "supply-chain",
@@ -2228,7 +2228,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-LANGCHAIN-001",
       "severity": "high",
-      "title": "Project depends on langchain-core < 1.2.22 (load_prompt path traversal)"
+      "title": "Project depends on langchain-core below 1.2.22 (load_prompt path traversal)"
     },
     {
       "category": "taint-analysis",
@@ -2416,7 +2416,7 @@
       ],
       "rule_id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
       "severity": "high",
-      "title": "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)"
+      "title": "LiteLLM pin floor for CVE-2026-30623 (below 1.83.7)"
     },
     {
       "category": "tool-poisoning",
@@ -3216,7 +3216,7 @@
       ],
       "rule_id": "AAK-MCP-9ROUTER-CVE-2026-46339-001",
       "severity": "critical",
-      "title": "9Router unauthenticated MCP bridge \u2192 command execution (< 0.5.2)"
+      "title": "9Router unauthenticated MCP bridge \u2192 command execution (below 0.5.2)"
     },
     {
       "category": "supply-chain",
@@ -3248,7 +3248,7 @@
       ],
       "rule_id": "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001",
       "severity": "high",
-      "title": "Agentic-Flow MCP tool params \u2192 execSync command injection (< 2.0.14)"
+      "title": "Agentic-Flow MCP tool params \u2192 execSync command injection (below 2.0.14)"
     },
     {
       "category": "supply-chain",
@@ -3375,7 +3375,7 @@
       ],
       "rule_id": "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
       "severity": "medium",
-      "title": "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (< 2.0.24)"
+      "title": "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (below 2.0.24)"
     },
     {
       "category": "tool-poisoning",
@@ -3460,7 +3460,7 @@
       ],
       "rule_id": "AAK-MCP-APIFY-CVE-2026-46341-001",
       "severity": "high",
-      "title": "Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (`@apify/actors-mcp-server` < 0.10.11)"
+      "title": "Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (`@apify/actors-mcp-server` below 0.10.11)"
     },
     {
       "category": "supply-chain",
@@ -3524,7 +3524,7 @@
       ],
       "rule_id": "AAK-MCP-APPIUM-CVE-2026-58500-001",
       "severity": "high",
-      "title": "MCP Appium locator-UI HTML/JS injection \u2192 unauthorized tool exec (< 1.85.10)"
+      "title": "MCP Appium locator-UI HTML/JS injection \u2192 unauthorized tool exec (below 1.85.10)"
     },
     {
       "category": "tool-poisoning",
@@ -3720,7 +3720,7 @@
       ],
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
       "severity": "critical",
-      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
+      "title": "mcp-atlassian below 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
     },
     {
       "category": "supply-chain",
@@ -3751,7 +3751,7 @@
       ],
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
       "severity": "high",
-      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
+      "title": "mcp-atlassian below 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
     },
     {
       "category": "supply-chain",
@@ -3804,7 +3804,7 @@
       ],
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
       "severity": "high",
-      "title": "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)"
+      "title": "mcp-atlassian below 0.22.0 (confluence_upload_attachment arbitrary file read)"
     },
     {
       "category": "supply-chain",
@@ -3831,7 +3831,7 @@
       ],
       "rule_id": "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001",
       "severity": "high",
-      "title": "atomic-agents-stack < 1.1.0 (cleartext registry catalog reaches a local subprocess)"
+      "title": "atomic-agents-stack below 1.1.0 (cleartext registry catalog reaches a local subprocess)"
     },
     {
       "category": "mcp-config",
@@ -3909,7 +3909,7 @@
       ],
       "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
       "severity": "high",
-      "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
+      "title": "auth-fetch-mcp 3.0.1 or earlier (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
     },
     {
       "category": "trust-boundary",
@@ -3989,7 +3989,7 @@
       ],
       "rule_id": "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001",
       "severity": "high",
-      "title": "AWS API MCP Server security-policy bypass on init failure (0.2.13\u2013<1.3.47)"
+      "title": "AWS API MCP Server security-policy bypass on init failure (from 0.2.13 below 1.3.47)"
     },
     {
       "category": "supply-chain",
@@ -4022,7 +4022,7 @@
       ],
       "rule_id": "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
       "severity": "critical",
-      "title": "awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (< 1.1.7)"
+      "title": "awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (below 1.1.7)"
     },
     {
       "category": "supply-chain",
@@ -4052,7 +4052,7 @@
       ],
       "rule_id": "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001",
       "severity": "medium",
-      "title": "awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (< 0.2.0)"
+      "title": "awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (below 0.2.0)"
     },
     {
       "category": "supply-chain",
@@ -4083,7 +4083,7 @@
       ],
       "rule_id": "AAK-MCP-BETTERAUTH-CVE-2026-53512-001",
       "severity": "high",
-      "title": "Better Auth OAuth/MCP plugin flaw cluster \u2014 token bypass, code replay, weak crypto, open redirect (< 1.6.13)"
+      "title": "Better Auth OAuth/MCP plugin flaw cluster \u2014 token bypass, code replay, weak crypto, open redirect (below 1.6.13)"
     },
     {
       "category": "supply-chain",
@@ -4114,7 +4114,7 @@
       ],
       "rule_id": "AAK-MCP-BROWSEMCP-CVE-2026-55557-001",
       "severity": "high",
-      "title": "browse-mcp writes fetched content to a caller-controlled path (< 0.8.2)"
+      "title": "browse-mcp writes fetched content to a caller-controlled path (below 0.8.2)"
     },
     {
       "category": "mcp-config",
@@ -4258,7 +4258,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001",
       "severity": "high",
-      "title": "claude-code-templates < 1.29.4 (--studio server: unauth 0.0.0.0:3444 \u2192 command-injection RCE)"
+      "title": "claude-code-templates below 1.29.4 (--studio server: unauth 0.0.0.0:3444 \u2192 command-injection RCE)"
     },
     {
       "category": "supply-chain",
@@ -4324,7 +4324,7 @@
       ],
       "rule_id": "AAK-MCP-CKAN-CVE-2026-73846-001",
       "severity": "medium",
-      "title": "@aborruso/ckan-mcp-server < 0.4.112 (cache-key collision, prefix-only host check, verbose errors)"
+      "title": "@aborruso/ckan-mcp-server below 0.4.112 (cache-key collision, prefix-only host check, verbose errors)"
     },
     {
       "category": "supply-chain",
@@ -4413,7 +4413,7 @@
       ],
       "rule_id": "AAK-MCP-CLINE-CVE-2026-59723-001",
       "severity": "high",
-      "title": "Cline < 3.0.30 (Hub dashboard WebSocket origin bypass \u2192 RCE)"
+      "title": "Cline below 3.0.30 (Hub dashboard WebSocket origin bypass \u2192 RCE)"
     },
     {
       "category": "supply-chain",
@@ -4593,7 +4593,7 @@
       ],
       "rule_id": "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
       "severity": "high",
-      "title": "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (`codewhale` >= 0.8.41, < 0.8.64)"
+      "title": "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (`codewhale` from 0.8.41 below 0.8.64)"
     },
     {
       "category": "supply-chain",
@@ -4663,7 +4663,7 @@
       ],
       "rule_id": "AAK-MCP-CONTENTFUL-CVE-2026-53957-001",
       "severity": "high",
-      "title": "@contentful/mcp-server < 1.7.19 / @contentful/mcp-tools < 0.4.5 (LLM-controlled host and proxy carry the management token)"
+      "title": "@contentful/mcp-server below 1.7.19 / @contentful/mcp-tools below 0.4.5 (LLM-controlled host and proxy carry the management token)"
     },
     {
       "category": "supply-chain",
@@ -4774,7 +4774,7 @@
       ],
       "rule_id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
       "severity": "critical",
-      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)"
+      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (1.0.8 or earlier)"
     },
     {
       "category": "supply-chain",
@@ -4806,7 +4806,7 @@
       ],
       "rule_id": "AAK-MCP-CORTEX-CVE-2026-49986-001",
       "severity": "high",
-      "title": "neuro-cortex-memory <= 3.17.0 (CLAUDE_PROJECT_DIR treated as a trusted source root)"
+      "title": "neuro-cortex-memory 3.17.0 or earlier (CLAUDE_PROJECT_DIR treated as a trusted source root)"
     },
     {
       "category": "supply-chain",
@@ -4900,7 +4900,7 @@
       ],
       "rule_id": "AAK-MCP-DBTMCP-CVE-2026-44968-001",
       "severity": "medium",
-      "title": "dbt-mcp flag injection + tool-arg leakage (`dbt-mcp` < 1.17.1)"
+      "title": "dbt-mcp flag injection + tool-arg leakage (`dbt-mcp` below 1.17.1)"
     },
     {
       "category": "supply-chain",
@@ -4930,7 +4930,7 @@
       ],
       "rule_id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
       "severity": "high",
-      "title": "@arikusi/deepseek-mcp-server < 1.8.0 (unbound session IDs + unauth HTTP transport)"
+      "title": "@arikusi/deepseek-mcp-server below 1.8.0 (unbound session IDs + unauth HTTP transport)"
     },
     {
       "category": "mcp-config",
@@ -5086,7 +5086,7 @@
       ],
       "rule_id": "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001",
       "severity": "medium",
-      "title": "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (< 1.0.12)"
+      "title": "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (below 1.0.12)"
     },
     {
       "category": "supply-chain",
@@ -5489,7 +5489,7 @@
       ],
       "rule_id": "AAK-MCP-FLORENCE2-CVE-2026-19984-001",
       "severity": "medium",
-      "title": "mcp-florence2 SSRF via the get_images src argument (<= 0.3.13, no code fix planned)"
+      "title": "mcp-florence2 SSRF via the get_images src argument (0.3.13 or earlier, no code fix planned)"
     },
     {
       "category": "supply-chain",
@@ -5522,7 +5522,7 @@
       ],
       "rule_id": "AAK-MCP-FLOWISE-CVE-2026-91931-001",
       "severity": "high",
-      "title": "flowise < 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)"
+      "title": "flowise below 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)"
     },
     {
       "category": "supply-chain",
@@ -5558,7 +5558,7 @@
       ],
       "rule_id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
       "severity": "high",
-      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (<2.26.6)"
+      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (below 2.26.6)"
     },
     {
       "category": "supply-chain",
@@ -5621,7 +5621,7 @@
       ],
       "rule_id": "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001",
       "severity": "high",
-      "title": "mcp-from-openapi < 2.5.0 (external $ref guard does not resolve or pin addresses \u2014 SSRF)"
+      "title": "mcp-from-openapi below 2.5.0 (external $ref guard does not resolve or pin addresses \u2014 SSRF)"
     },
     {
       "category": "supply-chain",
@@ -5654,7 +5654,7 @@
       ],
       "rule_id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
       "severity": "high",
-      "title": "FrontMCP sandbox escape via Zod schema proxy reaches RCE (< 1.5.7)"
+      "title": "FrontMCP sandbox escape via Zod schema proxy reaches RCE (below 1.5.7)"
     },
     {
       "category": "supply-chain",
@@ -5776,7 +5776,7 @@
       ],
       "rule_id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
       "severity": "high",
-      "title": "Amazon mcp-gateway-registry < 1.0.13 (SQL injection)"
+      "title": "Amazon mcp-gateway-registry below 1.0.13 (SQL injection)"
     },
     {
       "category": "supply-chain",
@@ -5807,7 +5807,7 @@
       ],
       "rule_id": "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001",
       "severity": "medium",
-      "title": "gemini-bridge tool-argument path traversal reads arbitrary files (1.0.0\u2013<1.3.1)"
+      "title": "gemini-bridge tool-argument path traversal reads arbitrary files (from 1.0.0 below 1.3.1)"
     },
     {
       "category": "supply-chain",
@@ -5835,7 +5835,7 @@
       ],
       "rule_id": "AAK-MCP-GENIEACS-CVE-2026-55637-001",
       "severity": "high",
-      "title": "genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (< 0.3.2)"
+      "title": "genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (below 0.3.2)"
     },
     {
       "category": "supply-chain",
@@ -5866,7 +5866,7 @@
       ],
       "rule_id": "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001",
       "severity": "critical",
-      "title": "@zereight/mcp-gitlab < 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)"
+      "title": "@zereight/mcp-gitlab below 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)"
     },
     {
       "category": "supply-chain",
@@ -5897,7 +5897,7 @@
       ],
       "rule_id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
       "severity": "medium",
-      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)"
+      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (0.3.1 or earlier, no fix released)"
     },
     {
       "category": "supply-chain",
@@ -5929,7 +5929,7 @@
       ],
       "rule_id": "AAK-MCP-GRAFANA-CVE-2026-19516-001",
       "severity": "critical",
-      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)"
+      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (below 1.1.0)"
     },
     {
       "category": "supply-chain",
@@ -5960,7 +5960,7 @@
       ],
       "rule_id": "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001",
       "severity": "high",
-      "title": "AWS HealthLake MCP server pagination SSRF \u2192 credential exfil (< 0.0.14)"
+      "title": "AWS HealthLake MCP server pagination SSRF \u2192 credential exfil (below 0.0.14)"
     },
     {
       "category": "supply-chain",
@@ -5991,7 +5991,7 @@
       ],
       "rule_id": "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001",
       "severity": "medium",
-      "title": "AWS HealthOmics MCP workflow-bundle path traversal (< 0.0.36)"
+      "title": "AWS HealthOmics MCP workflow-bundle path traversal (below 0.0.36)"
     },
     {
       "category": "supply-chain",
@@ -6308,7 +6308,7 @@
       ],
       "rule_id": "AAK-MCP-K8S-CVE-2026-61459-001",
       "severity": "critical",
-      "title": "mcp-server-kubernetes < 3.9.0 (argument injection \u2192 kubectl --server redirect)"
+      "title": "mcp-server-kubernetes below 3.9.0 (argument injection \u2192 kubectl --server redirect)"
     },
     {
       "category": "supply-chain",
@@ -6614,7 +6614,7 @@
       ],
       "rule_id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
       "severity": "critical",
-      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.13.0)"
+      "title": "Langflow MCP stdio launcher env-var-injection RCE (from 1.0.0 below 1.13.0)"
     },
     {
       "category": "supply-chain",
@@ -6662,7 +6662,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001",
       "severity": "medium",
-      "title": "langgraph-api < 0.10.0 (loopback webhook bypasses per-user authorization)"
+      "title": "langgraph-api below 0.10.0 (loopback webhook bypasses per-user authorization)"
     },
     {
       "category": "supply-chain",
@@ -6739,7 +6739,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
       "severity": "medium",
-      "title": "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (< 1.3.1)"
+      "title": "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (below 1.3.1)"
     },
     {
       "category": "supply-chain",
@@ -6821,7 +6821,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-LETTA-CVE-2025-51482-001",
       "severity": "high",
-      "title": "Letta (MemGPT) <= 0.16.4 (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)"
+      "title": "Letta (MemGPT) 0.16.4 or earlier (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)"
     },
     {
       "category": "supply-chain",
@@ -6897,7 +6897,7 @@
       ],
       "rule_id": "AAK-MCP-LITELLM-CVE-2026-59822-001",
       "severity": "high",
-      "title": "LiteLLM < 1.84.0 (MCP auth bypass + skills-archive path traversal)"
+      "title": "LiteLLM below 1.84.0 (MCP auth bypass + skills-archive path traversal)"
     },
     {
       "category": "supply-chain",
@@ -6929,7 +6929,7 @@
       ],
       "rule_id": "AAK-MCP-MARIMO-CVE-2026-75149-001",
       "severity": "high",
-      "title": "marimo launches a notebook-supplied MCP server command on open (< 0.23.15)"
+      "title": "marimo launches a notebook-supplied MCP server command on open (below 0.23.15)"
     },
     {
       "category": "supply-chain",
@@ -7027,7 +7027,7 @@
       ],
       "rule_id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
       "severity": "critical",
-      "title": "@samanhappy/mcphub < 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)"
+      "title": "@samanhappy/mcphub below 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)"
     },
     {
       "category": "supply-chain",
@@ -7054,7 +7054,7 @@
       ],
       "rule_id": "AAK-MCP-MEMSERVICE-CVE-2026-50027-001",
       "severity": "critical",
-      "title": "mcp-memory-service < 10.67.1 (/api/documents/* served with no authentication)"
+      "title": "mcp-memory-service below 10.67.1 (/api/documents/* served with no authentication)"
     },
     {
       "category": "supply-chain",
@@ -7116,7 +7116,7 @@
       ],
       "rule_id": "AAK-MCP-MYSQLMCP-CVE-2026-59971-001",
       "severity": "critical",
-      "title": "mysql-mcp-server < 0.4.2 (unauthenticated SSE transport reaches execute_sql)"
+      "title": "mysql-mcp-server below 0.4.2 (unauthenticated SSE transport reaches execute_sql)"
     },
     {
       "category": "supply-chain",
@@ -7184,7 +7184,7 @@
       ],
       "rule_id": "AAK-MCP-N8N-CVE-2026-59207-001",
       "severity": "medium",
-      "title": "n8n < 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)"
+      "title": "n8n below 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)"
     },
     {
       "category": "supply-chain",
@@ -7212,7 +7212,7 @@
       ],
       "rule_id": "AAK-MCP-N8N-CVE-2026-65594-001",
       "severity": "high",
-      "title": "n8n MCP Server Trigger OAuth workflow-authorization bypass (2.27.0\u2013<2.29.8, 2.30.0\u2013<2.30.1)"
+      "title": "n8n MCP Server Trigger OAuth workflow-authorization bypass (from 2.27.0 below 2.29.8, from 2.30.0 below 2.30.1)"
     },
     {
       "category": "supply-chain",
@@ -7250,7 +7250,7 @@
       ],
       "rule_id": "AAK-MCP-N8N-CVE-2026-72768-001",
       "severity": "high",
-      "title": "n8n < 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client SSRF bypass, node-schema loader RCE, cross-project credential reference, inline sub-workflow credential exfiltration)"
+      "title": "n8n below 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client SSRF bypass, node-schema loader RCE, cross-project credential reference, inline sub-workflow credential exfiltration)"
     },
     {
       "category": "supply-chain",
@@ -7279,7 +7279,7 @@
       ],
       "rule_id": "AAK-MCP-N8NMCP-CVE-2026-54052-001",
       "severity": "critical",
-      "title": "n8n-MCP multi-tenant backup isolation bypass (`n8n-mcp` < 2.57.4)"
+      "title": "n8n-MCP multi-tenant backup isolation bypass (`n8n-mcp` below 2.57.4)"
     },
     {
       "category": "supply-chain",
@@ -7369,7 +7369,7 @@
       ],
       "rule_id": "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
       "severity": "critical",
-      "title": "netlicensing-mcp < 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)"
+      "title": "netlicensing-mcp below 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)"
     },
     {
       "category": "supply-chain",
@@ -7458,7 +7458,7 @@
       ],
       "rule_id": "AAK-MCP-NEXTCLOUD-CVE-2026-55640-001",
       "severity": "critical",
-      "title": "Nextcloud MCP Server webhook endpoint is unauthenticated by default (< 0.117.2)"
+      "title": "Nextcloud MCP Server webhook endpoint is unauthenticated by default (below 0.117.2)"
     },
     {
       "category": "supply-chain",
@@ -7818,7 +7818,7 @@
       ],
       "rule_id": "AAK-MCP-OMNIGENT-CVE-2026-62674-001",
       "severity": "critical",
-      "title": "Omnigent shared-agent swap injects a stdio MCP command (< 0.3.0)"
+      "title": "Omnigent shared-agent swap injects a stdio MCP command (below 0.3.0)"
     },
     {
       "category": "tool-poisoning",
@@ -7831,7 +7831,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-OPENAPI-BLOATED-PARAMS-001",
       "severity": "low",
-      "title": "OpenAPI operation with >12 parameters or >24 request-body properties (Hermes BLOATED)"
+      "title": "OpenAPI operation with more than 12 parameters or more than 24 request-body properties (Hermes BLOATED)"
     },
     {
       "category": "tool-poisoning",
@@ -7857,7 +7857,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-MCP-OPENAPI-TANGLED-METHODS-001",
       "severity": "medium",
-      "title": "OpenAPI path serving >4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)"
+      "title": "OpenAPI path serving more than 4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)"
     },
     {
       "category": "supply-chain",
@@ -8062,7 +8062,7 @@
       ],
       "rule_id": "AAK-MCP-PENPOT-CVE-2026-100868-001",
       "severity": "medium",
-      "title": "Penpot MCP plugin WebSocket bridge listens on every interface (< 2.18.0)"
+      "title": "Penpot MCP plugin WebSocket bridge listens on every interface (below 2.18.0)"
     },
     {
       "category": "supply-chain",
@@ -8094,7 +8094,7 @@
       ],
       "rule_id": "AAK-MCP-PENPOT-CVE-2026-45805-001",
       "severity": "critical",
-      "title": "Penpot MCP ReplServer unauthenticated /execute RCE (< 2.15.0)"
+      "title": "Penpot MCP ReplServer unauthenticated /execute RCE (below 2.15.0)"
     },
     {
       "category": "supply-chain",
@@ -8296,7 +8296,7 @@
       ],
       "rule_id": "AAK-MCP-PRAISONAI-CVE-2026-61427-001",
       "severity": "high",
-      "title": "PraisonAI MCP unauthenticated-default + path traversal (< 4.6.78)"
+      "title": "PraisonAI MCP unauthenticated-default + path traversal (below 4.6.78)"
     },
     {
       "category": "supply-chain",
@@ -8325,7 +8325,7 @@
       ],
       "rule_id": "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001",
       "severity": "critical",
-      "title": "praisonai (npm, TypeScript) < 1.7.2 (MCP HTTP server binds unrestricted with no auth)"
+      "title": "praisonai (npm, TypeScript) below 1.7.2 (MCP HTTP server binds unrestricted with no auth)"
     },
     {
       "category": "supply-chain",
@@ -8357,7 +8357,7 @@
       ],
       "rule_id": "AAK-MCP-QWED-CVE-2026-55546-001",
       "severity": "critical",
-      "title": "QWED-MCP evaluates a tool argument through SymPy parse_expr (< 0.2.1)"
+      "title": "QWED-MCP evaluates a tool argument through SymPy parse_expr (below 0.2.1)"
     },
     {
       "category": "supply-chain",
@@ -8451,7 +8451,7 @@
       ],
       "rule_id": "AAK-MCP-REPOMIX-CVE-2026-49988-001",
       "severity": "medium",
-      "title": "Repomix MCP server bypasses secret-scan file-read boundary (< 1.14.1)"
+      "title": "Repomix MCP server bypasses secret-scan file-read boundary (below 1.14.1)"
     },
     {
       "category": "trust-boundary",
@@ -8559,7 +8559,7 @@
       ],
       "rule_id": "AAK-MCP-RUFLO-CVE-2026-59726-001",
       "severity": "critical",
-      "title": "ruflo < 3.16.3 (unauthenticated MCP bridge \u2192 tools/call RCE)"
+      "title": "ruflo below 3.16.3 (unauthenticated MCP bridge \u2192 tools/call RCE)"
     },
     {
       "category": "mcp-config",
@@ -8641,7 +8641,7 @@
       ],
       "rule_id": "AAK-MCP-SDK-CVE-2026-52869-001",
       "severity": "high",
-      "title": "MCP Python SDK session/task cross-client access and unbounded request bodies (`mcp` < 1.29.1, and 2.0.x)"
+      "title": "MCP Python SDK session/task cross-client access and unbounded request bodies (`mcp` below 1.29.1, and 2.0.x)"
     },
     {
       "category": "supply-chain",
@@ -8700,7 +8700,7 @@
       ],
       "rule_id": "AAK-MCP-SEARXNG-CVE-2026-58483-001",
       "severity": "high",
-      "title": "mcp-searxng < 1.7.1 (a missing Content-Length bypasses the read cap)"
+      "title": "mcp-searxng below 1.7.1 (a missing Content-Length bypasses the read cap)"
     },
     {
       "category": "supply-chain",
@@ -8731,7 +8731,7 @@
       ],
       "rule_id": "AAK-MCP-SEQTHINKING-CVE-2026-81845-001",
       "severity": "medium",
-      "title": "mcp-sequential-thinking <= 0.5.0 (session import/export path traversal)"
+      "title": "mcp-sequential-thinking 0.5.0 or earlier (session import/export path traversal)"
     },
     {
       "category": "mcp-config",
@@ -8763,7 +8763,7 @@
       ],
       "rule_id": "AAK-MCP-SERENA-CVE-2026-49471-001",
       "severity": "high",
-      "title": "Serena MCP toolkit < 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)"
+      "title": "Serena MCP toolkit below 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)"
     },
     {
       "category": "supply-chain",
@@ -9017,7 +9017,7 @@
       ],
       "rule_id": "AAK-MCP-STATA-CVE-2026-47708-001",
       "severity": "high",
-      "title": "stata-mcp < 1.19.0 (Stata command injection, two CVEs)"
+      "title": "stata-mcp below 1.19.0 (Stata command injection, two CVEs)"
     },
     {
       "category": "mcp-config",
@@ -9300,7 +9300,7 @@
       ],
       "rule_id": "AAK-MCP-SUBLINEAR-CVE-2026-55609-001",
       "severity": "high",
-      "title": "consciousness-explorer state tools accept a caller-controlled path (sublinear-time-solver < 1.6.0, consciousness-explorer < 1.1.2)"
+      "title": "consciousness-explorer state tools accept a caller-controlled path (sublinear-time-solver below 1.6.0, consciousness-explorer below 1.1.2)"
     },
     {
       "category": "supply-chain",
@@ -9560,7 +9560,7 @@
       ],
       "rule_id": "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001",
       "severity": "critical",
-      "title": "ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (<= 1.2.6)"
+      "title": "ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (1.2.6 or earlier)"
     },
     {
       "category": "transport-security",
@@ -9923,7 +9923,7 @@
       ],
       "rule_id": "AAK-MCP-UFO-CVE-2026-73296-001",
       "severity": "critical",
-      "title": "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
+      "title": "Microsoft UFO below 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
     },
     {
       "category": "supply-chain",
@@ -10165,7 +10165,7 @@
       ],
       "rule_id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
       "severity": "critical",
-      "title": "MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI <0.1.1)"
+      "title": "MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI below 0.1.1)"
     },
     {
       "category": "transport-security",
@@ -10190,7 +10190,7 @@
       ],
       "rule_id": "AAK-MCPFRAME-001",
       "severity": "medium",
-      "title": "mcp-framework < 0.2.22 HTTP-body DoS"
+      "title": "mcp-framework below 0.2.22 HTTP-body DoS"
     },
     {
       "category": "mcp-config",
@@ -10244,7 +10244,7 @@
       ],
       "rule_id": "AAK-METAADS-CVE-2026-48039-001",
       "severity": "critical",
-      "title": "Meta Ads MCP forwards unauthenticated requests and leaks the access token (< 1.0.109)"
+      "title": "Meta Ads MCP forwards unauthenticated requests and leaks the access token (below 1.0.109)"
     },
     {
       "category": "tool-poisoning",
@@ -10311,7 +10311,7 @@
       ],
       "rule_id": "AAK-NEO4J-001",
       "severity": "medium",
-      "title": "mcp-neo4j-cypher < 0.6.0 APOC read-only bypass"
+      "title": "mcp-neo4j-cypher below 0.6.0 APOC read-only bypass"
     },
     {
       "category": "supply-chain",
@@ -10362,7 +10362,7 @@
       ],
       "rule_id": "AAK-NEXT-AI-DRAW-001",
       "severity": "medium",
-      "title": "next-ai-draw-io < 0.4.15 body-accumulation DoS"
+      "title": "next-ai-draw-io below 0.4.15 body-accumulation DoS"
     },
     {
       "category": "mcp-config",
@@ -11528,7 +11528,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
       "severity": "critical",
-      "title": "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI <1.39.4)"
+      "title": "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI below 1.39.4)"
     },
     {
       "category": "tool-poisoning",

@@ -52,10 +52,10 @@ from agent_audit_kit.models import Finding, Severity
 from ._dependency_pins import read_manifest, read_text
 from ._helpers import (
     CONFIG_MAX_BYTES,
-    SKIP_DIRS,
     find_line_number,
     find_line_numbers,
     iter_mcp_servers,
+    kept_dirs,
     load_yaml,
     loads_json,
     loads_jsonc,
@@ -721,7 +721,7 @@ def _is_pin_manifest(name: str) -> bool:
 
 def _files(project_root: Path) -> Iterator[Path]:
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             low = name.lower()
             if (_dockerfile_kind(name) or name in _VERSION_FILES or low in _RUNTIME_YAML or low == "package.json"

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, read_text_refusing
 
 
 _POLICY_EXTS = {".md", ".html", ".txt"}
@@ -73,7 +73,7 @@ def _iter_policy_files(project_root: Path) -> Iterable[Path]:
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     if not _PRIVACY_DOC_RE.search(text):

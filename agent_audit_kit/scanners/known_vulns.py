@@ -87,7 +87,7 @@ from agent_audit_kit.malicious_feed import canonical_name, version_order
 from agent_audit_kit.models import Finding, Severity
 
 from ._dependency_pins import read_text
-from ._helpers import MCP_SERVER_KEYS, SKIP_DIRS, loads_json, make_finding
+from ._helpers import MCP_SERVER_KEYS, kept_dirs, loads_json, make_finding
 from ._launcher_caches import npx_cached, resolved, uv_cached
 from ._launchers import is_registry_spec, launch_head
 from ._manifest_deps import MAX_LOCKFILE_BYTES, Declaration
@@ -124,7 +124,7 @@ def _files(project_root: Path) -> tuple[list[Path], list[Path]]:
     lockfiles: list[Path] = []
     manifests: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if name.lower() in _LOCKFILES:
                 lockfiles.append(Path(dirpath) / name)

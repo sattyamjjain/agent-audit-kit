@@ -54,6 +54,14 @@ Nothing here was cut; it is the same content with a home of its own.
 | `--strict-loading` | | Fail loudly if any optional scanner module can't be imported (default: silently skip) |
 | `--verbose` / `-v` | | Detailed scan progress |
 
+### Directories a scan skips
+
+Most scanners do not read inside these directories below the scanned path: `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `.nuxt`, `vendor`, `.venv`, `venv`, `env`, `.tox`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `target`, `out` and `.terraform`. A few rules look inside some of them on purpose: the rules that read installed packages enter `.venv/`, `venv/`, `env/`, `.tox/` and `vendor/` to find `site-packages`, and `AAK-MCP-INSPECTOR-CVE-2026-23744-001` reads the copies vendored in `node_modules/` and `vendor/`.
+
+A scan also skips `.claude/worktrees/`, where Claude Code keeps each worktree as a full checkout of the project, so a project with worktrees is not reported once per worktree. The rest of `.claude/` is read, and so is a `worktrees/` directory anywhere else.
+
+Only directories below the scanned path count: a checkout that itself sits under `build/` (Travis, Bitbucket Pipelines), or `aak scan .` run inside a Claude Code worktree, is read in full. Use `--ignore-paths` to leave out anything else.
+
 ### Exit Codes
 
 | Code | Meaning |

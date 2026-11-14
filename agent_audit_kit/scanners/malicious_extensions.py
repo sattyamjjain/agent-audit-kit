@@ -49,7 +49,7 @@ from agent_audit_kit.malicious_feed import ExtensionRelease, Feed, load_feed
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import read_text
-from ._helpers import SKIP_DIRS, in_skip_dir, loads_json, loads_jsonc, make_finding
+from ._helpers import in_skip_dir, kept_dirs, loads_json, loads_jsonc, make_finding, refuse
 
 RULE = "AAK-MALICIOUS-EXTENSION-001"
 
@@ -112,13 +112,27 @@ def extension_dirs(home: Path) -> Iterator[tuple[str, Path]]:
 
 
 def _sha256(path: Path) -> str | None:
-    """The SHA-256 of a regular file up to `MAX_HASHED_BYTES`, else None."""
+    """The SHA-256 of a regular file up to `MAX_HASHED_BYTES`, else None.
+
+    The cap holds in the read as well as in the stat: a file whose size says it
+    is within the cap but whose bytes run past it (it grew after the stat, or
+    the filesystem misreports it) is refused (see `_helpers.refuse`) as soon as
+    the read passes the cap, where the stat-then-read hashed it whole (#1060).
+    """
     try:
         if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_HASHED_BYTES:
             return None
         digest = hashlib.sha256()
+        seen = 0
         with path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(_CHUNK), b""):
+            while True:
+                chunk = handle.read(min(_CHUNK, MAX_HASHED_BYTES + 1 - seen))
+                if not chunk:
+                    break
+                seen += len(chunk)
+                if seen > MAX_HASHED_BYTES:
+                    refuse(path, f"larger than {MAX_HASHED_BYTES:,} bytes when read, although its size said it was not")
+                    return None
                 digest.update(chunk)
         return digest.hexdigest()
     except OSError:
@@ -261,7 +275,7 @@ def _recommendation_findings(root: Path, feed: Feed, scanned: set[str]) -> list[
         return []
     findings: list[Finding] = []
     for dirpath, dirnames, _ in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, root)
         here = Path(dirpath)
         if here.name != ".vscode" or in_skip_dir(here, root):
             continue

@@ -1425,3 +1425,22 @@ def test_a_refused_pyproject_is_reported_with_the_words_the_prose_uses(tmp_path:
     reason = f"TOML key of more than {_helpers._TOML_MAX_KEY_PARTS} dotted parts"
     assert all(reason in f.evidence for f in refusals)
     assert reason.removeprefix("TOML key of ") in _toml_bound_text(SCANNER_FAIL_RULE_ID)
+
+
+def test_the_screen_counts_a_flat_boolean_chain_as_deep_as_the_prose_says(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each `and`, `or` and comparison operand is a level to the screen, though
+    Python builds the chain one level deep, so before 3.11 a flat chain of about
+    10,000 names is refused. AAK-INTERNAL-SCANNER-FAIL's description says so; a
+    screen that stops over-counting these chains makes this fail and the
+    sentence must go."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    for joiner in (" and ", " or ", " < "):
+        source = "x = " + joiner.join(["a"] * 10_000) + "\n"
+        assert _tree_depth(ast.parse(source)) < 10
+        assert python_nesting_bound(source) > _helpers._PY_MAX_NESTING, joiner
+    monkeypatch.setattr(_helpers, "_SCREEN_SOURCES", True)
+    with collecting_refusals() as refused, pytest.raises(RefusedSource):
+        parse_python("x = " + " and ".join(["a"] * 10_000) + "\n", "flat.py")
+    assert set(refused) == {"flat.py"}
+    assert "flat `x = a and b and ...` of about 10,000 names" in get_rule(SCANNER_FAIL_RULE_ID).description

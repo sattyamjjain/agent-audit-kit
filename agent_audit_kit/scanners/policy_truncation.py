@@ -39,7 +39,7 @@ from typing import Callable, Iterator
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
+from ._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last, read_text_refusing
 
 _RULE_ID = "AAK-POLICY-TRUNCATION-001"
 _MAX_FILE_BYTES = 1_000_000
@@ -400,7 +400,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            raw = path.read_text(encoding="utf-8", errors="ignore")
+            raw = read_text_refusing(path, _MAX_FILE_BYTES, errors="ignore")
         except OSError:
             continue
         scanned.add(path.relative_to(project_root).as_posix())

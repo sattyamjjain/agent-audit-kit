@@ -584,7 +584,7 @@
       "rule_id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
       "sarif_name": "MultiAgentSharedStateNoLock",
       "severity": "medium",
-      "title": "Multi-agent shared state mutated by >=2 agents without a lock primitive (Code-as-Harness, research-grade)"
+      "title": "Multi-agent shared state mutated by two or more agents without a lock primitive (Code-as-Harness, research-grade)"
     },
     {
       "adversa_references": [
@@ -1041,7 +1041,7 @@
       "rule_id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
       "sarif_name": "AstroMcpSqlInjection",
       "severity": "high",
-      "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm <=1.1.1)"
+      "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm 1.1.1 or earlier)"
     },
     {
       "adversa_references": [
@@ -1189,7 +1189,7 @@
       "rule_id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
       "sarif_name": "ChatGptMcpCmdInjection",
       "severity": "high",
-      "title": "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git <=0.1.0)"
+      "title": "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git 0.1.0 or earlier)"
     },
     {
       "adversa_references": [
@@ -1216,7 +1216,7 @@
       "rule_id": "AAK-CLAUDE-WIN-001",
       "sarif_name": "ClaudeCodeWindowsProgramData",
       "severity": "high",
-      "title": "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path"
+      "title": "Claude Code below 2.1.75 reads managed-settings.json from unsafe ProgramData path"
     },
     {
       "adversa_references": [],
@@ -1608,7 +1608,7 @@
       ],
       "description": "Project depends on `apache-doris-mcp-server` at a version < 0.6.1. CVE-2025-66335 is a query-context neutralization bypass in the MCP adapter's tool layer \u2014 crafted tool arguments are concatenated into Doris SQL without a parameterized boundary, letting an LLM-driven tool call reach into arbitrary reads/writes. CVE-2025-66336 is a sibling SQL injection in a metadata query path (a user-controlled database name interpolated without the caller's authz context), same < 0.6.1 fixed line. Fixed in 0.6.1.",
       "incident_references": [],
-      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 0.6.1 (`apache-doris-mcp-server<0.6.1` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 0.6.1. A git requirement's dotted release tag is read as its version (`@v0.5.0`); a commit, a branch or a tag with no dot (`@v2`) states none. A declaration that states no version, such as `apache-doris-mcp-server` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
+      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 0.6.1 (`apache-doris-mcp-server<0.6.1` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 0.6.1. A git requirement's dotted release tag is read as its version (`@v0.5.0`); a commit, a branch or a tag with no dot (`@v2`) states none. Only a tag written after the `@` alone is read: `@refs/tags/v0.5.0`, and the release an archive's file name states (`.../archive/refs/tags/v0.5.0.tar.gz`, `apache-doris-mcp-server-0.5.0.tar.gz`), are not, so such a requirement states no version and is not reported, even below 0.6.1. A declaration that states no version, such as `apache-doris-mcp-server` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1622,7 +1622,7 @@
       "rule_id": "AAK-DORIS-001",
       "sarif_name": "DorisMcpSqlInjection",
       "severity": "high",
-      "title": "apache-doris-mcp-server < 0.6.1 SQL injection"
+      "title": "apache-doris-mcp-server below 0.6.1 SQL injection"
     },
     {
       "adversa_references": [],
@@ -1657,7 +1657,7 @@
       ],
       "description": "Project depends on `excel-mcp-server` at a version <= 0.1.7. CVE-2026-40576 is a path-traversal in the server's `get_excel_path()` helper \u2014 absolute paths pass through unchecked, relative paths are joined without resolving-and-validating the result. Combined with the default 0.0.0.0 bind + zero authentication on SSE / Streamable-HTTP, any unauthenticated network peer can read, write or overwrite files anywhere on the host. Fixed in 0.1.8.",
       "incident_references": [],
-      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 0.1.8 (`excel-mcp-server<0.1.8` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 0.1.8. A git requirement's dotted release tag is read as its version (`@v0.1.7`); a commit, a branch or a tag with no dot (`@v2`) states none. A declaration that states no version, such as `excel-mcp-server` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
+      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 0.1.8 (`excel-mcp-server<0.1.8` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 0.1.8. A git requirement's dotted release tag is read as its version (`@v0.1.7`); a commit, a branch or a tag with no dot (`@v2`) states none. Only a tag written after the `@` alone is read: `@refs/tags/v0.1.7`, and the release an archive's file name states (`.../archive/refs/tags/v0.1.7.tar.gz`, `excel-mcp-server-0.1.7.tar.gz`), are not, so such a requirement states no version and is not reported, even at 0.1.7 or earlier. A declaration that states no version, such as `excel-mcp-server` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1671,7 +1671,7 @@
       "rule_id": "AAK-EXCEL-MCP-001",
       "sarif_name": "ExcelMcpPathTraversal",
       "severity": "critical",
-      "title": "excel-mcp-server <= 0.1.7 path traversal"
+      "title": "excel-mcp-server 0.1.7 or earlier path traversal"
     },
     {
       "adversa_references": [
@@ -1707,7 +1707,7 @@
       "rule_id": "AAK-FLOWISE-001",
       "sarif_name": "FlowiseMcpAdapterRce",
       "severity": "critical",
-      "title": "Flowise < 3.1.2 MCP adapter authenticated RCE"
+      "title": "Flowise below 3.1.2 MCP adapter authenticated RCE"
     },
     {
       "adversa_references": [
@@ -1915,7 +1915,7 @@
       "cve_references": [],
       "description": "Text mentions patient / clinical / mental-health / therapy / diagnosis but the tool never explicitly says the responder is an AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI disclosure in clinical interactions.",
       "incident_references": [],
-      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context is one of nine words (`patient`, `clinical`, `medical`, `mental health`, `therapy`, `diagnosis`, `symptom`, `treatment`, `medication`) or its plural, except `diagnoses`, which is also a verb, and `symptoms`: on the 892-repo instruction-file slice its only match was engineering prose. A persona about a nurse, a prescription or a dosage is skipped, as is one that names only `diagnoses` or `symptoms`.",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context is one of nine words (`patient`, `clinical`, `medical`, `mental health`, `therapy`, `diagnosis`, `symptom`, `treatment`, `medication`) or its plural, except `diagnoses`, which is also a verb, and `symptoms`: on the 892-repo instruction-file slice its only match was engineering prose. A persona about a nurse, a prescription or a dosage is skipped, as is one that names only `diagnoses` or `symptoms`. The file must also read as a conversational surface, which is one word or phrase anywhere in it (`assistant`, `companion`, `persona`, `system prompt`, `chatbot`, `conversational`, `you are a`, `I am a` and a few more), with nothing tying it to the healthcare word, so engineering prose passes both: all 19 findings on that slice were developer instructions, a debugging `diagnosis` or a bug's `symptom` (16 of them) in a file that also mentions a coding `assistant`, a `companion` tool or a `system prompt`, not an AI talking to a patient. That is a known false-positive shape.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -2471,7 +2471,7 @@
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
-      "description": "A scanner did not finish its work on every file, so the rules it owns were not evaluated where it stopped, and the results are incomplete. Either the scanner crashed, which is a bug in agent-audit-kit itself and costs its findings on every file (please file an issue with the evidence string), or it refused one file it could not read or parse safely, which costs that file alone. Either way the scan went on with every other scanner. The pin-drift scanner reports here, against the file, when `.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull check with no readable baseline has checked nothing, and the evidence says why the file could not be used. Any scanner reports here, against one file, when it refuses that file: a JSON or JSONC file nested past 500 levels (Python's own parser stops at a depth that differs by version, and every version refuses past this; real configs nest under 20), one nested deeper than Python's TOML or Python parser takes (before Python 3.11, whose parser has no depth check, a Python source a linear screen bounds past 10,000 levels is refused before it is parsed; one under that bound is parsed, and costs what a source of its size does: up to about 40 s of CPU for 500 KB on 3.9, deep or not), a TOML key of more than 64 dotted parts (tomllib builds a dotted key one part at a time, at a cost that grows with the square of the parts, so the file is refused before it is parsed), a TOML file holding an integer Python cannot convert (one past 4,300 digits, the limit `int()` has had since 3.9.14, 3.10.7 and 3.11; a JSON file reads such an integer as the nearest float and a YAML file as its text, so neither is refused), a Python syntax tree deeper than the scanner's walk takes (a walk runs with a recursion limit of 10,000 frames, about 3,300 levels for the walk that takes the most frames a level; the deepest of 100,303 real files has 569), or YAML nested past 100 levels, or past 64 levels of `[ ]` or `{ }`, or grown by its aliases past their bound. The scanner went on with every other file, and the evidence names the scanner, the file and the reason.",
+      "description": "A scanner did not finish its work on every file, so the rules it owns were not evaluated where it stopped, and the results are incomplete. Either the scanner crashed, which is a bug in agent-audit-kit itself and costs its findings on every file (please file an issue with the evidence string), or it refused one file it could not read or parse safely, which costs that file alone. Either way the scan went on with every other scanner. The pin-drift scanner reports here, against the file, when `.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull check with no readable baseline has checked nothing, and the evidence says why the file could not be used. Any scanner reports here, against one file, when it refuses that file: a JSON or JSONC file nested past 500 levels (Python's own parser stops at a depth that differs by version, and every version refuses past this; real configs nest under 20), one nested deeper than Python's TOML or Python parser takes (before Python 3.11, whose parser has no depth check, a Python source a linear screen bounds past 10,000 levels is refused before it is parsed; the screen counts each operand of an `and` or `or` chain, and of a comparison chain such as `a < b < c`, as a level, though Python builds such a chain one level deep, so on 3.9 and 3.10 a flat `x = a and b and ...` of about 10,000 names is refused and reported here, while 3.11 and later parse it; one under that bound is parsed, and costs what a source of its size does: up to about 40 s of CPU for 500 KB on 3.9, deep or not), a TOML key of more than 64 dotted parts (tomllib builds a dotted key one part at a time, at a cost that grows with the square of the parts, so the file is refused before it is parsed), a TOML file holding an integer Python cannot convert (one past 4,300 digits, the limit `int()` has had since 3.9.14, 3.10.7 and 3.11; a JSON file reads such an integer as the nearest float and a YAML file as its text, so neither is refused), a Python syntax tree deeper than the scanner's walk takes (a walk runs with a recursion limit of 10,000 frames, about 3,300 levels for the walk that takes the most frames a level; the deepest of 100,303 real files has 569), or YAML nested past 100 levels, or past 64 levels of `[ ]` or `{ }`, or grown by its aliases past their bound, or a file the scanner's size-capped read finds over its cap although the file's size, read just before, said it was not (one that grew in between, or a filesystem that misreports sizes; a file whose size puts it over the cap is skipped, as the owning rule states). The scanner went on with every other file, and the evidence names the scanner, the file and the reason.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [],
@@ -2611,7 +2611,7 @@
       "rule_id": "AAK-LANGCHAIN-001",
       "sarif_name": "LangchainPathTraversalVuln",
       "severity": "high",
-      "title": "Project depends on langchain-core < 1.2.22 (load_prompt path traversal)"
+      "title": "Project depends on langchain-core below 1.2.22 (load_prompt path traversal)"
     },
     {
       "adversa_references": [
@@ -2813,7 +2813,7 @@
       "incident_references": [
         "BERRIAI-LITELLM-2026-04-30"
       ],
-      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 1.83.7 (`litellm<1.83.7` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 1.83.7. A git requirement's dotted release tag is read as its version (`@v1.83.0`); a commit, a branch or a tag with no dot (`@v2`) states none. A declaration that states no version, such as `litellm` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A compose file's `ghcr.io/berriai/litellm` image tag is not read. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
+      "limitations": "Reads the dependency declarations of the root requirements*.txt, pyproject.toml and Pipfile in their own formats, and reports one whose range admits a release below 1.83.7 (`litellm<1.83.7` included), and the version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is below 1.83.7. A git requirement's dotted release tag is read as its version (`@v1.83.0`); a commit, a branch or a tag with no dot (`@v2`) states none. Only a tag written after the `@` alone is read: `@refs/tags/v1.83.0`, and the release an archive's file name states (`.../archive/refs/tags/v1.83.0.tar.gz`, `litellm-1.83.0.tar.gz`), are not, so such a requirement states no version and is not reported, even below 1.83.7, though AAK-MCP-LITELLM-CVE-2026-59822-001 reads both forms. A declaration that states no version, such as `litellm` alone or a git URL without a release tag, is not reported, and neither is a requirements file in a sub-directory or an `.mcp.json` launcher. A compose file's `ghcr.io/berriai/litellm` image tag is not read. A manifest over 2 MB is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -2827,7 +2827,7 @@
       "rule_id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
       "sarif_name": "LitellmCveStaleVersion",
       "severity": "high",
-      "title": "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)"
+      "title": "LiteLLM pin floor for CVE-2026-30623 (below 1.83.7)"
     },
     {
       "adversa_references": [],
@@ -3729,7 +3729,7 @@
       "rule_id": "AAK-MCP-9ROUTER-CVE-2026-46339-001",
       "sarif_name": "NineRouterMcpUnauthRce",
       "severity": "critical",
-      "title": "9Router unauthenticated MCP bridge \u2192 command execution (< 0.5.2)"
+      "title": "9Router unauthenticated MCP bridge \u2192 command execution (below 0.5.2)"
     },
     {
       "adversa_references": [
@@ -3760,7 +3760,7 @@
       "rule_id": "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001",
       "sarif_name": "AgenticFlowMcpExecSyncInjection",
       "severity": "high",
-      "title": "Agentic-Flow MCP tool params \u2192 execSync command injection (< 2.0.14)"
+      "title": "Agentic-Flow MCP tool params \u2192 execSync command injection (below 2.0.14)"
     },
     {
       "adversa_references": [
@@ -3891,7 +3891,7 @@
       "rule_id": "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
       "sarif_name": "AmazonMqMcpServerBrokerHostnameSsrf",
       "severity": "medium",
-      "title": "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (< 2.0.24)"
+      "title": "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (below 2.0.24)"
     },
     {
       "adversa_references": [
@@ -3980,7 +3980,7 @@
       "rule_id": "AAK-MCP-APIFY-CVE-2026-46341-001",
       "sarif_name": "ApifyMcpDocsAllowlistSsrf",
       "severity": "high",
-      "title": "Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (`@apify/actors-mcp-server` < 0.10.11)"
+      "title": "Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (`@apify/actors-mcp-server` below 0.10.11)"
     },
     {
       "adversa_references": [
@@ -4044,7 +4044,7 @@
       "rule_id": "AAK-MCP-APPIUM-CVE-2026-58500-001",
       "sarif_name": "AppiumMcpLocatorUiInjection",
       "severity": "high",
-      "title": "MCP Appium locator-UI HTML/JS injection \u2192 unauthorized tool exec (< 1.85.10)"
+      "title": "MCP Appium locator-UI HTML/JS injection \u2192 unauthorized tool exec (below 1.85.10)"
     },
     {
       "adversa_references": [
@@ -4250,7 +4250,7 @@
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
       "sarif_name": "McpAtlassianRce27825",
       "severity": "critical",
-      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
+      "title": "mcp-atlassian below 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
     },
     {
       "adversa_references": [
@@ -4283,7 +4283,7 @@
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
       "sarif_name": "McpAtlassianRce27826",
       "severity": "high",
-      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
+      "title": "mcp-atlassian below 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
     },
     {
       "adversa_references": [
@@ -4333,7 +4333,7 @@
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
       "sarif_name": "McpAtlassianAttachmentPathTraversal",
       "severity": "high",
-      "title": "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)"
+      "title": "mcp-atlassian below 0.22.0 (confluence_upload_attachment arbitrary file read)"
     },
     {
       "adversa_references": [
@@ -4365,7 +4365,7 @@
       "rule_id": "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001",
       "sarif_name": "AtomicAgentsCleartextRegistryExec",
       "severity": "high",
-      "title": "atomic-agents-stack < 1.1.0 (cleartext registry catalog reaches a local subprocess)"
+      "title": "atomic-agents-stack below 1.1.0 (cleartext registry catalog reaches a local subprocess)"
     },
     {
       "adversa_references": [],
@@ -4446,7 +4446,7 @@
       "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
       "sarif_name": "AuthFetchMcpMappedIpv6LoopbackBypass",
       "severity": "high",
-      "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
+      "title": "auth-fetch-mcp 3.0.1 or earlier (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
     },
     {
       "adversa_references": [
@@ -4533,7 +4533,7 @@
       "rule_id": "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001",
       "sarif_name": "AwsApiMcpServerPolicyBypass",
       "severity": "high",
-      "title": "AWS API MCP Server security-policy bypass on init failure (0.2.13\u2013<1.3.47)"
+      "title": "AWS API MCP Server security-policy bypass on init failure (from 0.2.13 below 1.3.47)"
     },
     {
       "adversa_references": [
@@ -4562,7 +4562,7 @@
       "rule_id": "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
       "sarif_name": "AwslabsPostgresMcpSqlValidationGap",
       "severity": "critical",
-      "title": "awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (< 1.1.7)"
+      "title": "awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (below 1.1.7)"
     },
     {
       "adversa_references": [
@@ -4593,7 +4593,7 @@
       "rule_id": "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001",
       "sarif_name": "AwsSecurityAgentMcpBucketOwnership",
       "severity": "medium",
-      "title": "awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (< 0.2.0)"
+      "title": "awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (below 0.2.0)"
     },
     {
       "adversa_references": [
@@ -4628,7 +4628,7 @@
       "rule_id": "AAK-MCP-BETTERAUTH-CVE-2026-53512-001",
       "sarif_name": "BetterAuthOauthTokenEndpointBypass",
       "severity": "high",
-      "title": "Better Auth OAuth/MCP plugin flaw cluster \u2014 token bypass, code replay, weak crypto, open redirect (< 1.6.13)"
+      "title": "Better Auth OAuth/MCP plugin flaw cluster \u2014 token bypass, code replay, weak crypto, open redirect (below 1.6.13)"
     },
     {
       "adversa_references": [
@@ -4659,7 +4659,7 @@
       "rule_id": "AAK-MCP-BROWSEMCP-CVE-2026-55557-001",
       "sarif_name": "BrowseMcpPathTraversal",
       "severity": "high",
-      "title": "browse-mcp writes fetched content to a caller-controlled path (< 0.8.2)"
+      "title": "browse-mcp writes fetched content to a caller-controlled path (below 0.8.2)"
     },
     {
       "adversa_references": [
@@ -4809,7 +4809,7 @@
       "rule_id": "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001",
       "sarif_name": "ClaudeCodeTemplatesStudioCommandInjection",
       "severity": "high",
-      "title": "claude-code-templates < 1.29.4 (--studio server: unauth 0.0.0.0:3444 \u2192 command-injection RCE)"
+      "title": "claude-code-templates below 1.29.4 (--studio server: unauth 0.0.0.0:3444 \u2192 command-injection RCE)"
     },
     {
       "adversa_references": [
@@ -4872,7 +4872,7 @@
       "rule_id": "AAK-MCP-CKAN-CVE-2026-73846-001",
       "sarif_name": "CkanMcpServerCacheAndHostValidation",
       "severity": "medium",
-      "title": "@aborruso/ckan-mcp-server < 0.4.112 (cache-key collision, prefix-only host check, verbose errors)"
+      "title": "@aborruso/ckan-mcp-server below 0.4.112 (cache-key collision, prefix-only host check, verbose errors)"
     },
     {
       "adversa_references": [
@@ -4963,7 +4963,7 @@
       "rule_id": "AAK-MCP-CLINE-CVE-2026-59723-001",
       "sarif_name": "ClineHubDashboardOriginBypass",
       "severity": "high",
-      "title": "Cline < 3.0.30 (Hub dashboard WebSocket origin bypass \u2192 RCE)"
+      "title": "Cline below 3.0.30 (Hub dashboard WebSocket origin bypass \u2192 RCE)"
     },
     {
       "adversa_references": [
@@ -5145,7 +5145,7 @@
       "rule_id": "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
       "sarif_name": "CodeWhaleAutoApprovedExecution",
       "severity": "high",
-      "title": "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (`codewhale` >= 0.8.41, < 0.8.64)"
+      "title": "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (`codewhale` from 0.8.41 below 0.8.64)"
     },
     {
       "adversa_references": [
@@ -5226,7 +5226,7 @@
       "rule_id": "AAK-MCP-CONTENTFUL-CVE-2026-53957-001",
       "sarif_name": "ContentfulMcpMigrationHostRedirect",
       "severity": "high",
-      "title": "@contentful/mcp-server < 1.7.19 / @contentful/mcp-tools < 0.4.5 (LLM-controlled host and proxy carry the management token)"
+      "title": "@contentful/mcp-server below 1.7.19 / @contentful/mcp-tools below 0.4.5 (LLM-controlled host and proxy carry the management token)"
     },
     {
       "adversa_references": [
@@ -5338,7 +5338,7 @@
       "rule_id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
       "sarif_name": "ContextForgeGatewayRebindAndSessionLeak",
       "severity": "critical",
-      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)"
+      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind and OAuth token-URL SSRF, jq-filter, Admin UI XSS and cross-session leaks (1.0.8 or earlier)"
     },
     {
       "adversa_references": [
@@ -5366,7 +5366,7 @@
       "rule_id": "AAK-MCP-CORTEX-CVE-2026-49986-001",
       "sarif_name": "CortexClaudeProjectDirExec",
       "severity": "high",
-      "title": "neuro-cortex-memory <= 3.17.0 (CLAUDE_PROJECT_DIR treated as a trusted source root)"
+      "title": "neuro-cortex-memory 3.17.0 or earlier (CLAUDE_PROJECT_DIR treated as a trusted source root)"
     },
     {
       "adversa_references": [
@@ -5466,7 +5466,7 @@
       "rule_id": "AAK-MCP-DBTMCP-CVE-2026-44968-001",
       "sarif_name": "DbtMcpFlagInjection",
       "severity": "medium",
-      "title": "dbt-mcp flag injection + tool-arg leakage (`dbt-mcp` < 1.17.1)"
+      "title": "dbt-mcp flag injection + tool-arg leakage (`dbt-mcp` below 1.17.1)"
     },
     {
       "adversa_references": [
@@ -5499,7 +5499,7 @@
       "rule_id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
       "sarif_name": "DeepseekMcpUnboundSession",
       "severity": "high",
-      "title": "@arikusi/deepseek-mcp-server < 1.8.0 (unbound session IDs + unauth HTTP transport)"
+      "title": "@arikusi/deepseek-mcp-server below 1.8.0 (unbound session IDs + unauth HTTP transport)"
     },
     {
       "adversa_references": [],
@@ -5688,7 +5688,7 @@
       "rule_id": "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001",
       "sarif_name": "DocumentDbMcpAggregationAuthzBypass",
       "severity": "medium",
-      "title": "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (< 1.0.12)"
+      "title": "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (below 1.0.12)"
     },
     {
       "adversa_references": [
@@ -6109,7 +6109,7 @@
       "rule_id": "AAK-MCP-FLORENCE2-CVE-2026-19984-001",
       "sarif_name": "McpFlorence2GetImagesSsrf",
       "severity": "medium",
-      "title": "mcp-florence2 SSRF via the get_images src argument (<= 0.3.13, no code fix planned)"
+      "title": "mcp-florence2 SSRF via the get_images src argument (0.3.13 or earlier, no code fix planned)"
     },
     {
       "adversa_references": [
@@ -6141,7 +6141,7 @@
       "rule_id": "AAK-MCP-FLOWISE-CVE-2026-91931-001",
       "sarif_name": "FlowiseCustomMcpNodeRce",
       "severity": "high",
-      "title": "flowise < 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)"
+      "title": "flowise below 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)"
     },
     {
       "adversa_references": [
@@ -6177,7 +6177,7 @@
       "rule_id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
       "sarif_name": "Flyto2CoreProviderKeyExfil",
       "severity": "high",
-      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (<2.26.6)"
+      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (below 2.26.6)"
     },
     {
       "adversa_references": [
@@ -6240,7 +6240,7 @@
       "rule_id": "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001",
       "sarif_name": "McpFromOpenapiRefSsrf",
       "severity": "high",
-      "title": "mcp-from-openapi < 2.5.0 (external $ref guard does not resolve or pin addresses \u2014 SSRF)"
+      "title": "mcp-from-openapi below 2.5.0 (external $ref guard does not resolve or pin addresses \u2014 SSRF)"
     },
     {
       "adversa_references": [
@@ -6273,7 +6273,7 @@
       "rule_id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
       "sarif_name": "FrontMcpZodSandboxEscapeRce",
       "severity": "high",
-      "title": "FrontMCP sandbox escape via Zod schema proxy reaches RCE (< 1.5.7)"
+      "title": "FrontMCP sandbox escape via Zod schema proxy reaches RCE (below 1.5.7)"
     },
     {
       "adversa_references": [
@@ -6383,7 +6383,7 @@
       ],
       "description": "The Amazon `mcp-gateway-registry` before 1.0.13 improperly neutralizes a caller-supplied `table_name` in the metrics-service retention-policy component: the value is interpolated directly into an SQL statement in identifier position, so an authenticated remote user can execute arbitrary SQL against the gateway's metrics store (CVE-2026-14471, HIGH CVSS 8.1, CWE-89, published 2026-07-06). A project that depends on the gateway registry at a version below 1.0.13 (or unpinned) is exposed.",
       "incident_references": [],
-      "limitations": "Reads the dependency declarations and launchers of the project root's requirements*.txt, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and *.mcp.yaml/.yml files, and reports one whose range admits a release below 1.0.13 or that states no version (a git requirement's dotted release tag is its version; a commit, a branch or a tag with no dot, `@v2`, states none), every `agentic-community/mcp-gateway-registry` git or image reference whose tag is below 1.0.13 or missing, a command line that runs `mcp-gateway-registry` without fetching it, and the version the root Pipfile.lock, poetry.lock, uv.lock or package-lock.json resolves when it is below 1.0.13. A mention of the name that is none of these, such as a server's name or a URL, is not read, and neither is an image published under another name, such as the project's own `public.ecr.aws/p3v1o3c6/registry`. It does not read a sub-directory, including a requirements file there, `.cursor/mcp.json` or `.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file over 2 MB is not read. A lockfile over 32 MiB is not read.",
+      "limitations": "Reads the dependency declarations and launchers of the project root's requirements*.txt, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and *.mcp.yaml/.yml files, and reports one whose range admits a release below 1.0.13 or that states no version (a git requirement's dotted release tag is its version; a commit, a branch or a tag with no dot, `@v2`, states none), every `agentic-community/mcp-gateway-registry` git or image reference whose tag is below 1.0.13 or missing, a command line that runs `mcp-gateway-registry` without fetching it, and the version the root Pipfile.lock, poetry.lock, uv.lock or package-lock.json resolves when it is below 1.0.13. Only a tag written after the `@` alone is read as a version: `@refs/tags/v1.0.13`, and the release an archive's file name states (`.../archive/refs/tags/v1.0.13.tar.gz`, `mcp-gateway-registry-1.0.13.tar.gz`), are not, so such a requirement is reported as unpinned even at 1.0.13 or later. A mention of the name that is none of these, such as a server's name or a URL, is not read, and neither is an image published under another name, such as the project's own `public.ecr.aws/p3v1o3c6/registry`. It does not read a sub-directory, including a requirements file there, `.cursor/mcp.json` or `.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file over 2 MB is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -6397,7 +6397,7 @@
       "rule_id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
       "sarif_name": "McpGatewayRegistrySqlInjection",
       "severity": "high",
-      "title": "Amazon mcp-gateway-registry < 1.0.13 (SQL injection)"
+      "title": "Amazon mcp-gateway-registry below 1.0.13 (SQL injection)"
     },
     {
       "adversa_references": [
@@ -6428,7 +6428,7 @@
       "rule_id": "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001",
       "sarif_name": "GeminiBridgePathTraversal",
       "severity": "medium",
-      "title": "gemini-bridge tool-argument path traversal reads arbitrary files (1.0.0\u2013<1.3.1)"
+      "title": "gemini-bridge tool-argument path traversal reads arbitrary files (from 1.0.0 below 1.3.1)"
     },
     {
       "adversa_references": [
@@ -6459,7 +6459,7 @@
       "rule_id": "AAK-MCP-GENIEACS-CVE-2026-55637-001",
       "sarif_name": "GenieacsMcpDnsRebind",
       "severity": "high",
-      "title": "genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (< 0.3.2)"
+      "title": "genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (below 0.3.2)"
     },
     {
       "adversa_references": [
@@ -6494,7 +6494,7 @@
       "rule_id": "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001",
       "sarif_name": "ZereightMcpGitlabUnauthAndSsrf",
       "severity": "critical",
-      "title": "@zereight/mcp-gitlab < 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)"
+      "title": "@zereight/mcp-gitlab below 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)"
     },
     {
       "adversa_references": [
@@ -6525,7 +6525,7 @@
       "rule_id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
       "sarif_name": "AdenotMcpGoogleSearchReadWebpageSsrf",
       "severity": "medium",
-      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)"
+      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (0.3.1 or earlier, no fix released)"
     },
     {
       "adversa_references": [
@@ -6557,7 +6557,7 @@
       "rule_id": "AAK-MCP-GRAFANA-CVE-2026-19516-001",
       "sarif_name": "McpGrafanaXGrafanaUrlSsrf",
       "severity": "critical",
-      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)"
+      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (below 1.1.0)"
     },
     {
       "adversa_references": [
@@ -6588,7 +6588,7 @@
       "rule_id": "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001",
       "sarif_name": "HealthLakeMcpPaginationSsrf",
       "severity": "high",
-      "title": "AWS HealthLake MCP server pagination SSRF \u2192 credential exfil (< 0.0.14)"
+      "title": "AWS HealthLake MCP server pagination SSRF \u2192 credential exfil (below 0.0.14)"
     },
     {
       "adversa_references": [
@@ -6619,7 +6619,7 @@
       "rule_id": "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001",
       "sarif_name": "HealthOmicsMcpPathTraversal",
       "severity": "medium",
-      "title": "AWS HealthOmics MCP workflow-bundle path traversal (< 0.0.36)"
+      "title": "AWS HealthOmics MCP workflow-bundle path traversal (below 0.0.36)"
     },
     {
       "adversa_references": [
@@ -6944,7 +6944,7 @@
       "rule_id": "AAK-MCP-K8S-CVE-2026-61459-001",
       "sarif_name": "McpServerKubernetesArgInjection",
       "severity": "critical",
-      "title": "mcp-server-kubernetes < 3.9.0 (argument injection \u2192 kubectl --server redirect)"
+      "title": "mcp-server-kubernetes below 3.9.0 (argument injection \u2192 kubectl --server redirect)"
     },
     {
       "adversa_references": [
@@ -7262,7 +7262,7 @@
       "rule_id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
       "sarif_name": "LangflowMcpStdioEnvInjectionRce",
       "severity": "critical",
-      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.13.0)"
+      "title": "Langflow MCP stdio launcher env-var-injection RCE (from 1.0.0 below 1.13.0)"
     },
     {
       "adversa_references": [],
@@ -7311,7 +7311,7 @@
       "rule_id": "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001",
       "sarif_name": "McpLangGraphApiWebhookAuthBypass",
       "severity": "medium",
-      "title": "langgraph-api < 0.10.0 (loopback webhook bypasses per-user authorization)"
+      "title": "langgraph-api below 0.10.0 (loopback webhook bypasses per-user authorization)"
     },
     {
       "adversa_references": [
@@ -7399,7 +7399,7 @@
       "rule_id": "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
       "sarif_name": "LangGraphMongoCheckpointNosqlInjection",
       "severity": "medium",
-      "title": "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (< 1.3.1)"
+      "title": "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (below 1.3.1)"
     },
     {
       "adversa_references": [
@@ -7485,7 +7485,7 @@
       "rule_id": "AAK-MCP-LETTA-CVE-2025-51482-001",
       "sarif_name": "LettaAgentServerCveChain",
       "severity": "high",
-      "title": "Letta (MemGPT) <= 0.16.4 (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)"
+      "title": "Letta (MemGPT) 0.16.4 or earlier (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)"
     },
     {
       "adversa_references": [],
@@ -7572,7 +7572,7 @@
       "rule_id": "AAK-MCP-LITELLM-CVE-2026-59822-001",
       "sarif_name": "LiteLLMMcpAuthBypass",
       "severity": "high",
-      "title": "LiteLLM < 1.84.0 (MCP auth bypass + skills-archive path traversal)"
+      "title": "LiteLLM below 1.84.0 (MCP auth bypass + skills-archive path traversal)"
     },
     {
       "adversa_references": [
@@ -7603,7 +7603,7 @@
       "rule_id": "AAK-MCP-MARIMO-CVE-2026-75149-001",
       "sarif_name": "MarimoNotebookMcpCommandInjection",
       "severity": "high",
-      "title": "marimo launches a notebook-supplied MCP server command on open (< 0.23.15)"
+      "title": "marimo launches a notebook-supplied MCP server command on open (below 0.23.15)"
     },
     {
       "adversa_references": [
@@ -7708,7 +7708,7 @@
       "rule_id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
       "sarif_name": "McpHubGatewayAuthorizationBypass",
       "severity": "critical",
-      "title": "@samanhappy/mcphub < 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)"
+      "title": "@samanhappy/mcphub below 1.1.8 (MCP gateway authorization, SSRF and credential-leak defects)"
     },
     {
       "adversa_references": [
@@ -7736,7 +7736,7 @@
       "rule_id": "AAK-MCP-MEMSERVICE-CVE-2026-50027-001",
       "sarif_name": "McpMemoryServiceUnauthDocuments",
       "severity": "critical",
-      "title": "mcp-memory-service < 10.67.1 (/api/documents/* served with no authentication)"
+      "title": "mcp-memory-service below 10.67.1 (/api/documents/* served with no authentication)"
     },
     {
       "adversa_references": [
@@ -7803,7 +7803,7 @@
       "rule_id": "AAK-MCP-MYSQLMCP-CVE-2026-59971-001",
       "sarif_name": "MysqlMcpServerUnauthSse",
       "severity": "critical",
-      "title": "mysql-mcp-server < 0.4.2 (unauthenticated SSE transport reaches execute_sql)"
+      "title": "mysql-mcp-server below 0.4.2 (unauthenticated SSE transport reaches execute_sql)"
     },
     {
       "adversa_references": [
@@ -7874,7 +7874,7 @@
       "rule_id": "AAK-MCP-N8N-CVE-2026-59207-001",
       "sarif_name": "N8nMcpCredentialDomainBypass",
       "severity": "medium",
-      "title": "n8n < 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)"
+      "title": "n8n below 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)"
     },
     {
       "adversa_references": [
@@ -7906,7 +7906,7 @@
       "rule_id": "AAK-MCP-N8N-CVE-2026-65594-001",
       "sarif_name": "N8nMcpOAuthWorkflowAuthzBypass",
       "severity": "high",
-      "title": "n8n MCP Server Trigger OAuth workflow-authorization bypass (2.27.0\u2013<2.29.8, 2.30.0\u2013<2.30.1)"
+      "title": "n8n MCP Server Trigger OAuth workflow-authorization bypass (from 2.27.0 below 2.29.8, from 2.30.0 below 2.30.1)"
     },
     {
       "adversa_references": [
@@ -7943,7 +7943,7 @@
       "rule_id": "AAK-MCP-N8N-CVE-2026-72768-001",
       "sarif_name": "N8nMcpClientNodeSsrfBypass",
       "severity": "high",
-      "title": "n8n < 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client SSRF bypass, node-schema loader RCE, cross-project credential reference, inline sub-workflow credential exfiltration)"
+      "title": "n8n below 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client SSRF bypass, node-schema loader RCE, cross-project credential reference, inline sub-workflow credential exfiltration)"
     },
     {
       "adversa_references": [
@@ -7976,7 +7976,7 @@
       "rule_id": "AAK-MCP-N8NMCP-CVE-2026-54052-001",
       "sarif_name": "N8nMcpTenantIsolation",
       "severity": "critical",
-      "title": "n8n-MCP multi-tenant backup isolation bypass (`n8n-mcp` < 2.57.4)"
+      "title": "n8n-MCP multi-tenant backup isolation bypass (`n8n-mcp` below 2.57.4)"
     },
     {
       "adversa_references": [
@@ -8073,7 +8073,7 @@
       "rule_id": "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
       "sarif_name": "NetlicensingMcpAuthFallback",
       "severity": "critical",
-      "title": "netlicensing-mcp < 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)"
+      "title": "netlicensing-mcp below 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)"
     },
     {
       "adversa_references": [
@@ -8167,7 +8167,7 @@
       "rule_id": "AAK-MCP-NEXTCLOUD-CVE-2026-55640-001",
       "sarif_name": "NextcloudMcpWebhookNoAuth",
       "severity": "critical",
-      "title": "Nextcloud MCP Server webhook endpoint is unauthenticated by default (< 0.117.2)"
+      "title": "Nextcloud MCP Server webhook endpoint is unauthenticated by default (below 0.117.2)"
     },
     {
       "adversa_references": [
@@ -8558,7 +8558,7 @@
       "rule_id": "AAK-MCP-OMNIGENT-CVE-2026-62674-001",
       "sarif_name": "OmnigentSharedAgentMcpInjection",
       "severity": "critical",
-      "title": "Omnigent shared-agent swap injects a stdio MCP command (< 0.3.0)"
+      "title": "Omnigent shared-agent swap injects a stdio MCP command (below 0.3.0)"
     },
     {
       "adversa_references": [],
@@ -8580,7 +8580,7 @@
       "rule_id": "AAK-MCP-OPENAPI-BLOATED-PARAMS-001",
       "sarif_name": "OpenApiBloatedParameters",
       "severity": "low",
-      "title": "OpenAPI operation with >12 parameters or >24 request-body properties (Hermes BLOATED)"
+      "title": "OpenAPI operation with more than 12 parameters or more than 24 request-body properties (Hermes BLOATED)"
     },
     {
       "adversa_references": [],
@@ -8624,7 +8624,7 @@
       "rule_id": "AAK-MCP-OPENAPI-TANGLED-METHODS-001",
       "sarif_name": "OpenApiTangledMethodsAndPaths",
       "severity": "medium",
-      "title": "OpenAPI path serving >4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)"
+      "title": "OpenAPI path serving more than 4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)"
     },
     {
       "adversa_references": [
@@ -8849,7 +8849,7 @@
       "rule_id": "AAK-MCP-PENPOT-CVE-2026-100868-001",
       "sarif_name": "PenpotMcpPluginBridgeAllInterfaces",
       "severity": "medium",
-      "title": "Penpot MCP plugin WebSocket bridge listens on every interface (< 2.18.0)"
+      "title": "Penpot MCP plugin WebSocket bridge listens on every interface (below 2.18.0)"
     },
     {
       "adversa_references": [
@@ -8881,7 +8881,7 @@
       "rule_id": "AAK-MCP-PENPOT-CVE-2026-45805-001",
       "sarif_name": "PenpotMcpReplRce",
       "severity": "critical",
-      "title": "Penpot MCP ReplServer unauthenticated /execute RCE (< 2.15.0)"
+      "title": "Penpot MCP ReplServer unauthenticated /execute RCE (below 2.15.0)"
     },
     {
       "adversa_references": [
@@ -9086,7 +9086,7 @@
       "rule_id": "AAK-MCP-PRAISONAI-CVE-2026-61427-001",
       "sarif_name": "PraisonAiMcpNoAuthDefault",
       "severity": "high",
-      "title": "PraisonAI MCP unauthenticated-default + path traversal (< 4.6.78)"
+      "title": "PraisonAI MCP unauthenticated-default + path traversal (below 4.6.78)"
     },
     {
       "adversa_references": [
@@ -9119,7 +9119,7 @@
       "rule_id": "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001",
       "sarif_name": "PraisonAiTsMcpHttpNoAuth",
       "severity": "critical",
-      "title": "praisonai (npm, TypeScript) < 1.7.2 (MCP HTTP server binds unrestricted with no auth)"
+      "title": "praisonai (npm, TypeScript) below 1.7.2 (MCP HTTP server binds unrestricted with no auth)"
     },
     {
       "adversa_references": [
@@ -9151,7 +9151,7 @@
       "rule_id": "AAK-MCP-QWED-CVE-2026-55546-001",
       "sarif_name": "QwedMcpParseExprRce",
       "severity": "critical",
-      "title": "QWED-MCP evaluates a tool argument through SymPy parse_expr (< 0.2.1)"
+      "title": "QWED-MCP evaluates a tool argument through SymPy parse_expr (below 0.2.1)"
     },
     {
       "adversa_references": [
@@ -9249,7 +9249,7 @@
       "rule_id": "AAK-MCP-REPOMIX-CVE-2026-49988-001",
       "sarif_name": "RepomixMcpSecretLintBypass",
       "severity": "medium",
-      "title": "Repomix MCP server bypasses secret-scan file-read boundary (< 1.14.1)"
+      "title": "Repomix MCP server bypasses secret-scan file-read boundary (below 1.14.1)"
     },
     {
       "adversa_references": [
@@ -9363,7 +9363,7 @@
       "rule_id": "AAK-MCP-RUFLO-CVE-2026-59726-001",
       "sarif_name": "RufloUnauthMcpBridgeRce",
       "severity": "critical",
-      "title": "ruflo < 3.16.3 (unauthenticated MCP bridge \u2192 tools/call RCE)"
+      "title": "ruflo below 3.16.3 (unauthenticated MCP bridge \u2192 tools/call RCE)"
     },
     {
       "adversa_references": [
@@ -9454,7 +9454,7 @@
       "rule_id": "AAK-MCP-SDK-CVE-2026-52869-001",
       "sarif_name": "McpPythonSdkSessionIsolation",
       "severity": "high",
-      "title": "MCP Python SDK session/task cross-client access and unbounded request bodies (`mcp` < 1.29.1, and 2.0.x)"
+      "title": "MCP Python SDK session/task cross-client access and unbounded request bodies (`mcp` below 1.29.1, and 2.0.x)"
     },
     {
       "adversa_references": [
@@ -9521,7 +9521,7 @@
       "rule_id": "AAK-MCP-SEARXNG-CVE-2026-58483-001",
       "sarif_name": "McpSearxngUnboundedRead",
       "severity": "high",
-      "title": "mcp-searxng < 1.7.1 (a missing Content-Length bypasses the read cap)"
+      "title": "mcp-searxng below 1.7.1 (a missing Content-Length bypasses the read cap)"
     },
     {
       "adversa_references": [
@@ -9552,7 +9552,7 @@
       "rule_id": "AAK-MCP-SEQTHINKING-CVE-2026-81845-001",
       "sarif_name": "McpSequentialThinkingSessionPathTraversal",
       "severity": "medium",
-      "title": "mcp-sequential-thinking <= 0.5.0 (session import/export path traversal)"
+      "title": "mcp-sequential-thinking 0.5.0 or earlier (session import/export path traversal)"
     },
     {
       "adversa_references": [
@@ -9569,7 +9569,7 @@
       ],
       "description": "The Serena MCP coding toolkit (`serena-agent`) before 1.5.2 ships a built-in web dashboard that \"exposes an unauthenticated Flask API on a fixed, predictable port, with no authentication, no CSRF protection, and no Host header validation. A DNS rebinding attack allows a malicious webpage to reach this API from any browser and write arbitrary content to the agent's persistent memory store, which the agent reads and acts on autonomously. Combined with execute_shell_command using shell=True, this creates a remote code execution chain requiring only that the victim visit a malicious webpage while Serena is running.\" (NVD, CVE-2026-49471, HIGH CVSS 8.3, CWE-306 + CWE-352, published 2026-07-07). A project depending on `serena-agent` below 1.5.2 (or unpinned, or launched from an unpinned `oraios/serena` / `serena-mcp-server` reference) is exposed. Fixed in 1.5.2.",
       "incident_references": [],
-      "limitations": "Reads the declarations and launchers of `serena-agent` and `serena-mcp-server` in the root dependency manifests and in the root `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or `*.mcp.yml` files, and reports one whose range admits a release below 1.5.2 or that states no version (a git requirement's dotted release tag is its version; a commit, a branch or a tag with no dot, `@v2`, states none), the version a root lockfile resolves when it is below 1.5.2, every `oraios/serena` git or image reference whose tag is below 1.5.2 or missing, and a command line that runs `serena-mcp-server` without fetching it (`uv run --directory ../serena serena-mcp-server`, with or without a `--with` package). A mention of the names that is none of these, such as a server's name, is not read. Only these root-level files are read, so the same server launched from `.cursor/mcp.json` is missed. A file over 2 MB is not read. A lockfile over 32 MiB is not read.",
+      "limitations": "Reads the declarations and launchers of `serena-agent` and `serena-mcp-server` in the root dependency manifests and in the root `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or `*.mcp.yml` files, and reports one whose range admits a release below 1.5.2 or that states no version (a git requirement's dotted release tag is its version; a commit, a branch or a tag with no dot, `@v2`, states none), the version a root lockfile resolves when it is below 1.5.2, every `oraios/serena` git or image reference whose tag is below 1.5.2 or missing, and a command line that runs `serena-mcp-server` without fetching it (`uv run --directory ../serena serena-mcp-server`, with or without a `--with` package). Only a tag written after the `@` alone is read as a version: `@refs/tags/v1.5.2`, and the release an archive's file name states (`.../archive/refs/tags/v1.5.2.tar.gz`, `serena-agent-1.5.2.tar.gz`), are not, so such a requirement is reported as unpinned even at 1.5.2 or later. A mention of the names that is none of these, such as a server's name, is not read. Only these root-level files are read, so the same server launched from `.cursor/mcp.json` is missed. A file over 2 MB is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -9583,7 +9583,7 @@
       "rule_id": "AAK-MCP-SERENA-CVE-2026-49471-001",
       "sarif_name": "SerenaMcpUnauthDashboardRce",
       "severity": "high",
-      "title": "Serena MCP toolkit < 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)"
+      "title": "Serena MCP toolkit below 1.5.2 (unauthenticated dashboard \u2192 DNS-rebinding RCE)"
     },
     {
       "adversa_references": [
@@ -9864,7 +9864,7 @@
       "rule_id": "AAK-MCP-STATA-CVE-2026-47708-001",
       "sarif_name": "McpForStataCommandInjection",
       "severity": "high",
-      "title": "stata-mcp < 1.19.0 (Stata command injection, two CVEs)"
+      "title": "stata-mcp below 1.19.0 (Stata command injection, two CVEs)"
     },
     {
       "adversa_references": [],
@@ -10215,7 +10215,7 @@
       "rule_id": "AAK-MCP-SUBLINEAR-CVE-2026-55609-001",
       "sarif_name": "ConsciousnessExplorerStatePathTraversal",
       "severity": "high",
-      "title": "consciousness-explorer state tools accept a caller-controlled path (sublinear-time-solver < 1.6.0, consciousness-explorer < 1.1.2)"
+      "title": "consciousness-explorer state tools accept a caller-controlled path (sublinear-time-solver below 1.6.0, consciousness-explorer below 1.1.2)"
     },
     {
       "adversa_references": [
@@ -10500,7 +10500,7 @@
       "rule_id": "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001",
       "sarif_name": "ToolUniversePythonExecutorSandboxEscape",
       "severity": "critical",
-      "title": "ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (<= 1.2.6)"
+      "title": "ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (1.2.6 or earlier)"
     },
     {
       "adversa_references": [
@@ -10915,7 +10915,7 @@
       "rule_id": "AAK-MCP-UFO-CVE-2026-73296-001",
       "sarif_name": "UfoMobileMcpUnauthenticated",
       "severity": "critical",
-      "title": "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
+      "title": "Microsoft UFO below 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
     },
     {
       "adversa_references": [
@@ -11088,7 +11088,7 @@
       ],
       "description": "ZCode, Z.ai's coding agent (a desktop client and a `zcode` CLI built from one source tree), reads MCP servers from a workspace's `zcode.json` and `.zcode/config.json`, under `mcp.servers`, in every directory from the git root down to the folder it opens, and connects every one at session start without asking. A stdio server's `command` runs as the user the moment the repository is opened, and each server's tool descriptions enter the agent's context (CVE-2026-88755, CWE-284/CWE-863). ZCode's own configuration guide says workspace servers \"were previously untrusted and required manual authorization; they now connect by default like any other scope\". NVD names 3.11.2.6792. Checked in the source: 3.14.0 (2026-09-20), 3.14.3 and 3.15.1 (2026-10-10), every published release, keep the set of untrusted project servers empty in `runtime-config.ts`, under a comment that project-scoped MCP is trusted by default and connects automatically, so there is no fixed release.",
       "incident_references": [],
-      "limitations": "Reports each ZCode workspace file once, naming every server ZCode would start; whether a server is hostile is for the MCP config rules, which read the same servers. ZCode ships as desktop installers and an install script, so its version is in no file AAK reads, and every such file with an enabled server is reported, whatever release opens it. A server is not re-checked against ZCode's schema, which drops an entry with an unknown key, so that entry is still named. A file that is not strict JSON is skipped, as ZCode skips it. The desktop client falls back to `.agents/mcp.json` at the workspace root when `.zcode/config.json` declares no server; other agents read that file too, and it is not reported here.",
+      "limitations": "Reports each ZCode workspace file once, naming every server ZCode would start; whether a server is hostile is for the MCP config rules, which read the same servers. ZCode ships as desktop installers and an install script, so its version is in no file AAK reads, and every such file with an enabled server is reported, whatever release opens it. A server is not re-checked against ZCode's schema, which drops an entry with an unknown key, so that entry is still named. A file that is not strict JSON is skipped, as ZCode skips it. The desktop client falls back to `.agents/mcp.json` at the workspace root when `.zcode/config.json` declares no server; other agents read that file too, and it is not reported here. Of the rules that read a config's MCP servers, only the MCP config rules (AAK-MCP-001 to -007, AAK-MCP-ATTEST-001 and the others of that scanner) and the composition chains (AAK-COMPOSE-*) read the servers under `mcp.servers` in these two files. The others do not, so a server declared only here is named by this rule and not checked by them: the supply-chain rules (AAK-SUPPLY-001 and -006), the CVE version pins on an `npx` or `uvx` launch, tool poisoning (AAK-POISON-*), transport security (AAK-TRANSPORT-*), AAK-SECRET-007 on a server's `env` (the secret-pattern rules read these files as text, as they read any file), AAK-MCP-STDIO-LAUNCHER-INJECT-001, `aak pin` and `aak verify`, and `aak sbom`.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -11165,7 +11165,7 @@
       "rule_id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
       "sarif_name": "McpCalculateServerEvalRce",
       "severity": "critical",
-      "title": "MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI <0.1.1)"
+      "title": "MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI below 0.1.1)"
     },
     {
       "adversa_references": [
@@ -11193,7 +11193,7 @@
       "rule_id": "AAK-MCPFRAME-001",
       "sarif_name": "McpFrameworkHttpBodyDos",
       "severity": "medium",
-      "title": "mcp-framework < 0.2.22 HTTP-body DoS"
+      "title": "mcp-framework below 0.2.22 HTTP-body DoS"
     },
     {
       "adversa_references": [
@@ -11258,7 +11258,7 @@
       "rule_id": "AAK-METAADS-CVE-2026-48039-001",
       "sarif_name": "MetaAdsMcpNoAuthTokenLeak",
       "severity": "critical",
-      "title": "Meta Ads MCP forwards unauthenticated requests and leaks the access token (< 1.0.109)"
+      "title": "Meta Ads MCP forwards unauthenticated requests and leaks the access token (below 1.0.109)"
     },
     {
       "adversa_references": [],
@@ -11338,7 +11338,7 @@
       "rule_id": "AAK-NEO4J-001",
       "sarif_name": "Neo4jApocBypass",
       "severity": "medium",
-      "title": "mcp-neo4j-cypher < 0.6.0 APOC read-only bypass"
+      "title": "mcp-neo4j-cypher below 0.6.0 APOC read-only bypass"
     },
     {
       "adversa_references": [
@@ -11395,7 +11395,7 @@
       "rule_id": "AAK-NEXT-AI-DRAW-001",
       "sarif_name": "NextAiDrawBodyDos",
       "severity": "medium",
-      "title": "next-ai-draw-io < 0.4.15 body-accumulation DoS"
+      "title": "next-ai-draw-io below 0.4.15 body-accumulation DoS"
     },
     {
       "adversa_references": [
@@ -12481,7 +12481,7 @@
       "cve_references": [],
       "description": "A .env file exists in the project root and the root .gitignore does not ignore it. Env templates meant to be committed (`.env.example`, `.env.sample`, `.env.template`, `.env.dist`) are not reported.",
       "incident_references": [],
-      "limitations": "Looks for `.env` and `.env.*` files in the project root only, and reads only the root `.gitignore`. An env file in a subdirectory, such as `services/api/.env.test` in a monorepo, is not examined, even when the project has no `.gitignore` at all. The `.gitignore` is read up to the last line that ends within its first 1,000,000 bytes, so an env file ignored only by a line past that point is reported. Patterns match case-sensitively, as git does by default on Linux: where core.ignorecase is set, the default on macOS and Windows, a `.ENV` line also ignores `.env`, which this rule still reports.",
+      "limitations": "Looks for `.env` and `.env.*` files in the project root only, and reads only the root `.gitignore`. An env file in a subdirectory, such as `services/api/.env.test` in a monorepo, is not examined, even when the project has no `.gitignore` at all. The `.gitignore` is read up to the last line that ends within its first 1,000,000 bytes, so an env file ignored only by a line past that point is reported. Every pattern is compared with every root env file, with no bound on how many env files there are: a `.gitignore` of 1,000,000 bytes of one-character `*` lines holds 500,000 patterns, and each env file then costs about 0.15 s of CPU, so 500 env files took 70 to 80 s (measured on Python 3.12 at a load average of 7). Patterns match case-sensitively, as git does by default on Linux: where core.ignorecase is set, the default on macOS and Windows, a `.ENV` line also ignores `.env`, which this rule still reports.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -12717,7 +12717,7 @@
       "rule_id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
       "sarif_name": "SemanticKernelInMemoryVectorStoreFilterRce",
       "severity": "critical",
-      "title": "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI <1.39.4)"
+      "title": "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI below 1.39.4)"
     },
     {
       "adversa_references": [
@@ -12998,7 +12998,7 @@
       "cve_references": [],
       "description": "An MCP or agent tool handler fetches a URL provided by the caller with no host/scheme validation. This is the classic SSRF shape (CWE-918). A smolagents `forward` or a LangChain `_run` counts the same as an MCP tool, since the model chooses the URL either way.",
       "incident_references": [],
-      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). In Python a fetch's URL counts as caller input only inside a function read as a tool the way AAK-TAINT-001 reads one (decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, or a low-level `@<server>.call_tool()` handler), or decorated `@function_tool`, or passed to `add_tool(...)`, as `func=` or to `from_function(...)`, or the `_run`, `_arun`, `run` or `arun` method of a class whose bases reach `BaseTool` or `StructuredTool` in the same file (through the file's own classes, a name it imports or assigns the base as, or a subscripted base; a base another file defines is not followed), or the `forward` method of a class on a `Tool` or `PipelineTool` base, when the file imports from smolagents or the class sets `inputs` and `output_type`, or a function or method called `call_tool` or ending in `_call_tool` (where only `arguments`, `args`, `params`, `input`, `tool_input`, `kwargs`, `payload`, `body`, `query`, `request`, `req` and `event` count), when one of its parameters, or a local bound from one there, can set the URL's host. So a FastMCP instance under another name (`@app.tool()`) is skipped, a value handed to a helper that calls `requests.get` is not followed, nor is one a helper hands back (`base = resolve_base(host)`), and a caller's value after a host the code wrote out (`f\"https://api.example.com/{path}\"`, or `BASE + path` with `BASE` read from the environment) is not reported. A `+=` extends the value bound above it in source order, whatever branch either sits in, so `url = \"https://\"`, then `url += \"eu.example.com/\"` under an `if`, then `url += path` reads the host as fixed, although when the `if` is not taken the caller's `path` names it. A built URL is read only to its 256th piece (an f-string's text or value, a `+` operand, an item of a list it joins or the separator between two), a list joined by name to its own 256th, URLs built one inside another (a list joined inside a list, or a `+` inside a call inside a `+`) 40 deep, and a `%` or `.format` template to its 16th field (an escaped `%%`, `{{` or `}}` counting as one), so a host written after that is missed. Its text is read to the 512th character, so a template field after that is not filled, and a caller's value after an authority the code wrote out longer than that is taken for the host. A value is followed through four names (`url = a`, `a = b`, `b = c`, `c = <value>`), so one only a fifth name holds is not read, whether a base, a caller's value, or the template a `%`, `.format` or `string.Template` fills. A name is read in the scope that binds it, as Python reads it, for the bindings the rule reads (`=`, an augmented assignment (`+=`, `-=` and the rest), an annotated `=` with a value, `for`, a comprehension, `:=`, parameters, `global` and `nonlocal`); a name only an import, a `def` or `class`, a `with ... as` or `except ... as` target, a `match` capture, a `del` or a bare annotation binds is not taken as the scope's own, so the same name around it is read instead. A fetch is `requests.get/post/put/delete/head/request`, `httpx.get/post/put/delete/request/stream`, `urllib.request.urlopen`, `aiohttp.request`, or `get`, `post` or `request` on something called `session` or `client` (and a client's `stream`), and its URL is the first argument, the second after the method for `request` and `stream`, or `url=`. So `http.get(...)` and `requests.patch(...)` are missed. A `urlparse(` call, a `startswith(\"https`, a `scheme == \"https` or `scheme != \"https` comparison or an allow-list name from AAK-SSRF-005 anywhere in the file counts as validation, although an https prefix still allows internal hosts, while `urlsplit(...)` with a hostname comparison and `startswith` on a variable do not, so a URL checked that way is still reported. In TypeScript only `req.query`, `req.body`, `req.params`, `request.json`, `event.body`, `tool_input`, `arguments`, `input`, and `params[` or `args[` directly followed by a letter, digit or underscore (`args[key]`), count as caller input, so `fetch(args.url)` and `fetch(args[\"url\"])` are missed.",
+      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). In Python a fetch's URL counts as caller input only inside a function read as a tool the way AAK-TAINT-001 reads one (decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, or a low-level `@<server>.call_tool()` handler), or decorated `@function_tool`, or passed to `add_tool(...)`, as `func=` or to `from_function(...)`, or the `_run`, `_arun`, `run` or `arun` method of a class whose bases reach `BaseTool` or `StructuredTool` in the same file (through the file's own classes, a name it imports or assigns the base as, or a subscripted base; a base another file defines is not followed), or the `forward` method of a class on a `Tool` or `PipelineTool` base, when the file imports from smolagents or the class sets `inputs` and `output_type`, or a function or method called `call_tool` or ending in `_call_tool` (where only `arguments`, `args`, `params`, `input`, `tool_input`, `kwargs`, `payload`, `body`, `query`, `request`, `req` and `event` count), when one of its parameters, or a local bound from one there, can set the URL's host. So a FastMCP instance under another name (`@app.tool()`) is skipped, a value handed to a helper that calls `requests.get` is not followed, nor is one a helper hands back (`base = resolve_base(host)`), and a caller's value after a host the code wrote out (`f\"https://api.example.com/{path}\"`, or `BASE + path` with `BASE` read from the environment) is not reported. A `+=` extends the value bound above it in source order, whatever branch either sits in, so `url = \"https://\"`, then `url += \"eu.example.com/\"` under an `if`, then `url += path` reads the host as fixed, although when the `if` is not taken the caller's `path` names it. A built URL is read only to its 256th piece (an f-string's text or value, a `+` operand, an item of a list it joins or the separator between two), a list joined by name to its own 256th, URLs built one inside another (a list joined inside a list, or a `+` inside a call inside a `+`) 40 deep, and a `%` or `.format` template to its 16th field (an escaped `%%`, `{{` or `}}` counting as one), so a host written after that is missed. Its text is read to the 512th character, so a template field after that is not filled, and a caller's value after an authority the code wrote out longer than that is taken for the host. A value is followed through four names (`url = a`, `a = b`, `b = c`, `c = <value>`), so one only a fifth name holds is not read, whether a base, a caller's value, or the template a `%`, `.format` or `string.Template` fills. A name is read in the scope that binds it, as Python reads it, for the bindings the rule reads (`=`, an augmented assignment (`+=`, `-=` and the rest), an annotated `=` with a value, `for`, a comprehension, `:=`, parameters, `global` and `nonlocal`); a name only an import, a `def` or `class`, a `with ... as` or `except ... as` target, a `match` capture, a `del` or a bare annotation binds is not taken as the scope's own, so the same name around it is read instead. `\"\".join(d)` is read as the keys of `d` only when the scope binds `d` once, to a dict literal, a dict comprehension or a `dict(...)` call; a `d` bound twice is read whole, values included, so `d = {\"u\": \"https://\" + host}` rebound under an `if` is reported although the join yields only the keys (a false finding, never a missed one, which AAK-SSRF-004 and -005 share). A fetch is `requests.get/post/put/delete/head/request`, `httpx.get/post/put/delete/request/stream`, `urllib.request.urlopen`, `aiohttp.request`, or `get`, `post` or `request` on something called `session` or `client` (and a client's `stream`), and its URL is the first argument, the second after the method for `request` and `stream`, or `url=`. So `http.get(...)` and `requests.patch(...)` are missed. A `urlparse(` call, a `startswith(\"https`, a `scheme == \"https` or `scheme != \"https` comparison or an allow-list name from AAK-SSRF-005 anywhere in the file counts as validation, although an https prefix still allows internal hosts, while `urlsplit(...)` with a hostname comparison and `startswith` on a variable do not, so a URL checked that way is still reported. In TypeScript only `req.query`, `req.body`, `req.params`, `request.json`, `event.body`, `tool_input`, `arguments`, `input`, and `params[` or `args[` directly followed by a letter, digit or underscore (`args[key]`), count as caller input, so `fetch(args.url)` and `fetch(args[\"url\"])` are missed.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -13024,7 +13024,7 @@
       "cve_references": [],
       "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
       "incident_references": [],
-      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). It reads each string that reaches a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a client reads as one (`http://2130706433/`, `http://0x7f.1/`), or a wildcard-DNS name embedding one: the dot, dash, hex and IPv6 forms under `nip.io` and `sslip.io`, the dot and dash forms under `xip.io`, and `localtest.me` and `lvh.me`. A name that resolves there with nothing in the name to say so (a rebinding service, your own domain) needs a lookup, which a scan does not do. A string with no scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, `[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with `HOST = \"2130706433\"`, is missed. Other loopback and private addresses (`127.0.0.2`, an IPv6 unique-local address such as `[fd12:3456::7]`) are not matched, and a file gets one finding, for the first matching call (in `ast.walk` order in Python), so a loopback fetch that follows a metadata fetch is reported as AAK-SSRF-003 alone.",
+      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). It reads each string that reaches a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a client reads as one (`http://2130706433/`, `http://0x7f.1/`), or a wildcard-DNS name embedding one: the dot, dash, hex and IPv6 forms under `nip.io` and `sslip.io`, the dot and dash forms under `xip.io`, and `localtest.me` and `lvh.me`. A name that resolves there with nothing in the name to say so (a rebinding service, your own domain) needs a lookup, which a scan does not do. In Python a string reaches the call through up to four names (`base = a`, `a = b`, `b = c`, `c = \"http://10.0.0.5\"`), each looked up across the whole file rather than in the call's own function, so a `base` another function binds is read as the handler's, and only through `=` and annotated `=` bindings, so an address a `for` loop, `+=`, `:=` or tuple unpacking (`base, port = ...`) binds is missed. A string with no scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, `[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with `HOST = \"2130706433\"`, is missed. Other loopback and private addresses (`127.0.0.2`, an IPv6 unique-local address such as `[fd12:3456::7]`) are not matched, and a file gets one finding, for the first matching call (in `ast.walk` order in Python), so a loopback fetch that follows a metadata fetch is reported as AAK-SSRF-003 alone.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -13050,7 +13050,7 @@
       "cve_references": [],
       "description": "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP metadata) or metadata.google.internal, allowing exfiltration of instance credentials.",
       "incident_references": [],
-      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). It recognises `169.254.169.254`, in any spelling a client reads as it (`http://0xa9fea9fe/`) or a wildcard-DNS name embedding it (`169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`), and `metadata.google.internal` only. A name that resolves there with nothing in the name to say so needs a lookup, which a scan does not do. Other cloud credential endpoints (`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one finding, for the first matching call (in `ast.walk` order in Python), so a metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 alone.",
+      "limitations": "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, `mcp.tool`, `Server.run_streamable_http`, `BaseTool` or `StructuredTool`, or `def forward` and `output_type` with a class on a `Tool` base (a smolagents tool). It recognises `169.254.169.254`, in any spelling a client reads as it (`http://0xa9fea9fe/`) or a wildcard-DNS name embedding it (`169.254.169.254.nip.io`, `169-254-169-254.sslip.io`, `a9fea9fe.nip.io`), and `metadata.google.internal` only. A name that resolves there with nothing in the name to say so needs a lookup, which a scan does not do. In Python the address reaches the call through up to four names, each looked up across the whole file rather than in the call's own function, so a `base` another function binds is read as the handler's, and only through `=` and annotated `=` bindings, so an address a `for` loop, `+=`, `:=` or tuple unpacking binds is missed. Other cloud credential endpoints (`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one finding, for the first matching call (in `ast.walk` order in Python), so a metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 alone.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -13273,7 +13273,7 @@
       "incident_references": [
         "BERRIAI-LITELLM-2026-10-21"
       ],
-      "limitations": "Reads the `.pth` and `.start` files at the top of each directory named `site-packages` or `dist-packages` up to 12 directories below the scan root, the root itself included, and looks inside `.venv`, `venv`, `env`, `.tox` and `vendor` to find them; it follows no symlinked directory and skips `node_modules`, `.git` and the other build and cache directories AAK skips. A `.pth` line is reported when it starts with `import ` or `import<TAB>` after optional whitespace: Python 3.15 strips the line first, while 3.9 to 3.14 test it as written, so an indented line runs only on 3.15 and later. Lines are split as `str.splitlines()` splits them and a leading BOM is dropped. A line that only names a directory is not reported, although Python puts that directory on `sys.path`. Every line of a `.start` file that is not blank or a comment is reported as an entry point. A file named in `data/startup_hook_allowlist.json` with the same normalised content is not reported: setuptools' `distutils-precedence.pth`, the `_virtualenv.pth` that virtualenv and uv write, coverage's `a1_coverage.pth` (7.13.0 to 7.17.0) and the finder of one placeholder editable install, so a setuptools editable install of any other project is reported. The module a reported line imports is not read. An image is read only as an unpacked root filesystem given as the scan path, never from a registry. A startup file that is a symlink is read where the image reads it: an absolute target is taken under the scan root, and a link that still leads outside the root is not read. A startup file over 1 MB is refused, which marks the scan incomplete, and a FIFO or a device in its place is skipped.",
+      "limitations": "Reads the `.pth` and `.start` files at the top of each directory named `site-packages` or `dist-packages` up to 12 directories below the scan root, the root itself included, and looks inside `.venv`, `venv`, `env`, `.tox` and `vendor` to find them; it follows no symlinked directory and skips `node_modules`, `.git` and the other build and cache directories AAK skips, and a Claude Code worktree under `.claude/worktrees/`. A `.pth` line is reported when it starts with `import ` or `import<TAB>` after optional whitespace: Python 3.15 strips the line first, while 3.9 to 3.14 test it as written, so an indented line runs only on 3.15 and later. Lines are split as `str.splitlines()` splits them and a leading BOM is dropped. A line that only names a directory is not reported, although Python puts that directory on `sys.path`. Every line of a `.start` file that is not blank or a comment is reported as an entry point. A file named in `data/startup_hook_allowlist.json` with the same normalised content is not reported: setuptools' `distutils-precedence.pth`, the `_virtualenv.pth` that virtualenv and uv write, coverage's `a1_coverage.pth` (7.13.0 to 7.17.0) and the finder of one placeholder editable install, so a setuptools editable install of any other project is reported. The module a reported line imports is not read. An image is read only as an unpacked root filesystem given as the scan path, never from a registry. A startup file that is a symlink is read where the image reads it: an absolute target is taken under the scan root, and a link that still leads outside the root is not read. A startup file over 1 MB is refused, which marks the scan incomplete, and a FIFO or a device in its place is skipped.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -13396,7 +13396,7 @@
       "incident_references": [
         "OX-MCP-2026-04-15"
       ],
-      "limitations": "A Python value counts as caller input when it is named stdin, request, req, event, params, tool_input, input_data, args or payload, or is a parameter of a function whose decorator name ends in `tool` (`@mcp.tool`, `@mcp.tool()`, `@server.call_tool()`). The sinks are the `subprocess` run, call, Popen, check_call and check_output calls, `os.system`, `os.popen`, `os.execv`, `os.execvp`, `commands.getoutput`, `eval` and `exec`, also under an imported name (`import subprocess as sp`, `from subprocess import run`), and a call whose last name is run, call, Popen, check_call, check_output, system, popen, exec or eval on a receiver whose name says executor (shell, process, sandbox, terminal, command, runner and similar). So `asyncio.create_subprocess_shell` is not one, and neither is an executor behind a short name, such as Fabric's `c.run(cmd)`. In TypeScript a command counts as request-derived only when its text contains req, request, body, params, event, stdin or tool_input, so a destructured tool argument (`exec(`git log ${branch}`)`) is not.",
+      "limitations": "A Python value counts as caller input when it is named stdin, request, req, event, params, tool_input, input_data, args or payload, or is a parameter of a function whose decorator name ends in `tool` (`@mcp.tool`, `@mcp.tool()`, `@server.call_tool()`). The sinks are the `subprocess` run, call, Popen, check_call and check_output calls, `os.system`, `os.popen`, `os.execv`, `os.execvp`, `commands.getoutput`, `eval` and `exec`, also under an imported name (`import subprocess as sp`, `from subprocess import run`), and a call whose last name is run, call, Popen, check_call, check_output, system, popen, exec or eval on a receiver whose name says executor (shell, process, sandbox, terminal, command, runner and similar). So `asyncio.create_subprocess_shell` is not one, and neither is an executor behind a short name, such as Fabric's `c.run(cmd)`. In TS/JS it opens only `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files (not `.cjs`, `.mts` or `.cts`) of 512,000 bytes or less that name `StdioServerParameters`, `createServer`, `McpServer` or `mcp.server`, in any case, or carry `@tool`. The `stdio:` key the same list names matches only when a letter, digit or underscore follows the colon directly (`stdio:true`), so a file whose only hint is `stdio: true` or `{ stdio: \"pipe\" }` is not opened. In TypeScript a command counts as request-derived only when its text contains req, request, body, params, event, stdin or tool_input, so a destructured tool argument (`exec(`git log ${branch}`)`) is not.",
       "owasp_agentic_references": [
         "ASI05"
       ],

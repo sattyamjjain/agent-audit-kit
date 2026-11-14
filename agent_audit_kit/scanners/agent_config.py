@@ -12,6 +12,7 @@ from agent_audit_kit.scanners._helpers import (
     codex_home,
     finditer_up_to_last,
     host_ip,
+    in_skip_dir,
     line_at,
     make_finding,
     read_text_capped,
@@ -1255,6 +1256,10 @@ def _check_claude_win_programdata(
 
     findings: list[Finding] = []
     for candidate in project_root.rglob("managed-settings.json"):
+        # Only a Claude Code worktree is skipped (an empty skip set leaves the
+        # pairs alone): this walk always read every other directory.
+        if in_skip_dir(candidate, project_root, frozenset()):
+            continue
         path_lower = str(candidate).lower()
         if "programdata" not in path_lower:
             continue

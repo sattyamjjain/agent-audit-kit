@@ -119,7 +119,7 @@ for the ids, in a different order, so the two do not compare row for row.
 | 6 | `AAK-MCP-STDIO-LAUNCHER-INJECT-001` | MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args | HIGH | 49 | 2.1% |
 | 7 | `AAK-TRANSPORT-003` | Deprecated SSE transport in use | MEDIUM | 47 | 2.0% |
 | 8 | `AAK-MCP-003` | MCP server environment exposes secrets | HIGH | 30 | 1.3% |
-| 9 | `AAK-MCP-SERENA-CVE-2026-49471-001` | Serena MCP toolkit < 1.5.2 (unauthenticated dashboard → DNS-rebinding RCE) | HIGH | 19 | 0.8% |
+| 9 | `AAK-MCP-SERENA-CVE-2026-49471-001` | Serena MCP toolkit below 1.5.2 (unauthenticated dashboard → DNS-rebinding RCE) | HIGH | 19 | 0.8% |
 | 10 | `AAK-MCP-004` | Excessive number of MCP servers declared | HIGH | 12 | 0.5% |
 
 <!-- /report -->

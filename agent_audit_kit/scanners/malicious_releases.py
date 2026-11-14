@@ -71,7 +71,7 @@ from agent_audit_kit.malicious_feed import (
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import read_manifest, read_text
-from ._helpers import MCP_SERVER_KEYS, SKIP_DIRS, make_finding, read_text_capped, strip_jsonc
+from ._helpers import MCP_SERVER_KEYS, kept_dirs, make_finding, read_text_capped, strip_jsonc
 from ._launcher_caches import metadata_version_line, npm_cache_dir, npx_cached, resolved, uv_cache_dir, uv_cached
 from ._launchers import is_registry_spec, launch_head
 from ._manifest_deps import (
@@ -138,7 +138,7 @@ def _is_manifest(name: str) -> bool:
 def _files(project_root: Path) -> Iterator[tuple[Path, str]]:
     """(file, kind) for every manifest, lockfile and image-reference file."""
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             path = Path(dirpath) / name
             if name.lower() in _LOCKFILES:

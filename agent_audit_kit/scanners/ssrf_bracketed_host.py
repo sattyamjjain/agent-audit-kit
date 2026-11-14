@@ -36,7 +36,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    find_line_number,
+    make_finding,
+    sub_up_to_last,
+    read_text_refusing,
+)
 
 _RULE_ID = "AAK-SSRF-BRACKETED-HOST-001"
 
@@ -112,7 +118,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > 1_000_000:
                 continue
-            raw = path.read_text(encoding="utf-8", errors="ignore")
+            raw = read_text_refusing(path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

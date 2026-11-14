@@ -23,7 +23,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
+from agent_audit_kit.scanners._helpers import kept_dirs, make_finding, read_text_refusing
 
 # ---- Patterns that indicate an MCP server implementation ----
 # `@tool` sits outside the leading `\b` here and in `_TOOL_HANDLER_RE`: a
@@ -520,7 +520,7 @@ def _source_files(project_root: Path) -> Iterator[Path]:
     the tree eight times, into `node_modules` too (2.55 s for 50,000 files;
     main, with two suffixes, 0.82 s)."""
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if name.endswith(_SOURCE_SUFFIXES):
                 yield Path(dirpath) / name
@@ -552,7 +552,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if ts_path.stat().st_size > 1_000_000:
                 continue
-            source = ts_path.read_text(encoding="utf-8", errors="ignore")
+            source = read_text_refusing(ts_path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

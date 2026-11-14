@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import os
 import re
 import stat
 import sys
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Iterator, Literal
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.rules.builtin import RULES
@@ -62,12 +65,13 @@ def run_fixes(project_root: Path, dry_run: bool = False) -> list[FixAction]:
     fixable_rules = {rid for rid, rule in RULES.items() if rule.auto_fixable}
     fixes: list[FixAction] = []
 
-    for finding in result.findings:
-        if finding.rule_id not in fixable_rules:
-            continue
-        fix = _apply_fix(project_root, finding.rule_id, finding.file_path, dry_run)
-        if fix:
-            fixes.append(fix)
+    with _planning():
+        for finding in result.findings:
+            if finding.rule_id not in fixable_rules:
+                continue
+            fix = _apply_fix(project_root, finding.rule_id, finding.file_path, dry_run)
+            if fix:
+                fixes.append(fix)
 
     if not dry_run and fixes:
         _log_fixes(project_root, fixes)
@@ -370,13 +374,21 @@ def _read_text(path: Path, encoding: str | None = None) -> str:
     """``path``'s text as `Path.read_text` decodes it, with ``encoding`` (the locale's
     when None) and universal newlines, read through `_open_regular`. The recipes read
     with `Path.read_text` before, and decode the same way still, so a CRLF file comes
-    out with LF line ends as it did."""
+    out with LF line ends as it did. In a dry run, a file an earlier recipe would have
+    written is read as that write would have left it (see `_planning`)."""
+    planned = _planned(path)
+    if planned is not None:
+        return io.TextIOWrapper(io.BytesIO(planned), encoding=encoding).read()
     with open(_open_regular(path), encoding=encoding) as handle:
         return handle.read()
 
 
 def _read_bytes(path: Path) -> bytes:
-    """``path``'s bytes, read through `_open_regular`."""
+    """``path``'s bytes, read through `_open_regular`, or in a dry run as an earlier
+    recipe would have written them (see `_planning`)."""
+    planned = _planned(path)
+    if planned is not None:
+        return planned
     with open(_open_regular(path), "rb") as handle:
         return handle.read()
 
@@ -389,10 +401,60 @@ def _as_written(text: str) -> bytes:
     return text.replace("\n", os.linesep).encode("utf-8")
 
 
-def _write_json(path: Path, data: object, project_root: Path) -> str | None:
+def _write_json(path: Path, data: object, project_root: Path, dry_run: bool = False) -> str | None:
     """Write ``data`` to ``path`` as the JSON recipes always have, indented by two with
-    a final newline, through `_write_inside_project`."""
-    return _write_inside_project(path, _as_written(json.dumps(data, indent=2) + "\n"), project_root)
+    a final newline, through `_write_fix`."""
+    return _write_fix(path, _as_written(json.dumps(data, indent=2) + "\n"), project_root, dry_run)
+
+
+# What a dry run's recipes would have written, by path. A real run applies the fixes
+# one finding at a time, so a recipe reaching a file an earlier one rewrote reads the
+# rewrite: the second ToolNode finding in a file found the codemod applied and made no
+# action, while a dry run read the file unchanged and listed the rewrite once per
+# finding (#1060). A dry run now records each write here instead of skipping it, and
+# the recipes' reads take what it recorded, so it lists what a real run would do.
+_PLANNED: ContextVar[dict[Path, bytes] | None] = ContextVar("aak_planned_writes", default=None)
+
+
+@contextmanager
+def _planning() -> Iterator[None]:
+    """Record a dry run's writes for its later reads, while the block runs."""
+    token = _PLANNED.set({})
+    try:
+        yield
+    finally:
+        _PLANNED.reset(token)
+
+
+def _planned(path: Path) -> bytes | None:
+    """What a dry run has planned for ``path`` so far, or None."""
+    planned = _PLANNED.get()
+    return None if planned is None else planned.get(path)
+
+
+def _write_fix(
+    path: Path, data: bytes, project_root: Path, dry_run: bool, mode: Literal["append", "replace"] = "replace"
+) -> str | None:
+    """A recipe's write: `_write_inside_project`, or in a dry run the content the write
+    would leave, recorded for the run's later reads (see `_planning`). Returns None, or
+    why a real write was refused."""
+    if not dry_run:
+        return _write_inside_project(path, data, project_root, mode=mode)
+    planned = _PLANNED.get()
+    if planned is None:
+        return None
+    if mode == "append":
+        before = planned.get(path)
+        if before is None:
+            try:
+                before = _read_bytes(path)
+            except FileNotFoundError:
+                before = b""
+            except OSError:
+                return None
+        data = before + data
+    planned[path] = data
+    return None
 
 
 def _apply_fix(
@@ -477,12 +539,13 @@ def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
     """
     result = run_scan(project_root=project_root)
     fixes: list[FixAction] = []
-    for finding in result.findings:
-        if finding.rule_id not in _CVE_FIXABLE_RULES:
-            continue
-        fix = _apply_fix(project_root, finding.rule_id, finding.file_path, dry_run)
-        if fix:
-            fixes.append(fix)
+    with _planning():
+        for finding in result.findings:
+            if finding.rule_id not in _CVE_FIXABLE_RULES:
+                continue
+            fix = _apply_fix(project_root, finding.rule_id, finding.file_path, dry_run)
+            if fix:
+                fixes.append(fix)
     if not dry_run and fixes:
         _log_fixes(project_root, fixes)
     return fixes
@@ -529,9 +592,11 @@ def _fix_raised_pin(path: Path, rule_id: str, project_root: Path, dry_run: bool)
     if refused is not None:
         return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     try:
-        if path.stat().st_size > MAX_MANIFEST_BYTES:
-            return FixAction(rule_id, str(path), f"{path.name} is over 2 MB, which the rule does not read", False)
-        raw = _regular_bytes(path, MAX_MANIFEST_BYTES)
+        raw = _planned(path)
+        if raw is None:
+            if path.stat().st_size > MAX_MANIFEST_BYTES:
+                return FixAction(rule_id, str(path), f"{path.name} is over 2 MB, which the rule does not read", False)
+            raw = _regular_bytes(path, MAX_MANIFEST_BYTES)
         text = raw.decode("utf-8") if raw is not None else None
     except (OSError, UnicodeDecodeError):
         text = None
@@ -543,10 +608,9 @@ def _fix_raised_pin(path: Path, rule_id: str, project_root: Path, dry_run: bool)
         return FixAction(rule_id, str(path), f"Left {path.name} as it is: {left}", False)
     if not result.raised:
         return FixAction(rule_id, str(path), f"No {label} declaration admits a release below {floor}", False)
-    if not dry_run:
-        refused = _write_inside_project(path, result.text.encode("utf-8"), project_root, mode="replace")
-        if refused is not None:
-            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
+    refused = _write_fix(path, result.text.encode("utf-8"), project_root, dry_run, mode="replace")
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     relock = "; re-lock the project to install it" if name == "pyproject.toml" else ""
     return FixAction(
         rule_id,
@@ -589,10 +653,9 @@ def _fix_litellm_version(path: Path, project_root: Path, dry_run: bool) -> FixAc
             # Every pin it matched already reads >=1.83.7, and the one the rule reports
             # is a form it does not match (`litellm[proxy]==1.50.0`): no change to write.
             return FixAction(rule_id, str(path), f"Nothing in {path.name} this recipe can rewrite", False)
-        if not dry_run:
-            refused = _write_inside_project(path, _as_written(new_text), project_root)
-            if refused is not None:
-                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
+        refused = _write_fix(path, _as_written(new_text), project_root, dry_run)
+        if refused is not None:
+            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -657,10 +720,9 @@ def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run:
                     bumped += 1
         if bumped == 0:
             return FixAction(rule_id, str(path), f"No matching {label} dep found", False)
-        if not dry_run:
-            refused = _write_json(path, data, project_root)
-            if refused is not None:
-                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
+        refused = _write_json(path, data, project_root, dry_run=dry_run)
+        if refused is not None:
+            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -679,10 +741,9 @@ def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run:
             return FixAction(rule_id, str(path), f"No matching {label} pin", False)
         if new_text == text:
             return FixAction(rule_id, str(path), f"Nothing in {path.name} this recipe can rewrite", False)
-        if not dry_run:
-            refused = _write_inside_project(path, _as_written(new_text), project_root)
-            if refused is not None:
-                return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
+        refused = _write_fix(path, _as_written(new_text), project_root, dry_run)
+        if refused is not None:
+            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             rule_id,
             str(path),
@@ -727,10 +788,9 @@ def _fix_langgraph_toolnode(path: Path, project_root: Path, dry_run: bool) -> Fi
     new_text = _toolnode_fix(text)
     if new_text == text:
         return None
-    if not dry_run:
-        refused = _write_inside_project(path, _as_written(new_text), project_root)
-        if refused is not None:
-            return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
+    refused = _write_fix(path, _as_written(new_text), project_root, dry_run)
+    if refused is not None:
+        return FixAction(rule_id, str(path), f"Failed to fix: {refused}", False)
     return FixAction(
         rule_id,
         str(path),
@@ -753,10 +813,9 @@ def _fix_enable_all_mcp(path: Path, project_root: Path, dry_run: bool) -> FixAct
     try:
         data = json.loads(_read_text(path))
         data["enableAllProjectMcpServers"] = False
-        if not dry_run:
-            refused = _write_json(path, data, project_root)
-            if refused is not None:
-                return FixAction("AAK-TRUST-001", str(path), f"Failed to fix: {refused}", False)
+        refused = _write_json(path, data, project_root, dry_run=dry_run)
+        if refused is not None:
+            return FixAction("AAK-TRUST-001", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-001",
             str(path),
@@ -784,10 +843,9 @@ def _fix_missing_deny(path: Path, project_root: Path, dry_run: bool) -> FixActio
                 "Bash(curl *)",
                 "Bash(wget *)",
             ]
-            if not dry_run:
-                refused = _write_json(path, data, project_root)
-                if refused is not None:
-                    return FixAction("AAK-TRUST-004", str(path), f"Failed to fix: {refused}", False)
+            refused = _write_json(path, data, project_root, dry_run=dry_run)
+            if refused is not None:
+                return FixAction("AAK-TRUST-004", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-004",
             str(path),
@@ -811,10 +869,9 @@ def _fix_missing_allowlist(path: Path, project_root: Path, dry_run: bool) -> Fix
         writes = "enabledMcpjsonServers" not in data
         if writes:
             data["enabledMcpjsonServers"] = []
-            if not dry_run:
-                refused = _write_json(path, data, project_root)
-                if refused is not None:
-                    return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)
+            refused = _write_json(path, data, project_root, dry_run=dry_run)
+            if refused is not None:
+                return FixAction("AAK-TRUST-007", str(path), f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-TRUST-007",
             str(path),
@@ -900,10 +957,9 @@ def _fix_secret_env_ref(path: Path, project_root: Path, dry_run: bool) -> FixAct
     if not rewritten:
         return None
 
-    if not dry_run:
-        refused = _write_json(path, data, project_root)
-        if refused is not None:
-            return FixAction("AAK-SECRET-007", str(path), f"Failed to fix: {refused}", False)
+    refused = _write_json(path, data, project_root, dry_run=dry_run)
+    if refused is not None:
+        return FixAction("AAK-SECRET-007", str(path), f"Failed to fix: {refused}", False)
 
     names = ", ".join(sorted(set(rewritten)))
     return FixAction(
@@ -940,12 +996,15 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
         _gitignore_rules,
         _read_gitignore,
         _root_env_files,
+        gitignore_text,
     )
 
     gitignore = project_root / ".gitignore"
     try:
         names = [path.name for path in _root_env_files(project_root)] or [".env"]
-        rules = _gitignore_rules(_read_gitignore(project_root) or "")
+        planned = _planned(gitignore)
+        current = gitignore_text(planned) if planned is not None else _read_gitignore(project_root)
+        rules = _gitignore_rules(current or "")
         writes = not all(_gitignore_ignores(rules, name) for name in names)
         if writes:
             refused = _write_refusal(gitignore, project_root)
@@ -962,10 +1021,9 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
             ]
             block = b"" if not raw else b"\n" if raw.endswith(b"\n") else b"\n\n"
             block += b"# Environment files\n.env\n.env.*\n" + b"".join(line + b"\n" for line in kept)
-            if not dry_run:
-                refused = _write_inside_project(gitignore, block, project_root, mode="append")
-                if refused is not None:
-                    return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
+            refused = _write_fix(gitignore, block, project_root, dry_run, mode="append")
+            if refused is not None:
+                return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-SECRET-006",
             ".gitignore",

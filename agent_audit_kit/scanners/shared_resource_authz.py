@@ -30,7 +30,13 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, loads_json, make_finding, placed
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    placed,
+    read_text_refusing,
+)
 
 _RULE_ID = "AAK-AGENT-SHARED-RES-AUTHZ-001"
 
@@ -224,7 +230,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if json_path.stat().st_size > 1_000_000:
                 continue
-            raw_text = json_path.read_text(encoding="utf-8", errors="ignore")
+            raw_text = read_text_refusing(json_path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

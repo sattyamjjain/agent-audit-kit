@@ -5,7 +5,14 @@ import string
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, refusing_overflow, walk_tree
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_refusing,
+    refusing_overflow,
+    walk_tree,
+)
 
 # ---- Tool decorator names to recognise ----
 _TOOL_DECORATORS: frozenset[str] = frozenset({
@@ -1319,7 +1326,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if py_path.stat().st_size > 1_000_000:
                 continue
-            source = py_path.read_text(encoding="utf-8", errors="ignore")
+            source = read_text_refusing(py_path, 1_000_000, errors="ignore")
         except OSError:
             continue
 

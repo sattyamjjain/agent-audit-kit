@@ -222,6 +222,14 @@ SKIP_DIRS = frozenset({
     "target", "out", ".terraform",
 })
 
+#: Directories skipped by where they sit, as (parent, name) pairs, since the
+#: name alone is not enough. Claude Code keeps each worktree, a full checkout of
+#: the project, at `.claude/worktrees/<name>/`, so a project with some reported
+#: every finding once per worktree (#1060). A `worktrees/` anywhere else, and
+#: the rest of `.claude/`, are read as before. Skipped whatever skip set a
+#: caller passes, since no rule wants a second copy of the project.
+SKIP_DIR_PAIRS: AbstractSet[tuple[str, str]] = frozenset({(".claude", "worktrees")})
+
 
 def in_skip_dir(
     path: Path,
@@ -260,8 +268,32 @@ def in_skip_dir(
     directory (`hook_rce`'s `.claude/hooks`) may look above the root on
     purpose: `aak scan ~/.claude` depends on the root's own name. `tests/test_skip_dirs.py` fails on a scanner that tests a skip set
     against `.parts` by hand instead of calling this.
+
+    A pair in `SKIP_DIR_PAIRS` (`.claude/worktrees`) is skipped too, below the
+    root as well, so `aak scan` run inside a worktree reads that worktree.
     """
-    return any(part in skip_dirs for part in _parts_below(path, root))
+    parts = _parts_below(path, root)
+    return any(part in skip_dirs for part in parts) or any(
+        (parts[i], parts[i + 1]) in SKIP_DIR_PAIRS for i in range(len(parts) - 1)
+    )
+
+
+def kept_dirs(
+    dirpath: str,
+    dirnames: list[str],
+    root: Path | str,
+    skip_dirs: AbstractSet[str] = SKIP_DIRS,
+) -> list[str]:
+    """The subdirectories of `dirpath` that an `os.walk(root)` should enter,
+    sorted, for `dirnames[:] = kept_dirs(dirpath, dirnames, root)`.
+
+    A name in `skip_dirs` is dropped, and so is the second half of a pair in
+    `SKIP_DIR_PAIRS` (`worktrees` inside `.claude`), judged below the root as
+    `in_skip_dir` judges it: the root's own name never counts.
+    """
+    below = os.path.normpath(dirpath) != os.path.normpath(os.fspath(root))
+    parent = os.path.basename(os.path.normpath(dirpath)) if below else None
+    return sorted(d for d in dirnames if d not in skip_dirs and (parent, d) not in SKIP_DIR_PAIRS)
 
 
 def _parts_below(path: Path, root: Path) -> tuple[str, ...]:
@@ -1580,7 +1612,7 @@ def zcode_workspace_configs(project_root: Path) -> list[Path]:
     """
     found: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         here = Path(dirpath)
         if "zcode.json" in filenames:
             found.append(here / "zcode.json")
@@ -2204,6 +2236,31 @@ def refuse(path: Path | str | None, reason: str) -> None:
     refused = _REFUSED.get()
     if refused is not None and path is not None:
         refused.setdefault(str(path), reason)
+
+
+def read_text_refusing(
+    path: Path | str, max_bytes: int, encoding: str | None = "utf-8", errors: str | None = None
+) -> str:
+    """`read_text_capped`, for a reader that has already skipped, by its own
+    stat, a file over `max_bytes`; a file the read finds over the cap anyway is
+    refused (see `refuse`).
+
+    Such a reader used to read the file whole once its stat had passed it, so a
+    file whose stat understates its size (one that grew after the stat, or a
+    filesystem that misreports it) was read past the cap its rules state
+    (#1060). The read now stops at the cap, and the file is reported as not
+    read rather than skipped in silence: its size said it was one to read. A
+    file the stat already put over the cap never gets here, so it is still
+    skipped as the rules state. `FileNotRead`, an OSError, propagates either
+    way, as it does from `read_text_capped`, and a FIFO or other non-regular
+    file is skipped without a refusal, as there.
+    """
+    try:
+        return read_text_capped(path, max_bytes, encoding, errors)
+    except FileNotRead as exc:
+        if exc.errno == errno.EFBIG:
+            refuse(path, f"larger than {max_bytes:,} bytes when read, although its size said it was not")
+        raise
 
 
 

@@ -35,7 +35,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding, read_text_refusing
 
 _RULE_ID = "AAK-MCP-UFO-CVE-2026-73296-001"
 _FIX = (3, 0, 8)
@@ -197,7 +197,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            raw = path.read_text(encoding="utf-8", errors="ignore")
+            raw = read_text_refusing(path, _MAX_FILE_BYTES, errors="ignore")
         except OSError:
             continue
         scanned.add(path.relative_to(project_root).as_posix())

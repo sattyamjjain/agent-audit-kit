@@ -463,3 +463,49 @@ def test_the_vscode_extension_input_carries_no_canary(canary_project: Path) -> N
     findings = json.loads(result.output)["findings"]
     assert findings and all("evidence" in f for f in findings)
     assert not [f["ruleId"] for f in findings if any(c in json.dumps(f) for c in CANARIES)]
+
+
+# A refused file's reason after a file name that reads as a credential's (#1060)
+
+_FILE_KEY = "credentials" + ".json"
+
+
+@pytest.mark.parametrize("text, expected", [
+    # A value with a digit, 16 letters or more, or quotes is masked as it was:
+    # a Kubernetes Secret's data key is a file name and its value base64.
+    (f"{_FILE_KEY}: " + "hunter" + "2xyz", f"{_FILE_KEY}: ***"),
+    (f"{_FILE_KEY}: " + "hunter" + "2", f"{_FILE_KEY}: ***"),
+    (f"{_FILE_KEY}: " + "abcdefgh" + "ijklmnopq", f"{_FILE_KEY}: ***"),
+    (f"{_FILE_KEY}: " + '"hun' + 'ter"', f'{_FILE_KEY}: "***"'),
+    (f"{_FILE_KEY}=" + "c2VjcmV0" + "LXZhbHVl", f"{_FILE_KEY}=***"),
+    # A name that only looks like a file's keeps masking every value.
+    ("api.key=" + "hunter", "api.key=***"),
+    ("secret.pem: " + "hunter", "secret.pem: ***"),
+    ("password: " + "hunter", "password: ***"),
+])
+def test_a_credential_after_a_file_named_key_is_still_masked(text: str, expected: str) -> None:
+    assert redact_evidence(text) == expected
+
+
+@pytest.mark.parametrize("text", [
+    f".well-known/oauth-client-{_FILE_KEY}: JSON nested deeper than 500 levels",
+    f"{_FILE_KEY}: larger than 1,000,000 bytes when read, although its size said it was not",
+    "deploy/api_token.py: syntax tree too deep for this scanner to walk (RecursionError)",
+    "secrets.yaml: YAML nested deeper than 100 levels",
+])
+def test_a_refusal_reason_after_a_file_named_like_a_credential_is_kept(text: str) -> None:
+    assert redact_evidence(text) == text
+
+
+def test_a_refused_credentials_json_reports_its_whole_reason(tmp_path: Path) -> None:
+    """The evidence used to read `...credentials.json: *** nested deeper than 500
+    levels`: the file name read as a credential's key and the reason's first word
+    as its value."""
+    deep = tmp_path / ".well-known" / f"oauth-client-{_FILE_KEY}"
+    deep.parent.mkdir()
+    deep.write_text('{"a":' * 501 + "1" + "}" * 501, encoding="utf-8")
+    evidence = [f.evidence for f in run_scan(tmp_path).findings if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
+    assert evidence
+    for text in evidence:
+        assert f".well-known/oauth-client-{_FILE_KEY}: JSON nested deeper than 500 levels;" in text
+        assert MASK not in text

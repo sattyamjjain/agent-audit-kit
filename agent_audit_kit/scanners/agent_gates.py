@@ -33,13 +33,13 @@ from agent_audit_kit.models import Finding
 
 from ._helpers import (
     CONFIG_MAX_BYTES,
-    SKIP_DIRS,
     SOURCE_MAX_BYTES,
     find_line_number,
     find_line_numbers,
     hook_command,
     iter_hook_handlers,
     iter_mcp_servers,
+    kept_dirs,
     loads_json,
     loads_jsonc,
     make_finding,
@@ -294,7 +294,7 @@ def _is_test_path(rel: str) -> bool:
 def _python_findings(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             if not name.endswith(".py"):
                 continue

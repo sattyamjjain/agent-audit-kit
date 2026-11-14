@@ -40,7 +40,7 @@ from agent_audit_kit.malicious_feed import canonical_name, version_order
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import read_text
-from ._helpers import SKIP_DIRS, SOURCE_MAX_BYTES, make_finding, parse_python
+from ._helpers import SOURCE_MAX_BYTES, kept_dirs, make_finding, parse_python
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 from ._site_packages import site_entries, site_package_dirs
 from ._versions import interval_spans, intersect, parse_range
@@ -107,7 +107,7 @@ class _Tree:
 def _walk(project_root: Path) -> _Tree:
     tree = _Tree([], [], [], [])
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             path = Path(dirpath) / name
             low = name.lower()

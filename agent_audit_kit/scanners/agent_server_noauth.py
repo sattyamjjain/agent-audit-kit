@@ -63,8 +63,8 @@ from agent_audit_kit.models import Finding, Severity
 from ._dependency_pins import read_text
 from ._helpers import (
     CONFIG_MAX_BYTES,
-    SKIP_DIRS,
     SOURCE_MAX_BYTES,
+    kept_dirs,
     load_yaml,
     make_finding,
     parse_python,
@@ -417,7 +417,7 @@ def _finding(rel: str, evidence: str, line: int | None, level: str) -> Finding:
 def _files(project_root: Path) -> dict[str, list[Path]]:
     found: dict[str, list[Path]] = {"python": [], "yaml": [], "script": [], "lockfile": [], "manifest": []}
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             low, path = name.lower(), Path(dirpath) / name
             if low.endswith(".py"):

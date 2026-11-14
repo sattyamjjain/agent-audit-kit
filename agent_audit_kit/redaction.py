@@ -31,6 +31,8 @@ What it leaves alone, on purpose:
   key, which say how authentication is set up rather than holding a secret.
 - A key named for a pointer to a secret rather than the secret itself
   (``TOKEN_FILE``, ``--api-key-env``, ``auth_url``, ``client_id``).
+- A lone word after a file name (``credentials.json: JSON nested ...``):
+  that is evidence naming a file, and the word starts what it says about it.
 
 Every pattern is linear in the length of the text: each one starts at a
 literal or behind a negative lookbehind that only a token boundary passes,
@@ -89,6 +91,14 @@ _CONTROL_WORDS = frozenset({
 })
 # References to where a secret is kept, not the secret.
 _REFERENCE_PREFIXES = ("env:", "vault:", "keychain:", "arn:", "secretsmanager:", "file:")
+# The extension a file name ends in, when a name before `:` is a file's: a
+# config, document or source file, never a key file (`.pem`, `.key`), whose
+# name a dotted setting can share (`api.key=...`).
+_FILE_EXTENSIONS = frozenset({
+    "json", "jsonc", "json5", "jsonl", "ndjson", "yaml", "yml", "toml", "ini", "cfg",
+    "conf", "txt", "md", "xml", "lock", "properties", "py", "js", "mjs", "cjs", "ts",
+    "tsx", "jsx", "go", "rs", "java", "kt", "rb", "sh", "bash", "html", "htm",
+})
 
 _CAMEL_RE = re.compile(r"([a-z0-9])([A-Z])")
 _SEGMENT_SPLIT_RE = re.compile(r"[^A-Za-z0-9]+")
@@ -209,6 +219,12 @@ def _credential_shaped(value: str) -> bool:
     if len(v) >= 16:
         return True
     return len(v) >= 8 and any(c.isdigit() for c in v) and any(c.isalpha() for c in v)
+
+
+def _names_a_file(name: str) -> bool:
+    """True for a name that ends in a file's extension (`credentials.json`)."""
+    stem, dot, extension = name.rpartition(".")
+    return bool(dot and stem) and extension.lower() in _FILE_EXTENSIONS
 
 
 def _mask_quoted(value: str) -> str:
@@ -367,6 +383,15 @@ def _assign_replacer(text: str) -> Callable[[re.Match[str]], str]:
         # or event (`server 'better-auth': 'node' invoked ...`) as well as a
         # Python dict key, so after one only a credential-shaped value goes.
         if quote == "'" and not _credential_shaped(value):
+            return match.group(0)
+        # A name with a file's extension is how evidence names a file before
+        # what it says about it: `<path>/oauth-client-credentials.json: JSON
+        # nested deeper than 500 levels`, a refused file's reason, lost its first
+        # word (#1060). After one, a lone word of letters too short to be a
+        # credential is prose and stays; a quoted value, or one with a digit or
+        # symbol in it or 16 letters or more (a Kubernetes Secret's base64 data
+        # under its file-named key) is masked as before.
+        if _names_a_file(name) and value.isalpha() and not _credential_shaped(value):
             return match.group(0)
         # An unquoted identifier followed by `(` or `[` is code that reads the
         # secret (`token = get_token()`), not the secret.

@@ -127,7 +127,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, compose_yaml_all, make_finding, read_text_capped, strip_jsonc
+from ._helpers import compose_yaml_all, kept_dirs, make_finding, read_text_capped, strip_jsonc
 
 _Ver = tuple[int, int, int]
 
@@ -859,7 +859,7 @@ def _kind(name: str) -> str | None:
 
 def _candidates(project_root: Path) -> Iterator[tuple[Path, str]]:
     for dirpath, dirnames, filenames in os.walk(project_root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
             kind = _kind(name)
             if kind is not None:

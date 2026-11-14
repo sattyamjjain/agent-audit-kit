@@ -51,6 +51,7 @@ from agent_audit_kit.scanners._helpers import (
     read_text_capped,
     refusing_overflow,
     unparse,
+    read_text_refusing,
 )
 from agent_audit_kit.scanners._versions import ZERO, admits, parse_range
 
@@ -457,7 +458,7 @@ _JS_DYNAMIC_CMD_RE = re.compile(
 
 def _check_js_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_refusing(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     if not _JS_MCP_HINT_RE.search(text):

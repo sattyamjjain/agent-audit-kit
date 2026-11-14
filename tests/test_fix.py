@@ -1250,3 +1250,53 @@ class TestFixSecretEnvRef:
         path.write_text(text)
         assert _fix_secret_env_ref(path, tmp_path, dry_run=False) is None
         assert path.read_text() == text
+
+
+# ---------------------------------------------------------------------------
+# A dry run lists what a real run does (#1060)
+# ---------------------------------------------------------------------------
+
+
+def _project_with_repeat_findings(root: Path) -> None:
+    """Two findings in each file a fix rewrites whole."""
+    root.mkdir()
+    (root / "graph.py").write_text(
+        "from langgraph.prebuilt import ToolNode\n\n\ndef search(q):\n    return q\n\n\n"
+        "first = ToolNode([search])\nsecond = ToolNode([search])\n",
+        encoding="utf-8",
+    )
+    (root / "mcp.json").write_text(json.dumps({"mcpServers": {"a": {
+        "command": "npx", "env": {"API_KEY": "literal-value", "DB_PASSWORD": "another-value"},
+    }}}), encoding="utf-8")
+    (root / ".env").write_text("A=1\n", encoding="utf-8")
+    (root / ".env.local").write_text("B=1\n", encoding="utf-8")
+    # AAK-LANGCHAIN-001 raises langchain-core to 1.2.22; AAK-LANGCHAIN-003 then finds none below 0.3.14.
+    (root / "requirements.txt").write_text("langchain-core==0.3.0\n", encoding="utf-8")
+
+
+def _listed(fixes: list[FixAction]) -> list[tuple[str, str, str, bool]]:
+    return [(f.rule_id, Path(f.file_path).name, f.description, f.writes) for f in fixes]
+
+
+@pytest.mark.parametrize("runner", ["run_fixes", "run_cve_fixes"])
+def test_a_dry_run_lists_what_a_real_run_does(tmp_path: Path, runner: str) -> None:
+    """A real run applies the fixes one finding at a time, so a fix reaching a file
+    an earlier one rewrote reads the rewrite: the second ToolNode call finds the
+    codemod applied and makes no action. A dry run read every file unchanged and
+    listed the ToolNode rewrite once per call, the env reference once per key and
+    the `.gitignore` write once per env file. It reads what it would have written
+    now, so it lists exactly what the real run then does."""
+    run = getattr(fix_module, runner)
+    dry, real = tmp_path / "dry", tmp_path / "real"
+    _project_with_repeat_findings(dry)
+    _project_with_repeat_findings(real)
+    planned = _listed(run(dry, dry_run=True))
+    assert planned, "the project gives this runner nothing to fix"
+    before = {p.name: p.read_bytes() for p in dry.iterdir() if p.is_file()}
+    assert planned == _listed(run(real, dry_run=False))
+    assert {p.name: p.read_bytes() for p in dry.iterdir() if p.is_file()} == before
+    if runner == "run_fixes":
+        rules = [rule for rule, _, _, writes in planned if writes]
+        assert rules.count("AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001") == 1
+        assert rules.count("AAK-SECRET-007") == 1
+        assert rules.count("AAK-SECRET-006") == 1

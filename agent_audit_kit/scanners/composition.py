@@ -74,6 +74,7 @@ from agent_audit_kit.scanners._helpers import (
     mcp_server_maps,
     newline_line,
     read_text_capped,
+    read_text_refusing,
     strip_jsonc,
 )
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
@@ -476,12 +477,16 @@ def _body_caps(body: str, skill_dir: Path) -> set[str]:
     for script in sorted(skill_dir.rglob("*")):
         if not script.is_file() or script.name == "SKILL.md":
             continue
+        # A SKILL.md at the project root makes the whole project its directory;
+        # a Claude Code worktree under it is another copy, not its scripts.
+        if in_skip_dir(script, skill_dir, frozenset()):
+            continue
         if script.suffix.lower() not in {".py", ".sh", ".js", ".ts", ".bash", ".zsh"}:
             continue
         try:
             if script.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            text += "\n" + script.read_text(encoding="utf-8", errors="replace")
+            text += "\n" + read_text_refusing(script, _MAX_FILE_BYTES, errors="replace")
         except OSError:
             continue
     return {cap for cap, rx in _BODY_CAPABILITY_SIGNALS if rx.search(text)}
@@ -541,12 +546,16 @@ def _script_state_paths(skill_dir: Path) -> set[str]:
     for script in sorted(skill_dir.rglob("*")):
         if not script.is_file() or script.name == "SKILL.md":
             continue
+        # A SKILL.md at the project root makes the whole project its directory;
+        # a Claude Code worktree under it is another copy, not its scripts.
+        if in_skip_dir(script, skill_dir, frozenset()):
+            continue
         if script.suffix.lower() not in {".py", ".sh", ".js", ".ts", ".bash", ".zsh"}:
             continue
         try:
             if script.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            out |= _state_paths(script.read_text(encoding="utf-8", errors="replace"))
+            out |= _state_paths(read_text_refusing(script, _MAX_FILE_BYTES, errors="replace"))
         except OSError:
             continue
     return out

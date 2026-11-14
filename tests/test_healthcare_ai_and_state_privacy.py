@@ -466,3 +466,32 @@ def test_therapy_chatbot_suicide_without_escalation_fires(tmp_path: Path) -> Non
     )
     findings, _ = healthcare_ai.scan(tmp_path)
     assert any(f.rule_id == "AAK-HEALTHCARE-AI-005" for f in findings)
+
+
+def test_004_states_its_instruction_slice_count_from_the_results() -> None:
+    """AAK-HEALTHCARE-AI-004's limitations quote its findings on the 892-repo
+    instruction-file slice, all of them engineering prose (#1060). The figure is
+    read from the committed results, so a re-measured slice that moves it fails
+    here until the sentence is re-checked against the hits."""
+    import json
+
+    results = Path(__file__).resolve().parent.parent / "benchmarks" / "false_positive" / "instruction_files" / "results.json"
+    data = json.loads(results.read_text(encoding="utf-8"))
+    count = data["findings_by_rule"].get("AAK-HEALTHCARE-AI-004", 0)
+    text = RULES["AAK-HEALTHCARE-AI-004"].limitations
+    assert f"{data['slice_n']}-repo instruction-file slice" in text
+    assert f"all {count} findings on that slice" in text
+
+
+def test_004_s_agent_surface_gate_takes_engineering_prose(tmp_path: Path) -> None:
+    """The known false-positive shape the limitations state: a debugging
+    `diagnosis` in a file that also mentions a coding `assistant` passes both
+    gates, with nothing tying the two words together."""
+    from agent_audit_kit.scanners import healthcare_ai
+
+    (tmp_path / "AGENTS.md").write_text(
+        "Keep the runbook the source of truth for runtime diagnosis.\n\n"
+        "Never add an assistant attribution trailer to commits.\n",
+        encoding="utf-8",
+    )
+    assert "AAK-HEALTHCARE-AI-004" in {f.rule_id for f in healthcare_ai.scan(tmp_path)[0]}
