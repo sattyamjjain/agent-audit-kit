@@ -1,0 +1,1750 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An agent host's installed editor extension is a build listed as malware">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/rules/AAK-MALICIOUS-EXTENSION-001/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>AAK-MALICIOUS-EXTENSION-001: An agent host's installed editor extension is a build listed as malware - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aak-malicious-extension-001" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AAK-MALICIOUS-EXTENSION-001: An agent host's installed editor extension is a build listed as malware
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rule-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration & rule schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scan-image-rootfs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scan a container image's files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules & coverage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rules & coverage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Per-rule pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../owasp-agentic-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Agentic coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VEX and SBOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why it works this way
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CI/CD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../github-action/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../azure-pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../circleci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CircleCI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & process
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & process
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../disclosure-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disclosure policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cve-triage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE triage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cve-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE-to-rule latency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../STATE-OF-MCP-SECURITY-2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coverage & crosswalk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/state-of-mcp-2026/REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The State of MCP Security, 2026 (corpus study)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/state-of-mcp-2026/PREVALENCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prevalence & score calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-catches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it catches
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-it-looks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where it looks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-bundled-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The bundled entry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-does-not-see" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does not see
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to fix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registry reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-detects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it detects
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-fix-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to fix (registry)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="aak-malicious-extension-001">AAK-MALICIOUS-EXTENSION-001</h1>
+<p><strong>An agent host's installed editor extension is a build listed as malware</strong></p>
+<table>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row">Severity</th>
+<td>CRITICAL</td>
+</tr>
+<tr>
+<th scope="row">Category</th>
+<td><code>SUPPLY_CHAIN</code></td>
+</tr>
+<tr>
+<th scope="row">Shipped</th>
+<td>v0.6.31</td>
+</tr>
+<tr>
+<th scope="row">Scanner</th>
+<td><code>agent_audit_kit/scanners/malicious_extensions.py</code></td>
+</tr>
+<tr>
+<th scope="row">Feed</th>
+<td>the <code>extensions</code> list of <code>agent_audit_kit/data/malicious_releases.json</code>, read by <code>agent_audit_kit/malicious_feed.py</code></td>
+</tr>
+<tr>
+<th scope="row">OWASP Agentic</th>
+<td>ASI04 (Agentic Supply Chain Vulnerabilities), ASI05 (Unexpected Code Execution)</td>
+</tr>
+<tr>
+<th scope="row">Incident</th>
+<td>Claude Code extension on Cursor's marketplace, 29 Oct 2026 (<a href="https://cursor.com/blog/claude-code-extension-security-notice">Cursor's notice</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>An editor extension is not an MCP surface, so the rule carries no OWASP MCP id.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>On 29 Oct 2026, from about 09:27 to 20:35 UTC, Cursor's extension marketplace
+served tampered builds of Anthropic's Claude Code extension,
+<code>anthropic.claude-code</code> 2.1.312 and 2.1.313, under Anthropic's own publisher
+id. Cursor's notice says the tampered <code>extension.js</code> added an SSH key labelled
+<code>svc-telemetry</code> to <code>~/.ssh/authorized_keys</code>, tried to open a reverse SSH
+tunnel, and installed a LaunchAgent on macOS, a crontab line on Linux or a
+scheduled task on Windows, and that at most 5,000 users installed it.</p>
+<p>AAK read MCP configs under <code>.vscode/</code> and had no notion of the extensions an
+editor installs, so a home directory, a dev container or an image that carried
+the build scanned clean.</p>
+<h2 id="what-it-catches">What it catches</h2>
+<p>VS Code and the editors built on it install an extension into
+<code>&lt;home&gt;/.&lt;editor&gt;/extensions/&lt;publisher&gt;.&lt;name&gt;-&lt;version&gt;[-&lt;platform&gt;]/</code> and
+list the installs in an <code>extensions.json</code> index beside the folders. That is
+VS Code's own folder key (<code>ExtensionKey</code>) and profile index, and Cursor's
+remediation script reads the same layout
+(<code>~/.*/extensions/anthropic.claude-code-*/extension.js</code>). The rule reports:</p>
+<ul>
+<li>an extension folder whose <code>publisher.name</code> and version a feed entry lists,
+  for the editors the entry names. A platform suffix is read as one
+  (<code>anthropic.claude-code-2.1.313-darwin-arm64</code> is 2.1.313 for darwin-arm64);</li>
+<li>a folder of any version whose file the entry names has a SHA-256 the entry
+  lists. A tampered build can carry the number of a real release, and Cursor's
+  script says as much: "The tampered bundle keeps the real version number, so
+  match on content";</li>
+<li>an <code>extensions.json</code> index entry whose id and version an entry lists, when
+  its folder is gone, reported once per id and version;</li>
+<li>a workspace's <code>.vscode/extensions.json</code> recommending an id an entry lists in
+  every version. A recommendation names no version, so an entry that lists
+  particular versions is not reported for it.</li>
+</ul>
+<h2 id="where-it-looks">Where it looks</h2>
+<table>
+<thead>
+<tr>
+<th>Scan</th>
+<th>Homes read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any <code>aak scan PATH</code></td>
+<td><code>PATH</code> itself (a home directory, a dev container home), <code>PATH/root/</code>, and each <code>PATH/home/*/</code> and <code>PATH/Users/*/</code> (an unpacked image root filesystem)</td>
+</tr>
+<tr>
+<td>with <code>--include-user-config</code></td>
+<td>also this user's own home, so <code>~/.cursor/extensions</code> and <code>~/.vscode/extensions</code></td>
+</tr>
+</tbody>
+</table>
+<p>In each home, every dot folder with an <code>extensions</code> directory is an editor,
+named by its folder: <code>.cursor</code> is <code>cursor</code>, <code>.vscode</code> is <code>vscode</code>,
+<code>.vscode-insiders</code> is <code>vscode-insiders</code>, and a remote server's copy
+(<code>.cursor-server</code>, <code>.vscode-server</code>) is the editor's own. A feed entry names
+the editors it covers, or every editor with <code>*</code>.</p>
+<h2 id="the-bundled-entry">The bundled entry</h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extension</code></td>
+<td><code>anthropic.claude-code</code></td>
+<td>Cursor's notice</td>
+</tr>
+<tr>
+<td><code>versions</code></td>
+<td><code>2.1.313</code></td>
+<td>Cursor's notice; Anthropic never published a 2.1.313 (npm <code>@anthropic-ai/claude-code</code>, the VS Code Marketplace and Open VSX all go from 2.1.312 to 2.1.314, read 1 Nov 2026)</td>
+</tr>
+<tr>
+<td><code>hosts</code></td>
+<td><code>*</code></td>
+<td>no legitimate 2.1.313 exists on any marketplace, so a 2.1.313 in any editor is the tampered build</td>
+</tr>
+<tr>
+<td><code>sha256</code></td>
+<td><code>extension.js</code>: <code>ecb58cb29078d9646ad1dcdbe51526f2d9cfea06be5fb2ab183e8ecc3ab6bf15</code></td>
+<td>Cursor's notice, the tampered <code>extension.js</code> of 2.1.312 and 2.1.313 on macOS and Windows</td>
+</tr>
+<tr>
+<td><code>fixed</code></td>
+<td><code>2.1.314</code></td>
+<td>the next release on the VS Code Marketplace and Open VSX</td>
+</tr>
+</tbody>
+</table>
+<p>2.1.312 is a real release (Anthropic published it on 27 Oct), so it is not
+listed by version: a 2.1.312 is reported only when its <code>extension.js</code> has the
+digest above. The entry's note carries the persistence Cursor names, and every
+finding quotes it.</p>
+<h2 id="what-it-does-not-see">What it does not see</h2>
+<ul>
+<li>A home elsewhere, such as <code>srv/&lt;user&gt;/</code>, an extensions folder moved by
+  <code>--extensions-dir</code> or <code>VSCODE_EXTENSIONS</code>, and a portable install.</li>
+<li>A symlinked extension folder, and the index of a profile other than the
+  default.</li>
+<li>An uninstalled <code>.vsix</code>, a devcontainer.json <code>extensions</code> list, and an
+  editor's download cache.</li>
+<li>A file over 64 MiB is not hashed, and an index entry whose folder is gone is
+  matched on its version alone.</li>
+<li>Whether the build ran or what it left behind: a finding says the build is on
+  disk. Check the persistence the finding names.</li>
+<li>Neither OSV nor GitHub lists editor extensions, so <code>aak update</code> keeps the
+  bundled entry and adds none. An index over 8 MB is not read.</li>
+</ul>
+<h2 id="how-to-fix">How to fix</h2>
+<p>Remove the extension, then install the publisher's fixed release from a
+marketplace the advisory clears (for anthropic.claude-code, 2.1.314 or later
+from the VS Code Marketplace or Open VSX). Check the machine for the
+persistence the advisory names, which removing the extension does not undo: for
+the Claude Code builds, a <code>svc-telemetry</code> key in <code>~/.ssh/authorized_keys</code>,
+<code>~/.config/.smt</code> and <code>.smtk</code>, the LaunchAgent <code>com.apple.sysmond</code>, a crontab
+<code>@reboot</code> line and the scheduled task <code>SysMon</code>. Where any is present, isolate
+the machine and rotate every credential it could reach.</p>
+<p>A finding reads:</p>
+<div class="highlight"><pre><span></span><code>`.cursor/extensions/anthropic.claude-code-2.1.313` is an installed anthropic.claude-code
+2.1.313 for cursor, and CURSOR-CLAUDE-CODE-2026-10-29 lists anthropic.claude-code 2.1.313
+as malicious (https://cursor.com/blog/claude-code-extension-security-notice). Remove the
+extension, update to 2.1.314 or later, and check the machine for the persistence the
+advisory names; removing the extension may not remove it. Cursor's notice (read 2026-11-01)
+names 2.1.312 and 2.1.313 ... An install says the build was on disk, not whether it ran.
+Feed: the bundled copy generated ...
+</code></pre></div>
+<hr />
+<h2 id="registry-reference">Registry reference</h2>
+<p>This section is generated from the rule registry (<code>agent_audit_kit/rules/builtin.py</code>) when the documentation is built, so it follows the scanner. The rest of the page is hand-written; where the two disagree, the registry is what runs.</p>
+<dl>
+<dt>Severity</dt>
+<dd>CRITICAL</dd>
+<dt>Category</dt>
+<dd>Supply Chain (<code>supply-chain</code>)</dd>
+<dt>Scanner</dt>
+<dd><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/agent_audit_kit/scanners/malicious_extensions.py"><code>agent_audit_kit/scanners/malicious_extensions.py</code></a></dd>
+<dt>Auto-fixable</dt>
+<dd>No.</dd>
+<dt>SARIF name</dt>
+<dd><code>KnownMaliciousEditorExtension</code></dd>
+</dl>
+<h3 id="what-it-detects">What it detects</h3>
+<p>An editor that hosts coding agents (Cursor, VS Code and the editors built on it) has installed an extension build that the offline malicious-release feed lists: a version no legitimate publisher shipped, or a build whose file matches a published SHA-256. On 29 Oct 2026 Cursor's extension marketplace served tampered builds of Anthropic's Claude Code extension, <code>anthropic.claude-code</code> 2.1.312 and 2.1.313, under Anthropic's publisher id for about eleven hours; their <code>extension.js</code> added an SSH key to <code>~/.ssh/authorized_keys</code> and installed a LaunchAgent, a scheduled task or a crontab line (Cursor's notice). AAK read MCP configs under <code>.vscode/</code> and no extension folder, so a home directory, dev container or image that carried the build scanned clean. The rule reads the installed folders and their <code>extensions.json</code> index; a tampered build can carry the number of a real release, as 2.1.312 did, and is then matched by content.</p>
+<h3 id="how-to-fix-registry">How to fix (registry)</h3>
+<p>Remove the extension, then install the publisher's fixed release from a marketplace the advisory clears (for anthropic.claude-code, 2.1.314 or later from the VS Code Marketplace or Open VSX). Check the machine for the persistence the advisory names, which removing the extension does not undo: for the Claude Code builds, an SSH key labelled <code>svc-telemetry</code> in <code>~/.ssh/authorized_keys</code>, <code>~/.config/.smt</code> and <code>.smtk</code>, the LaunchAgent <code>com.apple.sysmond</code>, a crontab <code>@reboot</code> line and the scheduled task <code>SysMon</code>. Where any is present, isolate the machine and rotate every credential it could reach.</p>
+<p>To confirm the finding is gone, report only this rule:</p>
+<div class="highlight"><pre><span></span><code>agent-audit-kit<span class="w"> </span>scan<span class="w"> </span>.<span class="w"> </span>--rules<span class="w"> </span>AAK-MALICIOUS-EXTENSION-001
+</code></pre></div>
+<h3 id="limitations">Limitations</h3>
+<p>Reads the folders a VS Code-based editor installs extensions into, <code>&lt;home&gt;/.&lt;editor&gt;/extensions/&lt;publisher&gt;.&lt;name&gt;-&lt;version&gt;[-&lt;platform&gt;]/</code>, and the <code>extensions.json</code> index beside them, in the scan root itself, <code>root/</code>, and each <code>home/*/</code> and <code>Users/*/</code> below it; with <code>--include-user-config</code> also in this user's home. An editor is named by its data folder (<code>.cursor</code> is <code>cursor</code>, <code>.vscode</code> is <code>vscode</code>, a remote server's <code>.cursor-server</code> or <code>.vscode-server</code> is the editor's own), and a feed entry matches only the editors it names, or every one for <code>*</code>. A home elsewhere (<code>srv/&lt;user&gt;/</code>), a folder moved by <code>--extensions-dir</code> or <code>VSCODE_EXTENSIONS</code>, a portable install, a symlinked extension folder and the index of a profile other than the default are not read. A version matches exactly as the folder name or index writes it; a digest is computed only for the file an entry names, inside the folder and up to 64 MiB, so an index entry whose folder is gone is matched on its version alone. A workspace's <code>.vscode/extensions.json</code> recommendations name no version and are reported only for an entry that lists every version. An uninstalled <code>.vsix</code>, a devcontainer.json <code>extensions</code> list and an editor's download cache are not read. The rule says a listed build is on disk, not whether it ran or what it left behind. The bundled feed lists one extension entry, anthropic.claude-code: 2.1.313 on every editor, and any build whose <code>extension.js</code> has the SHA-256 Cursor published for the tampered 2.1.312 and 2.1.313; <code>aak update</code> keeps it and adds none, since neither OSV nor GitHub lists editor extensions. An index over 8 MB is not read.</p>
+<h3 id="references">References</h3>
+<ul>
+<li><strong><a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP Agentic Top 10</a>:</strong> ASI04 (Agentic Supply Chain Vulnerabilities), ASI05 (Unexpected Code Execution (RCE))</li>
+<li><strong>Incidents and advisories:</strong> CURSOR-CLAUDE-CODE-2026-10-29</li>
+<li><strong><a href="https://cloudsecurityalliance.org/artifacts/ai-controls-matrix">CSA AI Controls Matrix (AICM)</a>:</strong> STA-08, IVS-04</li>
+</ul>
+<hr />
+<p><a href="../#all-rules">All rules</a>.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

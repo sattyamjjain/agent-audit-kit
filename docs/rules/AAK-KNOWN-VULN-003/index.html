@@ -1,0 +1,1790 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An MCP config launches, without pinning a release, a package a published advisory lists as affected">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/rules/AAK-KNOWN-VULN-003/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>AAK-KNOWN-VULN-003: An MCP config launches, without pinning a release, a package a published advisory lists as affected - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aak-known-vuln-003" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AAK-KNOWN-VULN-003: An MCP config launches, without pinning a release, a package a published advisory lists as affected
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rule-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration & rule schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scan-image-rootfs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scan a container image's files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules & coverage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rules & coverage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Per-rule pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../owasp-agentic-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Agentic coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VEX and SBOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why it works this way
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CI/CD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../github-action/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../azure-pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../circleci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CircleCI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & process
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & process
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../disclosure-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disclosure policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cve-triage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE triage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cve-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE-to-rule latency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../STATE-OF-MCP-SECURITY-2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coverage & crosswalk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/state-of-mcp-2026/REPORT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The State of MCP Security, 2026 (corpus study)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/state-of-mcp-2026/PREVALENCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prevalence & score calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-catches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it catches
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#severity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-launch-one-finding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One launch, one finding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checking-the-launcher-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking the launcher cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-does-not-see" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it does not see
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to fix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-advisories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related advisories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registry reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-detects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it detects
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-fix-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to fix (registry)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="aak-known-vuln-003">AAK-KNOWN-VULN-003</h1>
+<p><strong>An MCP config launches, without pinning a release, a package a published advisory lists as affected</strong></p>
+<table>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row">Severity</th>
+<td>The advisory's when every release the launch can fetch is affected (the advisory names no end, or a range admits only affected releases); MEDIUM otherwise</td>
+</tr>
+<tr>
+<th scope="row">Category</th>
+<td><code>SUPPLY_CHAIN</code></td>
+</tr>
+<tr>
+<th scope="row">Shipped</th>
+<td>v0.6.34</td>
+</tr>
+<tr>
+<th scope="row">Scanner</th>
+<td><code>agent_audit_kit/scanners/known_vulns.py</code></td>
+</tr>
+<tr>
+<th scope="row">Feed</th>
+<td>the advisory feed of <code>agent_audit_kit/advisory_feed.py</code>, the one <a href="../AAK-KNOWN-VULN-001/">AAK-KNOWN-VULN-001</a> reads</td>
+</tr>
+<tr>
+<th scope="row">OWASP MCP</th>
+<td>MCP04:2025 (Software Supply Chain Attacks &amp; Dependency Tampering)</td>
+</tr>
+<tr>
+<th scope="row">OWASP Agentic</th>
+<td>ASI04 (Agentic Supply Chain Vulnerabilities)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>DBHub (<code>@bytebase/dbhub</code>) is a database MCP server, and its README starts it
+straight from an MCP config:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"dbhub"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"@bytebase/dbhub"</span><span class="p">]}}}</span>
+</code></pre></div>
+<p>On 2 Nov 2026 GitHub published GHSA-j656-3hf2-fvjc: below 0.22.6, MySQL and
+MariaDB comment syntax slipped past DBHub's read-only SQL validation, so a caller
+in read-only mode could still run writes and DDL. OSV lists it with a CVE alias
+(in the table below); GitHub's own record names no CVE.</p>
+<p><a href="../AAK-KNOWN-VULN-001/">AAK-KNOWN-VULN-001</a> checks every release a project
+resolves against the advisory feed, but a launch like the one above names no
+release, and a declaration without one was not judged. Yet the launch runs
+whichever release npx resolves, or finds in its cache, and the config does not
+say which. <a href="../AAK-MALICIOUS-RELEASE-002/">AAK-MALICIOUS-RELEASE-002</a> already asks
+this question of malware; this rule asks it of every advisory in the feed.</p>
+<h2 id="what-it-catches">What it catches</h2>
+<p>A launch in an MCP client config (<code>.mcp.json</code>, <code>mcp.json</code> such as
+<code>.vscode/mcp.json</code>, <code>claude_desktop_config.json</code>, <code>*.mcp.json</code>, <code>*.mcp.yaml</code>,
+<code>*.mcp.yml</code>), through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx,
+<code>npm exec</code>, <code>pnpm dlx</code>, <code>yarn dlx</code>, uvx, <code>uv tool run</code>, <code>pipx run</code>, and <code>--with</code>
+packages), of a PyPI or npm package from its registry, when the launch:</p>
+<ul>
+<li>names no version (<code>npx -y @bytebase/dbhub</code>, <code>uvx vllm</code>), or a tag (<code>@latest</code>,
+  whatever the registry says today): it can fetch any release;</li>
+<li>names a range: it can fetch the releases the range admits, read on release
+  triples as the version pins read ranges;</li>
+</ul>
+<p>and the advisory feed holds an advisory whose affected releases it admits.</p>
+<table>
+<thead>
+<tr>
+<th>Launch</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npx -y @bytebase/dbhub</code></td>
+<td>MEDIUM: the advisory names a fix, 0.22.6</td>
+</tr>
+<tr>
+<td><code>npx -y @bytebase/dbhub@latest</code></td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td><code>npx -y @bytebase/dbhub@^0.23.0</code></td>
+<td>nothing: the range admits no affected release</td>
+</tr>
+<tr>
+<td><code>npx -y @bytebase/dbhub@0.22.5</code></td>
+<td><a href="../AAK-KNOWN-VULN-001/">AAK-KNOWN-VULN-001</a>, as before: one release</td>
+</tr>
+<tr>
+<td><code>npx -y @bytebase/dbhub@0.22.6</code></td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>npx -y github:bytebase/dbhub</code></td>
+<td>nothing: not the registry</td>
+</tr>
+<tr>
+<td>a package whose advisory names no fixed release</td>
+<td>the advisory's severity</td>
+</tr>
+<tr>
+<td><code>npx -y lodash@&lt;4.17.0</code> (every release it admits affected)</td>
+<td>the advisory's severity</td>
+</tr>
+</tbody>
+</table>
+<p>One finding per launch and advisory: two servers that launch one package are two
+launches.</p>
+<h2 id="severity">Severity</h2>
+<p>The release that runs is the launcher's choice. When the advisory names a fix,
+the newest release may well be the fixed one (DBHub 0.22.6 shipped in June 2026,
+months before the advisory), so the finding is MEDIUM: the config does not
+protect the server, but it may not run an affected release either. When every
+release the launch can fetch is affected, because the advisory names no end or
+the range admits only affected releases, the finding takes the advisory's own
+severity.</p>
+<h2 id="one-launch-one-finding">One launch, one finding</h2>
+<p>The same launch is also an unpinned launch to AAK-SUPPLY-001 ("no version pin",
+MEDIUM) and AAK-MCP-007 (LOW). The fix is the same pin, and this finding names
+the release to pin, so the scan stands both down on a launch this rule reports
+at or above their severity. The evidence opens with the same
+<code>Server '&lt;name&gt;' arg: &lt;spec&gt;</code> head the other two print; a launch outside a
+top-level <code>mcpServers</code> or <code>servers</code> map has no such head, and there the other
+findings stay. Where a version pin reports every CVE id of the advisory on the
+same line of the same file at or above this finding's severity, as the MCPHub
+version pin does for an unpinned <code>@samanhappy/mcphub</code>, only the pin's finding is
+kept.</p>
+<h2 id="checking-the-launcher-cache">Checking the launcher cache</h2>
+<p>A launch without a release may already have fetched an affected one. With
+<code>aak scan --include-user-config</code>, <a href="../AAK-KNOWN-VULN-001/">AAK-KNOWN-VULN-001</a>
+reads the launchers' caches on this host, as AAK-MALICIOUS-RELEASE-001 does:
+npm's npx cache (<code>&lt;cache&gt;/_npx/&lt;hash&gt;/node_modules/&lt;name&gt;/package.json</code>) and
+uv's tool environments (<code>&lt;cache&gt;/environments-v*/</code>). A cached release an
+advisory lists is reported at the advisory's severity, with evidence such as
+<code>npx cache at ~/.npm/_npx/0123456789abcdef/node_modules/@bytebase/dbhub holds @bytebase/dbhub 0.22.4</code>.</p>
+<h2 id="what-it-does-not-see">What it does not see</h2>
+<ul>
+<li>A launch outside an MCP config: a shell script, a Makefile, a package.json
+  <code>scripts</code> entry, or a program a config runs by name.</li>
+<li>What the launch actually ran: the rule does not know the registry's newest
+  release, so an advisory fixed long ago is still reported, at MEDIUM. The cache
+  check above says what was fetched.</li>
+<li>A pre-release beside an affected release counts as it when a range is read.</li>
+<li>Without <code>aak update</code> the feed is the few records bundled with AAK (npm's open,
+  @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub among
+  them), so nothing else is known.</li>
+<li>A config over 2 MB.</li>
+</ul>
+<h2 id="how-to-fix">How to fix</h2>
+<p>Pin the launch to a release outside the advisory's range, the fix the finding
+names or later (<code>npx -y @bytebase/dbhub@0.22.6</code>, <code>uvx vllm==0.32.0</code>), and restart
+the server. Then run <code>aak scan --include-user-config</code> to check whether npx or uv
+already cached an affected release, and clear that cache entry if so. Where the
+advisory names no fixed release, stop launching the package or keep the flawed
+component unreachable. Run <code>aak update</code> so the scan reads the current
+advisories.</p>
+<h2 id="related-advisories">Related advisories</h2>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Advisory</th>
+<th>Range</th>
+<th>Fixed</th>
+<th>In the bundled feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>@bytebase/dbhub, read-only SQL bypass on MySQL and MariaDB</td>
+<td>GHSA-j656-3hf2-fvjc (OSV alias CVE-2026-61789)</td>
+<td>below 0.22.6</td>
+<td>0.22.6</td>
+<td>no; <code>aak update</code> reads it from OSV</td>
+</tr>
+</tbody>
+</table>
+<p>A finding reads:</p>
+<div class="highlight"><pre><span></span><code>Server 'dbhub' arg: @bytebase/dbhub is launched by `npx @bytebase/dbhub` in .mcp.json with no
+version pinned, and GHSA-j656-3hf2-fvjc (CVE-2026-61789, GitHub rates it MEDIUM) lists
+@bytebase/dbhub below 0.22.6 as affected, fixed in 0.22.6. The release that runs is whichever
+npx resolves or finds in its cache, which this config does not control. Pin a release outside
+the advisory's range: `npx -y @bytebase/dbhub@0.22.6` or later. ...
+</code></pre></div>
+<hr />
+<h2 id="registry-reference">Registry reference</h2>
+<p>This section is generated from the rule registry (<code>agent_audit_kit/rules/builtin.py</code>) when the documentation is built, so it follows the scanner. The rest of the page is hand-written; where the two disagree, the registry is what runs.</p>
+<dl>
+<dt>Severity</dt>
+<dd>MEDIUM</dd>
+<dt>Category</dt>
+<dd>Supply Chain (<code>supply-chain</code>)</dd>
+<dt>Scanner</dt>
+<dd><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/agent_audit_kit/scanners/known_vulns.py"><code>agent_audit_kit/scanners/known_vulns.py</code></a></dd>
+<dt>Auto-fixable</dt>
+<dd>No.</dd>
+<dt>SARIF name</dt>
+<dd><code>UnpinnedLaunchOfVulnerablePackage</code></dd>
+</dl>
+<h3 id="what-it-detects">What it detects</h3>
+<p>An MCP client config launches a PyPI or npm package from its registry with no version, a tag (<code>@latest</code>) or a range, and the offline advisory feed holds an advisory whose affected releases the launch admits. Such a launch runs whichever release npx or uvx resolves, or finds in its cache, and the config does not say which. DBHub (<code>@bytebase/dbhub</code>), a database MCP server usually started as <code>npx -y @bytebase/dbhub</code>, let MySQL and MariaDB comment syntax past its read-only SQL validation below 0.22.6 (GHSA-j656-3hf2-fvjc, 2 Nov 2026), and AAK-KNOWN-VULN-001 could not judge that launch: it names no release. The finding carries the advisory's severity when every release the launch can fetch is affected (the advisory names no end, or a range admits only affected releases), and MEDIUM when the advisory names a fix, since the newest release may be the fixed one; the scan then reports the launch once, standing AAK-SUPPLY-001 and AAK-MCP-007 down on it. A launch pinned to one release is AAK-KNOWN-VULN-001's.</p>
+<h3 id="how-to-fix-registry">How to fix (registry)</h3>
+<p>Pin the launch to a release outside the advisory's range, the fix the finding names or later (<code>npx -y @bytebase/dbhub@0.22.6</code>, <code>uvx pkg==1.2.3</code>), and restart the server. Then run <code>aak scan --include-user-config</code> to check whether npx or uv already cached an affected release, and clear that cache entry if so. Where the advisory names no fixed release, stop launching the package or keep the flawed component unreachable. Run <code>aak update</code> so the scan reads the current advisories rather than the bundled few.</p>
+<p>To confirm the finding is gone, report only this rule:</p>
+<div class="highlight"><pre><span></span><code>agent-audit-kit<span class="w"> </span>scan<span class="w"> </span>.<span class="w"> </span>--rules<span class="w"> </span>AAK-KNOWN-VULN-003
+</code></pre></div>
+<h3 id="limitations">Limitations</h3>
+<p>Reads the launches in the MCP configs AAK-KNOWN-VULN-001 reads (<code>.mcp.json</code>, <code>mcp.json</code>, <code>claude_desktop_config.json</code>, <code>*.mcp.json</code>, <code>*.mcp.yaml</code>, <code>*.mcp.yml</code>, outside AAK's skip directories) through the launch grammar AAK-SUPPLY-001 reads (npx, pnpx, bunx, <code>npm exec</code>, <code>pnpm dlx</code>, <code>yarn dlx</code>, uvx, <code>uv tool run</code>, <code>pipx run</code>, and <code>--with</code> packages); a launch in a shell script or a package.json <code>scripts</code> entry, a program a config runs by name, a git URL and a local path are not judged. A launch with no version or a tag counts as able to fetch any release, and a readable range only the releases it admits, read on release triples as the version pins read ranges. The rule reports what the launch could run, not what it ran: it does not know the registry's newest release, so an advisory fixed long ago is still reported, at MEDIUM. One finding per launch and advisory; where another rule reports every CVE id of the advisory on the same line of the same file at or above this finding's severity, only that rule's finding is kept. AAK-SUPPLY-001 and AAK-MCP-007 stand down only on a launch of a server in a top-level <code>mcpServers</code> or <code>servers</code> map. Without <code>aak update</code> the feed is the few records bundled with AAK (npm's open, @modelcontextprotocol/inspector, opencode-ai and @samanhappy/mcphub among them), so nothing else is known. A config over 2 MB is not read.</p>
+<h3 id="references">References</h3>
+<ul>
+<li><strong><a href="https://github.com/OWASP/www-project-mcp-top-10">OWASP MCP Top 10</a>:</strong> MCP04:2025 (Software Supply Chain Attacks &amp; Dependency Tampering)</li>
+<li><strong><a href="https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/">OWASP Agentic Top 10</a>:</strong> ASI04 (Agentic Supply Chain Vulnerabilities)</li>
+<li><strong>Adversa AI MCP Top 25 (AAK-defined ids):</strong> ADV-SUPPLY-04 (Known Vulnerable Dep)</li>
+<li><strong><a href="https://cloudsecurityalliance.org/artifacts/ai-controls-matrix">CSA AI Controls Matrix (AICM)</a>:</strong> STA-08</li>
+</ul>
+<hr />
+<p><a href="../#all-rules">All rules</a>.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
