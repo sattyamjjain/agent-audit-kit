@@ -4,6 +4,7 @@ import os
 import sys
 
 from agent_audit_kit import __version__
+from agent_audit_kit.malicious_feed import stale_feed_warnings
 from agent_audit_kit.models import Finding, ScanResult, Severity
 
 
@@ -183,6 +184,10 @@ def format_results(
             f"{DIM}Runtime advisories: {advisories.get('origin', '?')} copy, generated "
             f"{advisories.get('generatedAt') or 'at an unknown time'}{RESET}"
         )
+    # Not dim: through 0.6.36 the feed line above was the only sign of an old feed, and
+    # a scan read a six-day-old bundled copy and passed a release published as malware.
+    for warning in stale_feed_warnings(result.data_feeds):
+        lines.append(f"{YELLOW}{warning}{RESET}")
     lines.append(f"{DIM}Time: {result.scan_duration_ms:.0f}ms{RESET}")
     # The tip names this release's tag. It said `@v1` until 0.6.33, a ref the
     # repository never had, so a workflow copied from it failed to resolve.

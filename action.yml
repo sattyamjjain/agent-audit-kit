@@ -59,6 +59,10 @@ inputs:
     description: 'SARIF fingerprint mode. "auto" (default) uses content-hash when source is co-located, else location-hash — matches GitHub Code Scanning de-dup. "line-hash" forces content-hash; "disabled" emits no fingerprints (for marketplace runners that compute them downstream). GH Code Scanning requires self-emitted fingerprints when the SARIF uploader is not co-located with source: https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning'
     required: false
     default: 'auto'
+  update-feeds:
+    description: 'Run `agent-audit-kit update --nvd-days 0` before the scan, so the malicious-release and advisory feeds are rebuilt from OSV that day (about 280 MB and 1.5 minutes) instead of read from the copies bundled with this release. NVD is not read (120 days of it took 14 minutes); its entries are kept from the bundled feed. When the update fails the Action warns and scans anyway, and the scan names any feed older than 3 days. Set to false for an offline scan.'
+    required: false
+    default: 'true'
 
 outputs:
   findings-count:
@@ -92,3 +96,4 @@ runs:
     - ${{ inputs.config }}
     - ${{ inputs.comment-on-pr }}
     - ${{ inputs.fingerprint-strategy }}
+    - ${{ inputs.update-feeds }}

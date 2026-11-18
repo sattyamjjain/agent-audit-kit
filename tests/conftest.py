@@ -183,3 +183,21 @@ def project_with_package_risks(tmp_path: Path) -> Path:
     """Tmp project with risky package.json."""
     shutil.copy(FIXTURES_DIR / "package_with_risks.json", tmp_path / "package.json")
     return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _feed_age_unchecked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the calendar out of every test that does not ask about feed age.
+
+    A scan calls the malicious-release and advisory feeds stale when they are
+    older than `DEFAULT_MAX_FEED_AGE_DAYS`, and says so in a WARNING line, on
+    stderr when the report is JSON or SARIF. The bundled feeds the tests read are
+    as old as their last refresh, so with the shipped default a test that parses
+    `aak scan --format json` from a CliRunner's output (stderr included) would pass
+    on the day a feed is refreshed and fail three days later. Here the default is
+    0, which turns the age test off; `tests/test_feed_freshness.py` sets the
+    shipped value back, pins the clock and checks the shipped value is 3.
+    """
+    from agent_audit_kit import malicious_feed
+
+    monkeypatch.setattr(malicious_feed, "DEFAULT_MAX_FEED_AGE_DAYS", 0)

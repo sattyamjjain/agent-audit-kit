@@ -147,8 +147,10 @@ class ScanResult:
     score: int | None = None
     grade: str | None = None
     # Which offline data feed each feed-reading rule used, and when it was built
-    # (`engine._data_feeds`): {"maliciousReleases": {"generatedAt", "source", "origin"},
-    # "knownVulnerabilities": {..., "severityFloor" when a large feed was cut}, ...}.
+    # (`engine._data_feeds`): {"maliciousReleases": {"generatedAt", "source", "origin",
+    # "entries", "ageDays", "stale"}, "knownVulnerabilities": {..., "severityFloor" when a
+    # large feed was cut, "ageDays", "stale"}, ...}; `ageDays` is "6.1" or "unknown" and
+    # `stale` "true" or "false" (`malicious_feed.feed_staleness`).
     data_feeds: dict[str, dict[str, str]] = field(default_factory=dict)
 
     @property

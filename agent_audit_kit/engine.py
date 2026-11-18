@@ -275,7 +275,14 @@ def run_scan(
     exclude_rules: list[str] | None = None,
     verbose_callback: Callable[[str], None] | None = None,
     strict_loading: bool = False,
+    max_feed_age_days: int | None = None,
 ) -> ScanResult:
+    """Run every registered scanner over `project_root` and assemble the result.
+
+    `max_feed_age_days` is the age past which the malicious-release and advisory
+    feeds are reported stale in `ScanResult.data_feeds` (`aak scan --max-feed-age`;
+    None is `malicious_feed.DEFAULT_MAX_FEED_AGE_DAYS`, 0 turns the age test off).
+    """
     start = time.monotonic()
     result = ScanResult()
 
@@ -356,23 +363,29 @@ def run_scan(
     )
 
     result.files_scanned = len(all_scanned_files)
-    result.data_feeds = _data_feeds()
+    result.data_feeds = _data_feeds(max_feed_age_days)
     result.scan_duration_ms = (time.monotonic() - start) * 1000
     _log(f"Scan complete: {result.files_scanned} files, {len(result.findings)} findings in {result.scan_duration_ms:.0f}ms")
 
     return result
 
 
-def _data_feeds() -> dict[str, dict[str, str]]:
+def _data_feeds(max_age_days: int | None = None) -> dict[str, dict[str, str]]:
     """Which copy of each offline data feed the scan read, and when it was built.
 
     A scan's verdict on a known-malicious release depends on the feed's age as
-    much as on the project, so every report says which feed it used. A feed
-    that cannot be read is reported as such rather than failing the scan.
+    much as on the project, so every report says which feed it used, and, for
+    the malicious-release and advisory feeds, how old it is and whether that is
+    older than `max_age_days` (`ageDays`, `stale`; see
+    `malicious_feed.feed_staleness`). A feed that cannot be read is reported as
+    such rather than failing the scan, and counts as stale. Nothing here reads
+    the network.
     """
     from agent_audit_kit import advisory_feed, malicious_feed
     from agent_audit_kit.scanners import runtime_advisories
 
+    limit = malicious_feed.DEFAULT_MAX_FEED_AGE_DAYS if max_age_days is None else max_age_days
+    aged = {key for key, _noun, _missed in malicious_feed.STALE_CHECKED_FEEDS}
     feeds: dict[str, dict[str, str]] = {}
     for name, summary in (
         ("maliciousReleases", malicious_feed.feed_summary),
@@ -383,6 +396,8 @@ def _data_feeds() -> dict[str, dict[str, str]]:
             feeds[name] = summary()
         except (OSError, ValueError) as exc:
             feeds[name] = {"error": f"{type(exc).__name__}: {exc}"}
+        if name in aged:
+            feeds[name].update(malicious_feed.feed_staleness(feeds[name], limit))
     return feeds
 
 

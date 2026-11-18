@@ -16,6 +16,9 @@ set -euo pipefail
 #   $9  = preset            (default: "")
 #   $10 = ignore-paths      (default: "")
 #   $11 = config            (default: "")
+#   $12 = comment-on-pr     (default: "true")
+#   $13 = fingerprint-strategy (default: "auto")
+#   $14 = update-feeds      (default: "true")
 # ---------------------------------------------------------------------------
 
 INPUT_PATH="${1:-.}"
@@ -31,6 +34,7 @@ INPUT_IGNORE_PATHS="${10:-}"
 INPUT_CONFIG="${11:-}"
 INPUT_COMMENT_ON_PR="${12:-true}"
 INPUT_FINGERPRINT_STRATEGY="${13:-auto}"
+INPUT_UPDATE_FEEDS="${14:-true}"
 
 SARIF_FILE="agent-audit-results.sarif"
 PR_SUMMARY_FILE="agent-audit-pr-summary.md"
@@ -73,6 +77,28 @@ CMD+=(--pr-summary-out "${PR_SUMMARY_FILE}")
 
 # v0.3.2: thread through the SARIF fingerprint strategy.
 CMD+=(--fingerprint-strategy "${INPUT_FINGERPRINT_STRATEGY}")
+
+# ---------------------------------------------------------------------------
+# Refresh the offline feeds before the scan (update-feeds).
+#
+# Without this the scan reads the malicious-release and advisory feeds bundled
+# with the image, which are as old as the release: on 2026-11-18 that copy was
+# six days old and passed agent-framework 1.26.2, published as malware that
+# day. `--nvd-days 0` rebuilds both from OSV's exports (about 280 MB, 1.5
+# minutes measured on 2026-11-18) and keeps the bundled NVD entries: reading 120
+# days of NVD took 14 minutes, and NVD rate-limits by address, which hosted
+# runners share. A failed update is a warning, not a failed job: the scan still
+# runs, and names any feed older than its --max-feed-age.
+# ---------------------------------------------------------------------------
+if [ "${INPUT_UPDATE_FEEDS}" = "true" ]; then
+    echo "::group::AgentAuditKit feed update"
+    UPDATE_EXIT=0
+    agent-audit-kit update --nvd-days 0 || UPDATE_EXIT=$?
+    echo "::endgroup::"
+    if [ "${UPDATE_EXIT}" -ne 0 ]; then
+        echo "::warning title=AgentAuditKit feeds::agent-audit-kit update exited ${UPDATE_EXIT}; scanning with the feeds already on hand (the scan names any stale one)."
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Run scan and capture exit code

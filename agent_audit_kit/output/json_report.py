@@ -73,6 +73,12 @@ def format_results(result: ScanResult, min_severity: Severity = Severity.LOW) ->
         },
         "findings": [_finding_to_dict(f) for f in filtered],
     }
+    if result.data_feeds:
+        # Which copy of each offline feed the scan read and when it was built, with
+        # `ageDays` and `stale` for the malicious-release and advisory feeds: the
+        # same object SARIF puts in the run's property bag, so a clean JSON report
+        # on an old feed says so.
+        report["dataFeeds"] = result.data_feeds
     failures = result.scanner_failures
     if failures:
         report["scannerFailures"] = [

@@ -92,11 +92,17 @@ def _apply_config_defaults(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    max_feed_age: int | None = None,
+    fail_on_stale_feed: bool = False,
 ) -> dict[str, Any]:
     """Merge config file defaults with CLI flags. CLI flags take priority.
 
     Returns:
         Merged settings dictionary.
+
+    Raises:
+        ValueError: The config's `max-feed-age` is not a whole number of days,
+            0 or more (`aak scan` prints it and exits 2).
     """
     # Config file values serve as defaults; CLI-provided values override them.
     # We detect "CLI-provided" by checking against Click's own defaults.
@@ -116,4 +122,23 @@ def _apply_config_defaults(
         "verify_secrets": verify_secrets or config.get("verify-secrets", False),
         "diff_base": diff_base or config.get("diff", None),
         "llm_scan": llm_scan or config.get("llm-scan", False),
+        "max_feed_age": _max_feed_age(max_feed_age, config),
+        "fail_on_stale_feed": fail_on_stale_feed or config.get("fail-on-stale-feed", False) is True,
     }
+
+
+def _max_feed_age(cli_value: int | None, config: dict[str, Any]) -> int:
+    """`--max-feed-age`, else the config's `max-feed-age`, else
+    `malicious_feed.DEFAULT_MAX_FEED_AGE_DAYS` (read here, at call time).
+
+    The config file can sit in the scanned repository, so its value is checked
+    as Click checks the option's.
+    """
+    from agent_audit_kit import malicious_feed
+
+    if cli_value is not None:
+        return cli_value
+    value = config.get("max-feed-age", malicious_feed.DEFAULT_MAX_FEED_AGE_DAYS)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"max-feed-age in the config must be a whole number of days, 0 or more (got {value!r})")
+    return value
