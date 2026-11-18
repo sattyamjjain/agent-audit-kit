@@ -1,6 +1,6 @@
 {
   "permissions": {
     "allow": ["Read", "Grep", "Glob"],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "plan"
   }
 }

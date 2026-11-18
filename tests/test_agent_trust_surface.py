@@ -7,6 +7,7 @@ scanners (AAK-IDE-TASK-*, AAK-SKILL-*, AAK-AGENT-*) do not. Fixtures under
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -75,6 +76,39 @@ def test_pwn_request_fires_002_not_001() -> None:
 
 def test_settings_bypass_fires_003() -> None:
     assert "AAK-AGENT-TRUST-003" in _ids(FIXTURES / "settings_bypass")
+
+
+def _trust_003(tmp_path: Path, settings: dict, rel: str = ".claude/settings.json") -> list:
+    _write(tmp_path, rel, json.dumps(settings, indent=2))
+    return [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-AGENT-TRUST-003"]
+
+
+@pytest.mark.parametrize("key", ["defaultMode", "permissionMode"])
+@pytest.mark.parametrize("mode", ["auto", "acceptEdits"])
+def test_an_auto_or_accept_edits_mode_fires_003_at_medium(tmp_path: Path, key: str, mode: str) -> None:
+    """0.6.36 gave only AAK-TRUST-004 and AAK-TRUST-006 on this file."""
+    found = _trust_003(tmp_path, {"permissions": {key: mode, "allow": ["Bash(git status)"]}})
+    assert [f.severity.value for f in found] == ["medium"]
+    assert f"set `{key}` to `{mode}`" in found[0].evidence
+    assert found[0].line_number == 3
+
+
+@pytest.mark.parametrize("mode", ["default", "plan", "Auto", "acceptedits", "autoX"])
+def test_a_mode_that_asks_or_that_claude_code_does_not_read_is_silent(tmp_path: Path, mode: str) -> None:
+    assert _trust_003(tmp_path, {"permissions": {"defaultMode": mode}}) == []
+
+
+def test_bypass_permissions_stays_high_and_wins_over_an_auto_mode(tmp_path: Path) -> None:
+    found = _trust_003(tmp_path, {"permissions": {"defaultMode": "bypassPermissions"}})
+    assert [f.severity.value for f in found] == ["high"]
+    found = _trust_003(tmp_path, {"permissionMode": "acceptEdits", "autoApprove": True})
+    assert [f.severity.value for f in found] == ["high"]
+    assert "acceptEdits" not in found[0].evidence
+
+
+def test_an_auto_mode_in_a_local_settings_file_fires_too(tmp_path: Path) -> None:
+    found = _trust_003(tmp_path, {"permissions": {"defaultMode": "auto"}}, ".claude/settings.local.json")
+    assert [(f.file_path, f.severity.value) for f in found] == [(".claude/settings.local.json", "medium")]
 
 
 def test_gemini_shell_fires_004() -> None:

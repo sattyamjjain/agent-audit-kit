@@ -27,7 +27,9 @@ injection content or `folderOpen` auto-run; it flags the trust model around them
 - AAK-AGENT-TRUST-003: a checked-in agent settings file bakes in trust /
   auto-approve (`bypassPermissions`, `autoApprove`, `yolo`, `trust: true`),
   persisting the first-use trust across every invocation and traveling with a
-  fork.
+  fork. A `defaultMode` or `permissionMode` of `auto` or `acceptEdits`, which
+  approve some actions without a prompt short of a bypass, is the same rule at
+  MEDIUM; `default` and `plan` ask, and are not reported.
 - AAK-AGENT-TRUST-004: a Gemini context / instruction file (`GEMINI.md`,
   `.gemini/`) carries an embedded shell payload; the `AAK-AGENT-*` instruction
   family did not cover the Gemini surface, the agent the study exploited most.
@@ -40,12 +42,13 @@ measured result only, never to a dataset AAK ran against.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, NamedTuple
 
 import yaml
 
-from agent_audit_kit.models import Finding
+from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
     find_line_number,
@@ -131,6 +134,16 @@ _TRUST_FLAG_RE = re.compile(
     r'|approval[_-]?mode\s*[:=]\s*"?(?:yolo|never|full-auto)"?',
     re.I,
 )
+# Claude Code permission modes that approve some actions without a prompt, short
+# of a bypass: `auto` (a classifier approves what it judges safe) and
+# `acceptEdits` (file edits are approved). AAK-AGENT-TRUST-003 at MEDIUM, read
+# only where no flag above matched; `default` and `plan` ask, and are not read.
+# The mode is matched as Claude Code reads it, case and all.
+_AUTO_MODE_RE = re.compile(r'"(defaultMode|permissionMode)"\s*:\s*"(auto|acceptEdits)"')
+_AUTO_MODE_EFFECT = {
+    "auto": "approves the tool calls its classifier judges safe without asking",
+    "acceptEdits": "accepts file edits without asking",
+}
 
 # Gemini context / instruction files, auto-loaded on session start.
 _GEMINI_INSTRUCTION_NAMES: tuple[str, ...] = ("GEMINI.md",)
@@ -458,6 +471,18 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     find_line_number(text, m.group(0).strip()),
                 )
             )
+            continue
+        mode = _AUTO_MODE_RE.search(text)
+        if mode:
+            finding = make_finding(
+                "AAK-AGENT-TRUST-003",
+                rel_name,
+                f"checked-in agent settings set `{mode.group(1)}` to `{mode.group(2)}`, the "
+                f"permission mode in which Claude Code {_AUTO_MODE_EFFECT[mode.group(2)]}, in "
+                f"every session and headless run of this repository; the setting travels with a fork.",
+                text.count("\n", 0, mode.start()) + 1,
+            )
+            findings.append(replace(finding, severity=Severity.MEDIUM))
 
     # --- AAK-AGENT-TRUST-004: Gemini instruction file with a shell payload -----
     gemini_files: list[Path] = []

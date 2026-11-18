@@ -4882,7 +4882,12 @@ _r(
     "`yolo` / `full-auto`, or `trust: true`. Trust-on-first-use is then baked into "
     "the repository rather than granted per session, so it survives every "
     "subsequent invocation (including a headless CI run) and travels with the "
-    "repository when it is forked or checked out on an untrusted ref.",
+    "repository when it is forked or checked out on an untrusted ref. A "
+    "`defaultMode` or `permissionMode` of `auto` (Claude Code approves what its "
+    "classifier judges safe) or `acceptEdits` (file edits are approved) persists a "
+    "narrower approval the same way and is reported at MEDIUM, only when no flag "
+    "above is set in the same file; `default` and `plan` ask before acting and are "
+    "not reported. The mode is matched as Claude Code reads it, case and all.",
     Severity.HIGH,
     Category.AGENT_CONFIG,
     "Remove the persisted-trust / auto-approve flag from the checked-in settings. "
