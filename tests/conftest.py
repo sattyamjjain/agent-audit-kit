@@ -11,6 +11,12 @@ import pytest
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
+# The fixture trees are scanner input, never tests, and pytest imports every
+# conftest.py in a directory it collects. The AAK-STARTUP-HOOK-CONFTEST-001
+# fixtures are conftest.py files that send the environment somewhere, so
+# collecting tests/fixtures would run them; nothing there is a test.
+collect_ignore = ["fixtures"]
+
 # A parametrize value longer than this gets a short id instead of its own text.
 _MAX_PARAM_ID = 200
 # No collected test id may be longer than this.

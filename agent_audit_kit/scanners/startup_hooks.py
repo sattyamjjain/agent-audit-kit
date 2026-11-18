@@ -1,11 +1,11 @@
-"""Startup hooks: code an install puts where Python or npm runs it unasked.
+"""Startup hooks: code Python, pytest or npm runs unasked.
 
 litellm 1.107.0 (21 Oct 2026, OSV MAL-2026-2144) needed no import of litellm to
 run. Every wheel carried `cook.pth`, `cook.py` and `sitecustomize.py`, which pip
 installs at the top of site-packages, and Python runs both kinds of file at
 every interpreter start, `pip` included. The pin rules judged the version and
 passed it, because 1.107.0 was above every pinned floor. This module reports the
-route, whatever package takes it:
+route, whatever package takes it, and the test runner's own route:
 
 * AAK-STARTUP-HOOK-PTH-001: a `.pth` file at the top of a site-packages or
   dist-packages directory with a line Python runs as code, or a PEP 829
@@ -30,6 +30,12 @@ route, whatever package takes it:
   declares an MCP SDK or an `.mcp.json` server. npm runs those scripts on
   install. Only the lockfile is read: node_modules is never walked and npm is
   never run.
+* AAK-STARTUP-HOOK-CONFTEST-001: a `conftest.py` that hands the environment,
+  read whole or by a secret's name, to a network call (HIGH) or a file write
+  (MEDIUM). pytest imports every conftest.py under its rootdir and the test
+  paths before the first test, with the shell's environment, so a test run
+  started by a person, a hook or a coding agent runs it. The file is parsed,
+  never imported or run.
 
 Where it looks
 --------------
@@ -51,20 +57,26 @@ name alone never matches, because a malicious `.pth` can call itself
 skipped, as `_helpers` skips one, and a file over the cap is refused, so the
 scan reports itself incomplete rather than passing a megabyte of startup code
 unread.
+
+Dockerfiles, npm lockfiles and `conftest.py` files are found by one walk of the
+scan root that skips `SKIP_DIRS` (`node_modules`, `.venv` and the rest) and a
+Claude Code worktree under `.claude/worktrees/`. A `conftest.py` is read with
+the same cap as a startup file, and refused over it.
 """
 
 from __future__ import annotations
 
+import ast
 import errno
 import hashlib
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
-from typing import Iterator
+from typing import Iterator, NamedTuple
 
-from agent_audit_kit.models import Finding
+from agent_audit_kit.models import Finding, Severity
 
 from ._helpers import (
     CONFIG_MAX_BYTES,
@@ -76,9 +88,11 @@ from ._helpers import (
     loads_json,
     loads_jsonc,
     make_finding,
+    parse_python,
     read_bytes_capped,
     read_text_capped,
     refuse,
+    refusing_overflow,
 )
 from ._launchers import shell_words
 from ._manifest_deps import MAX_LOCKFILE_BYTES, _json_positions
@@ -88,6 +102,7 @@ _PTH = "AAK-STARTUP-HOOK-PTH-001"
 _CUSTOMIZE = "AAK-STARTUP-HOOK-SITECUSTOMIZE-001"
 _DOCKERFILE = "AAK-STARTUP-HOOK-DOCKERFILE-001"
 _NPM = "AAK-STARTUP-HOOK-NPM-INSTALL-001"
+_CONFTEST = "AAK-STARTUP-HOOK-CONFTEST-001"
 
 _ALLOWLIST_PATH = Path(__file__).resolve().parent.parent / "data" / "startup_hook_allowlist.json"
 _IMPORT_PREFIXES = ("import ", "import\t")
@@ -687,15 +702,504 @@ def _lockfile_findings(path: Path, state: _ScanState) -> list[Finding]:
     return findings
 
 
+# ---- conftest.py -----------------------------------------------------------------
+#
+# pytest imports every `conftest.py` under its rootdir and the test paths before
+# the first test runs, in a process holding the environment of whatever started
+# it: CI secrets, cloud credentials, AI API keys. A person typing `pytest`, a
+# `make test`, a pre-commit hook and a coding agent asked to run the tests all
+# run what a conftest.py holds, so whoever adds or changes one, in a pull request
+# or as an agent writing tests, runs code on the next test run.
+# AAK-STARTUP-HOOK-CONFTEST-001 reports a conftest.py that hands the environment
+# to a network call (HIGH) or to a file it writes (MEDIUM).
+#
+# The file is parsed, never imported or run. A source is a bulk read of the
+# environment (iterated, copied by one of its four copying methods or `dict`,
+# unpacked into a display, put in an f-string, or passed whole to a call), or a
+# read of one variable named like a secret, `*_KEY`, `*_TOKEN`, `*_SECRET` or
+# `*_PASSWORD`, by a literal name. A sink is a call of urllib, http.client,
+# socket, requests, httpx or aiohttp, a method of a client one of them built, a
+# subprocess or shell command running curl, wget, nc, ncat or socat, or a write
+# to a file opened for writing. The flow is one hop: a source inside the sink's
+# arguments, or a name bound from a source (an assignment, a loop, or a
+# comprehension's own variable inside that comprehension). A fixture reading one
+# setting, a child process handed the environment through `env=`, and aak's own
+# loop deleting a variable with monkeypatch are not flows.
+#
+# Every pass is iterative and touches each node a fixed number of times: the tree
+# is listed once (`ast.walk`, parents before children), sources are marked from
+# each node's own fields, lines are carried up the list in reverse (children
+# before parents), names are looked up in dicts, and each sink reads only its own
+# arguments' entries. A file of many reads, many names or many sinks costs what
+# its size does, and an attribute chain is read to `_DOTTED_PARTS` parts at most.
+
+_CONFTEST_NAME = "conftest.py"
+_ENV_WORDS = (b"environ", b"getenv")
+_SECRET_SUFFIXES = ("_KEY", "_TOKEN", "_SECRET", "_PASSWORD")
+_ENVIRON = "os.environ"
+_COPYING_METHODS = frozenset({"items", "keys", "values", "copy"})
+_NAMED_READS = frozenset({"os.environ.get", "os.getenv"})
+_HTTP_VERBS = ("get", "post", "put", "patch", "delete", "head", "options", "request", "stream")
+_NET_CLIENTS = frozenset({
+    "http.client.HTTPConnection", "http.client.HTTPSConnection",
+    "socket.socket", "socket.create_connection",
+    "aiohttp.ClientSession", "requests.Session", "requests.session",
+    "httpx.Client", "httpx.AsyncClient",
+})
+_NET_CALLS = _NET_CLIENTS | frozenset(
+    {"urllib.request.urlopen", "urllib.request.Request", "aiohttp.request"}
+    | {f"{module}.{verb}" for module in ("requests", "httpx") for verb in _HTTP_VERBS}
+)
+_PROCESS_CALLS = frozenset({
+    "subprocess.run", "subprocess.call", "subprocess.check_call", "subprocess.check_output",
+    "subprocess.Popen", "subprocess.getoutput", "subprocess.getstatusoutput",
+    "os.system", "os.popen",
+})
+_NET_TOOLS = frozenset({"curl", "wget", "nc", "ncat", "socat"})
+_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
+# A network tool as a word of a shell command: at the start, or after a blank or
+# a shell separator, with an optional directory before it.
+_NET_TOOL_RE = re.compile(r"(?:^|[\s;&|(`])(?:[\w.~/-]*/)?(curl|wget|nc|ncat|socat)(?=[\s;&|)`]|$)")
+_OPEN_CALLS = frozenset({"open", "io.open", "codecs.open"})
+_HANDLE_WRITES = frozenset({"write", "writelines"})
+_PATH_WRITES = frozenset({"write_text", "write_bytes"})
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+_PY_LINE_BREAK_RE = re.compile(r"\r\n|\r|\n")
+_DOTTED_PARTS = 4
+_SHOWN_NAMES = 5
+
+# name -> (line the environment is read on, the expression the name is bound from)
+_Bindings = dict[str, tuple[int, ast.AST]]
+
+
+class _Sink(NamedTuple):
+    call: ast.Call
+    network: bool
+    reads: tuple[ast.AST, ...]  # the parts of the call a flow is looked for in
+    what: str                   # how the evidence names the call
+
+
+def _dotted(node: ast.AST | None, aliases: dict[str, str]) -> str | None:
+    """`node` as a dotted name with its first part resolved through the file's
+    imports (`o.environ` is `os.environ` after `import os as o`), or None. At
+    most `_DOTTED_PARTS` parts are read, so a long attribute chain costs what a
+    short one does."""
+    parts: list[str] = []
+    for _ in range(_DOTTED_PARTS):
+        if isinstance(node, ast.Attribute):
+            parts.append(node.attr)
+            node = node.value
+        elif isinstance(node, ast.Name):
+            parts.append(aliases.get(node.id, node.id))
+            return ".".join(reversed(parts))
+        else:
+            return None
+    return None
+
+
+def _import_aliases(nodes: list[ast.AST]) -> dict[str, str]:
+    """Local name -> the module or attribute it was imported as."""
+    aliases: dict[str, str] = {}
+    for node in nodes:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    aliases[alias.asname] = alias.name
+                else:
+                    top = alias.name.partition(".")[0]
+                    aliases[top] = top
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            for alias in node.names:
+                if alias.name != "*":
+                    aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+    return aliases
+
+
+def _secret_name(node: ast.AST | None) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if node.value.upper().endswith(_SECRET_SUFFIXES):
+            return node.value
+    return None
+
+
+def _keyword(call: ast.Call, name: str) -> ast.AST | None:
+    return next((k.value for k in call.keywords if k.arg == name), None)
+
+
+def _arguments(call: ast.Call) -> tuple[ast.AST, ...]:
+    return (*call.args, *(k.value for k in call.keywords))
+
+
+def _env_sources(nodes: list[ast.AST], aliases: dict[str, str]) -> dict[ast.AST, str | None]:
+    """Each source node, mapped to the variable it reads by name, or None for a
+    read of the whole environment."""
+    sources: dict[ast.AST, str | None] = {}
+    for node in nodes:
+        whole: tuple[ast.AST, ...] = ()
+        if isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+            whole = (node.iter,)
+        elif isinstance(node, ast.Call):
+            whole = tuple(a.value if isinstance(a, ast.Starred) else a for a in _arguments(node))
+            func = node.func
+            if isinstance(func, ast.Attribute) and func.attr in _COPYING_METHODS:
+                if _dotted(func.value, aliases) == _ENVIRON:
+                    sources[node] = None
+            elif node.args and _dotted(func, aliases) in _NAMED_READS:
+                name = _secret_name(node.args[0])
+                if name is not None:
+                    sources[node] = name
+        elif isinstance(node, ast.Dict):
+            whole = tuple(v for k, v in zip(node.keys, node.values) if k is None)
+        elif isinstance(node, (ast.Starred, ast.FormattedValue)):
+            whole = (node.value,)
+        elif isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load):
+            name = _secret_name(node.slice)
+            if name is not None and _dotted(node.value, aliases) == _ENVIRON:
+                sources[node] = name
+        for part in whole:
+            if _dotted(part, aliases) == _ENVIRON:
+                sources[part] = None
+    return sources
+
+
+def _first_lines(nodes: list[ast.AST], seeds: dict[ast.AST, int]) -> dict[ast.AST, int]:
+    """For each node with a seed in its subtree, the first line of one.
+
+    `nodes` is `ast.walk` order, which lists every parent before its children, so
+    read in reverse each child is settled before its parent.
+    """
+    lines: dict[ast.AST, int] = {}
+    for node in reversed(nodes):
+        best = seeds.get(node)
+        for child in ast.iter_child_nodes(node):
+            line = lines.get(child)
+            if line is not None and (best is None or line < best):
+                best = line
+        if best is not None:
+            lines[node] = best
+    return lines
+
+
+def _bound_names(target: ast.AST) -> list[str]:
+    return [n.id for n in ast.walk(target) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)]
+
+
+def _env_bindings(
+    nodes: list[ast.AST], source_lines: dict[ast.AST, int]
+) -> tuple[_Bindings, dict[ast.AST, _Bindings]]:
+    """The names bound from a source: file-wide for an assignment or a loop, and
+    per comprehension for a comprehension's own variables, which Python keeps
+    inside it. A name bound twice keeps the binding whose source comes first."""
+    file_wide: _Bindings = {}
+    per_comprehension: dict[ast.AST, _Bindings] = {}
+    for node in nodes:
+        pairs: list[tuple[ast.AST, ast.AST]] = []
+        if isinstance(node, ast.Assign):
+            pairs = [(target, node.value) for target in node.targets]
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr)) and node.value is not None:
+            pairs = [(node.target, node.value)]
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            pairs = [(node.target, node.iter)]
+        elif isinstance(node, _COMPREHENSIONS):
+            own: _Bindings = {}
+            for generator in node.generators:
+                line = source_lines.get(generator.iter)
+                if line is not None:
+                    for name in _bound_names(generator.target):
+                        own.setdefault(name, (line, generator.iter))
+            if own:
+                per_comprehension[node] = own
+        for target, value in pairs:
+            line = source_lines.get(value)
+            if line is None:
+                continue
+            for name in _bound_names(target):
+                if name not in file_wide or line < file_wide[name][0]:
+                    file_wide[name] = (line, value)
+    return file_wide, per_comprehension
+
+
+def _flow_seeds(
+    nodes: list[ast.AST],
+    sources: dict[ast.AST, str | None],
+    file_wide: _Bindings,
+    per_comprehension: dict[ast.AST, _Bindings],
+) -> tuple[dict[ast.AST, int], dict[ast.AST, tuple[int, ast.AST]]]:
+    """Seeds for the flow lines: every source, and every read of a bound name.
+
+    A comprehension's variables are handed down to the nodes inside it, parents
+    first, so a read finds them in one lookup; a name the comprehension binds
+    hides a file-wide one of the same spelling, as Python's scoping does.
+    Returns the seeds and, for each name read that is one, its binding.
+    """
+    seeds: dict[ast.AST, int] = {node: getattr(node, "lineno", 1) for node in sources}
+    via: dict[ast.AST, tuple[int, ast.AST]] = {}
+    visible: dict[ast.AST, _Bindings] = {}
+    for node in nodes:
+        scope = visible.get(node)
+        own = per_comprehension.get(node)
+        if own:
+            scope = {**scope, **own} if scope else own
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            hit = (scope.get(node.id) if scope else None) or file_wide.get(node.id)
+            if hit is not None:
+                seeds[node] = hit[0]
+                via[node] = hit
+        if scope:
+            for child in ast.iter_child_nodes(node):
+                visible[child] = scope
+    return seeds, via
+
+
+def _text_of(node: ast.AST | None) -> str | None:
+    """A string literal's text, or an f-string's literal parts with a NUL where
+    each field goes."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        return "".join(
+            v.value if isinstance(v, ast.Constant) and isinstance(v.value, str) else "\0"
+            for v in node.values
+        )
+    return None
+
+
+def _shell_text(node: ast.AST | None) -> str | None:
+    """The literal text of a shell command string: a string or an f-string, or
+    the one a `+` or `%` expression, or a `.format` call, starts from. The walk
+    down the left of an expression is the length of that expression, read once."""
+    while True:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mod)):
+            node = node.left
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
+            node = node.func.value
+        else:
+            return _text_of(node)
+
+
+def _network_tool(command: ast.AST | None) -> str | None:
+    """The network tool a subprocess command runs: the program of an argument
+    list, a word of a shell string, or a word of a `sh -c` string."""
+    if isinstance(command, (ast.List, ast.Tuple)) and command.elts:
+        program = (_text_of(command.elts[0]) or "").rsplit("/", 1)[-1]
+        if program in _NET_TOOLS:
+            return program
+        if program not in _SHELLS:
+            return None
+        texts = [_shell_text(element) for element in command.elts[1:]]
+    else:
+        texts = [_shell_text(command)]
+    for text in texts:
+        match = _NET_TOOL_RE.search(text) if text else None
+        if match:
+            return match.group(1)
+    return None
+
+
+def _opens_for_writing(node: ast.AST | None, aliases: dict[str, str]) -> bool:
+    """Is `node` an `open` call, or a path's `.open`, with a mode that writes?"""
+    if not isinstance(node, ast.Call):
+        return False
+    func = node.func
+    if _dotted(func, aliases) in _OPEN_CALLS:
+        mode = node.args[1] if len(node.args) > 1 else _keyword(node, "mode")
+    elif isinstance(func, ast.Attribute) and func.attr == "open" and not (
+        isinstance(func.value, ast.Name) and func.value.id in aliases
+    ):
+        mode = node.args[0] if node.args else _keyword(node, "mode")
+    else:
+        return False
+    return isinstance(mode, ast.Constant) and isinstance(mode.value, str) and any(c in mode.value for c in "wax+")
+
+
+class _Objects(NamedTuple):
+    clients: frozenset[str]  # names bound to a network client
+    handles: frozenset[str]  # names bound to a file opened for writing
+
+
+def _bound_objects(nodes: list[ast.AST], aliases: dict[str, str]) -> _Objects:
+    clients: set[str] = set()
+    handles: set[str] = set()
+    target: ast.AST | None
+    value: ast.AST
+    for node in nodes:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.withitem):
+            target, value = node.optional_vars, node.context_expr
+        else:
+            continue
+        if not isinstance(target, ast.Name) or not isinstance(value, ast.Call):
+            continue
+        if _dotted(value.func, aliases) in _NET_CLIENTS:
+            clients.add(target.id)
+        elif _opens_for_writing(value, aliases):
+            handles.add(target.id)
+    return _Objects(frozenset(clients), frozenset(handles))
+
+
+def _is_object(node: ast.AST | None, names: frozenset[str], made: bool) -> bool:
+    return isinstance(node, ast.Name) and node.id in names or made
+
+
+def _sink(call: ast.Call, aliases: dict[str, str], objects: _Objects) -> _Sink | None:
+    func = call.func
+    name = _dotted(func, aliases)
+    every = _arguments(call)
+    if name in _NET_CALLS:
+        return _Sink(call, True, every, f"`{name}`")
+    if isinstance(func, ast.Attribute):
+        receiver = func.value
+        built = isinstance(receiver, ast.Call) and _dotted(receiver.func, aliases) in _NET_CLIENTS
+        if _is_object(receiver, objects.clients, built):
+            return _Sink(call, True, every, f"`.{func.attr}` of a network client")
+        if func.attr in _PATH_WRITES:
+            return _Sink(call, False, every, f"`.{func.attr}`")
+        opened = _opens_for_writing(receiver, aliases)
+        if func.attr in _HANDLE_WRITES and _is_object(receiver, objects.handles, opened):
+            return _Sink(call, False, every, f"`.{func.attr}` of a file opened for writing")
+    if name in _PROCESS_CALLS:
+        command = call.args[0] if call.args else _keyword(call, "args")
+        tool = _network_tool(command)
+        if tool is None:
+            return None
+        reads = tuple(part for part in (command, _keyword(call, "input")) if part is not None)
+        return _Sink(call, True, reads, f"`{name}` running `{tool}`")
+    if name == "print":
+        handle = _keyword(call, "file")
+    elif name == "json.dump":
+        handle = call.args[1] if len(call.args) > 1 else _keyword(call, "fp")
+    else:
+        return None
+    if _is_object(handle, objects.handles, _opens_for_writing(handle, aliases)):
+        return _Sink(call, False, every, f"`{name}` to a file opened for writing")
+    return None
+
+
+def _first_sink(
+    nodes: list[ast.AST], aliases: dict[str, str], flow_lines: dict[ast.AST, int]
+) -> tuple[_Sink, int] | None:
+    """The sink to report and the first line its flow reads the environment on:
+    the first network sink a flow reaches, else the first file write."""
+    objects = _bound_objects(nodes, aliases)
+    best: tuple[tuple[bool, int, int], _Sink, int] | None = None
+    for node in nodes:
+        if not isinstance(node, ast.Call):
+            continue
+        sink = _sink(node, aliases, objects)
+        if sink is None:
+            continue
+        lines = [flow_lines[part] for part in sink.reads if part in flow_lines]
+        if not lines:
+            continue
+        key = (not sink.network, node.lineno, node.col_offset)
+        if best is None or key < best[0]:
+            best = (key, sink, min(lines))
+    return (best[1], best[2]) if best else None
+
+
+def _what_flows(
+    sink: _Sink, sources: dict[ast.AST, str | None], via: dict[ast.AST, tuple[int, ast.AST]]
+) -> tuple[list[str], bool, str | None]:
+    """The variables a sink's flow reads by name, whether it reads the whole
+    environment, and the bound name it goes through first, if any."""
+    read: list[str | None] = []
+    through: tuple[int, str] | None = None
+    values: dict[int, ast.AST] = {}  # each binding's expression once, however often its name is read
+    for part in sink.reads:
+        for node in ast.walk(part):
+            if node in sources:
+                read.append(sources[node])
+            elif isinstance(node, ast.Name) and node in via:
+                line, value = via[node]
+                values.setdefault(id(value), value)
+                if through is None or (line, node.id) < through:
+                    through = (line, node.id)
+    for value in values.values():
+        read.extend(sources[node] for node in ast.walk(value) if node in sources)
+    names = sorted({name for name in read if name is not None})
+    return names, None in read, through[1] if through else None
+
+
+def _conftest_evidence(text: str, sink: _Sink, source_line: int, flows: tuple[list[str], bool, str | None]) -> str:
+    names, whole, through = flows
+    shown = ", ".join(f"`{n}`" for n in names[:_SHOWN_NAMES])
+    if len(names) > _SHOWN_NAMES:
+        shown += f" and {len(names) - _SHOWN_NAMES} more"
+    if whole or not shown:
+        what = "the environment, read whole" + (f" with {shown}" if shown else "")
+    else:
+        what = f"{shown}, read"
+    route = f", through `{through}`," if through else ","
+    lines = _PY_LINE_BREAK_RE.split(text)
+    line = sink.call.lineno
+    quoted = lines[line - 1].strip() if line <= len(lines) else ""
+    verb, where = ("sends", "a network call") if sink.network else ("writes", "a file")
+    return (
+        f"Line {line} {verb} {what} on line {source_line}{route} to {where} "
+        f"({sink.what}): `{_snippet(quoted)}`. pytest imports every conftest.py under its "
+        "rootdir and test paths before the first test, so any test run, a coding agent's "
+        "included, runs this with the environment of the shell that started it."
+    )
+
+
+def _conftest_flow(tree: ast.AST, text: str, rel: str) -> Finding | None:
+    nodes = list(ast.walk(tree))
+    aliases = _import_aliases(nodes)
+    sources = _env_sources(nodes, aliases)
+    if not sources:
+        return None
+    source_lines = _first_lines(nodes, {node: getattr(node, "lineno", 1) for node in sources})
+    file_wide, per_comprehension = _env_bindings(nodes, source_lines)
+    seeds, via = _flow_seeds(nodes, sources, file_wide, per_comprehension)
+    found = _first_sink(nodes, aliases, _first_lines(nodes, seeds))
+    if found is None:
+        return None
+    sink, source_line = found
+    evidence = _conftest_evidence(text, sink, source_line, _what_flows(sink, sources, via))
+    finding = make_finding(_CONFTEST, rel, evidence, sink.call.lineno)
+    return finding if sink.network else replace(finding, severity=Severity.MEDIUM)
+
+
+def _conftest_findings(path: Path, state: _ScanState) -> list[Finding]:
+    """AAK-STARTUP-HOOK-CONFTEST-001 for one conftest.py: parsed, never imported.
+
+    The bytes are parsed as Python parses a source file (a BOM or a coding line
+    honoured). A file with neither `environ` nor `getenv` in it holds no source
+    and is not parsed; one that does not parse is not reported.
+    """
+    try:
+        raw = read_bytes_capped(path, CONFIG_MAX_BYTES)
+    except FileNotRead as exc:
+        if exc.errno == errno.EFBIG:
+            refuse(path, f"conftest.py larger than {CONFIG_MAX_BYTES:,} bytes, not read")
+        return []
+    except OSError:
+        return []
+    rel = _rel(path, state.project_root)
+    state.scanned.add(rel)
+    if not any(word in raw for word in _ENV_WORDS):
+        return []
+    try:
+        tree = parse_python(raw, path)
+    except (SyntaxError, ValueError):
+        return []
+    with refusing_overflow(path):
+        finding = _conftest_flow(tree, raw.decode("utf-8-sig", errors="replace"), rel)
+        return [finding] if finding is not None else []
+    return []
+
+
 # ---- the scan --------------------------------------------------------------------
 
 
 def _project_files(project_root: Path) -> Iterator[Path]:
-    """Dockerfiles and npm lockfiles under the root, outside `SKIP_DIRS`."""
+    """Dockerfiles, npm lockfiles and conftest.py files under the root, outside
+    `SKIP_DIRS`."""
     for dirpath, dirnames, filenames in os.walk(project_root):
         dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
-            if _dockerfile_kind(name) or name in _LOCKFILE_NAMES:
+            if _dockerfile_kind(name) or name in _LOCKFILE_NAMES or name == _CONFTEST_NAME:
                 yield Path(dirpath) / name
 
 
@@ -716,6 +1220,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in _project_files(project_root):
         if path.name in _LOCKFILE_NAMES:
             findings.extend(_lockfile_findings(path, state))
+            continue
+        if path.name == _CONFTEST_NAME:
+            findings.extend(_conftest_findings(path, state))
             continue
         try:
             text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")

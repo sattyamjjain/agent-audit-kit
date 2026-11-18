@@ -135,7 +135,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_toolbox_hosts", "MCP Toolbox launches with an open Host or Origin check (CVE-2026-11624)", []),
     ("mcp_cve_pins_2026_07", "MCP/agent CVE version-pins — 2026-07 disclosure wave", []),
     ("container_image_pins", "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)", []),
-    ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)", []),
+    ("startup_hooks", "Python startup hooks (.pth, .start, sitecustomize), npm install scripts (litellm 1.107.0) and conftest.py environment flows", []),
     ("malicious_releases", "Known malicious releases from the offline feed (OSV MAL- records, image digests)",
      ["include_user_config"]),
     ("malicious_extensions", "Installed editor extensions the malicious-release feed lists (Cursor, VS Code)",

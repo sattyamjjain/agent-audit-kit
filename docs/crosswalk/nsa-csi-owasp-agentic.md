@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (508 total; 470 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (509 total; 471 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -478,6 +478,7 @@ Every AgentAuditKit rule (508 total; 470 mapped) against two agentic-security st
 | `AAK-SSRF-BRACKETED-HOST-001` | high | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-SSRF-MAPPED-001` | high | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-SSRF-TOCTOU-001` | medium | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
+| `AAK-STARTUP-HOOK-CONFTEST-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-STARTUP-HOOK-DOCKERFILE-001` | medium | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-STARTUP-HOOK-NPM-INSTALL-001` | low | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-STARTUP-HOOK-PTH-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |

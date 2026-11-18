@@ -432,7 +432,7 @@
     },
     {
       "module": "startup_hooks",
-      "name": "Python startup hooks (.pth, .start, sitecustomize) and npm install scripts (litellm 1.107.0)"
+      "name": "Python startup hooks (.pth, .start, sitecustomize), npm install scripts (litellm 1.107.0) and conftest.py environment flows"
     },
     {
       "module": "state_privacy",

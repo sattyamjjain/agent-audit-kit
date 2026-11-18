@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-14T08:13:25Z",
+  "last_updated": "2026-11-18T19:18:53Z",
   "aak_version": "0.6.36",
-  "rule_count": 508,
+  "rule_count": 509,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2980,7 +2980,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 270,
+      "rule_density": 271,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -5927,6 +5927,14 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-STARTUP-HOOK-CONFTEST-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-STARTUP-HOOK-DOCKERFILE-001",
           "severity": "medium",
           "cve_references": [],
@@ -6032,7 +6040,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 117,
+      "rule_density": 118,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -7274,6 +7282,14 @@
             "CVE-2026-53819"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-STARTUP-HOOK-CONFTEST-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-STARTUP-HOOK-DOCKERFILE-001",
