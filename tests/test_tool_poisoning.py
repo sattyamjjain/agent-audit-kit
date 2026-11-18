@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners.tool_poisoning import scan
 
 
@@ -578,3 +580,84 @@ def test_a_file_with_both_keys_has_both_maps_read(tmp_path: Path) -> None:
     findings, _ = scan(tmp_path)
     servers = sorted(f.evidence.split("'")[1] for f in findings if f.rule_id == "AAK-POISON-002")
     assert servers == ["claude-side", "vscode-side"]
+
+
+# ---------------------------------------------------------------------------
+# AAK-POISON-001 on server keys and tool names
+# ---------------------------------------------------------------------------
+#
+# A server key `git<U+200B>hub` reads as `github` in every approval prompt. On
+# 0.6.36 only descriptions were read, so such a key gave AAK-MCP-005 and
+# AAK-MCP-ATTEST-001 and nothing about the name. The characters are written as
+# escapes here so this file holds none of them.
+
+ZWSP, RLO = "\u200b", "\u202e"
+
+
+def _servers(tmp_path: Path, servers: dict, filename: str, ensure_ascii: bool = False) -> str:
+    raw = json.dumps({"mcpServers": servers}, indent=2, ensure_ascii=ensure_ascii)
+    (tmp_path / filename).write_text(raw, encoding="utf-8")
+    return raw
+
+
+def _poison_001(tmp_path: Path) -> list:
+    return [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-POISON-001"]
+
+
+@pytest.mark.parametrize("filename", [".mcp.json", "mcp.json"])
+@pytest.mark.parametrize("key, count", [
+    (f"git{ZWSP}hub", 1),
+    (f"git{RLO}hub", 1),
+    ("github", 0),
+], ids=["zero-width space", "right-to-left override", "plain"])
+def test_an_invisible_character_in_a_server_key_is_reported(
+    tmp_path: Path, filename: str, key: str, count: int
+) -> None:
+    _servers(tmp_path, {key: {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"]}}, filename)
+    found = _poison_001(tmp_path)
+    assert len(found) == count, [f.evidence for f in found]
+    if count:
+        assert found[0].evidence == f"Server key {key!r}: invisible chars U+{ord(key[3]):04X}"
+        assert found[0].line_number == 3
+        assert found[0].file_path == filename
+
+
+def test_a_server_key_written_as_an_escape_is_placed_on_its_line(tmp_path: Path) -> None:
+    raw = _servers(tmp_path, {"plain": {"command": "node"}, f"git{ZWSP}hub": {"command": "node"}},
+                   ".mcp.json", ensure_ascii=True)
+    assert "\\u200b" in raw
+    assert [f.line_number for f in _poison_001(tmp_path)] == [6]
+
+
+def test_an_invisible_character_in_a_tool_name_is_reported(tmp_path: Path) -> None:
+    _servers(tmp_path, {"srv": {
+        "command": "node",
+        "tools": [{"name": f"read{ZWSP}_file"}, {"name": "list_dir", "description": "Lists a directory."}],
+        "toolDescriptions": {f"wr{RLO}ite": "Writes a file.", f"read{ZWSP}_file": "Reads a file."},
+    }}, ".mcp.json")
+    found = sorted(f.evidence for f in _poison_001(tmp_path))
+    assert found == [
+        f"Server 'srv', tool name {f'read{ZWSP}_file'!r}: invisible chars U+200B",
+        f"Server 'srv', tool name {f'wr{RLO}ite'!r}: invisible chars U+202E",
+    ]
+
+
+def test_a_vscode_servers_key_is_read_too(tmp_path: Path) -> None:
+    (tmp_path / ".vscode").mkdir()
+    (tmp_path / ".vscode" / "mcp.json").write_text(
+        json.dumps({"servers": {f"git{ZWSP}hub": {"command": "node"}}}, ensure_ascii=False), encoding="utf-8")
+    assert len(_poison_001(tmp_path)) == 1
+
+
+def test_a_tool_title_is_not_read(tmp_path: Path) -> None:
+    _servers(tmp_path, {"srv": {"command": "node", "tools": [{"name": "read_file", "title": f"Read{ZWSP} file"}]}},
+             ".mcp.json")
+    assert _poison_001(tmp_path) == []
+
+
+def test_a_name_in_a_script_with_combining_marks_is_reported(tmp_path: Path) -> None:
+    """Devanagari writes vowel signs and the virama as combining marks (Mn), which the
+    rule counts as invisible, so a server key in Hindi is reported: the limitation says so."""
+    key = "\u0938\u0930\u094d\u0935\u0930"  # "server" in Devanagari; U+094D is the virama
+    _servers(tmp_path, {key: {"command": "node"}}, ".mcp.json")
+    assert [f.evidence for f in _poison_001(tmp_path)] == [f"Server key {key!r}: invisible chars U+094D"]

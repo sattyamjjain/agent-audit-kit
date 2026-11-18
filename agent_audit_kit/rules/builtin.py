@@ -2649,23 +2649,30 @@ _r(
     "AAK-POISON-001",
     "Invisible Unicode characters in tool description",
     "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, "
-    "invisible separators) that could hide malicious instructions.",
+    "invisible separators) that could hide malicious instructions. The same characters in an MCP "
+    "server's key or a tool's name make a lookalike, such as `github` with a zero-width space "
+    "inside it, that a user approves as the name they know.",
     Severity.CRITICAL,
     Category.TOOL_POISONING,
-    "Remove invisible characters from tool descriptions.",
+    "Remove invisible characters from tool descriptions, server keys and tool names. A server key "
+    "or tool name holding one did not come from a name you typed: find who added the entry before "
+    "you run it.",
     sarif_name="ToolDescInvisibleUnicode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-01"],
     limitations=(
-        "Reads description strings only: a tool's own, its input schema's, each "
-        "parameter's, and the `toolDescriptions` map, in the `mcpServers` (or VS "
+        "Reads description strings (a tool's own, its input schema's, each "
+        "parameter's, and the `toolDescriptions` map), each server's key, and each "
+        "tool's `name` and `toolDescriptions` key, in the `mcpServers` (or VS "
         "Code `servers`) object of an MCP config file; what a server returns from "
         "`tools/list` at run time is not "
-        "read. The same invisible characters in a tool `name` or `title`, or in a "
+        "read. The same invisible characters in a tool's `title`, or in a "
         "parameter's `default`, `enum` or `examples`, are not read. Characters that "
         "render blank without being format or combining marks, such as the Braille "
-        "blank (U+2800) and the Hangul filler (U+3164), are not matched either."
+        "blank (U+2800) and the Hangul filler (U+3164), are not matched either. A "
+        "combining mark (category Mn) counts as invisible, so a server key or tool "
+        "name written in a script that uses them, such as Devanagari, is reported."
     ),
 )
 

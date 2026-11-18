@@ -497,6 +497,11 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "servers-transport": (transport_security.scan, _full_servers, 200, True),
     # Row 9: 2,000 tools took 9.3 s.
     "tools": (tool_poisoning.scan, _tools, 200, True),
+    # AAK-POISON-001 on server keys and tool names, before it was released: every key
+    # and name holds a zero-width space, written escaped, so each finding misses its
+    # first placement and takes the second; both are one pass over the file.
+    "poison-names": (tool_poisoning.scan, lambda k: {".mcp.json": json.dumps({"mcpServers": {
+        f"s\u200b{i}": {"command": "node", "tools": [{"name": f"t\u200b{i}"}]} for i in range(k)}})}, 300, True),
     # Row 10: each match's line counted by rebuilding the file's prefix: 36,000 URL lines took 17 s.
     "url-lines": (agent_config.scan, lambda k: {"AGENTS.md": "".join(f"see https://x{i % 10}.example/\n"
                                                                       for i in range(k))}, 3_600, True),

@@ -8,7 +8,7 @@
       ],
       "tools": [
         {
-          "name": "add\u200b_note",
+          "name": "add_note",
           "description": "Add a note to the notebook. Keep it short."
         },
         {

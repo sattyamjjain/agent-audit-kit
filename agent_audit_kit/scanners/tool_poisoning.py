@@ -229,6 +229,55 @@ def _extract_tool_descriptions(data: Any) -> list[tuple[str, str, str]]:
     return results
 
 
+def _tool_names(server_cfg: dict[str, Any]) -> list[str]:
+    """Each tool name a server entry states once: `tools[].name`, then the keys
+    of `toolDescriptions`."""
+    names: dict[str, None] = {}
+    tools = server_cfg.get("tools")
+    if isinstance(tools, list):
+        for tool in tools:
+            if isinstance(tool, dict) and isinstance(tool.get("name"), str):
+                names.setdefault(tool["name"], None)
+    tool_descriptions = server_cfg.get("toolDescriptions")
+    if isinstance(tool_descriptions, dict):
+        for t_name in tool_descriptions:
+            names.setdefault(str(t_name), None)
+    return list(names)
+
+
+def _check_names(data: Any, rel_path: str) -> list[tuple[Finding, str]]:
+    """AAK-POISON-001 on the names a user approves without reading: each
+    server key and each tool name. `git<U+200B>hub` reads as `github` in every
+    approval prompt and log; only descriptions used to be read, so such a key
+    gave AAK-MCP-005 and AAK-MCP-ATTEST-001 and nothing about the name. Each
+    finding is placed by the name as the file writes it (see `_place_names`)."""
+    findings: list[tuple[Finding, str]] = []
+    for server_name, server_cfg in iter_mcp_servers(data):
+        named = [(f"Server key {server_name!r}", server_name)] + [
+            (f"Server {server_name!r}, tool name {t_name!r}", t_name) for t_name in _tool_names(server_cfg)
+        ]
+        for ctx, name in named:
+            hits = _has_invisible_unicode(name)
+            if hits:
+                codepoints = ", ".join(cp for cp, _ in hits[:5])
+                findings.append((make_finding(
+                    "AAK-POISON-001",
+                    rel_path,
+                    f"{ctx}: invisible chars {codepoints}",
+                ), name))
+    return findings
+
+
+def _place_names(raw_text: str, unplaced: list[tuple[Finding, str]]) -> list[Finding]:
+    """Place each name finding by the name in quotes as written, characters and
+    all (`JSON.stringify` and most editors), else as Python's `json.dumps`
+    escapes it (`\\u200b`): two passes over the file at most."""
+    findings = placed(raw_text, [(f, json.dumps(name, ensure_ascii=False)) for f, name in unplaced])
+    missing = [(f, json.dumps(name)) for f, (_, name) in zip(findings, unplaced) if f.line_number is None]
+    placed(raw_text, missing)
+    return findings
+
+
 def _check_description(
     server_name: str,
     tool_name: str,
@@ -346,6 +395,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         for server_name, tool_name, description in _extract_tool_descriptions(data):
             unplaced.extend(_check_description(server_name, tool_name, description, rel_path))
         # Every finding's line in one pass over the file, not one search of it per finding.
+        findings.extend(_place_names(raw_text, _check_names(data, rel_path)))
         findings.extend(placed(raw_text, unplaced))
 
     return findings, scanned_files
