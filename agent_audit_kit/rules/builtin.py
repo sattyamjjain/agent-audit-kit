@@ -423,6 +423,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-NPM-INSTALL-001": ["STA-08"],
+    "AAK-STARTUP-HOOK-CONFTEST-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-002": ["STA-08"],
     "AAK-MCP-CODEEXEC-SANDBOX-001": ["STA-08", "IVS-04"],
@@ -2648,23 +2649,30 @@ _r(
     "AAK-POISON-001",
     "Invisible Unicode characters in tool description",
     "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, "
-    "invisible separators) that could hide malicious instructions.",
+    "invisible separators) that could hide malicious instructions. The same characters in an MCP "
+    "server's key or a tool's name make a lookalike, such as `github` with a zero-width space "
+    "inside it, that a user approves as the name they know.",
     Severity.CRITICAL,
     Category.TOOL_POISONING,
-    "Remove invisible characters from tool descriptions.",
+    "Remove invisible characters from tool descriptions, server keys and tool names. A server key "
+    "or tool name holding one did not come from a name you typed: find who added the entry before "
+    "you run it.",
     sarif_name="ToolDescInvisibleUnicode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-01"],
     limitations=(
-        "Reads description strings only: a tool's own, its input schema's, each "
-        "parameter's, and the `toolDescriptions` map, in the `mcpServers` (or VS "
+        "Reads description strings (a tool's own, its input schema's, each "
+        "parameter's, and the `toolDescriptions` map), each server's key, and each "
+        "tool's `name` and `toolDescriptions` key, in the `mcpServers` (or VS "
         "Code `servers`) object of an MCP config file; what a server returns from "
         "`tools/list` at run time is not "
-        "read. The same invisible characters in a tool `name` or `title`, or in a "
+        "read. The same invisible characters in a tool's `title`, or in a "
         "parameter's `default`, `enum` or `examples`, are not read. Characters that "
         "render blank without being format or combining marks, such as the Braille "
-        "blank (U+2800) and the Hangul filler (U+3164), are not matched either."
+        "blank (U+2800) and the Hangul filler (U+3164), are not matched either. A "
+        "combining mark (category Mn) counts as invisible, so a server key or tool "
+        "name written in a script that uses them, such as Devanagari, is reported."
     ),
 )
 
@@ -4874,7 +4882,12 @@ _r(
     "`yolo` / `full-auto`, or `trust: true`. Trust-on-first-use is then baked into "
     "the repository rather than granted per session, so it survives every "
     "subsequent invocation (including a headless CI run) and travels with the "
-    "repository when it is forked or checked out on an untrusted ref.",
+    "repository when it is forked or checked out on an untrusted ref. A "
+    "`defaultMode` or `permissionMode` of `auto` (Claude Code approves what its "
+    "classifier judges safe) or `acceptEdits` (file edits are approved) persists a "
+    "narrower approval the same way and is reported at MEDIUM, only when no flag "
+    "above is set in the same file; `default` and `plan` ask before acting and are "
+    "not reported. The mode is matched as Claude Code reads it, case and all.",
     Severity.HIGH,
     Category.AGENT_CONFIG,
     "Remove the persisted-trust / auto-approve flag from the checked-in settings. "
@@ -19381,6 +19394,71 @@ _r(
         "seen. lockfileVersion 1, yarn.lock and pnpm-lock.yaml record no install "
         "scripts and are not read; `node_modules` is never walked and npm is never run. "
         "A lockfile over 32 MiB is not read."
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# 2026-11-17: the code pytest runs before the first test. A conftest.py that
+# posted dict(os.environ) to an address, or wrote the names of every *_KEY and
+# *_TOKEN variable to a file, passed every rule on 0.6.36.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-STARTUP-HOOK-CONFTEST-001",
+    "conftest.py sends the environment to a network call or a file",
+    "A `conftest.py` reads the environment whole (iterating or copying `os.environ`) "
+    "or reads a variable named like a secret (`*_KEY`, `*_TOKEN`, `*_SECRET`, "
+    "`*_PASSWORD`), and hands it to a network call or a file write. pytest imports "
+    "every conftest.py under its rootdir and the test paths before the first test, in "
+    "a process holding the environment of whatever started it, so `pytest`, `make "
+    "test`, a pre-commit hook or a coding agent asked to run the tests sends CI "
+    "secrets and API keys wherever the file says. Whoever can add or change a "
+    "conftest.py, in a pull request or as an agent writing tests, gets that on the "
+    "next test run. Compositional exploits chain harmless agent tools through "
+    "workspace files and environment variables like this: arXiv:2611.19764 (15 Nov "
+    "2026) measured them succeeding 72.9% to 84.5% of the time against unprotected "
+    "models, with five single-tool scanners detecting none. A network sink is "
+    "reported HIGH and a file write MEDIUM.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Read the conftest.py diff in every pull request that touches one, as you would "
+    "a CI workflow, and review the conftest.py files an agent writes before you run "
+    "the tests. A fixture needs the variables it names, read one by one, never the "
+    "whole environment. Run tests in CI with only the secrets that job needs, never "
+    "deploy or publish tokens. If the code is not yours, remove it and rotate every "
+    "credential the test runs could reach.",
+    sarif_name="PytestConftestSendsEnvironment",
+    owasp_agentic_references=["ASI04", "ASI05"],
+    incident_references=["ARXIV-2611.19764"],
+    limitations=(
+        "Reads only files named `conftest.py`, outside AAK's skip directories "
+        "(`node_modules`, `.venv` and the rest) and a Claude Code worktree under "
+        "`.claude/worktrees/`; a module a `pytest_plugins` line names, `noxfile.py`, "
+        "`tox.ini` commands and `package.json` test scripts are not read. The file is "
+        "parsed, never imported or run; one that does not parse, or that holds neither "
+        "`environ` nor `getenv`, is not reported. A source is `os.environ` iterated, "
+        "copied (`.items()`, `.keys()`, `.values()`, `.copy()`, `dict()`, "
+        "`{**os.environ}`) or passed whole to a call, or `os.environ[...]`, "
+        "`os.environ.get` or `os.getenv` with a literal name ending `_KEY`, `_TOKEN`, "
+        "`_SECRET` or `_PASSWORD`; a variable named otherwise (`DATABASE_URL`), or a "
+        "name built at run time, is not a source. A sink is a urllib, http.client, "
+        "socket, requests, httpx or aiohttp call, a method of a client one of them "
+        "built and bound to a name, curl, wget, nc, ncat or socat run by subprocess, "
+        "`os.system` or `os.popen`, or a write to a file opened for writing. The flow "
+        "is one hop inside one file: a source inside the sink's arguments, or a name "
+        "bound from one by an assignment, a loop or a comprehension; a name bound from "
+        "that name, an attribute, a function's return value or another file is not "
+        "followed, and an assigned name counts wherever it is read in the file, "
+        "whatever function binds it. For a subprocess only the command and `input=` "
+        "are read, so a child given `env={**os.environ}` is not a flow, and a command "
+        "held in a variable, or a variable the shell expands itself (`$GITHUB_TOKEN`, "
+        "`env | curl`), is not seen. Printing or logging the environment is not "
+        "reported. `__import__`, `importlib`, `getattr` and `exec` or `eval` of a "
+        "string are not followed. Where a request goes is not judged, so a fixture "
+        "that authenticates to the service it tests with a `*_TOKEN` variable is "
+        "reported like one that sends it elsewhere. One finding per file, on the first "
+        "network sink a flow reaches, else the first file write. A conftest.py over "
+        "1 MB is refused, which marks the scan incomplete."
     ),
 )
 

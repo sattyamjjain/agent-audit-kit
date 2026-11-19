@@ -104,8 +104,10 @@ testpaths = ["tests"]
 
 [tool.ruff]
 # CVE fixtures contain intentionally broken / vulnerable code; they are
-# scanner INPUT, not library code, so lint them loosely.
-extend-exclude = ["tests/fixtures/cves"]
+# scanner INPUT, not library code, so lint them loosely. The conftest.py
+# fixtures are the files a rule quotes, a three-line import line and one that
+# does not parse included.
+extend-exclude = ["tests/fixtures/cves", "tests/fixtures/startup_hooks_conftest"]
 
 [tool.ruff.lint]
 # Pin the rule set explicitly. Without this, the repo lints against whatever

@@ -85,6 +85,14 @@ SEVERITY_OVERRIDE_MODULES = {
         "AAK-AGENT-SERVER-NOAUTH-001 is MEDIUM for a Docker launch on 1.52.0 or a "
         "release it cannot read, whose port is published on loopback only"
     ),
+    "agent_trust_surface.py": (
+        "AAK-AGENT-TRUST-003 is MEDIUM for a permission mode of `auto` or `acceptEdits`, "
+        "which approve some actions without a prompt short of the registry's HIGH bypass"
+    ),
+    "startup_hooks.py": (
+        "AAK-STARTUP-HOOK-CONFTEST-001 is MEDIUM when the environment goes to a file "
+        "write rather than a network call, the registry's HIGH"
+    ),
 }
 SEVERITY_OVERRIDE_RULES = {
     "AAK-IDE-TASK-001": {Severity.CRITICAL},
@@ -96,6 +104,8 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-KNOWN-VULN-003": {Severity.CRITICAL, Severity.HIGH},
     "AAK-AGENT-SERVER-NOAUTH-001": {Severity.MEDIUM},
     "AAK-TRUST-009": {Severity.HIGH},
+    "AAK-STARTUP-HOOK-CONFTEST-001": {Severity.MEDIUM},
+    "AAK-AGENT-TRUST-003": {Severity.MEDIUM},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the
