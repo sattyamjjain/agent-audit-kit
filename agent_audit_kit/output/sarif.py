@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit import __version__
+from agent_audit_kit.malicious_feed import stale_feed_notices
 from agent_audit_kit.models import LLM_INCOMPLETE_RULE_ID, Finding, ScanResult, Severity
 from agent_audit_kit.rules.builtin import RULES
 
@@ -340,7 +341,7 @@ def format_results(
                         "toolExecutionNotifications": [
                             _scanner_failure_notification(f)
                             for f in result.scanner_failures + result.llm_gaps
-                        ],
+                        ] + _stale_feed_notifications(result.data_feeds),
                     }
                 ],
                 "results": [
@@ -352,11 +353,32 @@ def format_results(
     }
     if result.data_feeds:
         # SARIF 2.1.0 §3.8: a run's property bag. Which copy of each offline feed
-        # the scan read, and when it was generated, so a clean result on a
-        # known-malicious release can be told apart from a stale feed.
+        # the scan read, when it was generated, and for the malicious-release and
+        # advisory feeds how old it is (`ageDays`) and whether that is too old
+        # (`stale`), so a clean result on a known-malicious release can be told
+        # apart from a stale feed.
         sarif_doc["runs"][0]["properties"] = {"dataFeeds": result.data_feeds}
 
     return json.dumps(sarif_doc, indent=2)
+
+
+def _stale_feed_notifications(data_feeds: dict[str, dict[str, str]]) -> list[dict]:
+    """One `warning` notification (§3.58) per stale feed: a run that read an old
+    malicious-release or advisory feed ran, but what it checked against is old,
+    which is a fact about the tool's run rather than a finding in the code."""
+    return [
+        {
+            "level": "warning",
+            "message": {"text": text},
+            "properties": {
+                "feed": key,
+                "origin": data_feeds[key].get("origin", ""),
+                "generatedAt": data_feeds[key].get("generatedAt", ""),
+                "ageDays": data_feeds[key].get("ageDays", "unknown"),
+            },
+        }
+        for key, text in stale_feed_notices(data_feeds)
+    ]
 
 
 def _scanner_failure_notification(finding) -> dict:

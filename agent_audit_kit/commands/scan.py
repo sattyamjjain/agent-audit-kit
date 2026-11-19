@@ -26,6 +26,7 @@ from agent_audit_kit.commands._common import (
     _to_list,
 )
 from agent_audit_kit.engine import run_scan
+from agent_audit_kit.malicious_feed import DEFAULT_MAX_FEED_AGE_DAYS, stale_feed_warnings
 from agent_audit_kit.models import Finding
 
 __all__ = ["scan_cmd"]
@@ -82,6 +83,25 @@ __all__ = ["scan_cmd"]
         "an incomplete scan that exits 0 is indistinguishable from a clean one "
         "(issue #743)."
     ),
+)
+@click.option(
+    "--max-feed-age",
+    "max_feed_age",
+    type=click.IntRange(min=0),
+    default=None,
+    metavar="DAYS",
+    help=(
+        "Call the malicious-release and advisory feeds stale when they are older than DAYS "
+        f"days (default {DEFAULT_MAX_FEED_AGE_DAYS}): the console prints a WARNING line and the "
+        "SARIF run a warning notification. 0 turns the age test off (a feed of unknown age is "
+        "still stale). `agent-audit-kit update` refreshes both."
+    ),
+)
+@click.option(
+    "--fail-on-stale-feed",
+    is_flag=True,
+    default=False,
+    help="Exit 2 after writing the report when the malicious-release or advisory feed is stale (see --max-feed-age).",
 )
 @click.option(
     "--config",
@@ -184,6 +204,8 @@ def scan_cmd(
     profile: str | None,
     fail_on: str,
     allow_scanner_failure: bool,
+    max_feed_age: int | None,
+    fail_on_stale_feed: bool,
     config_path: str | None,
     ci: bool,
     verbose: bool,
@@ -230,6 +252,8 @@ def scan_cmd(
             exclude_rules=exclude_rules,
             fail_on=fail_on,
             allow_scanner_failure=allow_scanner_failure,
+            max_feed_age=max_feed_age,
+            fail_on_stale_feed=fail_on_stale_feed,
             config_path=config_path,
             ci=ci,
             verbose=verbose,
@@ -284,6 +308,8 @@ def _run_scan(
     pr_summary_out: str | None = None,
     quiet: bool = False,
     fingerprint_strategy: str = "auto",
+    max_feed_age: int | None = None,
+    fail_on_stale_feed: bool = False,
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
@@ -315,6 +341,8 @@ def _run_scan(
         verify_secrets=verify_secrets,
         diff_base=diff_base,
         llm_scan=llm_scan,
+        max_feed_age=max_feed_age,
+        fail_on_stale_feed=fail_on_stale_feed,
     )
 
     # Unpack merged settings
@@ -333,6 +361,8 @@ def _run_scan(
     verify_secrets = merged["verify_secrets"]
     diff_base = merged["diff_base"]
     llm_scan = merged["llm_scan"]
+    max_feed_age = merged["max_feed_age"]
+    fail_on_stale_feed = merged["fail_on_stale_feed"]
 
     if verbose:
         click.echo(f"Scanning {project_root.resolve()}...", err=True)
@@ -351,6 +381,7 @@ def _run_scan(
         exclude_rules=parsed_excludes,
         verbose_callback=verbose_cb,
         strict_loading=strict_loading,
+        max_feed_age_days=max_feed_age,
     )
 
     # Diff-aware filtering
@@ -493,6 +524,16 @@ def _run_scan(
     else:
         click.echo(output)
 
+    # A stale feed's WARNING line is in the console report's footer. Any other
+    # report, one written to a file, and --quiet carry none on the terminal (the
+    # GitHub Action writes SARIF to a file), so the line goes to stderr there.
+    stale = stale_feed_warnings(result.data_feeds)
+    footer_shown = (output_format == "console" and not (owasp_report or compliance)
+                    and not output_file and not quiet)
+    if stale and not footer_shown:
+        for line in stale:
+            click.echo(line, err=True)
+
     # --- PR-comment markdown: $GITHUB_STEP_SUMMARY + optional explicit path ---
     if step_summary or pr_summary_out:
         from agent_audit_kit.output.pr_summary import render_markdown, write_step_summary
@@ -522,6 +563,20 @@ def _run_scan(
                     click.echo(f"  {r.rule_id} -> {r.url}", err=True)
                 else:
                     click.echo(f"  {r.rule_id} FAILED: {r.error}", err=True)
+
+    # --- Stale-feed exit path (--fail-on-stale-feed) ---
+    #
+    # After the report is written, so the run still leaves its SARIF, and ahead of
+    # the findings checks: the question it answers ("was the scan checked against
+    # current data?") comes before how bad the findings are, as #743's does.
+    if fail_on_stale_feed and stale:
+        click.echo("", err=True)
+        click.echo(
+            f"STALE FEED: {len(stale)} feed(s) older than --max-feed-age {max_feed_age} day(s), or of "
+            "unknown age; exiting 2 because of --fail-on-stale-feed. Run `agent-audit-kit update`.",
+            err=True,
+        )
+        sys.exit(EXIT_ERROR)
 
     # --- Scanner-failure exit path (issue #743) ---
     #

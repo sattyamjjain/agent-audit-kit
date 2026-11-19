@@ -71,6 +71,9 @@ EXPECTED_PARAMS = {
     # flag is passed. Listed here because this set is a deliberate guard --
     # an option appearing or vanishing should be a decision, not a diff.
     "allow_scanner_failure",
+    # How old a feed may be before the scan calls it stale, and whether a stale
+    # one exits 2 (tests/test_feed_freshness.py).
+    "max_feed_age", "fail_on_stale_feed",
 }
 
 

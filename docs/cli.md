@@ -50,6 +50,8 @@ Nothing here was cut; it is the same content with a home of its own.
 | `--llm-scan` | | Ask a model whether each tool's metadata tries to manipulate the agent (opt-in; sends that text to the provider). See [LLM scan](llm-scan.md) |
 | `--llm MODEL` | `ollama/gemma2:2b` | Model for `--llm-scan`: `claude-*` (`ANTHROPIC_API_KEY`), `gpt-*` (`OPENAI_API_KEY`), `gemini-*` (`GEMINI_API_KEY`) or `ollama/<model>` (local) |
 | `--allow-scanner-failure` | | Exit 0 even when a scanner crashed or `--llm-scan` left a tool unanalyzed |
+| `--max-feed-age DAYS` | `3` | Call the malicious-release and advisory feeds stale past this age: a WARNING line in the console (on stderr for JSON, SARIF, `-o` and `--quiet`), a warning notification in the SARIF run, and `ageDays` and `stale` in each report's `dataFeeds`. `0` turns the age test off; a feed of unknown age is always stale. `agent-audit-kit update` refreshes both feeds |
+| `--fail-on-stale-feed` | | Exit 2 after writing the report when either feed is stale |
 | `--sessions PATH` | | Run the session-scoped rules over agent transcripts — OpenAI Agents SDK traces, LangGraph checkpoints, JSONL. See [Session transcripts](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/session-transcripts.md) |
 | `--strict-loading` | | Fail loudly if any optional scanner module can't be imported (default: silently skip) |
 | `--verbose` / `-v` | | Detailed scan progress |
@@ -68,7 +70,7 @@ Only directories below the scanned path count: a checkout that itself sits under
 |:----:|---------|
 | 0 | Scan passed — no findings exceed `--fail-on` threshold |
 | 1 | Scan failed — findings meet or exceed `--fail-on` severity |
-| 2 | Error — invalid path, malformed config, etc. |
+| 2 | Error — invalid path, malformed config, etc., or a stale feed with `--fail-on-stale-feed` |
 
 `AAK-AGENT-001`, `AAK-AGENT-003` and `AAK-AGENT-006` read instruction files
 (`CLAUDE.md`, `AGENTS.md` and the like). They report at their severities, but

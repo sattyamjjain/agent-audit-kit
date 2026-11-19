@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-12T03:04:26Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go.",
+  "generated_at": "2026-11-18T19:14:11Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go. On 2026-11-18, scripts/refresh_bundled_malicious.py added MAL-2026-19223, MAL-2026-19224, MAL-2026-19235, MAL-2026-19258, MAL-2026-19922, MAL-2026-19939, MAL-2026-19941, MAL-2026-19943, MAL-2026-19945, MAL-2026-20043, MAL-2026-20044, MAL-2026-20062, MAL-2026-20101, MAL-2026-20107, MAL-2026-20108 and MAL-2026-20129, takeovers of established packages among GitHub's malware advisories published since 2026-11-12, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -65,6 +65,150 @@
       "versions": ["1.0.3", "1.0.6"],
       "modified": "2026-11-10T19:30:03.612757739Z",
       "url": "https://osv.dev/vulnerability/MAL-2026-19085"
+    },
+    {
+      "id": "MAL-2026-19223",
+      "aliases": ["GHSA-2hr9-fgpc-rp7w"],
+      "ecosystem": "npm",
+      "name": "curse-allies-module",
+      "versions": ["1.0.0"],
+      "modified": "2026-11-13T04:30:04.724214332Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19223"
+    },
+    {
+      "id": "MAL-2026-19224",
+      "aliases": ["GHSA-c8hg-jfxj-92cv"],
+      "ecosystem": "npm",
+      "name": "helper-agent",
+      "versions": ["1.0.1", "1.0.4"],
+      "modified": "2026-11-13T04:30:04.705720527Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19224"
+    },
+    {
+      "id": "MAL-2026-19235",
+      "aliases": ["GHSA-72xc-q3v8-7grp"],
+      "ecosystem": "npm",
+      "name": "karma365-mcp",
+      "versions": ["2.1.0"],
+      "modified": "2026-11-13T08:30:09.370492600Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19235"
+    },
+    {
+      "id": "MAL-2026-19258",
+      "aliases": ["GHSA-57xg-9jqp-97gm"],
+      "ecosystem": "npm",
+      "name": "kampodra",
+      "versions": ["0.8.16"],
+      "modified": "2026-11-16T22:45:05.342424792Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19258"
+    },
+    {
+      "id": "MAL-2026-19922",
+      "aliases": ["GHSA-q78g-75cg-hwq6"],
+      "ecosystem": "npm",
+      "name": "@jelou/cli-win32-x64",
+      "versions": ["4.24.0", "4.26.1"],
+      "modified": "2026-11-14T05:30:04.588768596Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19922"
+    },
+    {
+      "id": "MAL-2026-19939",
+      "aliases": ["GHSA-w3gq-mm9x-7w7c"],
+      "ecosystem": "npm",
+      "name": "@crvouga/mockingbird-service-microsoft",
+      "versions": ["0.14.0"],
+      "modified": "2026-11-15T00:45:04.313999484Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19939"
+    },
+    {
+      "id": "MAL-2026-19941",
+      "aliases": ["GHSA-2p2h-g9qq-v2wx"],
+      "ecosystem": "npm",
+      "name": "node-zserial",
+      "versions": ["1.0.42"],
+      "modified": "2026-11-15T04:30:04.536013400Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19941"
+    },
+    {
+      "id": "MAL-2026-19943",
+      "aliases": ["GHSA-95pv-hv63-58m8"],
+      "ecosystem": "npm",
+      "name": "@theholocron/holocron-plugin-discord",
+      "versions": ["5.0.0-alpha.436"],
+      "modified": "2026-11-15T10:30:03.919643824Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19943"
+    },
+    {
+      "id": "MAL-2026-19945",
+      "aliases": ["GHSA-xxrh-88wg-7qf4"],
+      "ecosystem": "npm",
+      "name": "pmhq-dist-win-x64",
+      "versions": ["9.0.2"],
+      "modified": "2026-11-16T01:00:08.597458747Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-19945"
+    },
+    {
+      "id": "MAL-2026-20043",
+      "aliases": ["GHSA-96hm-h5v4-92fq"],
+      "ecosystem": "npm",
+      "name": "@wppconnect/server",
+      "versions": ["2.10.82"],
+      "modified": "2026-11-17T05:45:05.443598899Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20043"
+    },
+    {
+      "id": "MAL-2026-20044",
+      "aliases": ["GHSA-rj96-rg6c-9hw8"],
+      "ecosystem": "npm",
+      "name": "@wppconnect-team/wppconnect",
+      "versions": ["2.4.1"],
+      "modified": "2026-11-17T05:45:05.433393460Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20044"
+    },
+    {
+      "id": "MAL-2026-20062",
+      "aliases": ["GHSA-63r3-2637-f8jf"],
+      "ecosystem": "npm",
+      "name": "singpass-myinfo-oidc-helper",
+      "versions": ["0.0.1", "0.0.2"],
+      "modified": "2026-11-18T03:15:04.636738062Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20062"
+    },
+    {
+      "id": "MAL-2026-20101",
+      "aliases": ["GHSA-764m-3ppc-5m73"],
+      "ecosystem": "PyPI",
+      "name": "agent-framework",
+      "versions": ["1.26.1", "1.26.2"],
+      "modified": "2026-11-17T23:15:03.541420800Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20101"
+    },
+    {
+      "id": "MAL-2026-20107",
+      "aliases": ["GHSA-j2hq-r459-pg6f"],
+      "ecosystem": "npm",
+      "name": "vant",
+      "versions": ["2.13.3", "2.13.4", "2.13.5", "3.6.13", "3.6.14", "3.6.15", "4.9.11", "4.9.12", "4.9.13", "4.9.14"],
+      "modified": "2026-11-18T03:30:04.497233180Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20107"
+    },
+    {
+      "id": "MAL-2026-20108",
+      "aliases": ["GHSA-vhg4-83fq-5qrp"],
+      "ecosystem": "npm",
+      "name": "base128-x58-1",
+      "versions": ["0.0.1", "0.0.2", "0.0.3", "0.0.4"],
+      "modified": "2026-11-18T06:00:15.802108578Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20108"
+    },
+    {
+      "id": "MAL-2026-20129",
+      "aliases": ["GHSA-9q69-8j7m-ppmh"],
+      "ecosystem": "npm",
+      "name": "qrcode-reader-vue3",
+      "versions": ["3.1.4"],
+      "modified": "2026-11-18T16:30:04.705992629Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20129"
     }
   ],
   "oci": [

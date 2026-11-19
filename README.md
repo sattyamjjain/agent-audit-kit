@@ -59,7 +59,10 @@ In CI:
 ```
 
 The action writes SARIF and the second step uploads it, which lands findings
-in the GitHub Security tab. Full
+in the GitHub Security tab. Its `update-feeds` input (default `'true'`) runs
+`agent-audit-kit update --nvd-days 0` in the container first, so the scan checks
+releases against the malware and advisories OSV published that day rather than
+the copies bundled with the release; set it to `'false'` for an offline scan. Full
 [GitHub Action reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/github-action.md) ·
 [CLI reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md) ·
 [pre-commit hook](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/ci-cd.md).
@@ -186,7 +189,7 @@ A public leaderboard of scanned public MCP servers, with per-server grade cards
 and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md):
 [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/).
 
-<!-- index-cadence -->Last published snapshot: **2026-11-09** (14 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
+<!-- index-cadence -->Last published snapshot: **2026-11-16** (15 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
 
 ## CVE response
 
@@ -214,7 +217,7 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497, Node.js's 11 Nov 2026 security release).
 
-<!-- test-count:total -->5,912<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->5,947<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->508<!-- /rule-count --> rules

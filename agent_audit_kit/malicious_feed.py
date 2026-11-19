@@ -33,6 +33,15 @@ neither source carries, are kept in every rebuilt copy. A failed rebuild leaves 
 writes nothing: the new file is written beside it and renamed over it only once
 it is complete.
 
+The bundled copy lists only established packages that were taken over (litellm,
+axios, agent-framework), not the typosquats the full OSV list carries.
+`scripts/refresh_bundled_malicious.py` adds new ones from GitHub's malware
+advisories on a daily schedule (`.github/workflows/malicious-feed-bundle.yml`).
+A scan reports how old the copy it read is (`feed_staleness`) and calls it stale
+past `DEFAULT_MAX_FEED_AGE_DAYS`, which `aak scan --max-feed-age` changes: the
+console prints a WARNING line, the SARIF run a warning notification, and
+`--fail-on-stale-feed` exits 2.
+
 What a feed entry means
 -----------------------
 An entry names one package on one registry and either the versions that are
@@ -67,7 +76,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
-from typing import AbstractSet, Any, Callable, Iterable, Iterator
+from typing import AbstractSet, Any, Callable, Iterable, Iterator, Mapping
 
 BUNDLED_FEED: Path = Path(__file__).parent / "data" / "malicious_releases.json"
 FEED_FILE_NAME = "malicious_releases.json"
@@ -400,6 +409,7 @@ class Feed:
     extensions: dict[str, tuple[ExtensionRelease, ...]] = field(default_factory=dict)
     # Whole-repository (`all_tags`) entries, keyed by `canonical_repository`.
     repositories: dict[str, Image] = field(default_factory=dict)
+    entry_count: int = 0  # package entries read, which a stale-feed warning names
     _built: dict[tuple[str, str], tuple[Release, ...]] = field(
         default_factory=dict, compare=False, repr=False
     )
@@ -443,6 +453,7 @@ class Feed:
             "generatedAt": self.generated_at,
             "source": self.source,
             "origin": self.origin,
+            "entries": str(self.entry_count),
         }
 
 
@@ -526,6 +537,7 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
         images=images,
         extensions={key: tuple(rows) for key, rows in extensions.items()},
         repositories=repositories,
+        entry_count=sum(len(rows) for names in index.values() for rows in names.values()),
     )
 
 
@@ -602,6 +614,104 @@ def load_feed() -> Feed:
 def feed_summary() -> dict[str, str]:
     """`Feed.summary()` for the feed a scan reads (see `load_feed`)."""
     return load_feed().summary()
+
+
+# ---- how old a feed is ------------------------------------------------------------------
+
+#: The age in days past which a scan calls the malicious-release or advisory feed
+#: stale (`aak scan --max-feed-age`). A release published as malware after the feed
+#: was built is not in it, so a clean result on an old feed says little: on
+#: 2026-11-18 a scan without `aak update` read a bundled copy from 2026-11-12 and
+#: passed agent-framework 1.26.2, published as malware that day.
+DEFAULT_MAX_FEED_AGE_DAYS = 3
+
+_SECONDS_PER_DAY = 86400.0
+# Python before 3.11 parses only three or six fractional digits; OSV writes nine.
+_FRACTION_RE = re.compile(r"\.(\d+)")
+
+
+def _utc_now() -> datetime:
+    """The clock `feed_staleness` reads when it is given none (tests pin it)."""
+    return datetime.now(timezone.utc)
+
+
+def parse_generated_at(text: str) -> datetime | None:
+    """A feed's `generated_at` as an aware UTC time; None when it is not one.
+
+    Reads the `2026-11-12T03:04:26Z` form `refresh` writes and any other ISO 8601
+    time with or without a zone (one without is taken as UTC).
+    """
+    value = _FRACTION_RE.sub(lambda m: "." + (m.group(1) + "000000")[:6], (text or "").strip(), count=1)
+    if value.endswith(("Z", "z")):
+        value = value[:-1] + "+00:00"
+    try:
+        when = datetime.fromisoformat(value)
+        return when.replace(tzinfo=timezone.utc) if when.tzinfo is None else when.astimezone(timezone.utc)
+    except (ValueError, OverflowError):  # OverflowError: a zone that moves it past year 9999
+        return None
+
+
+def feed_staleness(summary: Mapping[str, str], max_age_days: int, now: datetime | None = None) -> dict[str, str]:
+    """How old a feed is, by the `generatedAt` of its summary, and whether that is too old.
+
+    Args:
+        summary: A feed summary (`feed_summary()`, `advisory_feed.feed_summary()`).
+        max_age_days: Older than this many days is stale; 0 turns the age test off.
+        now: The time to measure from; the current time when None.
+
+    Returns:
+        `{"ageDays": "6.1", "stale": "true"}`: the age to one decimal, or "unknown"
+        when `generatedAt` is missing or unreadable, which is stale whatever
+        `max_age_days` says, since nothing tells how much the feed misses.
+    """
+    generated = parse_generated_at(summary.get("generatedAt", ""))
+    if generated is None:
+        return {"ageDays": "unknown", "stale": "true"}
+    age = max(0.0, ((now or _utc_now()) - generated).total_seconds() / _SECONDS_PER_DAY)
+    stale = max_age_days > 0 and age > max_age_days
+    return {"ageDays": f"{age:.1f}", "stale": "true" if stale else "false"}
+
+
+#: The feeds a scan checks for age: (data_feeds key, what a warning calls it, what it misses).
+STALE_CHECKED_FEEDS = (
+    ("maliciousReleases", "malicious-release feed", "Malware published since then is not checked."),
+    ("knownVulnerabilities", "advisory feed", "Advisories published since then are not checked."),
+)
+
+
+def stale_feed_warnings(data_feeds: Mapping[str, Mapping[str, str]]) -> list[str]:
+    """One plain-text warning line per stale feed in a scan's `data_feeds`, in
+    `STALE_CHECKED_FEEDS` order; the console report and `aak scan` print them."""
+    return [text for _key, text in stale_feed_notices(data_feeds)]
+
+
+def stale_feed_notices(data_feeds: Mapping[str, Mapping[str, str]]) -> list[tuple[str, str]]:
+    """`(data_feeds key, warning line)` for each stale feed, in `STALE_CHECKED_FEEDS`
+    order; the SARIF report writes one notification from each."""
+    lines: list[tuple[str, str]] = []
+    for key, noun, missed in STALE_CHECKED_FEEDS:
+        feed = data_feeds.get(key)
+        if not feed or feed.get("stale") != "true":
+            continue
+        if "error" in feed:
+            state = f"could not be read ({feed['error']}), so nothing is checked against it."
+        else:
+            origin = feed.get("origin") or "unknown"
+            age = feed.get("ageDays", "unknown")
+            if age == "unknown":
+                state = f"is the {origin} copy, of unknown age (no readable generated_at). {missed}"
+            else:
+                detail = f"{age} days old"
+                if origin == "bundled" and (feed.get("entries") or "").isdigit():
+                    count = int(feed["entries"])
+                    detail += f", {count:,} {'entry' if count == 1 else 'entries'}"
+                day = (feed.get("generatedAt") or "")[:10]
+                state = f"is the {origin} copy from {day} ({detail}). {missed}"
+        lines.append((key, (
+            f"WARNING: {noun} {state} Run `agent-audit-kit update` first, "
+            "or set update-feeds: 'true' on the GitHub Action."
+        )))
+    return lines
 
 
 # ---- rebuilding the cached feed (`aak update`) ---------------------------------------

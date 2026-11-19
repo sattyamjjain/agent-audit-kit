@@ -459,7 +459,15 @@ def test_existing_image_entries_still_build_with_positional_fields() -> None:
 
 def test_the_bundled_feed_holds_what_osv_and_the_vendor_published() -> None:
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
-    litellm, local_commander, axios, plain_crypto, env_test_guard, bee_js, mcp_weather = data["entries"]
+    # By id, not by position: scripts/refresh_bundled_malicious.py appends entries every
+    # day (tests/test_refresh_bundled_malicious.py), and never moves or drops these.
+    by_id = {entry["id"]: entry for entry in data["entries"]}
+    litellm, local_commander, axios, plain_crypto, env_test_guard, bee_js, mcp_weather = (by_id[ident] for ident in (
+        "MAL-2026-2144", "MAL-2026-18425", "MAL-2026-2307", "MAL-2026-2306", "MAL-2026-18776", "MAL-2026-18773",
+        "MAL-2026-19085"))
+    assert [e["id"] for e in data["entries"][:7]] == [
+        "MAL-2026-2144", "MAL-2026-18425", "MAL-2026-2307", "MAL-2026-2306", "MAL-2026-18776", "MAL-2026-18773",
+        "MAL-2026-19085"]
     assert (litellm["id"], litellm["ecosystem"], litellm["name"]) == ("MAL-2026-2144", "PyPI", "litellm")
     assert litellm["versions"] == ["1.82.7", "1.82.8", "1.107.0"]
     assert litellm["modified"] == "2026-10-21T22:01:01.881791175Z"
@@ -597,15 +605,14 @@ def test_refresh_keeps_only_mal_records_and_carries_the_bundled_digests() -> Non
     done = malicious_feed.refresh(opener=_opener(), now=NOW)
     data = json.loads(done.path.read_text())
     assert data["generated_at"] == "2026-10-28T12:00:00Z"
-    assert sorted(e["id"] for e in data["entries"]) == [
-        "MAL-2026-1", "MAL-2026-18425", "MAL-2026-18773", "MAL-2026-18776", "MAL-2026-19085", "MAL-2026-2144",
-        "MAL-2026-2306", "MAL-2026-2307", "MAL-2026-3", "MAL-2026-4",
-    ]
+    bundled = [e["id"] for e in json.loads(malicious_feed.BUNDLED_FEED.read_text())["entries"]]
+    assert {"MAL-2026-2144", "MAL-2026-18425", "MAL-2026-19085", "MAL-2026-20101"} <= set(bundled)
+    assert sorted(e["id"] for e in data["entries"]) == sorted(["MAL-2026-1", "MAL-2026-3", "MAL-2026-4", *bundled])
     assert data["oci"][0]["digests"] == [DIGEST]
     assert [image["id"] for image in data["oci"] if image.get("all_tags") is True] == [
         "ARTEX-2026-11-05-TOMICDD", "ARTEX-2026-11-05-CONGDONGLINUX",
     ]
-    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": 7}
+    assert done.counts == {"OSV PyPI": 1, "OSV npm": 2, "OSV crates.io": 0, "OSV Go": 0, "bundled": len(bundled)}
     feed = malicious_feed.load_feed()
     assert feed.origin == "cached"
     assert feed.repository("tomicdd/artex:latest").id == "ARTEX-2026-11-05-TOMICDD"
@@ -662,7 +669,8 @@ def test_aak_update_reports_what_it_wrote(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("GH_TOKEN", raising=False)
     result = CliRunner().invoke(cli, ["update", "--nvd-days", "0"])
     assert result.exit_code == 0, result.output
-    assert "Malicious-release feed updated: 10 entries" in result.output
+    bundled = len(json.loads(malicious_feed.BUNDLED_FEED.read_text())["entries"])
+    assert f"Malicious-release feed updated: {3 + bundled} entries" in result.output  # the export's three, the bundled
     assert "GitHub: skipped" in result.output
 
 

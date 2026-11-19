@@ -44,6 +44,7 @@ What the SARIF carries is in the CLI reference's
 | `config` | | Path to `.agent-audit-kit.yml` |
 | `comment-on-pr` | `true` | On a `pull_request` event with `GITHUB_TOKEN` in the step's env, post one sticky comment summarising the findings and update it on later runs. A Markdown table goes to the job summary on every run |
 | `fingerprint-strategy` | `auto` | SARIF fingerprints: `auto` (content hash when the source is present, else location hash), `line-hash` (always content hash) or `disabled` |
+| `update-feeds` | `true` | Run `agent-audit-kit update --nvd-days 0` before the scan, so the malicious-release and advisory feeds come from OSV that day (about 280 MB and 1.5 minutes) rather than from the copies bundled with the release. NVD is not read; its entries are kept from the bundled feed. If the update fails the Action prints a warning and scans anyway, and the scan names any feed older than 3 days. `false` scans offline |
 
 `fail-on` skips the instruction-file rules `AAK-AGENT-001`, `AAK-AGENT-003` and
 `AAK-AGENT-006` until their precision is published. Their findings still land

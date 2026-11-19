@@ -1,0 +1,96 @@
+name: Bundled malicious-release feed
+
+# Keeps agent_audit_kit/data/malicious_releases.json, the feed a scan reads when
+# `agent-audit-kit update` has not built a cached copy, from going stale. Once a
+# day scripts/refresh_bundled_malicious.py reads GitHub's malware advisories of
+# the last 3 days, keeps the established packages that were taken over (the
+# registry shows a release at least 30 days older than the advisory that the
+# advisory does not list) and appends their OSV records to the file. Typosquats
+# stay out; `agent-audit-kit update` builds the full list.
+#
+# When the file changed, the job pushes it to the chore/malicious-feed-bundle
+# branch and opens a pull request (or updates the open one). A pull request
+# opened with GITHUB_TOKEN does not start CI on its own: push an empty commit to
+# the branch, or close and reopen the pull request, to run the checks before
+# merging.
+
+on:
+  schedule:
+    - cron: "29 5 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The push below needs the job token in the checkout.
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+
+      - name: Refresh the bundled feed
+        id: refresh
+        env:
+          # Read-only use: GitHub's advisory listing, at 5,000 requests an hour.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Exit 1 means some package could not be checked; what was decided is
+          # still written, so the pull request below still opens and the job
+          # fails at the end. Exit 2 wrote nothing.
+          set +e
+          python scripts/refresh_bundled_malicious.py --days 3 > "$RUNNER_TEMP/refresh.log" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/refresh.log"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- agent_audit_kit/data/malicious_releases.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          [ "$status" -le 1 ]
+
+      - name: Open or update the pull request
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch=chore/malicious-feed-bundle
+          git config user.name 'agent-audit-kit-bot'
+          git config user.email 'agent-audit-kit-bot@users.noreply.github.com'
+          git switch -c "$branch"
+          git add agent_audit_kit/data/malicious_releases.json
+          git commit -m "chore(feeds): add takeovers from GitHub's malware advisories to the bundled feed"
+          git push --force origin "HEAD:refs/heads/$branch"
+          {
+            echo "scripts/refresh_bundled_malicious.py, run by .github/workflows/malicious-feed-bundle.yml, kept these packages:"
+            echo
+            grep '^kept' "$RUNNER_TEMP/refresh.log" | sed 's/^/- /'
+            echo
+            echo "Every decision of the run is in the workflow log. This pull request was opened with GITHUB_TOKEN, so CI has not run: push an empty commit or close and reopen it first."
+          } > "$RUNNER_TEMP/body.md"
+          open=$(gh pr list --head "$branch" --state open --json number --jq 'length')
+          if [ "$open" = "0" ]; then
+            gh pr create --base main --head "$branch" \
+              --title "chore(feeds): refresh the bundled malicious-release feed" \
+              --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr edit "$branch" --body-file "$RUNNER_TEMP/body.md"
+          fi
+
+      - name: Fail when a package could not be checked
+        if: steps.refresh.outputs.status == '1'
+        run: |
+          echo "::error::scripts/refresh_bundled_malicious.py could not check every package; see the refresh step's log."
+          exit 1
