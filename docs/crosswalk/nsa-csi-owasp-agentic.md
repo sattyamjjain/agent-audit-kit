@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (509 total; 471 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (511 total; 473 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -74,6 +74,7 @@ Every AgentAuditKit rule (509 total; 471 mapped) against two agentic-security st
 | `AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001` | high | tool-poisoning | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI01 Agent Goal Hijack; ASI02 Tool Misuse and Exploitation |
 | `AAK-DNS-REBIND-001` | critical | transport-security | Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |
 | `AAK-DNS-REBIND-002` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI07 Insecure Inter-Agent Communication |
+| `AAK-DNS-REBIND-003` | critical | transport-security | Sign and verify MCP messages | ASI07 Insecure Inter-Agent Communication |
 | `AAK-DOCSGPT-MCP-STDIO-MITM-001` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI07 Insecure Inter-Agent Communication |
 | `AAK-DORIS-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-EU-AI-ACT-ART15-LOCALE-001` | info | legal-compliance | — | — |
@@ -522,3 +523,4 @@ Every AgentAuditKit rule (509 total; 471 mapped) against two agentic-security st
 | `AAK-TRUST-008` | high | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI07 Insecure Inter-Agent Communication |
 | `AAK-TRUST-009` | critical | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-WEBSOCKET-SERVER-001` | medium | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
+| `AAK-WEBSOCKET-SERVER-002` | high | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |

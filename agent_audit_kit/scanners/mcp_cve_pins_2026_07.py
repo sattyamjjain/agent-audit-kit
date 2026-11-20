@@ -1242,9 +1242,13 @@ _PINS: tuple[_Pin, ...] = (
     # node, both fixed in the same release. CVE-2026-91931 takes npx package
     # names from mcpServerConfig and invokes npx on attacker-chosen npm
     # packages; CVE-2026-91932 bypasses the path validation with a clean
-    # filename in args while controlling cwd. One floor, two CVEs.
+    # filename in args while controlling cwd. One floor, two CVEs. 3.1.4 is also the
+    # last release, and it still carries CVE-2026-119978 (every release from 1.4.6)
+    # and CVE-2026-130796 (3.1.3 and 3.1.4), so the label says what it clears.
     _Pin("AAK-MCP-FLOWISE-CVE-2026-91931-001", "flowise", ("flowise",),
-         (3, 1, 4), fix_label="3.1.4", ecosystem="js"),
+         (3, 1, 4), fix_label="3.1.4, which clears CVE-2026-91931 and CVE-2026-91932 only: no "
+                              "Flowise release is free of CVE-2026-130796 (3.1.3 and 3.1.4) or "
+                              "CVE-2026-119978 (every release from 1.4.6)", ecosystem="js"),
     # mcp-from-openapi (npm) < 2.5.0: the same external-$ref SSRF as
     # CVE-2026-59973's frontmcp half, but on its own 2.x version line, so the
     # frontmcp pin's 1.5.7 floor cannot express it. loadOpenAPISpec() forwards

@@ -1,4 +1,6 @@
-"""AAK-WEBSOCKET-SERVER-001: a Python `websockets` server for MCP, model or policy traffic left open.
+"""AAK-WEBSOCKET-SERVER-001 / -002: WebSocket servers for MCP, model or policy traffic left open.
+
+001 reads a Python `websockets` server.
 
 In `websockets` the origin check is opt-in: `origins` defaults to None, and None accepts every
 Origin. A WebSocket handshake is not subject to the same-origin policy and gets no CORS preflight,
@@ -13,21 +15,36 @@ header anywhere is taken to check it.
 A page cannot set an Authorization header on a handshake, so a file that reads a credential is
 not reachable the same way, and the origin arm stands down there too.
 
-What the rule reads, and where it stops, is in the registry's limitations.
+002 reads a Node `ws` (or `isomorphic-ws`) server, where the check is opt-in as well: a
+`WebSocketServer` built without `verifyClient` takes a handshake from any Origin.
+Supergateway's stdio-to-WebSocket mode, 2.4.0 through 4.2.2 (CVE-2026-132121), is the
+shape: a page opens its `/message` socket, loopback-bound or not, and calls the tools of
+the stdio MCP server the gateway spawned. Through 4.1.0 it passed no `verifyClient`; 4.2.0
+passes one only when its caller supplies one (`...(verifyClient ? { verifyClient } : {})`),
+and that one checks an API key, not the Origin, so a `verifyClient` set that way does
+not count. A file that reads the Origin, or a credential, is taken to check it, as in 001.
+A file that also starts processes through `child_process` is the stdio bridge itself, and
+the finding is CRITICAL.
+
+What each rule reads, and where it stops, is in the registry's limitations.
 """
 
 from __future__ import annotations
 
 import ast
+import dataclasses
 import os
 import re
 from pathlib import Path
 
-from agent_audit_kit.models import Finding
+from agent_audit_kit.models import Finding, Severity
 
 from ._helpers import SOURCE_MAX_BYTES, kept_dirs, make_finding, parse_python, read_text_capped, refusing_overflow, walk_tree
+from ._http_routes import CodeIndex
+from ._listener_routes import CREDENTIAL_RE, ORIGIN_READ_RE
 
 RULE = "AAK-WEBSOCKET-SERVER-001"
+RULE_NODE = "AAK-WEBSOCKET-SERVER-002"
 
 _HINT_RE = re.compile(r"\bwebsockets\b")
 # Which servers the rule is about, by the words of the path or an `mcp` import. A WebSocket server
@@ -40,8 +57,8 @@ _NOT_DEPLOYED = frozenset({
 })
 _WORD_RE = re.compile(r"[a-z0-9]+")
 _MCP_IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+(?:mcp|fastmcp)\b", re.M)
-_ORIGIN_READ_RE = re.compile(r"""["']origin["']|\.origin\b""", re.I)
-_AUTH_RE = re.compile(r"authorization|basic_auth|api_key|apikey|bearer|\btoken\b|\bauth\b", re.I)
+_ORIGIN_READ_RE = ORIGIN_READ_RE
+_AUTH_RE = CREDENTIAL_RE
 _ANY_INTERFACE = frozenset({"0.0.0.0", "::", ""})
 _TRACEBACK_CALLS = frozenset({"format_exc", "format_exception", "format_tb"})
 
@@ -173,8 +190,172 @@ def _in_scope(rel: str, text: str) -> bool:
     return bool(_SERVER_WORDS & set(_WORD_RE.findall(rel.lower()))) or bool(_MCP_IMPORT_RE.search(text))
 
 
+# ---------------------------------------------------------------------------
+# AAK-WEBSOCKET-SERVER-002: Node `ws`
+# ---------------------------------------------------------------------------
+
+_JS_EXTS = (".ts", ".tsx", ".js", ".mjs", ".cjs", ".mts", ".cts")
+_JS_TEST_NAME_RE = re.compile(r"\.(?:test|spec)\.[cm]?[jt]sx?$|\.d\.[cm]?ts$")
+# Where a module is loaded from: `from "ws"`, `require("ws")`, `import("ws")`.
+_WS_SOURCE_RE = re.compile(r"""(\bfrom|\brequire\s*\(|\bimport\s*\()\s*["'](?:ws|isomorphic-ws)["']""")
+_CHILD_SOURCE_RE = re.compile(r"""(\bfrom|\brequire\s*\(|\bimport\s*\()\s*["'](?:node:)?child_process["']""")
+_JS_MCP_IMPORT_RE = re.compile(
+    r"""(?:\bfrom|\brequire\s*\(|\bimport\s*\()\s*["'](?:@modelcontextprotocol/|fastmcp["'/]|mcp-framework["'/])"""
+)
+# How far before `from "ws"` its `import` keyword, or before `require("ws")` its binding, is looked for.
+_CLAUSE_WINDOW = 600
+_ASSIGNED_RE = re.compile(r"(?:const|let|var)\s+(?:([A-Za-z_$][\w$]*)|\{([^{}]*)\})\s*=\s*(?:await\s+)?$")
+_MEMBER_AFTER_RE = re.compile(r"\s*\)\s*\.\s*([A-Za-z_$][\w$]*)")
+_NAMESPACE_RE = re.compile(r"\*\s*as\s+([A-Za-z_$][\w$]*)")
+_DEFAULT_RE = re.compile(r"\s*(?:type\s+)?([A-Za-z_$][\w$]*)\s*(?:,|$)")
+_BRACES_RE = re.compile(r"\{([^{}]*)\}")
+_SPECIFIER_RE = re.compile(r"^\s*(?:type\s+)?([A-Za-z_$][\w$]*)(?:\s*(?:as|:)\s*([A-Za-z_$][\w$]*))?\s*$")
+_WS_SERVERS = frozenset({"WebSocketServer", "Server"})
+_CHILD_CALLS = frozenset({"spawn", "exec", "execFile", "fork", "spawnSync", "execSync", "execFileSync"})
+_OPTIONS_WINDOW = 4000
+_VERIFY_RE = re.compile(r"\bverifyClient\b")
+# `...(verifyClient ? { verifyClient } : {})`: set only when the caller passes one.
+_CONDITIONAL_VERIFY_RE = re.compile(r"\.\.\.\s*\([^()]{0,400}?\bverifyClient\b")
+
+
+def _imported(text: str, source: re.Pattern[str]) -> tuple[set[str], dict[str, str]]:
+    """The names a TS/JS file loads a module under: its namespace and default bindings,
+    and `{local: imported}` for the names it imports from it."""
+    whole: set[str] = set()
+    named: dict[str, str] = {}
+
+    def specifiers(listed: str) -> None:
+        for item in listed.split(","):
+            m = _SPECIFIER_RE.match(item)
+            if m:
+                named[m.group(2) or m.group(1)] = m.group(1)
+
+    for m in source.finditer(text):
+        before = text[max(0, m.start() - _CLAUSE_WINDOW):m.start()]
+        if m.group(1) == "from":
+            at = before.rfind("import")
+            if at < 0:
+                continue
+            clause = before[at + len("import"):]
+            namespace = _NAMESPACE_RE.search(clause)
+            if namespace:
+                whole.add(namespace.group(1))
+            braces = _BRACES_RE.search(clause)
+            if braces:
+                specifiers(braces.group(1))
+            default = _DEFAULT_RE.match(clause)
+            if default and not clause.lstrip().startswith(("{", "*")) and default.group(1) != "type":
+                whole.add(default.group(1))
+            continue
+        assigned = _ASSIGNED_RE.search(before)
+        member = _MEMBER_AFTER_RE.match(text, m.end())
+        if assigned and assigned.group(1) and member:
+            named[assigned.group(1)] = member.group(1)   # const WSS = require("ws").Server
+        elif assigned and assigned.group(1):
+            whole.add(assigned.group(1))
+        elif assigned and assigned.group(2):
+            specifiers(assigned.group(2))
+    return whole, named
+
+
+# A constructor or a call, with the member after a name when there is one: one pattern for
+# every file, and the names it captures looked up in a set. An alternation built from the
+# file's own names is tried name by name at every position, so a file of many aliases
+# would be read once per alias.
+_NEW_RE = re.compile(r"(?<![\w$.])new\s+([A-Za-z_$][\w$]*)(?:\s*\.\s*([A-Za-z_$][\w$]*))?\s*\(")
+_CALL_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*)(?:\s*\.\s*([A-Za-z_$][\w$]*))?\s*\(")
+
+
+def _ws_constructions(text: str) -> list[re.Match[str]]:
+    """Each `new WebSocketServer(`, under every name this file gives it, and each
+    `new <ws>.Server(` / `new <ws>.WebSocketServer(`."""
+    whole, named = _imported(text, _WS_SOURCE_RE)
+    if not whole and not named:
+        return []
+    classes = {local for local, name in named.items() if name in _WS_SERVERS}
+    holders = whole | {local for local, name in named.items() if name == "WebSocket"}
+    return [
+        m for m in _NEW_RE.finditer(text)
+        if (m.group(2) is None and m.group(1) in classes) or (m.group(2) in _WS_SERVERS and m.group(1) in holders)
+    ]
+
+
+def _starts_processes(text: str) -> str | None:
+    """The `child_process` call this file makes, if it imports the module and calls one."""
+    whole, named = _imported(text, _CHILD_SOURCE_RE)
+    calls = {local: name for local, name in named.items() if name in _CHILD_CALLS}
+    if not calls and not whole:
+        return None
+    for m in _CALL_RE.finditer(text):
+        if m.group(2) is None and m.group(1) in calls:
+            return calls[m.group(1)]
+        if m.group(2) in _CHILD_CALLS and m.group(1) in whole:
+            return m.group(2)
+    return None
+
+
+def _verify_client(options: str | None) -> str:
+    """What the server's options say about `verifyClient`: "none", "conditional",
+    "set", or "unknown" when they are not an object literal, or spread another object
+    in that may hold one."""
+    if options is None or not options.strip():
+        return "none"
+    if not options.lstrip().startswith("{"):
+        return "unknown"
+    if _CONDITIONAL_VERIFY_RE.search(options):
+        return "conditional"
+    if _VERIFY_RE.search(options):
+        return "set"
+    return "unknown" if "..." in options else "none"
+
+
+def _js_in_scope(rel: str, text: str, spawns: bool) -> bool:
+    parts = rel.split("/")
+    if any(p in _NOT_DEPLOYED for p in parts[:-1]) or _JS_TEST_NAME_RE.search(parts[-1]):
+        return False
+    return spawns or bool(_SERVER_WORDS & set(_WORD_RE.findall(rel.lower()))) or bool(_JS_MCP_IMPORT_RE.search(text))
+
+
+def _node_findings(rel: str, text: str) -> list[Finding] | None:
+    """The file's AAK-WEBSOCKET-SERVER-002 findings, or None when it builds no `ws`
+    server or is out of scope."""
+    constructions = _ws_constructions(text)
+    if not constructions:
+        return None
+    child_call = _starts_processes(text)
+    if not _js_in_scope(rel, text, child_call is not None):
+        return None
+    if _ORIGIN_READ_RE.search(text) or _AUTH_RE.search(text):
+        return []
+    index = CodeIndex(text)
+    findings: list[Finding] = []
+    for m in constructions:
+        if not index.in_code(m.start()):
+            continue
+        spans = index.args(m.end() - 1)
+        if spans is None:
+            continue
+        options = text[spans[0][0]:min(spans[0][1], spans[0][0] + _OPTIONS_WINDOW)] if spans else None
+        verdict = _verify_client(options)
+        if verdict in ("set", "unknown"):
+            continue
+        what = ("whose `verifyClient` is set only when its caller passes one" if verdict == "conditional"
+                else "with no `verifyClient`")
+        evidence = (f"`ws` WebSocketServer {what}, and nothing in this file reads the Origin header or a "
+                    "credential, so any page open in a browser on this machine can open it, loopback or not")
+        if child_call is not None:
+            evidence += (f". The file starts processes (`{child_call}` from child_process), the stdio bridge of "
+                         "CVE-2026-132121, so that page drives what they run")
+        finding = make_finding(RULE_NODE, rel, evidence, index.line_of(m.start()))
+        if child_call is not None:
+            finding = dataclasses.replace(finding, severity=Severity.CRITICAL)
+        findings.append(finding)
+    return findings
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
-    """Report `websockets` servers for MCP, model or policy traffic with open defaults.
+    """Report WebSocket servers for MCP, model or policy traffic with open defaults:
+    Python `websockets` (AAK-WEBSOCKET-SERVER-001) and Node `ws` (-002).
 
     Args:
         project_root: The root directory of the project.
@@ -187,16 +368,23 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for dirpath, dirnames, filenames in os.walk(project_root):
         dirnames[:] = kept_dirs(dirpath, dirnames, project_root)
         for name in sorted(filenames):
-            if not name.endswith(".py"):
+            node = name.endswith(_JS_EXTS)
+            if not node and not name.endswith(".py"):
                 continue
             path = Path(dirpath) / name
             try:
                 text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
             except OSError:
                 continue
-            if not _HINT_RE.search(text):
+            if not (_WS_SOURCE_RE if node else _HINT_RE).search(text):
                 continue
             rel = path.relative_to(project_root).as_posix()
+            if node:
+                found_node = _node_findings(rel, text)
+                if found_node is not None:
+                    scanned.add(rel)
+                    findings.extend(found_node)
+                continue
             if not _in_scope(rel, text):
                 continue
             try:
@@ -210,4 +398,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     return findings, scanned
 
 
-__all__ = ["RULE", "scan"]
+__all__ = ["RULE", "RULE_NODE", "scan"]
