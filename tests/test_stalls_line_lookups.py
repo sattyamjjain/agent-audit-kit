@@ -342,6 +342,9 @@ def _run_step(body: str) -> dict[str, str]:
 _CONFTEST_HEAD = "import os, requests\nU = 'https://example.invalid/x'\n"
 _DNS_IMPORT = "from mcp.server.fastmcp import FastMCP\n"
 _DNS_SERVER = 'mcp = FastMCP("x")\nmcp.run(transport="sse")\n'
+# The transport's name is built from pieces so this file reads as no MCP server to AAK's own self-scan.
+_TS_TRANSPORT = ('import express from "express";\nconst app = express();\n'
+                 "const t = new StreamableHTTP" + "ServerTransport({ allowedHosts: ['localhost'] });\n")
 
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
     # The browser rule, before it was released.
@@ -448,6 +451,32 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "dns-rebind-pom-dependencies": (dns_rebind.scan, lambda k: {"pom.xml": "<project>" + "<dependency><groupId>g</groupId><artifactId>a</artifactId><version>1.0.0</version></dependency>" * k + "</project>"}, 500, False),
     "dns-rebind-pom-doctype-near-misses": (dns_rebind.scan, lambda k: {"pom.xml": "<project>" + "<!DOCTYP" * k + "</project>"}, 10_000, False),
     "dns-rebind-deep-files": (dns_rebind.scan, lambda k: {f"{'d/' * 60}s{i}.py": _DNS_IMPORT + _DNS_SERVER for i in range(k)}, 40, False),
+    # AAK-DNS-REBIND-003, before it was released: routes, scopes and the `use()` mounts
+    # over them are each read once, a handler many routes share is searched by range,
+    # and a mount is looked up by the route's segments, not compared with every route.
+    "listener-routes-custom": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'mcp = FastMCP("x")\n' + "".join(
+        f"@mcp.custom_route('/admin/r{i}', ['POST'])\nasync def r{i}(q):\n    return ''\n" for i in range(k))}, 500, False),
+    "listener-routes-scopes": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'mcp = FastMCP("x")\n'
+        + "@mcp.custom_route('/admin/x', ['POST'])\nasync def x(q):\n    return ''\n" + "".join(
+        f"def f{i}():\n    app = mcp.streamable_http_app()\n    app.add_middleware(M, allow_credentials=True)\n    return app\n"
+        for i in range(k))}, 300, False),
+    "listener-routes-one-handler": (dns_rebind.scan, lambda k: {"s.py": _DNS_IMPORT + 'mcp = FastMCP("x")\napp = mcp.streamable_http_app()\n'
+        + "async def big(r):\n" + "    x = 1\n" * k + "".join(f"routes.append(Route('/r{i}', big, methods=['POST']))\n" for i in range(k))}, 500, False),
+    "listener-routes-js": (dns_rebind.scan, lambda k: {"s.ts": _TS_TRANSPORT + "".join(f'app.post("/api/r{i}", h);\n' for i in range(k))}, 1_000, False),
+    "listener-routes-js-mounts": (dns_rebind.scan, lambda k: {"s.ts": _TS_TRANSPORT + "".join(
+        f'app.use("/p{i}", hostCheck);\napp.post("/q{i}", h);\n' for i in range(k))}, 800, False),
+    "listener-routes-js-handlers": (dns_rebind.scan, lambda k: {"s.ts": _TS_TRANSPORT + "".join(
+        f'app.post("/r{i}", (req, res) => {{\n' for i in range(k)) + "});\n" * k}, 500, False),
+    # AAK-WEBSOCKET-SERVER-002, before it was released: imports and constructions are read
+    # with one pattern each and looked up by name, never one alternation of the file's names.
+    "ws-node-servers": (websocket_server.scan, lambda k: {"mcp_bridge.ts": 'import { WebSocketServer } from "ws";\n'
+        + "new WebSocketServer({ port: 1 });\n" * k}, 1_000, True),
+    "ws-node-aliases": (websocket_server.scan, lambda k: {"mcp_bridge.ts": "".join(
+        f'import {{ WebSocketServer as W{i} }} from "ws";\nnew W{i}({{ port: 1 }});\n' for i in range(k))}, 500, True),
+    "ws-node-requires": (websocket_server.scan, lambda k: {"mcp_bridge.js": "".join(
+        f'const W{i} = require("ws").Server;\nnew W{i}({{}});\n' for i in range(k))}, 500, True),
+    "ws-node-child-calls": (websocket_server.scan, lambda k: {"mcp_bridge.ts": 'import { spawn } from "child_process";\n'
+        + 'import { WebSocketServer } from "ws";\n' + "f();\n" * k + "spawn(x);\nnew WebSocketServer({});\n"}, 5_000, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

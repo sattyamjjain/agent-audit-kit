@@ -93,6 +93,10 @@ SEVERITY_OVERRIDE_MODULES = {
         "AAK-STARTUP-HOOK-CONFTEST-001 is MEDIUM when the environment goes to a file "
         "write rather than a network call, the registry's HIGH"
     ),
+    "websocket_server.py": (
+        "AAK-WEBSOCKET-SERVER-002 escalates HIGH -> CRITICAL when the file that builds the "
+        "`ws` server also starts processes through child_process (the stdio bridge)"
+    ),
 }
 SEVERITY_OVERRIDE_RULES = {
     "AAK-IDE-TASK-001": {Severity.CRITICAL},
@@ -106,6 +110,7 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-TRUST-009": {Severity.HIGH},
     "AAK-STARTUP-HOOK-CONFTEST-001": {Severity.MEDIUM},
     "AAK-AGENT-TRUST-003": {Severity.MEDIUM},
+    "AAK-WEBSOCKET-SERVER-002": {Severity.CRITICAL},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the

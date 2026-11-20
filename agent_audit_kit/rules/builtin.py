@@ -205,6 +205,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SUPPLY-006": ["STA-08"],
     "AAK-DNS-REBIND-001": ["IVS-04", "CEK-08"],
     "AAK-DNS-REBIND-002": ["STA-02", "STA-08"],
+    "AAK-DNS-REBIND-003": ["IVS-04", "CEK-08"],
     "AAK-SPLUNK-TOKLOG-001": ["DSP-17", "LOG-06"],
     "AAK-GHA-IMMUTABLE-001": ["STA-02", "CCC-08"],
     "AAK-EXCEL-MCP-001": ["AIS-07", "IVS-04"],
@@ -7208,6 +7209,75 @@ _r(
     ),
 )
 
+# ---------------------------------------------------------------------------
+# AAK-DNS-REBIND-003 (2026-11-20): the routes beside a protected MCP endpoint.
+# jupyter-mcp-server before 1.0.3 (CVE-2026-77359) checked Host and Origin on
+# /mcp and neither on its FastMCP custom routes /api/connect and /api/stop.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-DNS-REBIND-003",
+    "State-changing routes beside an MCP endpoint, with no Host or Origin check",
+    "An MCP server that serves its MCP endpoint over HTTP registers other routes on the same "
+    "listener that change state (POST, PUT, PATCH or DELETE), and nothing checks the `Host` or "
+    "`Origin` of a request to them or asks it for a credential. The MCP SDKs' DNS-rebinding "
+    "protection (the Python SDK's transport security, the TypeScript transport's `allowedHosts`) "
+    "checks requests to the MCP endpoint alone, so a page a user visits can rebind its own name to "
+    "the listener's address and call the other routes from the browser. Binding to loopback does "
+    "not close that: rebinding is how a page reaches loopback. jupyter-mcp-server before 1.0.3 "
+    "(CVE-2026-77359, CVSS 4.0 9.3) checked Host and Origin on `/mcp` while its FastMCP "
+    "`custom_route` routes `PUT /api/connect` and `DELETE /api/stop` checked neither, so a page "
+    "replaced the runtime and document URLs, pointing the kernel client at a server of its "
+    "choosing, and stopped the notebook kernel. AAK-DNS-REBIND-001 reports the MCP endpoint "
+    "itself; this rule fires whether or not that endpoint is protected.",
+    Severity.CRITICAL,
+    Category.TRANSPORT_SECURITY,
+    "Check the Host of every request the listener serves, not only those to the MCP endpoint. In "
+    "Starlette or FastAPI put `TrustedHostMiddleware(allowed_hosts=[...])` on the outermost app, or, "
+    "for FastMCP `custom_route` routes, `add_middleware` it on the app `streamable_http_app()` "
+    "returns; in Express build the app with the SDK's `createMcpExpressApp()` or "
+    "`app.use(hostHeaderValidation([...]))`. Refuse a request whose `Origin` is not one you serve, "
+    "and require a credential on routes that reconnect, reconfigure or stop the server. "
+    "jupyter-mcp-server 1.0.3 does all three in one middleware in front of its management routes.",
+    sarif_name="McpListenerRoutesDnsRebind",
+    cve_references=["CVE-2026-77359"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-NETWORK-01"],
+    limitations=(
+        "Reads .py, .ts, .tsx, .js, .mjs and .cjs files that build an MCP transport "
+        "AAK-DNS-REBIND-001 reads, protected or not, and Python files that register a FastMCP "
+        "`custom_route` and import FastMCP or MCPServer from `mcp`, or import the `fastmcp` package; "
+        "test files and paths under a test directory are skipped. A route is a FastMCP "
+        "`custom_route`, a Starlette `Route` or `add_route`, a FastAPI `add_api_route` or "
+        "`api_route`, or a Flask `route` or `add_url_rule`, whose literal `methods` list names POST, "
+        "PUT, PATCH or DELETE (with no list, the framework's GET default is taken); a FastAPI or "
+        "Flask `post`, `put`, `patch` or `delete` decorator; or an Express, Fastify or Hono `post`, "
+        "`put`, `patch`, `delete` or `all` call on a name bound to `express()`, `Router()`, "
+        "`fastify()`, `new Hono()`, `polka()` or `createMcpExpressApp()`, or named app, router, "
+        "server, fastify, hono or api. A path or a methods list that is not a literal, a Starlette "
+        "`HTTPEndpoint` class, Fastify's `route({...})` and Hono's `on()` are not read, and neither "
+        "is the MCP transport's own path (`/mcp`, `/sse`, `/messages`). A Host or Origin read "
+        "anywhere in the file outside a comment (the header by name, Starlette's "
+        "`request.url.hostname`, `HTTP_HOST`, Django's `get_host()`, Flask's `request.host`, "
+        "`req.hostname` in TS/JS) is taken to check every route, with nothing to show the check "
+        "runs on them. In Python a `TrustedHostMiddleware` with an `allowed_hosts` other than its "
+        "default or `[\"*\"]` covers the routes of the app it is applied to, an app told by the name "
+        "it is assigned to in the same function: one on the app `streamable_http_app()`, `sse_app()` "
+        "or `http_app()` returns covers that app's `custom_route` routes only, one on any other app "
+        "every route in the file. In TS/JS an `X.use(...)` middleware with the word host or origin "
+        "in its name (`cors` never counts) covers the routes under its path, and so does an app from "
+        "`createMcpExpressApp()` unless it is given `0.0.0.0` or `::` without `allowedHosts`. A "
+        "credential counts as AAK-WEBSOCKET-SERVER-001 reads one (authorization, basic_auth, "
+        "api_key, apikey, bearer, or token or auth as a word) in the route's registration or its "
+        "handler, wherever the handler is defined in the file, and in TS/JS also a middleware on the "
+        "route, or `use`d over its path, with the word auth, token, bearer, jwt or credential, or "
+        "api and key, in its name; what the check does with it is not read. A route registered in a "
+        "file other than the one that serves MCP is not read, and middleware another file applies "
+        "to the app is not seen. A source file over 512 KB is not read."
+    ),
+)
+
 
 # ---------------------------------------------------------------------------
 # Splunk MCP Server token-cleartext logging (CVE-2026-20205, the Splunk MCP Server
@@ -12378,6 +12448,53 @@ _r(
 )
 
 _r(
+    "AAK-WEBSOCKET-SERVER-002",
+    "A Node `ws` server for MCP, model or policy traffic takes a handshake from any Origin",
+    "A Node `ws` (or `isomorphic-ws`) `WebSocketServer` for MCP, model or policy traffic is built "
+    "without `verifyClient`, or with one set only when a caller passes it, and nothing in the file "
+    "reads the Origin header or a credential. `ws` checks no Origin unless `verifyClient` does, and "
+    "a WebSocket handshake is not subject to the same-origin policy and gets no CORS preflight, so "
+    "any page open in a browser on that machine can open `ws://127.0.0.1:8000/message` and talk to "
+    "the server. Binding to loopback does not close that. Supergateway 2.4.0 through 4.2.2 "
+    "(CVE-2026-132121, CVSS 3.1 8.1) runs a stdio MCP server behind exactly such a socket in its "
+    "stdio-to-WebSocket mode, so a page initializes an MCP session and calls the server's tools with "
+    "the user's privileges. When the file also starts processes through `child_process`, the "
+    "stdio-bridge shape, the finding is CRITICAL.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Pass `verifyClient` and refuse a handshake whose `info.origin` is not one you serve (a "
+    "page's handshake always carries its Origin), or check `req.headers.origin` in the `upgrade` "
+    "handler before `handleUpgrade`. Or require a credential in the handshake that a page does not "
+    "hold, such as an `Authorization` header, which a browser page cannot set on a WebSocket. Set "
+    "the check unconditionally, not only when a caller supplies one.",
+    sarif_name="NodeWebSocketServerAnyOrigin",
+    cve_references=["CVE-2026-132121"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads .ts, .tsx, .js, .mjs, .cjs, .mts and .cts files that load `ws` or `isomorphic-ws` "
+        "(`import`, `require` or `import()`) and build `new WebSocketServer(...)` or "
+        "`new <ws>.Server(...)` under any name the file imports them by, in a file that starts "
+        "processes through `child_process` (spawn, exec, execFile, fork or a Sync form, by a name it "
+        "imports), has `mcp`, `policy`, `model`, `inference`, `agent` or `llm` as a word of its path, "
+        "or imports from `@modelcontextprotocol/`, `fastmcp` or `mcp-framework`. So a `ws` server "
+        "anywhere else is not read, and neither is a server built from a module the file loads some "
+        "other way. Paths with a tests, fixtures, examples, samples or demos directory, and "
+        "*.test.* and *.spec.* files, are skipped. A `verifyClient` key in the options object counts "
+        "as the check whatever it does, unless it sits in a spread (`...(f ? { verifyClient: f } : "
+        "{})`); options that are not an object literal, or spread in another object, are taken to "
+        "hold one. A file that reads `origin` anywhere, or mentions authorization, basic_auth, "
+        "api_key, apikey, bearer, or token or auth as a word, is taken to check it, with nothing to "
+        "show the check is applied to this server. CRITICAL needs the child_process call in the same "
+        "file, not inside the connection handler: Supergateway builds its server in one file and "
+        "spawns the stdio server in another, so its releases read HIGH. Supergateway 4.2.0 to 4.2.2 "
+        "check an API key in `verifyClient` when one is configured, and pass none otherwise, which "
+        "is the default; the rule reads the conditional spread, not the configuration. A source file "
+        "over 512 KB is not read."
+    ),
+)
+
+_r(
     "AAK-POLICY-OPTIONAL-TRUST-001",
     "A trust check reads a missing answer as a passing one",
     "A function takes a trust input as a parameter and refuses only on the explicit failure: "
@@ -15180,7 +15297,9 @@ _r(
     "directory (CVE-2026-91932, CVSS 8.5, CWE-20). Both are fixed in 3.1.4.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `flowise` to >= 3.1.4 and pin it. Treat the Custom MCP node's "
+    "Upgrade `flowise` to >= 3.1.4 and pin it; 3.1.4 clears these two CVEs only, since no "
+    "Flowise release is free of CVE-2026-119978 or CVE-2026-130796 (see "
+    "AAK-FLOWISE-CVE-2026-119978-001). Treat the Custom MCP node's "
     "`mcpServerConfig` as untrusted input even from authenticated users: "
     "allowlist the commands it may launch rather than validating the filename "
     "alone, and resolve them against a fixed directory instead of a "
@@ -19142,7 +19261,11 @@ _r(
     "chatflows and agentflows only to people you would trust with a shell on the "
     "server, keep the Flowise API off networks you do not trust, and plan the move off "
     "Flowise, or onto a fork that removes the package list from the custom function "
-    "sandbox.",
+    "sandbox. The releases this rule reports from 3.1.3 carry a second flaw no release fixes "
+    "either, CVE-2026-130796 (NVD 2026-11-17, CVSS 3.1 8.2): an unauthenticated GET of "
+    "`/api/v1/public-chatflows/:id` returns the bearer token of the chatflow's MCP server, and "
+    "the token calls the chatflow through `/api/v1/mcp/:chatflowId` past its API key. Make no "
+    "chatflow with an MCP server public, and treat any such token as already disclosed.",
     sarif_name="FlowiseCustomFunctionAllowlistWrite",
     cve_references=["CVE-2026-119978"],
     owasp_agentic_references=["ASI04", "ASI05"],

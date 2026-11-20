@@ -1,4 +1,4 @@
-"""AAK-DNS-REBIND-001 / -002 — MCP SDK DNS-rebinding class.
+"""AAK-DNS-REBIND-001 / -002 / -003 — MCP SDK DNS-rebinding class.
 
 April 2026 cluster: CVE-2025-66414, CVE-2025-66416, CVE-2026-35568,
 CVE-2026-35577. The upstream Python, Java and Apollo MCP servers shipped
@@ -67,6 +67,14 @@ given a new id.
 stdio server has no listener to rebind onto — the advisory says only the
 network mode was reachable. A network transport must be selected
 explicitly for this to fire.
+
+AAK-DNS-REBIND-003 (CRITICAL) is the same attack on the routes beside the MCP
+endpoint. The SDK's check, where it is on, covers the MCP endpoint alone, so a
+server that registers management routes on the same listener (jupyter-mcp-server's
+`PUT /api/connect` and `DELETE /api/stop`, CVE-2026-77359) leaves them open to a
+rebound page whatever 001 says about `/mcp`. A file is read for it when it carries
+a marker 001 reads, protected or not, or registers a FastMCP `custom_route`, which
+only the HTTP transports serve. What covers a route is in `_listener_routes`.
 """
 
 from __future__ import annotations
@@ -85,11 +93,16 @@ from ._helpers import (
     find_line_number,
     in_skip_dir,
     make_finding,
+    parse_python,
     read_bytes_capped,
     read_text_capped,
     refuse,
+    refusing_overflow,
     sub_comments,
+    walk_tree,
 )
+from ._http_routes import TEST_FILE_RE
+from ._listener_routes import PY_ROUTE_HINT_RE, OpenRoute, js_open_routes, py_open_routes
 from ._versions import exact_version, parse_range
 
 _PY_PATCHED = (1, 23, 0)
@@ -187,6 +200,12 @@ _WILDCARD_ALLOWLIST_RE = re.compile(
     r"""(?:TrustedHostMiddleware\s*(?:,|\(\s*\w+\s*,)\s*)?(?:allowed_hosts|allowedHosts|ALLOWED_HOSTS)\s*[:=]\s*"""
     r"""[\[(]\s*["']\*["']\s*,?\s*[\])]"""
 )
+
+# AAK-DNS-REBIND-003: a FastMCP custom route, served only by the HTTP transports, and
+# the standalone `fastmcp` package, whose FastMCP has them too.
+_PY_CUSTOM_ROUTE_RE = re.compile(r"\.\s*custom_route\s*\(")
+_PY_FASTMCP_PKG_RE = re.compile(r"^[ \t]*(?:from[ \t]+fastmcp(?:\.\w+)*[ \t]+import|import[ \t]+fastmcp)\b", re.MULTILINE)
+_ROUTES_SHOWN = 8
 
 _LINE_COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/|\#.*?$", re.MULTILINE | re.DOTALL)
 _LINE_ONLY_COMMENT_RE = re.compile(r"//.*?$|\#.*?$", re.MULTILINE | re.DOTALL)
@@ -507,6 +526,64 @@ def _evidence(candidate: _Candidate, state: str | None) -> str:
             "it to clear this finding.")
 
 
+# ---------------------------------------------------------------------------
+# Routes beside the MCP endpoint: AAK-DNS-REBIND-003
+# ---------------------------------------------------------------------------
+
+
+def _serves_mcp_over_http(path: Path, text: str) -> bool:
+    """Whether a file serves MCP over HTTP: a marker 001 reads, whether or not the
+    protection is on, or a FastMCP `custom_route`."""
+    if path.suffix not in _PY_EXTS:
+        return bool(_TS_STREAMABLE_RE.search(text))
+    if _py_transport_marker(text) is not None:
+        return True
+    return bool(_PY_CUSTOM_ROUTE_RE.search(text)) and bool(
+        _PY_SDK_SERVER_RE.search(text) or _PY_FASTMCP_PKG_RE.search(text))
+
+
+def _open_routes(path: Path, text: str) -> list[OpenRoute]:
+    """The file's state-changing routes that nothing in it covers."""
+    stripped = _strip_comments(text)
+    if path.suffix not in _PY_EXTS:
+        return js_open_routes(text, stripped)
+    if not PY_ROUTE_HINT_RE.search(text):
+        return []
+    try:
+        tree = parse_python(text, path)
+    except (SyntaxError, ValueError):
+        return []
+    with refusing_overflow(path):
+        return walk_tree(py_open_routes, tree, text, stripped)
+    return []
+
+
+def _routes_evidence(routes: list[OpenRoute]) -> str:
+    shown = ", ".join(route.label() for route in routes[:_ROUTES_SHOWN])
+    if len(routes) > _ROUTES_SHOWN:
+        shown += f" and {len(routes) - _ROUTES_SHOWN} more"
+    one = len(routes) == 1
+    noun, them = ("route", "it") if one else ("routes", "them")
+    return (f"{shown}: state-changing {noun} on the listener that serves MCP, with no Host or Origin check in "
+            f"this file and no credential read on the {noun}. The MCP SDK's Host check, where it is on, covers "
+            "only the MCP endpoint, so a page whose name is rebound to this listener can call "
+            f"{them}, on loopback too (CVE-2026-77359).")
+
+
+def _check_listener_routes(path: Path, text: str, project_root: Path, scanned: set[str]) -> Finding | None:
+    if not _serves_mcp_over_http(path, text):
+        return None
+    relative = path.relative_to(project_root)
+    if TEST_FILE_RE.search(relative.as_posix()):
+        return None
+    rel = str(relative)
+    scanned.add(rel)
+    routes = _open_routes(path, text)
+    if not routes:
+        return None
+    return make_finding("AAK-DNS-REBIND-003", rel, _routes_evidence(routes), line_number=routes[0].line)
+
+
 def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     # Collect every file that exposes a StreamableHTTP server. Then check
@@ -534,6 +611,11 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
         candidate = _candidate(path, text)
         if candidate is not None:
             candidates.append(candidate)
+        # 003 reads each file alone: the project-wide allow-list above clears 001,
+        # and says nothing about what covers the routes beside it.
+        routes = _check_listener_routes(path, text, project_root, scanned)
+        if routes is not None:
+            findings.append(routes)
 
     seen: dict[Path, str | None] = {}
     for candidate in candidates:

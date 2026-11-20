@@ -13,14 +13,14 @@
 | Secret Exposure | 22 |
 | Agent Config | 21 |
 | Legal Compliance | 19 |
+| Transport Security | 19 |
 | Hook Injection | 17 |
-| Transport Security | 17 |
 | Taint Analysis | 15 |
 | A2A Protocol | 13 |
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **509** |
+| **Total** | **511** |
 
 <!-- END rules-summary -->
 

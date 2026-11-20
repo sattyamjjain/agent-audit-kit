@@ -18,6 +18,53 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-20 (unreleased): two records the watcher has not filed, DNS rebinding on an MCP server's management routes and Node WebSocket bridges with no Origin check, two new rules
+
+NVD published CVE-2026-132121 on 18 Nov and CVE-2026-77359 on 19 Nov, and the watcher has filed
+neither. Each is read here against NVD's API record and the project's source at its git tags, on
+2026-11-20, and NVD text is quoted from the API records. Neither is a version pin alone: each is a
+server that checks the browser's origin in one place and not in another, a shape other servers
+share, so each gets a code rule, measured on firing and silent fixtures
+(tests/test_dns_rebind_management_routes.py, tests/test_websocket_server_ws_node.py).
+
+### CVE-2026-77359: new rule 2026-11-20
+
+**jupyter-mcp-server's management routes get `AAK-DNS-REBIND-003` (CRITICAL).** NVD: before 1.0.3,
+standalone streamable-http mode "validates Host and Origin values for /mcp but does not apply the
+same browser-origin controls to the state-changing /api/connect and /api/stop management routes",
+so a page that rebinds its name to the listener replaces the runtime and document URLs and stops
+the kernel. In the source, 1.0.2's server.py registers both as FastMCP `custom_route` routes on the
+app that serves `/mcp`, where the SDK's check, which runs inside the MCP transport, never sees them;
+the rule fires there on line 143 and names both. 1.0.3 (the project's PR 262, "Protect management
+routes") puts a middleware in front of them that reads each request's Host and Origin, and the rule
+is silent. It reads any file that serves MCP over HTTP as `AAK-DNS-REBIND-001` does, protected or
+not, and reports the POST, PUT, PATCH and DELETE routes beside the MCP endpoint that no Host or
+Origin read, host allow-list on their app, or credential on the route covers. The `jupyter-mcp-server`
+package on PyPI is not pinned: a project that installs 1.0.2 and runs it, without its source in the
+tree, gets no finding. CVSS 4.0 9.3, NVD's only metric.
+
+### CVE-2026-132121: new rule 2026-11-20
+
+**Node `ws` servers with no Origin check get `AAK-WEBSOCKET-SERVER-002` (HIGH, CRITICAL beside a
+`child_process` call).** NVD: Supergateway 2.4.0 through 4.2.2 "contains a cross-site WebSocket
+hijacking vulnerability in stdio-to-WebSocket mode", so a page opens `/message`, "even against
+localhost-bound gateways", and calls the wrapped stdio MCP server's tools. In the source, 2.4.0,
+3.4.3, 4.0.0 and 4.1.0 build `new WebSocketServer({ path, server })` in src/server/websocket.ts
+with no `verifyClient`, and 4.2.0 to 4.2.2 add `...(verifyClient ? { verifyClient } : {})`, whose
+caller passes a check of an API key that lets every request through when no key is configured, the
+default. The rule fires HIGH on websocket.ts in all seven releases: the stdio server is spawned in
+another file, src/gateways/stdioToWs.ts, and CRITICAL needs the `child_process` call in the file
+that builds the server. There is no fixed release. The `supergateway` package is not pinned, so an
+MCP config that launches it with `npx` gets no finding from this rule.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-77359 | 9.3 | `jupyter-mcp-server` (PyPI) | **New rule** `AAK-DNS-REBIND-003` (CRITICAL): state-changing routes beside an MCP endpoint that no Host or Origin check, allow-list or credential covers; fires on 1.0.2's server.py, silent on 1.0.3's. | not filed |
+| CVE-2026-132121 | 8.1 | `supergateway` (npm) | **New rule** `AAK-WEBSOCKET-SERVER-002` (HIGH; CRITICAL when the same file starts processes): a Node `ws` server with no `verifyClient`, or one set only when a caller passes it; fires on src/server/websocket.ts from 2.4.0 to 4.2.2. | not filed |
+
+CVSS is NVD's CVSS 3.1 score where it has one, and its CVSS 4.0 score for CVE-2026-77359, which has
+no other.
+
 ## 2026-11-14 (unreleased): #1238 to #1241 and a fifth pgEdge advisory, two records on the server image rule, a new rule for its bundled clients and one for plperl tools
 
 The watcher filed #1238 to #1241 on 12 Nov: four records GitHub's CNA published for the pgEdge

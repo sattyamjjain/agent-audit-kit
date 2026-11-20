@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-18T19:18:53Z",
+  "last_updated": "2026-11-20T05:12:53Z",
   "aak_version": "0.6.36",
-  "rule_count": 509,
+  "rule_count": 511,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -173,7 +173,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 128,
+      "rule_density": 129,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -1455,6 +1455,14 @@
           "id": "AAK-WEBSOCKET-SERVER-001",
           "severity": "medium",
           "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-WEBSOCKET-SERVER-002",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-132121"
+          ],
           "aicm_references": []
         }
       ]
@@ -7440,7 +7448,7 @@
     {
       "asi_id": "ASI07",
       "title": "Insecure Inter-Agent Communication",
-      "rule_density": 26,
+      "rule_density": 27,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -7534,6 +7542,17 @@
           "aicm_references": [
             "STA-02",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-DNS-REBIND-003",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-77359"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "IVS-04"
           ]
         },
         {

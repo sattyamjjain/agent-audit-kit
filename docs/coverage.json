@@ -1363,6 +1363,25 @@
       "title": "Vulnerable MCP SDK version pinned (DNS-rebinding fix missing)"
     },
     {
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-77359"
+      ],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [
+        "Sign and verify MCP messages (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI07 Insecure Inter-Agent Communication"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-DNS-REBIND-003",
+      "severity": "critical",
+      "title": "State-changing routes beside an MCP endpoint, with no Host or Origin check"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-26015"
@@ -12880,6 +12899,27 @@
       "rule_id": "AAK-WEBSOCKET-SERVER-001",
       "severity": "medium",
       "title": "A WebSocket server for MCP, model or policy traffic leaves its defaults open"
+    },
+    {
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-132121"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-WEBSOCKET-SERVER-002",
+      "severity": "high",
+      "title": "A Node `ws` server for MCP, model or policy traffic takes a handshake from any Origin"
     }
   ],
   "schema_version": "1",
@@ -12897,7 +12937,7 @@
       "supply-chain": 244,
       "taint-analysis": 15,
       "tool-poisoning": 34,
-      "transport-security": 17,
+      "transport-security": 19,
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
@@ -12905,27 +12945,27 @@
       "Art. 13 - Transparency": 34,
       "Art. 14 - Human Oversight": 22,
       "Art. 15 - Robustness & Security": 391,
-      "Art. 9 - Risk Management": 262
+      "Art. 9 - Risk Management": 263
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 273,
-      "Constrain and sandbox tool execution (p.11)": 243,
-      "Design for boundaries (p.10)": 377,
+      "Constrain and sandbox tool execution (p.11)": 244,
+      "Design for boundaries (p.10)": 378,
       "Filter and monitor output pipelines and chained execution (p.12)": 138,
       "Instrument for logging and detection (p.13)": 26,
       "Scan local network for open or vulnerable MCP servers (p.14)": 345,
-      "Sign and verify MCP messages (p.12)": 357,
+      "Sign and verify MCP messages (p.12)": 358,
       "Track and patch MCP related vulnerabilities (p.13)": 278,
-      "Validate parameters (p.11)": 247
+      "Validate parameters (p.11)": 248
     },
     "by_owasp_agentic": {
       "ASI01": 19,
-      "ASI02": 128,
+      "ASI02": 129,
       "ASI03": 146,
       "ASI04": 271,
       "ASI05": 118,
       "ASI06": 6,
-      "ASI07": 26,
+      "ASI07": 27,
       "ASI08": 14,
       "ASI09": 17,
       "ASI10": 5
@@ -12937,20 +12977,20 @@
       "MCP04:2025": 211,
       "MCP05:2025": 134,
       "MCP06:2025": 5,
-      "MCP07:2025": 111,
+      "MCP07:2025": 112,
       "MCP08:2025": 2,
       "MCP09:2025": 5,
       "MCP10:2025": 20
     },
     "by_severity": {
-      "critical": 103,
-      "high": 227,
+      "critical": 104,
+      "high": 228,
       "info": 5,
       "low": 22,
       "medium": 152
     },
-    "total_cves_covered": 511,
-    "total_rules": 509
+    "total_cves_covered": 513,
+    "total_rules": 511
   },
   "tool": "agent-audit-kit"
 }
