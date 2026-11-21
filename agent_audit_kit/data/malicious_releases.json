@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-18T19:14:11Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go. On 2026-11-18, scripts/refresh_bundled_malicious.py added MAL-2026-19223, MAL-2026-19224, MAL-2026-19235, MAL-2026-19258, MAL-2026-19922, MAL-2026-19939, MAL-2026-19941, MAL-2026-19943, MAL-2026-19945, MAL-2026-20043, MAL-2026-20044, MAL-2026-20062, MAL-2026-20101, MAL-2026-20107, MAL-2026-20108 and MAL-2026-20129, takeovers of established packages among GitHub's malware advisories published since 2026-11-12, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).",
+  "generated_at": "2026-11-20T14:14:20Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go. On 2026-11-18, scripts/refresh_bundled_malicious.py added MAL-2026-19223, MAL-2026-19224, MAL-2026-19235, MAL-2026-19258, MAL-2026-19922, MAL-2026-19939, MAL-2026-19941, MAL-2026-19943, MAL-2026-19945, MAL-2026-20043, MAL-2026-20044, MAL-2026-20062, MAL-2026-20101, MAL-2026-20107, MAL-2026-20108 and MAL-2026-20129, takeovers of established packages among GitHub's malware advisories published since 2026-11-12, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-20258, MAL-2026-20276, MAL-2026-20293, GHSA-xgr8-c5gp-x7xf and GHSA-jcx6-j558-wppc, takeovers of established packages among GitHub's malware advisories published since 2026-11-17, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -209,6 +209,51 @@
       "versions": ["3.1.4"],
       "modified": "2026-11-18T16:30:04.705992629Z",
       "url": "https://osv.dev/vulnerability/MAL-2026-20129"
+    },
+    {
+      "id": "MAL-2026-20258",
+      "aliases": ["GHSA-fg8p-3m89-pwhf"],
+      "ecosystem": "npm",
+      "name": "@cexy/wonfca",
+      "versions": ["1.2.1", "1.2.2"],
+      "modified": "2026-11-19T22:45:06.179597676Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20258"
+    },
+    {
+      "id": "MAL-2026-20276",
+      "aliases": ["GHSA-qhrc-mfjw-xwq3"],
+      "ecosystem": "npm",
+      "name": "@eryxenx/fca",
+      "versions": ["1.3.0", "1.3.1", "1.3.2"],
+      "modified": "2026-11-20T01:45:07.662090151Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20276"
+    },
+    {
+      "id": "MAL-2026-20293",
+      "aliases": ["GHSA-642c-p559-rmr5"],
+      "ecosystem": "npm",
+      "name": "truffle-kit",
+      "versions": ["3.3.2"],
+      "modified": "2026-11-20T05:15:04.530928210Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20293"
+    },
+    {
+      "id": "GHSA-xgr8-c5gp-x7xf",
+      "aliases": [],
+      "ecosystem": "npm",
+      "name": "@corepassinc/remy-core-bin-win32-x64",
+      "versions": ["0.1.0-rc.30"],
+      "modified": "2026-11-20T13:22:47Z",
+      "url": "https://github.com/advisories/GHSA-xgr8-c5gp-x7xf"
+    },
+    {
+      "id": "GHSA-jcx6-j558-wppc",
+      "aliases": [],
+      "ecosystem": "npm",
+      "name": "@metagl/sdk-render",
+      "versions": ["4.0.6"],
+      "modified": "2026-11-20T13:50:45Z",
+      "url": "https://github.com/advisories/GHSA-jcx6-j558-wppc"
     }
   ],
   "oci": [
