@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 120,
+  "count": 121,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -389,6 +389,10 @@
     {
       "module": "skill_composition",
       "name": "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)"
+    },
+    {
+      "module": "skill_install_names",
+      "name": "Skill install and run lines vs the malicious-release feed (AAK-SKILL-INSTALL-*)"
     },
     {
       "module": "skill_lifecycle_attribution",

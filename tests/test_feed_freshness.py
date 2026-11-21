@@ -119,6 +119,28 @@ def test_feed_staleness(generated: str, limit: int, age: str, stale: str) -> Non
     assert malicious_feed.feed_staleness({"generatedAt": generated}, limit, now=NOW) == {"ageDays": age, "stale": stale}
 
 
+def test_a_bundled_copy_checked_since_it_was_generated_is_measured_from_the_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The daily refresh records `checked_at` after a quiet day, when `generated_at`
+    stands still: a copy generated five days ago and checked yesterday is a day old.
+    The age is the later of the two, so an older `checked_at` changes nothing, and the
+    stale warning names both dates."""
+    data = json.loads(malicious_feed.BUNDLED_FEED.read_text(encoding="utf-8"))
+    bundled = tmp_path / "malicious_releases.json"
+    bundled.write_text(json.dumps({**data, "generated_at": _stamp(5), "checked_at": _stamp(1)}))
+    monkeypatch.setattr(malicious_feed, "BUNDLED_FEED", bundled)
+    summary = malicious_feed.feed_summary()
+    assert (summary["origin"], summary["checkedAt"]) == ("bundled", _stamp(1))
+    assert malicious_feed.feed_staleness(summary, 3, now=NOW) == {"ageDays": "1.0", "stale": "false"}
+    assert malicious_feed.feed_staleness({**summary, "checkedAt": _stamp(9)}, 3, now=NOW) == {
+        "ageDays": "5.0", "stale": "true"}
+    assert malicious_feed.feed_staleness({"generatedAt": "", "checkedAt": _stamp(2)}, 3, now=NOW)["ageDays"] == "2.0"
+    stale = {**summary, "checkedAt": _stamp(4), **malicious_feed.feed_staleness({**summary, "checkedAt": _stamp(4)}, 3, now=NOW)}
+    [warning] = malicious_feed.stale_feed_warnings({"maliciousReleases": stale})
+    assert f"bundled copy from {_stamp(5)[:10]}, last checked {_stamp(4)[:10]} (4.0 days old" in warning
+
+
 def test_a_summary_without_generated_at_is_stale() -> None:
     assert malicious_feed.feed_staleness({"error": "OSError: gone"}, 3, now=NOW) == {"ageDays": "unknown", "stale": "true"}
 

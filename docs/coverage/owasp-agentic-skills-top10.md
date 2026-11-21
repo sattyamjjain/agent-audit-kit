@@ -13,7 +13,7 @@ Taxonomy version: **1.0 (2026)** (an OWASP incubator project). Coverage is parti
 | OWASP | Title | Coverage | # rules | Rule IDs | Notes |
 | --- | --- | :---: | :---: | --- | --- |
 | **AST01** | Malicious Skills | Full | 5 | `AAK-SKILL-001`, `AAK-SKILL-002`, `AAK-SKILL-003`, `AAK-SKILL-004`, `AAK-SKILL-006` |  |
-| **AST02** | Supply Chain Compromise | Partial | 1 | `AAK-AST02-001` |  |
+| **AST02** | Supply Chain Compromise | Full | 3 | `AAK-AST02-001`, `AAK-SKILL-INSTALL-MALICIOUS-001`, `AAK-SKILL-INSTALL-UNPINNED-002` |  |
 | **AST03** | Over-Privileged Skills | Partial | 1 | `AAK-COMPOSE-003` |  |
 | **AST04** | Insecure Metadata | Full | 3 | `AAK-AST04-001`, `AAK-SKILL-004`, `AAK-SKILL-005` |  |
 | **AST05** | Untrusted External Instructions | None | 0 | — | Gap, not a boundary: no rule yet reads the external documents a skill tells the agent to load. `AAK-AST02-001` flags unpinned code and packages, not textual instructions. |

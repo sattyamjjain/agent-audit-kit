@@ -11700,6 +11700,54 @@
       "title": "SKILL.md body hides an instruction in an HTML comment"
     },
     {
+      "category": "agentic-skill",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-SKILL-INSTALL-MALICIOUS-001",
+      "severity": "critical",
+      "title": "Agent skill tells the agent to install a package listed as malicious"
+    },
+    {
+      "category": "agentic-skill",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-SKILL-INSTALL-UNPINNED-002",
+      "severity": "medium",
+      "title": "Agent skill runs a package through a launcher with no exact version"
+    },
+    {
       "category": "tool-poisoning",
       "cve_references": [],
       "eu_ai_act": [],
@@ -12927,7 +12975,7 @@
     "by_category": {
       "a2a-protocol": 13,
       "agent-config": 21,
-      "agentic-skill": 3,
+      "agentic-skill": 5,
       "composition": 3,
       "hook-injection": 17,
       "legal-compliance": 19,
@@ -12941,29 +12989,29 @@
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 274,
+      "Art. 10 - Data Governance": 276,
       "Art. 13 - Transparency": 34,
       "Art. 14 - Human Oversight": 22,
-      "Art. 15 - Robustness & Security": 391,
-      "Art. 9 - Risk Management": 263
+      "Art. 15 - Robustness & Security": 393,
+      "Art. 9 - Risk Management": 264
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 273,
-      "Constrain and sandbox tool execution (p.11)": 244,
-      "Design for boundaries (p.10)": 378,
-      "Filter and monitor output pipelines and chained execution (p.12)": 138,
+      "Choose supported MCP projects when possible (p.10)": 275,
+      "Constrain and sandbox tool execution (p.11)": 245,
+      "Design for boundaries (p.10)": 379,
+      "Filter and monitor output pipelines and chained execution (p.12)": 139,
       "Instrument for logging and detection (p.13)": 26,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 345,
-      "Sign and verify MCP messages (p.12)": 358,
-      "Track and patch MCP related vulnerabilities (p.13)": 278,
-      "Validate parameters (p.11)": 248
+      "Scan local network for open or vulnerable MCP servers (p.14)": 347,
+      "Sign and verify MCP messages (p.12)": 360,
+      "Track and patch MCP related vulnerabilities (p.13)": 280,
+      "Validate parameters (p.11)": 249
     },
     "by_owasp_agentic": {
       "ASI01": 19,
       "ASI02": 129,
       "ASI03": 146,
-      "ASI04": 271,
-      "ASI05": 118,
+      "ASI04": 273,
+      "ASI05": 119,
       "ASI06": 6,
       "ASI07": 27,
       "ASI08": 14,
@@ -12983,14 +13031,14 @@
       "MCP10:2025": 20
     },
     "by_severity": {
-      "critical": 104,
+      "critical": 105,
       "high": 228,
       "info": 5,
       "low": 22,
-      "medium": 152
+      "medium": 153
     },
     "total_cves_covered": 513,
-    "total_rules": 511
+    "total_rules": 513
   },
   "tool": "agent-audit-kit"
 }

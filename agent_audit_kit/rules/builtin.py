@@ -427,6 +427,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-STARTUP-HOOK-CONFTEST-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-001": ["STA-08"],
     "AAK-MALICIOUS-RELEASE-002": ["STA-08"],
+    "AAK-SKILL-INSTALL-MALICIOUS-001": ["STA-08"],
+    "AAK-SKILL-INSTALL-UNPINNED-002": ["STA-08"],
     "AAK-MCP-CODEEXEC-SANDBOX-001": ["STA-08", "IVS-04"],
     "AAK-MCP-CODEEXEC-SANDBOX-002": ["IVS-04", "AIS-07"],
     "AAK-MALICIOUS-EXTENSION-001": ["STA-08", "IVS-04"],
@@ -14296,6 +14298,84 @@ _r(
         "the rule quiet on ordinary projects at the cost of missing partial "
         "pinning. It reads the shapes listed above and will miss an unpinned "
         "resource fetched through an indirection it cannot follow."
+    ),
+)
+
+_r(
+    "AAK-SKILL-INSTALL-MALICIOUS-001",
+    "Agent skill tells the agent to install a package listed as malicious",
+    "A skill bundle's SKILL.md, README.md or INSTALL.md, in a code block, an inline code span or a "
+    "`$ ` prompt line, or a string of its manifests, gives a command that installs or runs a PyPI or "
+    "npm package the offline malicious-release feed lists: `pip install`, `uv add`, `npm install` and "
+    "the other install verbs, or a launcher run such as `uvx` or `npx -y`. A skill is instructions the "
+    "agent follows, so the line is a command that will run with the agent's access. On 2026-11-17 "
+    "GitHub and OSV listed `mcp-aevo-server` on PyPI as malware (GHSA-g97f-vppp-p428, MAL-2026-20068): "
+    "it had registered a name the aevo-trading-skills skill told agents to install, and it took "
+    "credentials from environment variables and started a thread waiting for remote commands. The "
+    "same launch in an MCP config was reported by AAK-MALICIOUS-RELEASE-002; in a skill nothing read "
+    "it. CRITICAL when the entry lists every release of the package or the command pins a listed "
+    "release; HIGH when the command states no exact version and an entry lists some releases its "
+    "range admits.",
+    Severity.CRITICAL,
+    Category.AGENTIC_SKILL,
+    "Remove the line from the skill, or replace it with a version you have reviewed, pinned exactly "
+    "(`pkg==1.2.3`, `pkg@1.2.3`). Run `agent-audit-kit update` so the cached feed is current before "
+    "trusting a clean result: the bundled copy lists only takeovers of established packages, and a "
+    "newly registered malicious name reaches the scan through the cached feed. Treat a machine whose "
+    "agent ran the skill as compromised, and rotate the credentials its environment held.",
+    sarif_name="AgentSkillInstallsMaliciousPackage",
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-04"],
+    owasp_ast_references=["AST02"],
+    incident_references=["GHSA-g97f-vppp-p428", "MAL-2026-20068"],
+    limitations=(
+        "Reads each directory holding a SKILL.md (outside the skipped directories): the SKILL.md, a "
+        "README.md and an INSTALL.md in that directory, and the string values of its SKILL.md "
+        "frontmatter, skill.json, manifest.json and package.json. In the Markdown only commands are "
+        "read: each line of a fenced code block, each single-backtick inline code span and each line "
+        "starting `$ ` or `> `, so a command written in prose, or in another file the skill links, is "
+        "not. A manifest string is read whole as a command line, prose included. Commands are split "
+        "as shell words (whitespace when quoting does not close) and read at every word for a launcher "
+        "AAK-MALICIOUS-RELEASE-002 reads (npx, bunx, pnpx, npm exec, pnpm dlx, yarn dlx, bun x, uvx, uv "
+        "tool run, uv run --with, pipx run) and for an install verb: pip, pip3, python -m pip and uv "
+        "pip install, uv add, pipx install, npm i, install and add, and pnpm, yarn and bun add. A "
+        "requirements file (`-r`), an editable path (`-e`), a path, a URL and a git reference name no "
+        "registry package and are not matched, and neither is a package a requirements file or a "
+        "script the command runs would install. Packages are matched as AAK-MALICIOUS-RELEASE-001 and "
+        "-002 match them, against the same feed: the cached copy `agent-audit-kit update` writes, else "
+        "the bundled one, which lists takeovers of established packages and not new names such as "
+        "mcp-aevo-server, so with the bundled copy alone that skill is silent. A finding's line is the "
+        "first line holding the command, so a manifest string repeated on several lines reports the "
+        "first. Only the first 2,000 string values of a manifest, 32 levels deep, are read, and a "
+        "file over 512 KB is not read."
+    ),
+)
+
+_r(
+    "AAK-SKILL-INSTALL-UNPINNED-002",
+    "Agent skill runs a package through a launcher with no exact version",
+    "A skill bundle tells the agent to run a PyPI or npm package through a launcher (`uvx pkg`, "
+    "`npx -y pkg`, `pipx run pkg`, `pnpm dlx pkg`, `bunx pkg`) with no exact version: none, a tag such "
+    "as `@latest`, or a range. The launcher fetches whatever release the registry serves as newest "
+    "each time the skill runs it, so a release published tomorrow, by the maintainer or by whoever "
+    "takes the name over, runs with the agent's access without anyone reviewing it. Not reported "
+    "where AAK-SKILL-INSTALL-MALICIOUS-001 reports the same package on the same line.",
+    Severity.MEDIUM,
+    Category.AGENTIC_SKILL,
+    "Pin the release the skill was written against (`uvx pkg==1.2.3`, `npx -y pkg@1.2.3`), and move "
+    "the pin when you have reviewed a newer one.",
+    sarif_name="AgentSkillUnpinnedLauncherRun",
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-01"],
+    owasp_ast_references=["AST02"],
+    incident_references=["GHSA-g97f-vppp-p428"],
+    limitations=(
+        "Reads the commands AAK-SKILL-INSTALL-MALICIOUS-001 reads, and reports only launcher runs "
+        "of a registry package, judged as AAK-SUPPLY-001 judges an MCP launch: an install verb "
+        "(`pip install pkg`, `npm install pkg`) is AAK-AST02-001's question, which reports a bundle "
+        "that pins nothing anywhere, and is not reported here. A git or URL reference, a path and "
+        "`uv run` of a project's own command are not reported. A run behind a variable "
+        "(`uvx $TOOL`) names no package and is not read."
     ),
 )
 

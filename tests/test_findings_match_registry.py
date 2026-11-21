@@ -97,6 +97,10 @@ SEVERITY_OVERRIDE_MODULES = {
         "AAK-WEBSOCKET-SERVER-002 escalates HIGH -> CRITICAL when the file that builds the "
         "`ws` server also starts processes through child_process (the stdio bridge)"
     ),
+    "skill_install_names.py": (
+        "AAK-SKILL-INSTALL-MALICIOUS-001 is HIGH, below the registry's CRITICAL, for a command "
+        "with no exact version when the feed lists only some releases of the package"
+    ),
 }
 SEVERITY_OVERRIDE_RULES = {
     "AAK-IDE-TASK-001": {Severity.CRITICAL},
@@ -111,6 +115,7 @@ SEVERITY_OVERRIDE_RULES = {
     "AAK-STARTUP-HOOK-CONFTEST-001": {Severity.MEDIUM},
     "AAK-AGENT-TRUST-003": {Severity.MEDIUM},
     "AAK-WEBSOCKET-SERVER-002": {Severity.CRITICAL},
+    "AAK-SKILL-INSTALL-MALICIOUS-001": {Severity.HIGH},
 }
 
 # The fixtures root fires most scanners. These three only read configs at the

@@ -7,7 +7,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-511-blue.svg" alt="Rules: 511"></a>
+  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-513-blue.svg" alt="Rules: 513"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.3-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.3"></a>
   <!-- fp-badge --><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
@@ -74,7 +74,7 @@ until their precision is published in
 
 ## What it finds
 
-<!-- rule-count:total -->511<!-- /rule-count --> rules across 14 security categories:
+<!-- rule-count:total -->513<!-- /rule-count --> rules across 14 security categories:
 
 | Category | Rules | What it detects |
 |----------|:-----:|-----------------|
@@ -91,7 +91,7 @@ until their precision is published in
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->27<!-- /category-count --> | Project-scoped trust, untrusted workspace escalation, a model provider re-pointed in `.claude/settings.json` or Codex's `config.toml` |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 server cards |
 | **Composition** | <!-- category-count:COMPOSITION -->3<!-- /category-count --> | Risk that exists only between components, not in any one of them |
-| **Agentic Skills** | <!-- category-count:AGENTIC_SKILL -->3<!-- /category-count --> | OWASP Agentic Skills Top 10 surface in skill bundles |
+| **Agentic Skills** | <!-- category-count:AGENTIC_SKILL -->5<!-- /category-count --> | OWASP Agentic Skills Top 10 surface in skill bundles |
 
 Every finding carries severity, evidence, a file and line, and remediation.
 Full detail per rule is in the [rule reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules.md).
@@ -150,7 +150,7 @@ agent-audit-kit vex  . -o vex.openvex.json
 ```
 
 Every control row cites a real clause, and a row the scanner cannot evidence
-says so instead of printing a tick. Full list of the <!-- rule-count:total -->511<!-- /rule-count -->
+says so instead of printing a tick. Full list of the <!-- rule-count:total -->513<!-- /rule-count -->
 rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/owasp-mapping.md).
 
 ### OWASP Agentic Top 10 coverage
@@ -165,8 +165,8 @@ it detects the risk, or the absence of a control the entry prescribes for it.
 | **ASI01** | Agent Goal Hijack | 19 |
 | **ASI02** | Tool Misuse and Exploitation | 129 |
 | **ASI03** | Identity and Privilege Abuse | 146 |
-| **ASI04** | Agentic Supply Chain Vulnerabilities | 271 |
-| **ASI05** | Unexpected Code Execution (RCE) | 118 |
+| **ASI04** | Agentic Supply Chain Vulnerabilities | 273 |
+| **ASI05** | Unexpected Code Execution (RCE) | 119 |
 | **ASI06** | Memory & Context Poisoning | 6 |
 | **ASI07** | Insecure Inter-Agent Communication | 27 |
 | **ASI08** | Cascading Failures | 14 |
@@ -202,7 +202,7 @@ regenerated from the ledger, not asserted.
 
 ## Under the hood
 
-<!-- scanner-count:total -->120<!-- /scanner-count --> scanner modules: AST-based taint analysis for
+<!-- scanner-count:total -->121<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
 Four of them read what an install leaves behind, not only what the repository declares:
 
@@ -217,11 +217,11 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497, Node.js's 11 Nov 2026 security release).
 
-<!-- test-count:total -->6,046<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->6,066<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
-Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->511<!-- /rule-count --> rules
-(<!-- fix-recipe-coverage:pct -->2.2<!-- /fix-recipe-coverage -->%), applied by `agent-audit-kit fix`. That is a scope
+Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->513<!-- /rule-count --> rules
+(<!-- fix-recipe-coverage:pct -->2.1<!-- /fix-recipe-coverage -->%), applied by `agent-audit-kit fix`. That is a scope
 decision, not a coverage gap: a recipe ships only where the remediation is
 **deterministic and one-line** — exactly one correct edit, confirmable from the
 diff. Everything else stays advisory on purpose, because a fix that needs

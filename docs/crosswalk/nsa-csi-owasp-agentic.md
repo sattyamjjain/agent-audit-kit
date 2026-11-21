@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (511 total; 473 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (513 total; 475 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -467,6 +467,8 @@ Every AgentAuditKit rule (511 total; 473 mapped) against two agentic-security st
 | `AAK-SKILL-004` | high | tool-poisoning | Choose supported MCP projects when possible; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-SKILL-005` | high | tool-poisoning | Choose supported MCP projects when possible; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI01 Agent Goal Hijack; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-SKILL-006` | high | tool-poisoning | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI01 Agent Goal Hijack; ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-SKILL-INSTALL-MALICIOUS-001` | critical | agentic-skill | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
+| `AAK-SKILL-INSTALL-UNPINNED-002` | medium | agentic-skill | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-SKILL-LIFECYCLE-ATTRIBUTION-001` | medium | tool-poisoning | — | — |
 | `AAK-SKILL-UNTRUSTED-EXEC-PATH` | high | supply-chain | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-SPLUNK-MCP-TOKEN-LEAK-001` | high | secret-exposure | Design for boundaries; Sign and verify MCP messages; Instrument for logging and detection; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
