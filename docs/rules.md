@@ -17,10 +17,10 @@
 | Hook Injection | 17 |
 | Taint Analysis | 15 |
 | A2A Protocol | 13 |
+| Agentic Skills (AST10) | 5 |
 | MCP Server Card | 4 |
-| Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **511** |
+| **Total** | **513** |
 
 <!-- END rules-summary -->
 

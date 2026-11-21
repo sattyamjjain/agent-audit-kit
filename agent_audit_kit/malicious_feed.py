@@ -410,6 +410,9 @@ class Feed:
     # Whole-repository (`all_tags`) entries, keyed by `canonical_repository`.
     repositories: dict[str, Image] = field(default_factory=dict)
     entry_count: int = 0  # package entries read, which a stale-feed warning names
+    # When `scripts/refresh_bundled_malicious.py` last checked GitHub's malware advisories
+    # for the bundled copy, whether or not it added an entry; "" when never recorded.
+    checked_at: str = ""
     _built: dict[tuple[str, str], tuple[Release, ...]] = field(
         default_factory=dict, compare=False, repr=False
     )
@@ -449,12 +452,15 @@ class Feed:
 
     def summary(self) -> dict[str, str]:
         """What a report says about the feed a scan read."""
-        return {
+        summary = {
             "generatedAt": self.generated_at,
             "source": self.source,
             "origin": self.origin,
             "entries": str(self.entry_count),
         }
+        if self.checked_at:
+            summary["checkedAt"] = self.checked_at
+        return summary
 
 
 class FeedError(ValueError):
@@ -538,6 +544,7 @@ def parse_feed(data: object, origin: str, path: Path) -> Feed:
         extensions={key: tuple(rows) for key, rows in extensions.items()},
         repositories=repositories,
         entry_count=sum(len(rows) for names in index.values() for rows in names.values()),
+        checked_at=str(data.get("checked_at") or ""),
     )
 
 
@@ -651,8 +658,23 @@ def parse_generated_at(text: str) -> datetime | None:
         return None
 
 
+def checked_since(summary: Mapping[str, str]) -> datetime | None:
+    """The time a feed is known to be current as of: the later of its `generatedAt`
+    and its `checkedAt`, whichever of them is readable, or None when neither is.
+
+    The bundled malicious-release feed is rewritten only when the daily refresh
+    adds a takeover, so after quiet days its `generated_at` stood still while the
+    refresh had checked every advisory since; `checked_at`, written on every run
+    that checked them all, carries that. A cached feed has no `checkedAt`.
+    """
+    times = [t for t in (parse_generated_at(summary.get("generatedAt", "")),
+                         parse_generated_at(summary.get("checkedAt", ""))) if t is not None]
+    return max(times) if times else None
+
+
 def feed_staleness(summary: Mapping[str, str], max_age_days: int, now: datetime | None = None) -> dict[str, str]:
-    """How old a feed is, by the `generatedAt` of its summary, and whether that is too old.
+    """How old a feed is, from the later of the `generatedAt` and `checkedAt` of its
+    summary (`checked_since`), and whether that is too old.
 
     Args:
         summary: A feed summary (`feed_summary()`, `advisory_feed.feed_summary()`).
@@ -661,10 +683,10 @@ def feed_staleness(summary: Mapping[str, str], max_age_days: int, now: datetime 
 
     Returns:
         `{"ageDays": "6.1", "stale": "true"}`: the age to one decimal, or "unknown"
-        when `generatedAt` is missing or unreadable, which is stale whatever
+        when neither time is present and readable, which is stale whatever
         `max_age_days` says, since nothing tells how much the feed misses.
     """
-    generated = parse_generated_at(summary.get("generatedAt", ""))
+    generated = checked_since(summary)
     if generated is None:
         return {"ageDays": "unknown", "stale": "true"}
     age = max(0.0, ((now or _utc_now()) - generated).total_seconds() / _SECONDS_PER_DAY)
@@ -706,6 +728,9 @@ def stale_feed_notices(data_feeds: Mapping[str, Mapping[str, str]]) -> list[tupl
                     count = int(feed["entries"])
                     detail += f", {count:,} {'entry' if count == 1 else 'entries'}"
                 day = (feed.get("generatedAt") or "")[:10]
+                checked = parse_generated_at(feed.get("checkedAt", ""))
+                if checked is not None and checked > (parse_generated_at(feed.get("generatedAt", "")) or checked):
+                    day += f", last checked {checked:%Y-%m-%d}"
                 state = f"is the {origin} copy from {day} ({detail}). {missed}"
         lines.append((key, (
             f"WARNING: {noun} {state} Run `agent-audit-kit update` first, "

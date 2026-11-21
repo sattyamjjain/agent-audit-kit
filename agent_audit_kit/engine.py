@@ -45,6 +45,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("skill_composition", "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)", []),
     ("composition", "Capability-graph composition (AAK-COMPOSE-001/002/003)", []),
     ("agentic_skills", "OWASP Agentic Skills Top 10 (AAK-AST02/04/10)", []),
+    ("skill_install_names", "Skill install and run lines vs the malicious-release feed (AAK-SKILL-INSTALL-*)", []),
     ("session_splice", "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)", []),
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),

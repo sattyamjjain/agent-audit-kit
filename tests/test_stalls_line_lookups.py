@@ -40,6 +40,7 @@ from agent_audit_kit.scanners import (
     llm_call_shapes,
     mcp_tool_names,
     websocket_server,
+    skill_install_names,
     agent_config,
     composition,
     dns_rebind,
@@ -477,6 +478,13 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
         f'const W{i} = require("ws").Server;\nnew W{i}({{}});\n' for i in range(k))}, 500, True),
     "ws-node-child-calls": (websocket_server.scan, lambda k: {"mcp_bridge.ts": 'import { spawn } from "child_process";\n'
         + 'import { WebSocketServer } from "ws";\n' + "f();\n" * k + "spawn(x);\nnew WebSocketServer({});\n"}, 5_000, False),
+    # AAK-SKILL-INSTALL-*, before it was released: each line, span and command is read once,
+    # and a manifest's strings are placed in one pass, not searched for one by one.
+    "skill-install-spans": (skill_install_names.scan, lambda k: {"SKILL.md": "".join(f"`uvx a{i}`\n" for i in range(k))}, 1_000, True),
+    "skill-install-fence": (skill_install_names.scan, lambda k: {"SKILL.md": "```\n" + "".join(f"npx -y p{i}\n" for i in range(k))}, 1_000, True),
+    "skill-install-one-command": (skill_install_names.scan, lambda k: {"SKILL.md": "`pip install " + " ".join(f"p{i}" for i in range(k)) + "`\n"}, 2_000, False),
+    "skill-install-manifest-strings": (skill_install_names.scan, lambda k: {"SKILL.md": "x\n", "skill.json": json.dumps(
+        {"steps": [f"step {i} " + "w" * 150 for i in range(k)]}, indent=1)}, 200, False),
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
     "tasks": (ide_task_rce.scan, _tasks, 500, True),
     # Row 3: one per `uses:` step: 10,000 steps took 11 s.

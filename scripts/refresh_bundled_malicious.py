@@ -30,10 +30,14 @@ as malware that day. This script keeps it current, and
    is written (`malicious_feed.github_entries`): its GHSA id as `id`, its URL as
    `url`.
 
-Existing entries are never dropped or changed. The file is rewritten only when
-an entry is added: the new entries are appended, `generated_at` is set to the
-run's time, and a sentence naming the date and the ids is appended to `source`.
-Every other byte of the file is kept.
+Existing entries are never dropped or changed. When an entry is added, the new
+entries are appended, `generated_at` is set to the run's time, and a sentence
+naming the date and the ids is appended to `source`. Every run that decided every
+package (no lookup failed) and is not a dry run also sets `checked_at` to the
+run's time, entry or not: `generated_at` alone stood still after quiet days, and
+a scan read a bundled copy that had been checked that morning as stale.
+`malicious_feed.feed_staleness` measures from the later of the two. Every other
+byte of the file is kept.
 
 Network: GitHub, the four registries and OSV, each through the opener the
 caller passes (`refresh_bundled(opener=...)`), so the tests stub all of it.
@@ -123,7 +127,8 @@ class Outcome(NamedTuple):
 
     decisions: list[Decision]
     added: list[dict[str, Any]]
-    written: bool
+    written: bool          # entries were added and the file written
+    checked: bool = False  # `checked_at` was set: every package was decided
 
 
 # ---- HTTP -------------------------------------------------------------------------------
@@ -433,26 +438,53 @@ def _entry_text(entry: dict[str, Any]) -> str:
     return "    {\n" + body + "\n    }"
 
 
-def render(text: str, data: dict[str, Any], added: list[dict[str, Any]], generated: str, source: str) -> str:
-    """The bundled file with `added` appended to `entries` and `generated_at` and
-    `source` replaced, every other byte as it was; a plain re-dump when the file
-    is not laid out as expected."""
+def render(text: str, data: dict[str, Any], added: list[dict[str, Any]], generated: str, source: str,
+           checked: str | None = None) -> str:
+    """The bundled file with `added` appended to `entries`, `generated_at` and
+    `source` replaced and, given `checked`, `checked_at` set (written on the line
+    after `generated_at` the first time), every other byte as it was; a plain
+    re-dump when the file is not laid out as expected."""
     expected = {**data, "generated_at": generated, "source": source, "entries": [*data["entries"], *added]}
+    if checked is not None:
+        expected["checked_at"] = checked
     try:
-        out = text.replace(f'"generated_at": {json.dumps(data["generated_at"])}',
-                           f'"generated_at": {json.dumps(generated)}', 1)
+        out = _with_checked(text, data, checked) if checked is not None else text
+        out = out.replace(f'"generated_at": {json.dumps(data["generated_at"])}',
+                          f'"generated_at": {json.dumps(generated)}', 1)
         out = out.replace(f'"source": {json.dumps(data["source"], ensure_ascii=False)}',
                           f'"source": {json.dumps(source, ensure_ascii=False)}', 1)
-        start = out.index('"entries": [')
-        close = out.index("\n  ]", start)
-        tail = ",\n" if data["entries"] else "\n"
-        inserted = tail + ",\n".join(_entry_text(e) for e in added)
-        out = out[:close] + inserted + out[close:]
+        if added:
+            start = out.index('"entries": [')
+            close = out.index("\n  ]", start)
+            tail = ",\n" if data["entries"] else "\n"
+            inserted = tail + ",\n".join(_entry_text(e) for e in added)
+            out = out[:close] + inserted + out[close:]
         if json.loads(out) == expected:
             return out
     except (ValueError, KeyError):
         pass
     return json.dumps(expected, indent=2, ensure_ascii=False) + "\n"
+
+
+def _with_checked(text: str, data: dict[str, Any], checked: str) -> str:
+    """`text` with `checked_at` set to `checked`: its value replaced where the file
+    has one, else a line inserted after `generated_at`'s."""
+    if "checked_at" in data:
+        return text.replace(f'"checked_at": {json.dumps(data["checked_at"])}', f'"checked_at": {json.dumps(checked)}', 1)
+    line = f'"generated_at": {json.dumps(data["generated_at"])},'
+    at = text.index(line) + len(line)
+    indent = text[text.rindex("\n", 0, at) + 1:at].split('"', 1)[0]
+    return text[:at] + f'\n{indent}"checked_at": {json.dumps(checked)},' + text[at:]
+
+
+def _write(feed: Path, rendered: str) -> None:
+    temporary = feed.with_name(feed.name + ".tmp")
+    try:
+        temporary.write_text(rendered, encoding="utf-8")
+        os.replace(temporary, feed)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise RefreshError(f"writing {feed}: {exc}") from exc
 
 
 def refresh_bundled(
@@ -465,7 +497,9 @@ def refresh_bundled(
     timeout: float = 60.0,
 ) -> Outcome:
     """Decide on every malware advisory published in the last `days` days and
-    append the kept packages to `feed`; untouched when nothing is kept.
+    append the kept packages to `feed`. Unless `dry_run`, a run that decided every
+    package also sets `checked_at`, so the file changes even when nothing is
+    kept; a run where a lookup failed and nothing was kept leaves it untouched.
 
     Raises:
         RefreshError: The advisory listing failed, or the file is not a feed.
@@ -486,9 +520,15 @@ def refresh_bundled(
         raise RefreshError(f"GitHub advisories: {type(exc).__name__}: {exc}") from exc
     decisions = decide(opener, advisories, known, timeout)
     added = [d.entry for d in decisions if d.outcome == "kept" and d.entry is not None]
-    if not added or dry_run:
+    stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Checked means every package was decided: a lookup that failed checked nothing.
+    checked = None if any(d.outcome == "error" for d in decisions) else stamp
+    if dry_run or (not added and checked is None):
         return Outcome(decisions, added, False)
-    generated = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if not added:
+        _write(feed, render(text, data, [], data["generated_at"], data.get("source", ""), checked))
+        return Outcome(decisions, added, False, checked=True)
+    generated = stamp
     ids = [e["id"] for e in added]
     named = ", ".join(ids[:-1]) + f" and {ids[-1]}" if len(ids) > 1 else ids[0]
     source = (
@@ -496,15 +536,8 @@ def refresh_bundled(
         f"{named}, takeovers of established packages among GitHub's malware advisories published since "
         f"{since}, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record)."
     )
-    rendered = render(text, data, added, generated, source)
-    temporary = feed.with_name(feed.name + ".tmp")
-    try:
-        temporary.write_text(rendered, encoding="utf-8")
-        os.replace(temporary, feed)
-    except OSError as exc:
-        temporary.unlink(missing_ok=True)
-        raise RefreshError(f"writing {feed}: {exc}") from exc
-    return Outcome(decisions, added, True)
+    _write(feed, render(text, data, added, generated, source, checked))
+    return Outcome(decisions, added, True, checked=checked is not None)
 
 
 def _github_token() -> str | None:
@@ -535,7 +568,8 @@ def main(argv: list[str] | None = None) -> int:
         print(decision.line())
     kept = [d for d in outcome.decisions if d.outcome == "kept"]
     errors = [d for d in outcome.decisions if d.outcome == "error"]
-    state = "written" if outcome.written else ("not written (--dry-run)" if args.dry_run and kept else "unchanged")
+    state = ("written" if outcome.written else "checked_at set" if outcome.checked
+             else "not written (--dry-run)" if args.dry_run and kept else "unchanged")
     print(f"{len(outcome.decisions)} packages: {len(kept)} kept, {len(errors)} could not be checked; "
           f"{args.feed.name} {state}.")
     return 1 if errors else 0

@@ -26,6 +26,7 @@ from agent_audit_kit import malicious_feed
 
 REPO = Path(__file__).resolve().parent.parent
 NOW = datetime(2026, 11, 20, 5, 29, tzinfo=timezone.utc)
+NOW_TEXT = "2026-11-20T05:29:00Z"
 PUBLISHED = NOW - timedelta(days=1)
 
 
@@ -149,17 +150,20 @@ def test_a_takeover_of_an_established_package_is_kept(feed: Path) -> None:
         "versions": ["2.0.1", "2.0.2"], "modified": "2026-11-19T01:02:03.456789123Z",
         "url": "https://osv.dev/vulnerability/MAL-2026-90001",
     }
-    assert data["generated_at"] == "2026-11-20T05:29:00Z"
+    assert data["generated_at"] == data["checked_at"] == "2026-11-20T05:29:00Z"
     original = json.loads(before)
     assert data["source"].startswith(original["source"])
     assert data["source"].endswith(
         "On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-90001, takeovers of established "
         "packages among GitHub's malware advisories published since 2026-11-17, each as "
         "https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).")
-    # Every other byte is kept: the old file with the two header values replaced is
-    # the new file without the inserted entries, which go at the end of `entries`.
-    headed = before.replace(json.dumps(original["generated_at"]), json.dumps(data["generated_at"]), 1).replace(
-        json.dumps(original["source"]), json.dumps(data["source"]), 1)
+    # Every other byte is kept: the old file with the two header values replaced, and
+    # `checked_at` on the line after `generated_at`, is the new file without the
+    # inserted entries, which go at the end of `entries`.
+    generated_line = f'"generated_at": {json.dumps(original["generated_at"])},'
+    headed = before.replace(
+        generated_line, f'"generated_at": {json.dumps(data["generated_at"])},\n  "checked_at": {json.dumps(NOW_TEXT)},', 1,
+    ).replace(json.dumps(original["source"]), json.dumps(data["source"]), 1)
     close = headed.index("\n  ]", headed.index('"entries": ['))
     after = feed.read_text()
     assert after.startswith(headed[:close] + ",\n    {") and after.endswith(headed[close:])
@@ -239,20 +243,47 @@ def test_an_existing_entry_survives_a_run(feed: Path) -> None:
         ("axios", "skipped", "already bundled")]
     after = json.loads(feed.read_text())["entries"]
     assert after[:len(before)] == before and [e["id"] for e in after[len(before):]] == ["MAL-2026-90001"]
-    # A second run over the same advisories adds nothing and leaves the file as it is.
+    # A second run over the same advisories adds nothing: only `checked_at` moves.
     text = feed.read_text()
     again = script.refresh_bundled(feed, opener=_takeover_network(), now=NOW + timedelta(hours=1))
-    assert [d.outcome for d in again.decisions] == ["skipped"] and not again.written
-    assert feed.read_text() == text
+    assert [d.outcome for d in again.decisions] == ["skipped"] and not again.written and again.checked
+    assert feed.read_text() == text.replace(NOW_TEXT, "2026-11-20T06:29:00Z").replace(
+        '"generated_at": "2026-11-20T06:29:00Z"', f'"generated_at": {json.dumps(NOW_TEXT)}', 1)
 
 
-def test_no_change_leaves_the_file_untouched(feed: Path) -> None:
-    stat, text = feed.stat(), feed.read_bytes()
+def test_no_change_leaves_every_byte_but_checked_at(feed: Path) -> None:
+    """A quiet day adds no entry: `generated_at`, `source` and every entry stay as
+    they were, and only `checked_at` records the check (2026-11-21: three quiet days
+    made a bundled copy checked that morning read as stale)."""
+    before = feed.read_text()
     network = Network(advisories={"npm": [_advisory("GHSA-aaaa-bbbb-0009", "npm", "aak-typo", ">= 0")]})
     outcome = script.refresh_bundled(feed, opener=network, now=NOW)
-    assert not outcome.written
-    assert feed.read_bytes() == text and feed.stat().st_mtime_ns == stat.st_mtime_ns
+    assert not outcome.written and outcome.checked
+    original, data = json.loads(before), json.loads(feed.read_text())
+    assert data == {**original, "checked_at": NOW_TEXT}
+    line = f'"generated_at": {json.dumps(original["generated_at"])},'
+    assert feed.read_text() == before.replace(line, line + f'\n  "checked_at": {json.dumps(NOW_TEXT)},', 1)
     assert not list(feed.parent.glob("*.tmp"))
+
+
+def test_checked_at_moves_on_each_full_check_and_not_on_a_failed_one(feed: Path) -> None:
+    """`checked_at` is written once and replaced in place after; a run whose lookup
+    failed checked nothing, so with nothing kept it leaves the file as it was."""
+    quiet = Network(advisories={"npm": [_advisory("GHSA-aaaa-bbbb-0009", "npm", "aak-typo", ">= 0")]})
+    script.refresh_bundled(feed, opener=quiet, now=NOW)
+    first = feed.read_text()
+    later = NOW + timedelta(days=1)
+    assert script.refresh_bundled(feed, opener=quiet, now=later).checked
+    assert feed.read_text() == first.replace(NOW_TEXT, later.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    assert feed.read_text().count('"checked_at"') == 1
+    text, stat = feed.read_text(), feed.stat()
+    broken = Network(advisories={"npm": [_advisory("GHSA-aaaa-bbbb-0010", "npm", "aak-flaky", "= 1.0.0")]},
+                     registry={"https://registry.npmjs.org/aak-flaky": urllib.error.URLError("timed out (test)")})
+    outcome = script.refresh_bundled(feed, opener=broken, now=later + timedelta(days=1))
+    assert [d.outcome for d in outcome.decisions] == ["error"] and not outcome.written and not outcome.checked
+    assert feed.read_text() == text and feed.stat().st_mtime_ns == stat.st_mtime_ns
+    dry = script.refresh_bundled(feed, opener=quiet, now=later + timedelta(days=2), dry_run=True)
+    assert not dry.checked and feed.read_text() == text
 
 
 def test_a_failed_lookup_is_an_error_and_the_rest_is_still_written(feed: Path) -> None:

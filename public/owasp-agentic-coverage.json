@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-20T05:12:53Z",
+  "last_updated": "2026-11-21T04:52:10Z",
   "aak_version": "0.6.36",
-  "rule_count": 511,
+  "rule_count": 513,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2988,7 +2988,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 271,
+      "rule_density": 273,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -5935,6 +5935,22 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-SKILL-INSTALL-MALICIOUS-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-INSTALL-UNPINNED-002",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-STARTUP-HOOK-CONFTEST-001",
           "severity": "high",
           "cve_references": [],
@@ -6048,7 +6064,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 118,
+      "rule_density": 119,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -7281,6 +7297,14 @@
           "cve_references": [],
           "aicm_references": [
             "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-INSTALL-MALICIOUS-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
           ]
         },
         {
