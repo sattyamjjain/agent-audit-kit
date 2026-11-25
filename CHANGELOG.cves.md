@@ -18,6 +18,133 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-25 (unreleased): #1258 to #1267, four new version pins, two new image pins, one record left to the advisory feed and three out of scope
+
+The watcher filed these ten between 15 and 17 Nov. Each is read here on 2026-11-25 against NVD's
+API record, its CVE record, the vendor's advisory where there is one, OSV, and the published
+artifacts or the source at its git tags. NVD's records are saved unedited under
+tests/fixtures/nvd_cna and OSV's under tests/fixtures/osv. Each claim is measured with the scanner
+on a firing fixture and a negative one (tests/test_cve_batch_2026_11_25.py).
+
+### CVE-2026-115563 (#1260): new pin 2026-11-25
+
+**The MCP Python SDK's OAuth client gets `AAK-MCP-SDK-CVE-2026-115563-001`: PyPI `mcp` from 1.9.1
+below 1.30.0 and from 2.0.0 below 2.2.0, HIGH.** GHSA-qx49-fqc8-xw99: the client let the MCP server
+it connected to decide where its OAuth credentials went, because the metadata's `issuer` was not
+checked on every discovery path and stored credentials were not bound to an authorization server.
+Read in the wheels: 1.9.0 has no `OAuthClientProvider` and 1.9.1 does; 1.29.1 has no issuer check;
+2.0.0 and 2.1.1 have `validate_metadata_issuer`, which the path with no protected resource metadata
+meets only after it has taken the server's own metadata; 1.30.0 and 2.2.0 work out the expected
+issuer before any metadata is fetched. The MEDIUM rule `AAK-MCP-SDK-CVE-2026-59951-001` has the
+same floors for other flaws, and the vendor scores this one HIGH, so it gets a rule of its own and
+an affected release is reported by both. On a fixed release the two unattended providers still
+follow the server until the caller passes `issuer=`, which the remediation says and no version can
+show. PyPI's `latest` was 2.3.0, so a stated version is required.
+
+### CVE-2026-126816 (#1263): new pin 2026-11-25
+
+**The AWS Pricing MCP Server gets `AAK-MCP-AWSPRICING-CVE-2026-126816-001`: PyPI
+`awslabs.aws-pricing-mcp-server` below 1.0.31, and `awslabs.cost-analysis-mcp-server` at any
+version, MEDIUM.** GHSA-mqm3-w68j-75mw and AWS bulletin 2026-184: the cost report tool wrote to
+whatever `output_file` the caller named, under a tool annotated read-only. Read in the wheels:
+1.0.4 and 1.0.30 open the path as given, and 1.0.31 resolves it inside
+`AWS_PRICING_MCP_OUTPUT_DIR`, refuses `..` and corrects the annotation. The deprecated
+cost-analysis package has the same call at 0.1.1 and at 1.0.5, its last release, and AWS says no
+patched release will be published, so it is presence-only on the same rule. The pricing server's
+`latest` was 1.1.2, so a stated version is required there.
+
+### CVE-2026-126681 (#1265): new pin 2026-11-25
+
+**The Timestream for InfluxDB MCP Server gets `AAK-MCP-TIMESTREAM-CVE-2026-126681-001`: PyPI
+`awslabs.timestream-for-influxdb-mcp-server` from 0.0.12 below 0.0.19, MEDIUM.** GHSA-2f9r-g4f3-wc2j
+and AWS bulletin 2026-185: a tool call that names only a `url` made the server connect there with
+its configured InfluxDB token. NVD's text has no lower bound; the CNA's range and the code start at
+0.0.12, where `resolve_influxdb_config` first falls back to `INFLUXDB_TOKEN` (0.0.11 requires the
+caller's token). 0.0.18 is the last affected release, PyPI has no 0.0.17, and 0.0.19 refuses to mix
+the server's credentials with a caller's parameters. `latest` was 0.1.4.
+
+### CVE-2026-68934 (#1266): new pin 2026-11-25
+
+**code-review-mcp-server gets `AAK-MCP-CODEREVIEW-CVE-2026-68934-001`: npm
+`code-review-mcp-server` below 1.5.3, HIGH.** GHSA-jq3q-62jc-fqq9: `folderPath` and `baseBranch`
+reach `execSync` command strings. Read in the npm tarballs: every release from 1.0.0 to 1.5.1
+imports `execSync` and builds the `git -C` string, and 1.5.3, the next release on npm, imports
+`execFileSync` alone. `latest` was 1.5.3, so a stated version is required. The package is not on
+PyPI.
+
+### CVE-2026-129875 (#1259): new image pin 2026-11-25
+
+**REBUILD gets `AAK-MCP-REBUILD-CVE-2026-129875-001`: the Docker Hub image `getrebuild/rebuild`
+from 4.5.0, `latest` included, HIGH, with no fixed release.** The MCP `QueryRecords` tool filters on
+`User.password` and answers with a count, so a low-privileged user recovers the administrator's
+hash. NVD says 4.5.0 through 4.5.4, the newest release on the day it was reported. Read in the
+source at each tag: `QueryRecords.java` is absent at 4.4.11 and the same blob (7bb996df) at 4.5.0,
+4.5.3, 4.5.4 and 4.5.5; `AdvFilterParser.java`, the other file the record cites, is the same blob
+(dbcc46d2) from 4.5.3 to 4.5.5. 4.5.5 (2026-11-16) changes neither, and the 4.5.6 commit (1c2a986d,
+2026-11-25, no tag or image yet) changes only how the parser reads dates. So the range runs past
+NVD's, the floor is the number after 4.5.6, and the rule says the flaw was read and not run. Docker
+Hub has 4.5.0 to 4.5.3 and 4.5.5, and `latest` was the 4.5.5 digest. npm's and PyPI's `rebuild` are
+other projects.
+
+### CVE-2026-119790 (#1262): left to the advisory feed
+
+**Next.js's `use cache` disclosure gets no pin.** GHSA-mfr8-8qww-v76h, `next` from 16.3.0 below
+16.4.5: a cached value for one root param is stored for others after a race with
+`unstable_cache()`. It is in the page cache, not in the dev server's MCP endpoint
+`AAK-MCP-NEXTJS-CVE-2026-94486-001` is about, so that rule's floor does not move, as with the
+`next` records of 2026-11-11. `AAK-KNOWN-VULN-001` reports a lockfile on 16.3.0 to 16.4.4 at MEDIUM
+after `aak update`, measured with OSV's record; the bundled feed does not hold it.
+
+### CVE-2026-129236 (#1261) and CVE-2026-129235 (#1264): out of scope
+
+**Kubeshark's two MCP flaws are in its CLI, which no file AAK reads pins.** GHSA-8vf2-hxg5-crqh
+(`pod_regex` reaches `kubeshark tap` with no end-of-options marker) and GHSA-gj7r-p794-hhq5
+(`download_file` writes to any destination), 53.1.0 below 53.4.0. The CLI installs through
+Homebrew, Chocolatey, an install script and release assets, and the documented launch is
+`kubeshark mcp`, a program on PATH with no version. The images Docker Hub carries under these
+release numbers (`hub`, `worker`, `front`) do not hold `cmd/mcpRunner.go`, and `kubeshark/kubeshark`
+stops at 37.0. OSV ranges the Go module by pseudo-version, so a go.mod that requires
+`github.com/kubeshark/kubeshark` inside the range is reported by `AAK-KNOWN-VULN-001` after
+`aak update`, which is measured, though the module's only tag is v0.0.1.
+
+### CVE-2026-125771 (#1258): out of scope
+
+**MCP Server for WordPress (AtlasMCP) is out of scope, non-pinnable**, on the basis of #1215: the
+same wordpress.org plugin, `ai-workflow-automation-ai-agent-hub`, installed into a WordPress site,
+on neither npm nor PyPI, with no file AAK reads stating its version. Patchstack gives up to and
+including 2.0.3.
+
+### CVE-2026-123142 (#1267): new image pin 2026-11-25
+
+**GitLab gets `AAK-MCP-GITLAB-CVE-2026-123142-001`: the Docker Hub images `gitlab/gitlab-ce` and
+`gitlab/gitlab-ee` from 18.4 below 19.3.9, 19.4 below 19.4.8 and 19.5 below 19.5.6, MEDIUM.** A user
+holding an MCP-scoped OAuth token could change the state of issues and merge requests, approving
+and merging included. GitLab's 19.5.6 patch release lists it under the GitLab MCP server, so it is
+the app's own MCP code, which is the line the self-hosted apps of 2026-11-11 drew (SiYuan, Dagu and
+the rest are pinned by image tag). #831 ruled an earlier GitLab scope flaw, CVE-2026-92874, out of
+scope on 2026-09-30 because nothing in a repository states the instance's version; a compose file
+that names `gitlab/gitlab-ce:19.5.5-ce.0` does, so that reason no longer holds. CVE-2026-92874 keeps
+its row and is not added to this rule. The ranges are GitLab's record's and were not read in the
+source. Docker Hub tags each release `X.Y.Z-ce.0` or `X.Y.Z-ee.0`, with no two-part tags, and
+`latest` was the 19.6.2 digest on both images, fixed. The Linux packages and the Helm chart state
+no version AAK reads.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-125771 | 7.2 | MCP Server for WordPress (wordpress.org plugin `ai-workflow-automation-ai-agent-hub`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 2.0.3. | #1258 |
+| CVE-2026-129875 | 8.8 | REBUILD (image `getrebuild/rebuild`) | **New image pin** `AAK-MCP-REBUILD-CVE-2026-129875-001` (HIGH): from 4.5.0, `latest` included, no fixed release. NVD stops at 4.5.4; the two files it cites are unchanged in 4.5.5. | #1259 |
+| CVE-2026-115563 | 7.5 | `mcp` (PyPI) | **New pin** `AAK-MCP-SDK-CVE-2026-115563-001` (HIGH): 1.9.1 up to 1.30.0 and 2.0.0 up to 2.2.0, a stated version required. | #1260 |
+| CVE-2026-129236 | 7.2 | Kubeshark (the CLI) | **Out of scope**, non-pinnable: a binary launched as `kubeshark mcp`. A go.mod requiring the module is read by `AAK-KNOWN-VULN-001` after `aak update`. Fixed in 53.4.0. | #1261 |
+| CVE-2026-119790 | 6.3 | `next` (npm) | No new rule, no new pin. Reported by `AAK-KNOWN-VULN-001` after `aak update`: 16.3.0 up to 16.4.5, measured. Not the dev server's MCP endpoint. | #1262 |
+| CVE-2026-126816 | 5.5 | `awslabs.aws-pricing-mcp-server`, `awslabs.cost-analysis-mcp-server` (PyPI) | **New pin** `AAK-MCP-AWSPRICING-CVE-2026-126816-001` (MEDIUM): the first below 1.0.31 with a stated version, the second at any version. | #1263 |
+| CVE-2026-129235 | 5.3 | Kubeshark (the CLI) | **Out of scope**, on the same basis as CVE-2026-129236. Fixed in 53.4.0. | #1264 |
+| CVE-2026-126681 | 5.5 | `awslabs.timestream-for-influxdb-mcp-server` (PyPI) | **New pin** `AAK-MCP-TIMESTREAM-CVE-2026-126681-001` (MEDIUM): 0.0.12 up to 0.0.19, a stated version required. | #1265 |
+| CVE-2026-68934 | 8.7 | `code-review-mcp-server` (npm) | **New pin** `AAK-MCP-CODEREVIEW-CVE-2026-68934-001` (HIGH): below 1.5.3, a stated version required. | #1266 |
+| CVE-2026-123142 | 4.3 | GitLab CE/EE (images `gitlab/gitlab-ce`, `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-123142-001` (MEDIUM): 18.4 up to 19.3.9, 19.4 up to 19.4.8, 19.5 up to 19.5.6, on the vendor's ranges. | #1267 |
+
+CVSS is NVD's CVSS 3.1 score where it has one, and its CVSS 4.0 score for CVE-2026-119790 and
+CVE-2026-68934, which have no other.
+
 ## 2026-11-20 (unreleased): two records the watcher has not filed, DNS rebinding on an MCP server's management routes and Node WebSocket bridges with no Origin check, two new rules
 
 NVD published CVE-2026-132121 on 18 Nov and CVE-2026-77359 on 19 Nov, and the watcher has filed
