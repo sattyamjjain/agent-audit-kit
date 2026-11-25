@@ -12,7 +12,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
-import shutil
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,6 +28,8 @@ REPO = Path(__file__).resolve().parent.parent
 NOW = datetime(2026, 11, 20, 5, 29, tzinfo=timezone.utc)
 NOW_TEXT = "2026-11-20T05:29:00Z"
 PUBLISHED = NOW - timedelta(days=1)
+#: The line `checked_at` is written on, newline before it included.
+_CHECKED_LINE = re.compile(r'\n[ \t]*"checked_at": "[^"\n]*",')
 
 
 def _load_script() -> Any:
@@ -114,9 +116,13 @@ def _npm(name: str, times: dict[str, datetime]) -> tuple[str, dict]:
 
 @pytest.fixture
 def feed(tmp_path: Path) -> Path:
-    """A copy of the bundled feed, so a run never writes the checkout's."""
+    """A copy of the bundled feed, so a run never writes the checkout's, with the
+    `checked_at` a refresh leaves in it taken out: the tests below say what the first
+    check writes, and the checkout's own file says it already after one refresh."""
     path = tmp_path / "malicious_releases.json"
-    shutil.copyfile(malicious_feed.BUNDLED_FEED, path)
+    text = malicious_feed.BUNDLED_FEED.read_text(encoding="utf-8")
+    path.write_text(_CHECKED_LINE.sub("", text, count=1), encoding="utf-8")
+    assert "checked_at" not in json.loads(path.read_text(encoding="utf-8"))
     return path
 
 
@@ -168,6 +174,32 @@ def test_a_takeover_of_an_established_package_is_kept(feed: Path) -> None:
     after = feed.read_text()
     assert after.startswith(headed[:close] + ",\n    {") and after.endswith(headed[close:])
     assert malicious_feed.parse_feed(data, "bundled", feed).match("PyPI", "aak-established", "2.0.2")
+
+
+def test_a_takeover_into_a_feed_that_was_checked_before_replaces_checked_at(feed: Path) -> None:
+    """The bundled file after its first refresh: `checked_at` is there already, so a
+    run that keeps a package replaces its value and writes no second line. The tests
+    above used to read the checkout's own file as one never checked, and failed on
+    the first refresh that was to be merged (2026-11-25)."""
+    earlier = "2026-11-19T05:29:00Z"
+    quiet = Network(advisories={"npm": [_advisory("GHSA-aaaa-bbbb-0009", "npm", "aak-typo", ">= 0")]})
+    script.refresh_bundled(feed, opener=quiet, now=NOW - timedelta(days=1))
+    before = feed.read_text(encoding="utf-8")
+    assert json.loads(before)["checked_at"] == earlier
+    outcome = script.refresh_bundled(feed, opener=_takeover_network(), now=NOW, days=3)
+    assert outcome.written and outcome.checked
+    after, original = feed.read_text(encoding="utf-8"), json.loads(before)
+    data = json.loads(after)
+    assert after.count('"checked_at"') == 1
+    assert data["checked_at"] == data["generated_at"] == NOW_TEXT
+    assert data["entries"][:-1] == original["entries"] and data["entries"][-1]["id"] == "MAL-2026-90001"
+    headed = (
+        before.replace(f'"checked_at": "{earlier}"', f'"checked_at": "{NOW_TEXT}"', 1)
+        .replace(f'"generated_at": {json.dumps(original["generated_at"])}', f'"generated_at": "{NOW_TEXT}"', 1)
+        .replace(json.dumps(original["source"]), json.dumps(data["source"]), 1)
+    )
+    close = headed.index("\n  ]", headed.index('"entries": ['))
+    assert after.startswith(headed[:close] + ",\n    {") and after.endswith(headed[close:])
 
 
 def test_a_package_whose_only_releases_are_the_malicious_ones_is_dropped(feed: Path) -> None:
