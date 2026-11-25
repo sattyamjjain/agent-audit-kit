@@ -57,6 +57,12 @@ app that serves MCP, is a Go server whose README runs the Docker Hub image
 `openapi-to-mcp` plugin serves an OpenAPI document's operations as MCP tools, ships as
 the Docker Hub image `apache/apisix`, tagged `X.Y.Z-debian`, `-ubuntu` and `-redhat` by
 release, and as RPM and DEB packages; npm and PyPI have no `apisix`.
+REBUILD, a low-code business platform whose gateway serves MCP, ships as the Docker
+Hub image `getrebuild/rebuild` and as a Java archive; npm's and PyPI's `rebuild` are
+other projects. GitLab, whose instance serves MCP, ships as the Docker Hub images
+`gitlab/gitlab-ce` and `gitlab/gitlab-ee`, tagged `X.Y.Z-ce.0` and `X.Y.Z-ee.0`, and as
+Linux packages and a Helm chart, which are not read; npm's `@zereight/mcp-gitlab` is a
+third party's server for it.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -777,6 +783,54 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-APISIX-CVE-2026-124726-001", "Apache APISIX", "apache/apisix",
         (3, 20, 0), "from 3.19.0 below 3.20.0", "Fixed in 3.20.0.",
         ("CVE-2026-124726",), introduced=(3, 19, 0),
+    ),
+    # REBUILD: CVE-2026-129875, the MCP QueryRecords tool filters on `User.password`
+    # and answers with a row count, an oracle for the hash. NVD says 4.5.0 through
+    # 4.5.4, the newest release when it was reported. QueryRecords.java is absent at
+    # 4.4.11 and one blob from 4.5.0 to 4.5.5; AdvFilterParser.java is one blob from
+    # 4.5.3 to 4.5.5, and the 4.5.6 commit (1c2a986d, 2026-11-25) changes only how it
+    # parses dates. So no fixed release, and the floor is the number past 4.5.6, which
+    # had no image on 2026-11-25. `latest` was the 4.5.5 digest.
+    _ImagePin(
+        "AAK-MCP-REBUILD-CVE-2026-129875-001", "REBUILD", "getrebuild/rebuild",
+        (4, 5, 7), "from 4.5.0, the newest release included", "No fixed release yet.",
+        ("CVE-2026-129875",), floating_affected=True, introduced=(4, 5, 0),
+    ),
+    # GitLab: CVE-2026-123142, an authorization check in the instance's MCP server let a
+    # user holding an MCP-scoped OAuth token change the state of issues and merge
+    # requests, approving and merging included. The ranges are GitLab's CNA record's and
+    # its 19.5.6 patch release's (which names the MCP server); they were not read in the
+    # source. One row per fixed line and image, since the three lines are disjoint. On
+    # 2026-11-25 `latest` was the 19.6.2 digest on both images, fixed.
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab CE", "gitlab/gitlab-ce",
+        (19, 3, 9), "from 18.4 below 19.3.9", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(18, 4, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab CE", "gitlab/gitlab-ce",
+        (19, 4, 8), "from 19.4 below 19.4.8", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(19, 4, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab CE", "gitlab/gitlab-ce",
+        (19, 5, 6), "from 19.5 below 19.5.6", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(19, 5, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 3, 9), "from 18.4 below 19.3.9", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(18, 4, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 4, 8), "from 19.4 below 19.4.8", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(19, 4, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 5, 6), "from 19.5 below 19.5.6", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
+        ("CVE-2026-123142",), introduced=(19, 5, 0),
     ),
 )
 

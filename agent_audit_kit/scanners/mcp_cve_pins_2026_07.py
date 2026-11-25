@@ -385,6 +385,20 @@ available) before shipping:
     4.6.81, the first on PyPI at or above the advisory's 4.6.78, to 4.7.24, from
     4.6.103 through the required `praisonai-code`. Below 4.6.78 the 61427 row reports
     it. No fixed release. Not an MCP surface)
+  - mcp (MCP Python SDK)           1.9.1 <= v < 1.30.0, and 2.0.0 <= v < 2.2.0
+    (CVE-2026-115563; the OAuth client let the MCP server choose where its client
+    credentials went. HIGH, its own rule beside the MEDIUM one with the same
+    floors. A stated version is required)
+  - awslabs.aws-pricing-mcp-server <  1.0.31  (CVE-2026-126816; the cost report tool
+    wrote to any path the caller named. A stated version is required. The deprecated
+    awslabs.cost-analysis-mcp-server, which the record names up to its last release,
+    1.0.5, is presence-only on the same rule)
+  - awslabs.timestream-for-influxdb-mcp-server  0.0.12 <= v < 0.0.19
+    (CVE-2026-126681; a tool call's `url` was paired with the server's own token. A
+    stated version is required)
+  - code-review-mcp-server         <  1.5.3  (CVE-2026-68934; `folderPath` and
+    `baseBranch` reach `execSync` command strings. Every release from 1.0.0. npm
+    only, a stated version required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -2278,6 +2292,51 @@ _PINS: tuple[_Pin, ...] = (
                    "leave PRAISONAI_ALLOW_JOB_WORKFLOWS unset unless every job "
                    "workflow it runs is trusted",
          ecosystem="py"),
+    # --- 2026-11-25 batch (#1258-#1267) ---
+    # The MCP Python SDK's OAuth client (`mcp.client.auth`) took the authorization
+    # server from whatever the MCP server advertised, so a hostile server received the
+    # client secret, the code and the PKCE verifier (CVE-2026-115563, HIGH). Read in
+    # the wheels: OAuthClientProvider arrives in 1.9.1 (1.9.0 has none), 1.29.1 has
+    # no issuer check, 2.0.0 to 2.1.1 have one that the no-metadata path skips, and
+    # 1.30.0 and 2.2.0 work out the expected issuer first. The MEDIUM row above has
+    # the same floors for other flaws, and a HIGH one may not ride on it. `latest`
+    # (2.3.0) is fixed, so a stated version is required. ecosystem="py" as above.
+    _Pin("AAK-MCP-SDK-CVE-2026-115563-001", "mcp (MCP Python SDK)", ("mcp",), (1, 30, 0),
+         introduced=(1, 9, 1), also=(((2, 0, 0), (2, 2, 0)),),
+         fix_label="1.30.0, or 2.2.0 on the 2.x line, with `issuer=` passed to the "
+                   "unattended providers (affected from 1.9.1)",
+         requires_version=True, ecosystem="py"),
+    # AWS Pricing MCP Server: generate_cost_report opened the caller's `output_file`
+    # as given, under a tool annotated read-only (CVE-2026-126816). 1.0.30 still does;
+    # 1.0.31 resolves it inside AWS_PRICING_MCP_OUTPUT_DIR and drops the annotation.
+    # `latest` (1.1.2) is fixed, so a stated version is required.
+    _Pin("AAK-MCP-AWSPRICING-CVE-2026-126816-001", "awslabs.aws-pricing-mcp-server",
+         ("awslabs.aws-pricing-mcp-server",), (1, 0, 31),
+         fix_label="1.0.31", requires_version=True, ecosystem="py"),
+    # The package it replaced carries the same tool in every release, 0.1.1 and 1.0.5
+    # read here, and AWS says no patched release will be published: presence-only.
+    _Pin("AAK-MCP-AWSPRICING-CVE-2026-126816-001", "awslabs.cost-analysis-mcp-server",
+         ("awslabs.cost-analysis-mcp-server",), None,
+         fix_label="no fixed release (deprecated; 1.0.5 is the last), move to "
+                   "awslabs.aws-pricing-mcp-server 1.0.31 or later",
+         ecosystem="py"),
+    # Timestream for InfluxDB MCP Server: 0.0.12 adds the INFLUXDB_TOKEN environment
+    # fallback and takes `url` and `token` one by one, so a tool call naming a `url`
+    # gets the configured token sent there (CVE-2026-126681). 0.0.11 has no configured
+    # token; 0.0.18 is the last affected release (PyPI has no 0.0.17), and 0.0.19
+    # refuses to mix the two and checks the URL. `latest` (0.1.4) is fixed.
+    _Pin("AAK-MCP-TIMESTREAM-CVE-2026-126681-001",
+         "awslabs.timestream-for-influxdb-mcp-server",
+         ("awslabs.timestream-for-influxdb-mcp-server",), (0, 0, 19), introduced=(0, 0, 12),
+         fix_label="0.0.19, then rotate the InfluxDB API token (affected from 0.0.12)",
+         requires_version=True, ecosystem="py"),
+    # code-review-mcp-server (Orcus2021): `git -C "${folderPath}" ...` and
+    # `${baseBranch}..` strings handed to execSync, so a quote or `$()` in either runs
+    # as a command (CVE-2026-68934). Every release from 1.0.0 to 1.5.1 imports
+    # execSync; 1.5.3, the next on npm, imports execFileSync alone. `latest` is 1.5.3.
+    _Pin("AAK-MCP-CODEREVIEW-CVE-2026-68934-001", "code-review-mcp-server",
+         ("code-review-mcp-server",), (1, 5, 3),
+         fix_label="1.5.3", requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
