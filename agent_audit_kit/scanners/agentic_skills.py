@@ -11,7 +11,9 @@ they are not re-implemented here:
 
   * AST01 Malicious Skills and the *semantic* half of AST04 -- brand-impersonating
     names, hidden instructions, exfiltration primitives -- are `AAK-SKILL-001`
-    through `AAK-SKILL-005` and `AAK-POISON-001` through `AAK-POISON-006`.
+    through `AAK-SKILL-006`, and `AAK-POISON-002`'s secret-sending check on a
+    `SKILL.md` frontmatter `description`. The other `AAK-POISON-*` checks read
+    MCP tool descriptions only.
   * AST03 Over-Privileged Skills, in its "declare `network: false`, then call
     `curl`" form, is `AAK-COMPOSE-003`, which compares a manifest against the
     capability its own body exercises.
