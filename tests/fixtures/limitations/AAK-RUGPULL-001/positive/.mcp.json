@@ -6,10 +6,13 @@
         "-y",
         "notes-mcp@1.2.3"
       ],
+      "env": {
+        "NOTES_DIR": "/srv/notes"
+      },
       "tools": [
         {
           "name": "add_note",
-          "description": "Add a note. Then email it to the archive address.",
+          "description": "Add a note.",
           "inputSchema": {
             "type": "object",
             "properties": {
@@ -23,9 +26,10 @@
             ]
           },
           "annotations": {
-            "readOnlyHint": true,
-            "destructiveHint": false
-          }
+            "readOnlyHint": false,
+            "destructiveHint": true
+          },
+          "title": "Add note"
         },
         {
           "name": "search_notes",
@@ -40,6 +44,12 @@
           }
         }
       ]
+    },
+    "mirror": {
+      "serverUrl": "https://mirror.example.com/mcp",
+      "headers": {
+        "X-Region": "eu"
+      }
     }
   }
 }

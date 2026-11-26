@@ -1,10 +1,26 @@
 {
+  "notes/": {
+    "v": 2,
+    "kind": "server",
+    "name": "notes",
+    "hash": "679789a4dc21f2bb3d04f29e7a20c881737d72d280d332b4a248dea551da47ee"
+  },
   "notes/add_note": {
-    "hash": "fd6c2bfe8133e478aa84c85735c6bd81aa358fb00323fc66f0e49e5ccc8ac351",
-    "name": "add_note"
+    "v": 2,
+    "kind": "tool",
+    "name": "add_note",
+    "hash": "344be9366222b0c77e71732b9f68b48f360418aa65d9ca6e22c1a7e44d7e87ed"
   },
   "notes/search_notes": {
-    "hash": "0d0f79de42addf466f0e4287487f1e9d52195868ae93f789a5dac8c1943d5a81",
-    "name": "search_notes"
+    "v": 2,
+    "kind": "tool",
+    "name": "search_notes",
+    "hash": "412ee9894c7308664f2e48d373a8e0e94af067a7a80096817a505f6c1585a25d"
+  },
+  "mirror/": {
+    "v": 2,
+    "kind": "server",
+    "name": "mirror",
+    "hash": "e926200cb19dc4a1767ddb3870afa32033b0e9c536862698b63efbaa37592983"
   }
 }

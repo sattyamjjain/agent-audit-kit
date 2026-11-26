@@ -13568,11 +13568,11 @@
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
-      "description": "A tool's definition (name, description, or input schema) has changed since it was last pinned. This could indicate a rug pull attack. The Deadbugz campaign (September 2026) is the shape this is for: an MCP server shipped two innocuous tools, behaved for exactly three tool calls, then rewrote the metadata it returned into instructions to hunt SSH keys, AWS credentials, shell history and kubeconfig. Metadata that only turns hostile at runtime defeats review by construction, because every check you run before approving the server passes. A pin taken at approval and re-verified afterwards is what closes that window, and this rule is that comparison.",
+      "description": "A tool's definition (its name, description, input schema, annotations, title or output schema), or the launch of the server that provides it (its command, args, url, type or the names of its env variables), has changed since it was last pinned. This could indicate a rug pull attack. The Deadbugz campaign (September 2026) is the shape this is for: an MCP server shipped two innocuous tools, behaved for exactly three tool calls, then rewrote the metadata it returned into instructions to hunt SSH keys, AWS credentials, shell history and kubeconfig. Metadata that only turns hostile at runtime defeats review by construction, because every check you run before approving the server passes. A pin taken at approval and re-verified afterwards is what closes that window, and this rule is that comparison.",
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "Compares the tool definitions written in the MCP config files with `.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` at run time is never compared. The hash covers a tool's name, description and `inputSchema` only, so a change to its `annotations` (for example flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` is not a change here. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
+      "limitations": "Compares the tool definitions and server launches written in the MCP config files with `.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` at run time is never compared. A tool's hash covers its `name`, `description`, `inputSchema`, `annotations`, `title` and `outputSchema`, so a schema kept under `parameters` is not a change here. A server's launch hash covers `command`, `args`, `url`, `type` and the names of its `env` keys: a changed env value (never read, so that no secret reaches the pin file), `cwd`, `headers`, or a URL under another key such as Windsurf's `serverUrl` is not a change here. A pin file written before v2 (entries without `\"v\"`) is compared on each tool's name, description and `inputSchema` only, as it was written, and on no launch at all, until `aak pin` writes it again; `aak verify` and `aak scan` print a note on stderr meanwhile. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -13581,7 +13581,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If suspicious, remove the server. Re-run 'agent-audit-kit verify' on a schedule rather than only at install time: a campaign that waits N calls before mutating is invisible to a one-off check at approval.",
+      "remediation": "Review the changes: the pin file holds hashes, not the old definitions, so `git diff` of the MCP config shows what changed in the tool or server the finding names. If legitimate, re-pin with 'agent-audit-kit pin'. If suspicious, remove the server. Re-run 'agent-audit-kit verify' on a schedule rather than only at install time: a campaign that waits N calls before mutating is invisible to a one-off check at approval.",
       "rule_id": "AAK-RUGPULL-001",
       "sarif_name": "ToolDefinitionChanged",
       "severity": "critical",
@@ -13595,11 +13595,11 @@
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
-      "description": "A new tool was added to an MCP server since the last pin. New tools should be reviewed before approval. The Deadbugz campaign (September 2026) added capability after approval rather than at install time, which is why the comparison has to run again after the server is already trusted.",
+      "description": "A new tool was added to an MCP server, or a new server to an MCP config, since the last pin. New tools and servers should be reviewed before approval. The Deadbugz campaign (September 2026) added capability after approval rather than at install time, which is why the comparison has to run again after the server is already trusted.",
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "Counts only tools declared in a server's `tools` array in a config file. A server added with just a `command`, whose tools arrive at run time through `tools/list`, adds no pinned tool, and neither does a tool listed under `toolDescriptions`, so a new server or a new tool of those shapes is not reported here. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
+      "limitations": "Counts the tools declared in a server's `tools` array in a config file, and the servers themselves. A tool listed under `toolDescriptions`, or one a server returns from `tools/list` at run time, is never pinned, so a new tool of either shape is not reported here; a new server is, but not the tools it serves at run time. While the pin file holds an entry written before v2 (no `\"v\"`), which pinned no server, a new server is not reported at all until `aak pin` writes the file again. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -13608,7 +13608,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Review the new tool's definition and permissions. If it is expected, run `agent-audit-kit pin .` to record it in `.agent-audit-kit/tool-pins.json`; if not, delete its entry from the server's `tools` list. Pinning records every current tool, so deal with any other drift findings first.",
+      "remediation": "Review the new tool's definition and permissions, or the new server's launch. If it is expected, run `agent-audit-kit pin .` to record it in `.agent-audit-kit/tool-pins.json`; if not, delete its entry from the server's `tools` list, or the server from the config. Pinning records every current tool and server, so deal with any other drift findings first.",
       "rule_id": "AAK-RUGPULL-002",
       "sarif_name": "NewToolSincePin",
       "severity": "high",
@@ -13622,9 +13622,9 @@
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
-      "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
+      "description": "A previously pinned tool was removed from an MCP server, or a pinned server from the MCP config. This could indicate covering tracks after an attack.",
       "incident_references": [],
-      "limitations": "Counts only tools declared in a server's `tools` array in a config file, because nothing else is pinned. A server declared with just a `command`, whose tools arrive at run time through `tools/list`, has no pinned tool, and neither does a tool listed under `toolDescriptions`, so removing either is not reported here. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
+      "limitations": "Counts the tools declared in a server's `tools` array in a config file, and the servers themselves, because nothing else is pinned. A tool listed under `toolDescriptions`, or one a server stops returning from `tools/list` at run time, has no pin, so its removal is not reported here. A pin file written before v2 (entries without `\"v\"`) pinned no server, so removing a server it holds no tool pin for is not reported until `aak pin` writes the file again. A pin file over 1 MB, or one nested past 500 levels, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -13632,7 +13632,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Find out why the tool left the server's `tools` list. If the removal is intended, run `agent-audit-kit pin .` to refresh `.agent-audit-kit/tool-pins.json`; if not, restore the entry. Pinning records every current tool, so deal with any other drift findings first.",
+      "remediation": "Find out why the tool left the server's `tools` list, or the server left the config. If the removal is intended, run `agent-audit-kit pin .` to refresh `.agent-audit-kit/tool-pins.json`; if not, restore the entry. Pinning records every current tool and server, so deal with any other drift findings first.",
       "rule_id": "AAK-RUGPULL-003",
       "sarif_name": "ToolRemovedSincePin",
       "severity": "medium",

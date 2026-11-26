@@ -111,7 +111,8 @@ def test_vscode_tools_are_pinned(tmp_path: Path) -> None:
     _write_vscode(tmp_path, [{"name": "read", "description": "Read.", "inputSchema": {}}])
     assert create_pins(tmp_path) == 1
     pins = json.loads((tmp_path / ".agent-audit-kit" / "tool-pins.json").read_text())
-    assert set(pins) == {"local/read"}
+    assert set(pins) == {"local/", "local/read"}
+    assert pins["local/"]["kind"] == "server"
 
 
 def test_vscode_tool_definition_change_fires_rugpull_001(tmp_path: Path) -> None:
@@ -201,11 +202,14 @@ def test_wrongly_shaped_pin_file_is_reported_without_a_crash(tmp_path: Path) -> 
 
 
 def test_an_empty_pin_map_is_a_readable_baseline(tmp_path: Path) -> None:
-    """`{}` parses: every current tool is new, which is drift, not a failure."""
+    """`{}` parses: every current server and tool is new, which is drift, not a failure."""
     _write_mcp(tmp_path, [{"name": "read", "description": "Read.", "inputSchema": {}}])
     _break_pins(tmp_path, "{}")
     findings, _ = pin_drift.scan(tmp_path)
-    assert [f.rule_id for f in findings] == ["AAK-RUGPULL-002"]
+    assert [(f.rule_id, f.evidence) for f in findings] == [
+        ("AAK-RUGPULL-002", "New server 'local' added since last pin"),
+        ("AAK-RUGPULL-002", "New tool 'local/read' added since last pin"),
+    ]
 
 
 def test_a_valid_pin_file_reports_no_failure(tmp_path: Path) -> None:
@@ -215,25 +219,44 @@ def test_a_valid_pin_file_reports_no_failure(tmp_path: Path) -> None:
 
 
 def test_rugpull_003_blind_spot_is_a_real_before_and_after(tmp_path: Path) -> None:
-    """The AAK-RUGPULL-003 limitation fixture is not a hand-made pin file.
+    """The AAK-RUGPULL-002 and -003 limitation fixtures are not hand-made pin files.
 
-    Its pins are what `pin` records for the AAK-RUGPULL-002 blind_spot config,
-    which declares a command-only server and a `toolDescriptions` tool, and its
-    config is that one with both removed: the removal the limitation says is
-    not reported.
+    Each pin file is what `pin` (v2) records for the other blind spot's config:
+    002 is pinned without the `toolDescriptions` tool and then declares it, 003
+    is pinned with it and then drops it. Neither is reported, because no pin
+    records such a tool; the servers are the same on both sides, so neither
+    fixture leans on the server entries v2 added.
     """
     fixtures = Path(__file__).parent / "fixtures" / "limitations"
-    before = json.loads((fixtures / "AAK-RUGPULL-002" / "blind_spot" / ".mcp.json").read_text())
-    (tmp_path / ".mcp.json").write_text(json.dumps(before))
+    blind_002 = fixtures / "AAK-RUGPULL-002" / "blind_spot"
+    blind_003 = fixtures / "AAK-RUGPULL-003" / "blind_spot"
+    for pinned, other in ((blind_002, blind_003), (blind_003, blind_002)):
+        project = tmp_path / pinned.parent.name
+        project.mkdir()
+        (project / ".mcp.json").write_text((other / ".mcp.json").read_text())
+        create_pins(project)
+        assert json.loads((project / _PINS).read_text()) == json.loads((pinned / _PINS).read_text())
+        assert all(pin.get("v") == 2 for pin in json.loads((pinned / _PINS).read_text()).values())
+    declares = json.loads((blind_002 / ".mcp.json").read_text())["mcpServers"]
+    lacks = json.loads((blind_003 / ".mcp.json").read_text())["mcpServers"]
+    assert set(declares) == set(lacks) == {"notes"}
+    assert "toolDescriptions" in declares["notes"]
+    assert "toolDescriptions" not in lacks["notes"]
+    assert {k: v for k, v in declares["notes"].items() if k != "toolDescriptions"} == lacks["notes"]
+
+
+def test_rugpull_001_fixtures_share_one_v2_baseline(tmp_path: Path) -> None:
+    """positive/ and blind_spot/ start from the same pin, written by v2 `pin`:
+    positive/ reverts its one change (the annotations) and re-pins to it."""
+    fixtures = Path(__file__).parent / "fixtures" / "limitations" / "AAK-RUGPULL-001"
+    pins = (fixtures / "positive" / _PINS).read_text()
+    assert pins == (fixtures / "blind_spot" / _PINS).read_text()
+    assert all(pin.get("v") == 2 for pin in json.loads(pins).values())
+    config = json.loads((fixtures / "positive" / ".mcp.json").read_text())
+    config["mcpServers"]["notes"]["tools"][0]["annotations"] = {"readOnlyHint": True, "destructiveHint": False}
+    (tmp_path / ".mcp.json").write_text(json.dumps(config))
     create_pins(tmp_path)
-    blind = fixtures / "AAK-RUGPULL-003" / "blind_spot"
-    assert json.loads((tmp_path / _PINS).read_text()) == json.loads((blind / _PINS).read_text())
-    after = json.loads((blind / ".mcp.json").read_text())
-    assert set(before["mcpServers"]) - set(after["mcpServers"]) == {"exporter"}
-    assert "command" in before["mcpServers"]["exporter"]
-    assert "tools" not in before["mcpServers"]["exporter"]
-    assert "toolDescriptions" in before["mcpServers"]["notes"]
-    assert "toolDescriptions" not in after["mcpServers"]["notes"]
+    assert json.loads((tmp_path / _PINS).read_text()) == json.loads(pins)
 
 
 def test_failure_evidence_names_the_registered_scanner(tmp_path: Path) -> None:

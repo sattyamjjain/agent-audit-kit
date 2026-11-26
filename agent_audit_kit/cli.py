@@ -137,35 +137,38 @@ def discover_cmd(path: str | None, verbose: bool, output_format: str) -> None:
 @click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def pin_cmd(path: str) -> None:
-    """Pin current MCP tool definitions for rug pull detection.
+    """Pin current MCP tool definitions and server launches for rug pull detection.
 
     Exits 2 when the pin file cannot be written inside the project, for
     instance because `.agent-audit-kit` is a link that leads out of it.
     """
     from agent_audit_kit.fix import _PartlyWritten
-    from agent_audit_kit.pinning import PIN_FILE, PinWriteError, create_pins
+    from agent_audit_kit.pinning import PIN_FILE, PinWriteError, write_pins
 
     project_root = Path(path)
     try:
-        count = create_pins(project_root)
+        counts = write_pins(project_root)
     except PinWriteError as exc:
         # A write that failed part way says so itself; anything else wrote nothing.
         tail = "" if isinstance(exc.args[0], _PartlyWritten) else f" {PIN_FILE} was not written."
         click.echo(f"Cannot pin: {exc}.{tail}", err=True)
         sys.exit(EXIT_ERROR)
-    click.echo(f"Pinned {count} tool definition(s) to .agent-audit-kit/tool-pins.json")
+    click.echo(f"Pinned {counts.tools} tool definition(s) to .agent-audit-kit/tool-pins.json")
+    click.echo(f"Pinned {counts.servers} server launch(es) in the same file")
 
 
 @cli.command("verify")
 @click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def verify_cmd(path: str) -> None:
-    """Verify MCP tool definitions against pinned hashes.
+    """Verify MCP tool definitions and server launches against pinned hashes.
 
-    Exits 1 when a tool changed, was added or was removed, 2 when the pin file
-    cannot be read or the check fails, and 0 when every tool matches its pin.
+    Exits 1 when a tool or server changed, was added or was removed, 2 when the
+    pin file cannot be read or the check fails, and 0 when everything matches
+    its pin. A pin file written before v2 is compared as it was written, and a
+    note on stderr says to pin again; the exit code is the comparison's.
     """
-    from agent_audit_kit.pinning import PinFileError, verify_pins
+    from agent_audit_kit.pinning import PIN_V1_NOTE, PinFileError, predates_v2, verify_pins
 
     project_root = Path(path)
     try:
@@ -185,6 +188,8 @@ def verify_cmd(path: str) -> None:
             err=True,
         )
         sys.exit(EXIT_ERROR)
+    if predates_v2(project_root):
+        click.echo(PIN_V1_NOTE, err=True)
     if not findings:
         click.echo("All tool definitions match their pins.")
     else:

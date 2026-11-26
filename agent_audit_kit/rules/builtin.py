@@ -3588,8 +3588,10 @@ _r(
 _r(
     "AAK-RUGPULL-001",
     "Tool definition changed since last pin",
-    "A tool's definition (name, description, or input schema) has changed since it was "
-    "last pinned. This could indicate a rug pull attack. The Deadbugz campaign "
+    "A tool's definition (its name, description, input schema, annotations, title or "
+    "output schema), or the launch of the server that provides it (its command, args, "
+    "url, type or the names of its env variables), has changed since it was last "
+    "pinned. This could indicate a rug pull attack. The Deadbugz campaign "
     "(September 2026) is the shape this is for: an MCP server shipped two "
     "innocuous tools, behaved for exactly three tool calls, then rewrote the "
     "metadata it returned into instructions to hunt SSH keys, AWS credentials, "
@@ -3599,7 +3601,9 @@ _r(
     "afterwards is what closes that window, and this rule is that comparison.",
     Severity.CRITICAL,
     Category.TOOL_POISONING,
-    "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If "
+    "Review the changes: the pin file holds hashes, not the old definitions, so "
+    "`git diff` of the MCP config shows what changed in the tool or server the "
+    "finding names. If legitimate, re-pin with 'agent-audit-kit pin'. If "
     "suspicious, remove the server. Re-run 'agent-audit-kit verify' on a "
     "schedule rather than only at install time: a campaign that waits N calls "
     "before mutating is invisible to a one-off check at approval.",
@@ -3609,12 +3613,18 @@ _r(
     adversa_references=["ADV-RUGPULL-01"],
     incident_references=["DEADBUGZ-2026-09"],
     limitations=(
-        "Compares the tool definitions written in the MCP config files with "
-        "`.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` "
-        "at run time is never compared. The hash covers a tool's name, description "
-        "and `inputSchema` only, so a change to its `annotations` (for example "
-        "flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` "
-        "is not a change here."
+        "Compares the tool definitions and server launches written in the MCP config "
+        "files with `.agent-audit-kit/tool-pins.json`; what a server returns from "
+        "`tools/list` at run time is never compared. A tool's hash covers its `name`, "
+        "`description`, `inputSchema`, `annotations`, `title` and `outputSchema`, so a "
+        "schema kept under `parameters` is not a change here. A server's launch hash "
+        "covers `command`, `args`, `url`, `type` and the names of its `env` keys: a "
+        "changed env value (never read, so that no secret reaches the pin file), `cwd`, "
+        "`headers`, or a URL under another key such as Windsurf's `serverUrl` is not a "
+        "change here. A pin file written before v2 (entries without `\"v\"`) is "
+        "compared on each tool's name, description and `inputSchema` only, as it was "
+        "written, and on no launch at all, until `aak pin` writes it again; `aak verify` "
+        "and `aak scan` print a note on stderr meanwhile."
         " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),
@@ -3623,27 +3633,32 @@ _r(
 _r(
     "AAK-RUGPULL-002",
     "New tool added since last pin",
-    "A new tool was added to an MCP server since the last pin. New tools should be "
-    "reviewed before approval. The Deadbugz campaign (September 2026) added "
+    "A new tool was added to an MCP server, or a new server to an MCP config, since "
+    "the last pin. New tools and servers should be reviewed before approval. The "
+    "Deadbugz campaign (September 2026) added "
     "capability after approval rather than at install time, which is why the "
     "comparison has to run again after the server is already trusted.",
     Severity.HIGH,
     Category.TOOL_POISONING,
-    "Review the new tool's definition and permissions. If it is expected, run "
+    "Review the new tool's definition and permissions, or the new server's launch. "
+    "If it is expected, run "
     "`agent-audit-kit pin .` to record it in `.agent-audit-kit/tool-pins.json`; if not, "
-    "delete its entry from the server's `tools` list. Pinning records every current "
-    "tool, so deal with any other drift findings first.",
+    "delete its entry from the server's `tools` list, or the server from the config. "
+    "Pinning records every current tool and server, so deal with any other drift "
+    "findings first.",
     sarif_name="NewToolSincePin",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-RUGPULL-02"],
     incident_references=["DEADBUGZ-2026-09"],
     limitations=(
-        "Counts only tools declared in a server's `tools` array in a config file. A "
-        "server added with just a `command`, whose tools arrive at run time through "
-        "`tools/list`, adds no pinned tool, and neither does a tool listed under "
-        "`toolDescriptions`, so a new server or a new tool of those shapes is not "
-        "reported here."
+        "Counts the tools declared in a server's `tools` array in a config file, and "
+        "the servers themselves. A tool listed under `toolDescriptions`, or one a "
+        "server returns from `tools/list` at run time, is never pinned, so a new tool "
+        "of either shape is not reported here; a new server is, but not the tools it "
+        "serves at run time. While the pin file holds an entry written before v2 (no "
+        "`\"v\"`), which pinned no server, a new server is not reported at all until "
+        "`aak pin` writes the file again."
         " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),
@@ -3652,24 +3667,26 @@ _r(
 _r(
     "AAK-RUGPULL-003",
     "Tool removed since last pin",
-    "A previously pinned tool was removed from an MCP server. This could indicate "
-    "covering tracks after an attack.",
+    "A previously pinned tool was removed from an MCP server, or a pinned server from "
+    "the MCP config. This could indicate covering tracks after an attack.",
     Severity.MEDIUM,
     Category.TOOL_POISONING,
-    "Find out why the tool left the server's `tools` list. If the removal is intended, "
+    "Find out why the tool left the server's `tools` list, or the server left the "
+    "config. If the removal is intended, "
     "run `agent-audit-kit pin .` to refresh `.agent-audit-kit/tool-pins.json`; if not, "
-    "restore the entry. Pinning records every current tool, so deal with any other "
-    "drift findings first.",
+    "restore the entry. Pinning records every current tool and server, so deal with "
+    "any other drift findings first.",
     sarif_name="ToolRemovedSincePin",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-RUGPULL-03"],
     limitations=(
-        "Counts only tools declared in a server's `tools` array in a config file, "
-        "because nothing else is pinned. A server declared with just a `command`, "
-        "whose tools arrive at run time through `tools/list`, has no pinned tool, "
-        "and neither does a tool listed under `toolDescriptions`, so removing "
-        "either is not reported here."
+        "Counts the tools declared in a server's `tools` array in a config file, and "
+        "the servers themselves, because nothing else is pinned. A tool listed under "
+        "`toolDescriptions`, or one a server stops returning from `tools/list` at run "
+        "time, has no pin, so its removal is not reported here. A pin file written "
+        "before v2 (entries without `\"v\"`) pinned no server, so removing a server it "
+        "holds no tool pin for is not reported until `aak pin` writes the file again."
         " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),

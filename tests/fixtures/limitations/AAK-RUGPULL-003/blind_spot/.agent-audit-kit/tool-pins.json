@@ -1,6 +1,14 @@
 {
+  "notes/": {
+    "v": 2,
+    "kind": "server",
+    "name": "notes",
+    "hash": "6d9263f2b111278ba43c848be7da83fbb66174aaf2ac82a0b15de61f685af1df"
+  },
   "notes/add_note": {
-    "hash": "fd6c2bfe8133e478aa84c85735c6bd81aa358fb00323fc66f0e49e5ccc8ac351",
-    "name": "add_note"
+    "v": 2,
+    "kind": "tool",
+    "name": "add_note",
+    "hash": "c4cb86b1bdb1abac22092181e8d5102f64d0b693b0e69e09c92490a882b655f1"
   }
 }

@@ -18,14 +18,25 @@ semantics that make that impossible to miss: it is kept through `--rules`
 filters, `--diff` and severity floors, and `aak scan` exits 1 as INCOMPLETE
 unless `--allow-scanner-failure` is passed. No new rule id, because the
 condition is not a new kind of risk; it is this scanner failing to run.
+
+A pin file written before v2 is the opposite case, and is deliberately not
+reported that way. Every rule this scanner owns was evaluated, against the
+hashes the file holds (`pinning`'s docstring says what an old entry covers),
+so the scan is complete, and an internal failure would make `aak scan` exit 1
+as INCOMPLETE on every project that pinned before upgrading. A finding of any
+other rule would say the project is at risk when it is the pin file that is
+old. So the scanner prints `pinning.PIN_V1_NOTE` to stderr, once, as `aak
+verify` does, and changes no finding and no exit code; the note stops when
+`aak pin` writes the file again.
 """
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from agent_audit_kit.models import SCANNER_FAIL_RULE_ID, Finding
-from agent_audit_kit.pinning import PIN_FILE, PinFileError, verify_pins
+from agent_audit_kit.pinning import PIN_FILE, PIN_V1_NOTE, PinFileError, predates_v2, verify_pins
 from agent_audit_kit.scanners._helpers import make_finding
 
 
@@ -55,4 +66,6 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 exc.line,
             )
         ], {PIN_FILE}
+    if predates_v2(project_root):
+        sys.stderr.write(PIN_V1_NOTE + "\n")
     return findings, {PIN_FILE}
