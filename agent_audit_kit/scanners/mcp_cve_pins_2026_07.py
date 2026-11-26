@@ -399,6 +399,70 @@ available) before shipping:
   - code-review-mcp-server         <  1.5.3  (CVE-2026-68934; `folderPath` and
     `baseBranch` reach `execSync` command strings. Every release from 1.0.0. npm
     only, a stated version required)
+  - flowise                        >= 3.1.3, presence-only  (CVE-2026-130796; the public
+    chatflow route answers with the chatflow's MCP server token. The MCP server arrives in
+    3.1.3 and the project ended after 3.1.4, so there is no fixed release. The image is a
+    row in container_image_pins)
+  - network-ai                     5.11.0 <= v < 5.17.2  (CVE-2026-130750; the MCP
+    Streamable HTTP server reflects a localhost Origin on any bind. The SSE rule's flaw
+    in the other transport, MEDIUM, so its own rule. A stated version is required)
+  - codewhale                      <  0.9.0  (CVE-2026-83816, CVE-2026-83817; `fd`, `rg` and
+    `git grep` options that run a program passed as read-only from 0.8.60, and a scheduled
+    automation approved its own tool calls in every release. Its own rule beside the
+    0.8.64 one, not an MCP surface, a stated version required)
+  - flyto-core                     <  2.26.8  (CVE-2026-77312, with CVE-2026-77313 to
+    CVE-2026-77316; the file modules the 2.26.6 fix left out write outside the sandbox,
+    run_recipe leaves its directory, and the SSRF guard has two gaps. CRITICAL, its own
+    rule beside the HIGH one at 2.26.6. A stated version is required)
+  - codebase-memory-mcp            <  0.9.0   (CVE-2026-114494, CVE-2026-114495,
+    CVE-2026-114496; HIGH), and < 0.10.0 (CVE-2026-114499, CVE-2026-114497; MEDIUM, its
+    own rule). npm and PyPI carry one project's one version line. A stated version is
+    required)
+  - mcp-ssh-manager                <  3.8.5   (CVE-2026-129995, and CVE-2026-77383, fixed
+    in 3.6.7; tool arguments reach remote shell commands. npm only, a stated version
+    required)
+  - @apireno/domshell              <  2.0.8   (CVE-2026-75518; domshell_eval, labelled
+    read-only, runs any JavaScript. npm only, a stated version required)
+  - velesnitski/yt-mcp             <  1.18.1  (CVE-2026-75612; read from a reference to the
+    GitHub repository that names a release, `_REPO_PINS`, and from its Docker Hub image
+    in container_image_pins. npm's `yt-mcp` is a YouTube server of another project)
+  - awslabs.document-loader-mcp-server  1.0.10 <= v < 1.0.21  (CVE-2026-130901; a CI
+    variable in the environment widened the base directory to `/`. A stated version is
+    required)
+  - awslabs.ecs-mcp-server         <  0.1.36  (CVE-2026-135614; the troubleshooting tool
+    returned task definitions unredacted. A stated version is required)
+  - astro-airflow-mcp              0.5.0 <= v < 0.9.2  (CVE-2026-133632; the telemetry
+    subprocess imported from the current directory. A stated version is required)
+  - mcp-server-git                 <  2026.10.28  (CVE-2026-134465; a nested gitdir pointer
+    leaves the --repository tree. PyPI only, a stated version required)
+  - mcp-server-fetch               2026.10.10 <= v < 2026.11.11  (CVE-2026-134492, LOW;
+    fec0::/10 passed the SSRF guard. PyPI only, a stated version required)
+  - mcp-server-kubernetes          0.3.0 <= v < 4.1.10  (CVE-2026-134817; flag-shaped
+    operands in eight tools, HIGH beside the CRITICAL 3.9.0 pin. npm only, a stated
+    version required, and the image in container_image_pins)
+  - @bytebase/dbhub                0.18.0 <= v < 1.7.0  (CVE-2026-134803; backslash-escaped
+    quotes hid statements from the read-only check) and 0.5.0 <= v < 0.22.6
+    (CVE-2026-136441; ZDI's 0-day, no fixed release named, the range read in the
+    tarballs). A stated version is required, and the image in container_image_pins
+  - @connorbritain/mssql-mcp-server and -core < 0.6.0, -reader and -writer < 0.5.0
+    (CVE-2026-63129; identifiers and WHERE clauses reached T-SQL as given. One rule, two
+    rows, a stated version required)
+  - obsidian-sync-mcp              <  0.5.7  (CVE-2026-77283; no Host or Origin check
+    without MCP_AUTH_TOKEN. A stated version is required, and the image in
+    container_image_pins)
+  - @doist/todoist-mcp             9.0.0 <= v < 10.3.3  (CVE-2026-76807; DNS rebinding on
+    todoist-mcp-http. A stated version is required. @doist/todoist-ai, its earlier name,
+    is not named by the advisory and not read)
+  - jupyter-mcp-server             0.5.0 <= v < 1.0.3  (CVE-2026-77318; /api/connect and
+    /api/stop asked for no credential. A stated version is required, and the image in
+    container_image_pins)
+  - pydantic-ai, pydantic-ai-slim  1.50.0 <= v < 1.107.10, and 2.0.0 <= v < 2.66.0
+    (CVE-2026-133505; tool data rebuilt as files. A stated version is required. Not an MCP
+    surface)
+  - pydantic-ai-harness            0.4.0 <= v < 0.70.0  (CVE-2026-133161; quadratic ANSI
+    stripping. A stated version is required. Not an MCP surface)
+  - iotdb-mcp-server               <  0.3.0  (CVE-2026-135747; the startup log line held
+    the database password. PyPI only, a stated version required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -2337,6 +2401,238 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-CODEREVIEW-CVE-2026-68934-001", "code-review-mcp-server",
          ("code-review-mcp-server",), (1, 5, 3),
          fix_label="1.5.3", requires_version=True, ecosystem="js"),
+    # --- 2026-11-26 (records the watcher holds) ---
+    # Flowise (npm `flowise`): GET /api/v1/public-chatflows/:id needs no login and answers
+    # with the whole chatflow row (`...chatflow`), sanitizing `flowData` alone, so a public
+    # chatflow that serves MCP gives its bearer token away in `mcpServerConfig`
+    # (CVE-2026-130796). Checked in the npm tarballs: the column, the `mcp-server` service
+    # and the `/api/v1/mcp/:chatflowId` endpoint are absent at 3.0.13, 3.1.0, 3.1.1 and
+    # 3.1.2 and present at 3.1.3 and 3.1.4, with one handler file in both. 3.1.4 is the last
+    # release, so the pin is presence-only from 3.1.3. Flowise's own MCP server, so it is
+    # not part of the sandbox rule above, which reports from 1.4.6.
+    _Pin("AAK-MCP-FLOWISE-CVE-2026-130796-001", "flowise", ("flowise",), None,
+         introduced=(3, 1, 3),
+         fix_label="no fixed release (3.1.4 is the last; FlowiseAI ended the project on "
+                   "2026-08-31); make no chatflow with an MCP server public and replace its "
+                   "token",
+         ecosystem="js"),
+    # Network-AI's MCP Streamable HTTP server reflects a localhost Origin whatever the bind
+    # address (CVE-2026-130750, MEDIUM, GHSA-jw52-p54c-w7hj), the defect 5.15.2 fixed in the
+    # SSE transport only (the LOW row above). Checked in the npm tarballs:
+    # `lib/mcp-transport-http` is absent at 5.10.0 and 5.10.2, arrives in 5.11.0, is one file
+    # at 5.11.0, 5.15.2, 5.15.5, 5.17.0 and 5.17.1, and 5.17.2 reflects only on a loopback
+    # bind. Another transport, range and severity, so its own rule; `latest` (6.0.1) is fixed,
+    # so a stated version is required.
+    _Pin("AAK-MCP-NETWORKAI-CVE-2026-130750-001", "network-ai", ("network-ai",), (5, 17, 2),
+         introduced=(5, 11, 0), fix_label="5.17.2 (affected from 5.11.0)",
+         requires_version=True, ecosystem="js"),
+    # CodeWhale (npm `codewhale`, which downloads the release binary of its own version):
+    # two ways past the approval prompt, both fixed in 0.9.0 (208421b9). exec_shell took
+    # `fd -x`, `rg --pre` and `git grep --open-files-in-pager` for read-only commands and ran
+    # them unasked (CVE-2026-83816), and a scheduled automation ran with every tool call
+    # approved unless told otherwise (CVE-2026-83817). Read in the source at the tags: the
+    # read-only classifier is absent at v0.8.59 and arrives in v0.8.60; the automation's
+    # `auto_approve` is a constant `Some(true)` at v0.4.4, v0.5.2, v0.8.0 and every later tag
+    # read up to v0.8.64, an option defaulting to true at v0.8.65 to v0.8.67, and defaults to
+    # false from v0.9.0, where the classifier refuses those options. So every release npm has
+    # under this name below 0.9.0 is affected and there is no lower bound. `deepseek-tui`,
+    # the old name, is in neither advisory. A different flaw and fix from the 0.8.64 rule
+    # above, so its own rule; `latest` (0.10.4) is fixed, so a stated version is required.
+    # The agent's own tools, no MCP code.
+    _Pin("AAK-CODEWHALE-CVE-2026-83816-001", "codewhale", ("codewhale",), (0, 9, 0),
+         fix_label="0.9.0", requires_version=True, ecosystem="js"),
+    # --- 2026-11-26 batch, flyto-core to yt-mcp ---
+    # Flyto2 Core (`flyto-core`, PyPI) < 2.26.8, CRITICAL: `data.csv.write`,
+    # `data.json_to_csv`, `file.copy` and `file.move` take the caller's path with no
+    # FLYTO_SANDBOX_DIR check, the modules the 2.26.6 fix (GHSA-2956-977x-2w3r) left out
+    # (CVE-2026-77312); `run_recipe` joins its name onto the recipe directory
+    # (CVE-2026-77314); the SSRF guard resolves a host and connects by name
+    # (CVE-2026-77313, CVE-2026-77316), and `http.paginate` follows a server's next link
+    # unchecked (CVE-2026-77315). 1.0.0 already writes and copies with no check, 2.26.7
+    # has all five and 2.26.8 fixes all five. Its own rule: a CRITICAL flaw does not ride
+    # on the HIGH row's 2.26.6 floor. `latest` (2.41.0) is fixed, so a stated version is
+    # required here; the HIGH row still reports an unversioned reference. npm has no
+    # `flyto-core`.
+    _Pin("AAK-MCP-FLYTO-CVE-2026-77312-001", "flyto-core", ("flyto-core",),
+         (2, 26, 8), fix_label="2.26.8", requires_version=True, ecosystem="py"),
+    # codebase-memory-mcp (DeusData) < 0.9.0: `query_graph` projections past 32 items
+    # write off fixed stack arrays (CVE-2026-114494), an imported artifact's size is cut
+    # to an int before the decompressor gets it (CVE-2026-114495), and `detect_changes`
+    # lets a `base_branch` start with a dash (CVE-2026-114496). 0.6.0, npm's first
+    # release, has the first and third, 0.6.1 adds the second, 0.8.1 has all three and
+    # 0.9.0 none. npm and PyPI publish wrappers that download the binary of their own
+    # version, so one row reads both. `latest` (0.12.1) is fixed on both.
+    _Pin("AAK-MCP-CODEBASEMEMORY-CVE-2026-114494-001", "codebase-memory-mcp",
+         ("codebase-memory-mcp",), (0, 9, 0),
+         fix_label="0.9.0 (0.10.0 clears the MEDIUM rule too)", requires_version=True),
+    # The same package < 0.10.0, MEDIUM: an unbounded .gitignore matcher (CVE-2026-114499,
+    # the 20,000-step budget is in 0.10.0 and not in 0.9.1-rc.1) and, on Windows, a UI
+    # route that stops any process (CVE-2026-114497, gone in 0.9.1-rc.1). The vendor
+    # gives 0.10.0 as PyPI's fix for the second: PyPI's 0.9.1rc1 asks GitHub for a
+    # release tagged v0.9.1rc1, which does not exist. 0.9.1-rc.1 reads as 0.9.1 and is
+    # reported, as the first flaw needs.
+    _Pin("AAK-MCP-CODEBASEMEMORY-CVE-2026-114499-001", "codebase-memory-mcp",
+         ("codebase-memory-mcp",), (0, 10, 0),
+         fix_label="0.10.0", requires_version=True),
+    # mcp-ssh-manager (bvisible, npm) < 3.8.5: backup tool arguments reach remote shell
+    # strings unquoted, `ssh_backup_list` on a readonly server included
+    # (CVE-2026-129995); the database tools had the same flaw up to 3.6.6
+    # (CVE-2026-77383, fixed 3.6.7). 3.0.0, npm's first release, has both. 3.8.4 quotes
+    # nothing in backup-manager.js, 3.8.5 does. `latest` (4.3.6) is fixed, so a stated
+    # version is required. Not on PyPI.
+    _Pin("AAK-MCP-SSHMANAGER-CVE-2026-129995-001", "mcp-ssh-manager",
+         ("mcp-ssh-manager",), (3, 8, 5),
+         fix_label="3.8.5 (CVE-2026-77383 in 3.6.7)", requires_version=True, ecosystem="js"),
+    # DOMShell (`@apireno/domshell`, npm) < 2.0.8: `eval` is missing from
+    # WRITE_COMMANDS and `domshell_eval` is labelled read-only, though both reach the
+    # write tier's Runtime.evaluate call (CVE-2026-75518). 1.1.0, npm's first release,
+    # has it and 2.0.8 adds `eval` to the set. `latest` (2.0.11) is fixed. Neither
+    # registry has an unscoped `domshell`.
+    _Pin("AAK-MCP-DOMSHELL-CVE-2026-75518-001", "@apireno/domshell",
+         ("@apireno/domshell",), (2, 0, 8),
+         fix_label="2.0.8", requires_version=True, ecosystem="js"),
+    # --- 2026-11-26 batch (servers) ---
+    # Document Loader MCP Server: `_get_base_directory` returned `/` whenever CI,
+    # GITHUB_ACTIONS or PYTEST_CURRENT_TEST was in the environment and DOCUMENT_BASE_DIR
+    # was not set (CVE-2026-130901). 1.0.9 has no base directory at all, which the record
+    # leaves out; 1.0.10 adds one with the bypass, 1.0.20 still has it and 1.0.21 drops it
+    # (PyPI has no 1.0.15). `latest` (1.0.27) is fixed, so a stated version is required.
+    _Pin("AAK-MCP-AWSDOCLOADER-CVE-2026-130901-001", "awslabs.document-loader-mcp-server",
+         ("awslabs.document-loader-mcp-server",), (1, 0, 21), introduced=(1, 0, 10),
+         fix_label="1.0.21 (affected from 1.0.10), or DOCUMENT_BASE_DIR set",
+         requires_version=True, ecosystem="py"),
+    # ECS MCP Server: get_ecs_troubleshooting_guidance put whole task definitions, with
+    # their environment values and secret references, in `raw_data` (CVE-2026-135614).
+    # 0.1.1, the first release, does, and 0.1.35; 0.1.36 runs them through
+    # redact_unless_sensitive_data_allowed. `latest` (0.1.39) is fixed.
+    _Pin("AAK-MCP-AWSECS-CVE-2026-135614-001", "awslabs.ecs-mcp-server",
+         ("awslabs.ecs-mcp-server",), (0, 1, 36),
+         fix_label="0.1.36, then rotate credentials kept as plaintext task definition variables",
+         requires_version=True, ecosystem="py"),
+    # astro-airflow-mcp: telemetry starts `sys.executable -c` in the current directory, so
+    # a project's own json.py runs (CVE-2026-133632). 0.4.1 has no telemetry.py; 0.5.0 to
+    # 0.9.1 pass no -I, and 0.9.2 does. `latest` is 0.9.2.
+    _Pin("AAK-MCP-ASTROAIRFLOW-CVE-2026-133632-001", "astro-airflow-mcp",
+         ("astro-airflow-mcp",), (0, 9, 2), introduced=(0, 5, 0),
+         fix_label="0.9.2 (affected from 0.5.0), or AF_TELEMETRY_DISABLED=1",
+         requires_version=True, ecosystem="py"),
+    # mcp-server-git, the reference server: `validate_repo_path` checks the path given, and
+    # a nested `.git` file's gitdir pointer is followed afterwards (CVE-2026-134465). Read:
+    # the check arrives in 2025.12.18 (before it --repository limits nothing, which the
+    # vendor's `< 2026.10.28` includes) and 2026.10.28 adds `validate_opened_repo`. Date
+    # versions compare as (year, month, day), and the 0.2 to 0.6 line sorts below them.
+    # npm's `mcp-server-git` is a security placeholder. `latest` (2026.11.18) is fixed.
+    _Pin("AAK-MCP-SERVERGIT-CVE-2026-134465-001", "mcp-server-git", ("mcp-server-git",),
+         (2026, 10, 28), fix_label="2026.10.28", requires_version=True, ecosystem="py"),
+    # mcp-server-fetch, the reference server: `_is_public_address` arrives in 2026.10.10
+    # (2026.8.18 has no address check) and has no fec0::/10 entry until 2026.11.11
+    # (CVE-2026-134492, LOW). npm's `mcp-server-fetch` is a security placeholder. `latest`
+    # (2026.11.18) is fixed.
+    _Pin("AAK-MCP-SERVERFETCH-CVE-2026-134492-001", "mcp-server-fetch", ("mcp-server-fetch",),
+         (2026, 11, 11), introduced=(2026, 10, 10),
+         fix_label="2026.11.11 (affected from 2026.10.10)",
+         requires_version=True, ecosystem="py"),
+    # mcp-server-kubernetes (npm, Flux159): operands that begin with a dash are read by
+    # kubectl as flags in the eight tools with no `assertNotFlagLike` (CVE-2026-134817). NVD
+    # says below 4.2.0, and npm's 4.1.10, cut the same day, has the same files but for the
+    # version string, so it is the first fixed release. 0.3.0 is the first that puts a
+    # caller's operand on a kubectl command line (`explain_resource`). The CRITICAL row
+    # above is another flaw with a lower floor. PyPI's 0.1.x is another project. `latest`
+    # (4.2.3) is fixed. The image `flux159/mcp-server-kubernetes` is a row of the same rule
+    # in container_image_pins.
+    _Pin("AAK-MCP-K8S-CVE-2026-134817-001", "mcp-server-kubernetes", ("mcp-server-kubernetes",),
+         (4, 1, 10), introduced=(0, 3, 0),
+         fix_label="4.2.0 (4.1.10 on npm has the same code)",
+         requires_version=True, ecosystem="js"),
+    # DBHub: the read-only check's scanner ends a string at a quote escaped with a backslash,
+    # so SQL the server runs reads as text inside a string and passes (CVE-2026-134803). 0.17.0 splits on every
+    # `;` and judges each piece; 0.18.0 brings the quote-aware scanner, 1.6.1 has it
+    # unchanged, and 1.7.0 reads backslash escapes. `latest` (2.1.0) is fixed. npm's and
+    # PyPI's `dbhub` are other projects. The image `bytebase/dbhub` is a row of the same
+    # rule in container_image_pins.
+    _Pin("AAK-MCP-DBHUB-CVE-2026-134803-001", "@bytebase/dbhub", ("@bytebase/dbhub",),
+         (1, 7, 0), introduced=(0, 18, 0), fix_label="1.7.0 (affected from 0.18.0)",
+         requires_version=True, ecosystem="js"),
+    # ZDI's 0-day for DBHub (CVE-2026-136441, 9.8) names one commit, 16e870ba, and no fix.
+    # That commit's decision, first word of each `;`-separated statement, ships in 0.5.0
+    # (0.4.11 has no splitter), and read-only mode rests on it, refined, through 0.22.5:
+    # none of the releases read before 0.22.6 opens a read-only transaction on MySQL or
+    # MariaDB, and the vendor's GHSA-mwwr-p57h-56pf (below 0.22.6) says PostgreSQL's setting
+    # was never applied. Whether later releases are affected nobody has said, so the row
+    # stops there.
+    _Pin("AAK-MCP-DBHUB-CVE-2026-136441-001", "@bytebase/dbhub", ("@bytebase/dbhub",),
+         (0, 22, 6), introduced=(0, 5, 0),
+         fix_label="no release the record names; 0.22.6 is the first with read-only transactions, "
+                   "so run 1.7.0 or later and keep the HTTP port private",
+         requires_version=True, ecosystem="js"),
+    # The MSSQL MCP servers built on @connorbritain/mssql-mcp-core put table names, column
+    # names and WHERE clauses into T-SQL as given, and `stateFilter` in the reader tier
+    # (CVE-2026-63129). Read in the tarballs: core 0.1.0 to 0.5.0, server 0.1.0 to 0.5.2
+    # (its own copy until 0.4.0 takes core as a dependency), reader and writer 0.1.0 to
+    # 0.4.2; core 0.6.0 validates and binds. A caret on core 0.5.0 does not reach 0.6.0.
+    # npm's and PyPI's unscoped `mssql-mcp-server` are other projects. Every `latest` is
+    # fixed. One rule, a row per floor.
+    _Pin("AAK-MCP-MSSQL-CVE-2026-63129-001", "@connorbritain/mssql-mcp-server / mssql-mcp-core",
+         ("@connorbritain/mssql-mcp-server", "@connorbritain/mssql-mcp-core"), (0, 6, 0),
+         fix_label="0.6.0", requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-MSSQL-CVE-2026-63129-001", "@connorbritain/mssql-mcp-reader / mssql-mcp-writer",
+         ("@connorbritain/mssql-mcp-reader", "@connorbritain/mssql-mcp-writer"), (0, 5, 0),
+         fix_label="0.5.0", requires_version=True, ecosystem="js"),
+    # obsidian-sync-mcp: with no MCP_AUTH_TOKEN nothing checks a request's Host or Origin
+    # (CVE-2026-77283). 0.1.0, the first release, installs `authenticate` only when the
+    # token is set, 0.5.6 is the same, and 0.5.7 checks both headers. `latest` (0.13.0) is
+    # fixed. The image `ghcr.io/es617/obsidian-sync-mcp` is a row of the same rule in
+    # container_image_pins.
+    _Pin("AAK-MCP-OBSIDIANSYNC-CVE-2026-77283-001", "obsidian-sync-mcp", ("obsidian-sync-mcp",),
+         (0, 5, 7), fix_label="0.5.7, or MCP_AUTH_TOKEN set", requires_version=True,
+         ecosystem="js"),
+    # Todoist's MCP server: `todoist-mcp-http` hands POST /mcp to the transport with no Host
+    # or Origin check and runs it under the operator's API key (CVE-2026-76807). In every
+    # @doist/todoist-mcp from 9.0.0 (0.0.1 is an empty placeholder) to 10.3.2; 10.3.3 adds
+    # a trusted-host middleware. `latest` (14.0.5) is fixed, and the project has moved to
+    # @todoist/mcp, whose 15.0.0, the first after a placeholder, has the check. The name
+    # before both, @doist/todoist-ai, carries the route from 7.3.0 (`todoist-ai-http`), but
+    # the advisory does not name it, so it is not a name here, as with `claude-code-sdk`
+    # (#1026); its 9.0.0 installs @doist/todoist-mcp 9.0.0, which is.
+    _Pin("AAK-MCP-TODOIST-CVE-2026-76807-001", "@doist/todoist-mcp", ("@doist/todoist-mcp",),
+         (10, 3, 3), introduced=(9, 0, 0),
+         fix_label="10.3.3 (affected from 9.0.0; the package has moved to @todoist/mcp)",
+         requires_version=True, ecosystem="js"),
+    # Jupyter MCP Server: in standalone streamable-http mode `PUT /api/connect` and `DELETE
+    # /api/stop` ask for no credential, MCP_TOKEN set or not (CVE-2026-77318). 0.4.0 has no
+    # such route; 0.5.0 adds /api/connect, 1.0.0 the token on /mcp alone, 1.0.2 is the same,
+    # and 1.0.3 guards both routes. AAK-DNS-REBIND-003 reads the shape in source, for
+    # CVE-2026-77359. `latest` (2.2.6) is fixed. The image `datalayer/jupyter-mcp-server`
+    # is a row of the same rule in container_image_pins.
+    _Pin("AAK-MCP-JUPYTER-CVE-2026-77318-001", "jupyter-mcp-server", ("jupyter-mcp-server",),
+         (1, 0, 3), introduced=(0, 5, 0), fix_label="1.0.3 (affected from 0.5.0)",
+         requires_version=True, ecosystem="py"),
+    # Pydantic AI: a tool result's JSON shaped like one of its file types is rebuilt as that
+    # file when stored history is loaded (CVE-2026-133505, MEDIUM). 1.49.0 keeps tool
+    # content as `Any`, 1.50.0 types it `ToolReturnContent`; 1.107.10 and 2.66.0 rebuild only
+    # recorded files. `pydantic-ai` requires its own version of `pydantic-ai-slim`. The 2.0.0
+    # betas read as 2.0.0. `latest` (2.75.0) is fixed. Not an MCP surface.
+    _Pin("AAK-PYDANTICAI-CVE-2026-133505-001", "pydantic-ai / pydantic-ai-slim",
+         ("pydantic-ai", "pydantic-ai-slim"), (1, 107, 10), introduced=(1, 50, 0),
+         also=(((2, 0, 0), (2, 66, 0)),),
+         fix_label="1.107.10, or 2.66.0 on the 2.x line (affected from 1.50.0)",
+         requires_version=True, ecosystem="py"),
+    # Pydantic AI Harness: `strip_ansi=True` runs a regular expression that is quadratic in
+    # a line's length on the event loop (CVE-2026-133161, HIGH). 0.3.0 has no strip_ansi;
+    # 0.4.0 to 0.69.0 carry the pattern (`OverflowingToolOutput` before 0.13.0), and 0.70.0
+    # replaces it. `latest` (0.75.0) is fixed. Not an MCP surface.
+    _Pin("AAK-PYDANTICAI-HARNESS-CVE-2026-133161-001", "pydantic-ai-harness",
+         ("pydantic-ai-harness",), (0, 70, 0), introduced=(0, 4, 0),
+         fix_label="0.70.0 (affected from 0.4.0), or leave strip_ansi off",
+         requires_version=True, ecosystem="py"),
+    # Apache IoTDB MCP Server: `logger.info(f"IoTDB Config: {db_config}")` runs at import
+    # with the password in `db_config` (CVE-2026-135747, rated low by the ASF, no score).
+    # PyPI has two releases: 0.2.0 logs it, 0.3.0 (2026-11-24) logs `config.safe_dict()`,
+    # which masks it. The CNA names this PyPI package by packageURL. `latest` is 0.3.0, so
+    # a stated version is required.
+    _Pin("AAK-MCP-IOTDB-CVE-2026-135747-001", "iotdb-mcp-server", ("iotdb-mcp-server",),
+         (0, 3, 0), fix_label="0.3.0, then change the IoTDB password it logged",
+         requires_version=True, ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (
@@ -2610,6 +2906,14 @@ class _RepoPin:
 _REPO_PINS: tuple[_RepoPin, ...] = (
     _RepoPin("AAK-MCP-WHATSAPP-CVE-2026-46555-001", "WhatsApp MCP",
              "verygoodplugins/whatsapp-mcp", (0, 2, 1), "v0.2.1"),
+    # yt-mcp, a YouTrack server started with `uvx --from git+https://github.com/
+    # velesnitski/yt-mcp`, which its release script pins to a tag. PyPI has no `yt-mcp`,
+    # npm's is a YouTube server (space-cadet/yt-mcp), and GitHub has other repositories
+    # of the name. `add_attachment` uploads any file the server can read and a health
+    # snapshot is written outside its directory (CVE-2026-75612). The tags below the
+    # fix are v1.18.0, v1.17.4 and v1.7.0, which has the snapshot write alone.
+    _RepoPin("AAK-MCP-YTMCP-CVE-2026-75612-001", "yt-mcp",
+             "velesnitski/yt-mcp", (1, 18, 1), "v1.18.1"),
 )
 
 

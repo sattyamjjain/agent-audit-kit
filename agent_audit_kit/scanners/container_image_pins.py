@@ -63,6 +63,42 @@ other projects. GitLab, whose instance serves MCP, ships as the Docker Hub image
 `gitlab/gitlab-ce` and `gitlab/gitlab-ee`, tagged `X.Y.Z-ce.0` and `X.Y.Z-ee.0`, and as
 Linux packages and a Helm chart, which are not read; npm's `@zereight/mcp-gitlab` is a
 third party's server for it.
+Flowise, whose chatflows can be served as MCP servers, ships as the Docker Hub image
+`flowiseai/flowise`, tagged by release, and as the npm package `flowise`, which has a row
+in `mcp_cve_pins_2026_07` for the same rule; `flowiseai/flowise-worker` runs the queue
+worker and serves no API.
+yt-mcp, an MCP server for YouTrack, is on neither registry (npm's `yt-mcp` is a YouTube
+server of another project): it is started from its GitHub repository, which
+`mcp_cve_pins_2026_07` reads, or as the Docker Hub image `velesnitski/yt-mcp`.
+Tapo's MCP server is a Rust binary on no package registry and ships as
+`ghcr.io/mihai-dinculescu/tapo-mcp`; PyPI's and crates.io's `tapo` are the client
+library on its own version line. Two Go servers on neither npm nor PyPI ship as images
+too: reza-gholizade's k8s-mcp-server as `ginnux/k8s-mcp-server` and StacklokLabs'
+sqlite-mcp as `ghcr.io/stackloklabs/sqlite-mcp/server`; the packages of those names on
+both registries are other projects.
+DBHub, mcp-server-kubernetes and obsidian-sync-mcp (npm) and Jupyter MCP Server
+(PyPI) are packages with rows here as well, for `bytebase/dbhub`,
+`flux159/mcp-server-kubernetes`, `ghcr.io/es617/obsidian-sync-mcp` and
+`datalayer/jupyter-mcp-server`; those rows read a version tag only.
+ArcadeDB, a database whose server has an MCP module, ships as the Docker Hub images
+`arcadedata/arcadedb` (JVM and `-native` builds), `arcadedata/arcadedb-headless` and
+`arcadedata/arcadedb-minimal`. PyPI's `arcadedb-embedded` wheels bundle its server jars
+and are not read, since no advisory names that package. SurrealDB, whose server carries
+MCP, ships as the Docker Hub image `surrealdb/surrealdb`; npm's and PyPI's `surrealdb` are
+client SDKs.
+Pomerium, a proxy that authorizes MCP clients, ships as `pomerium/pomerium`, its Cloud
+Run build `gcr.io/pomerium-io/pomerium` and, embedded, `pomerium/ingress-controller`;
+npm's `pomerium` is another project. LibreChat, a chat app that connects to MCP servers,
+ships as `librechat` and `librechat-api` under `ghcr.io/librechat-ai` (and, up to
+v0.8.8-rc4, `ghcr.io/danny-avila`), both proxied by `registry.librechat.ai`, and under
+Docker Hub's `librechat`; `@librechat/api`, where its MCP client lives, is not on npm.
+Sim, an agent workflow platform that serves workflows as MCP tools, ships as
+`ghcr.io/simstudioai/simstudio`, which its Helm chart names without the registry.
+Sdcb Chats, an AI chat server that connects to MCP servers, ships as the Docker Hub
+image `sdcb/chats`. FlowIntel, a case management platform whose chatbot is an MCP
+client, ships as `ghcr.io/flowintel/flowintel`. The AutoGPT Platform ships as the
+Docker Hub image `significantgravitas/autogpt`; `significantgravitas/auto-gpt` and
+PyPI's `agpt` are AutoGPT Classic.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
@@ -98,7 +134,8 @@ Where a reference is read
 What a tag means
 ----------------
 A tag is a version when it starts with `v?N.N.N`; a suffix after the numbers
-(`-test`, `-amd64`) is ignored. A two-part tag such as `2.4` floats to the newest
+(`-test`, `-amd64`) is ignored, unless a pin's `suffix` asks for one (ArcadeDB's
+`-native` builds, LibreChat's `-rc1` to `-rc4` of the fixed release). A two-part tag such as `2.4` floats to the newest
 patch of that line, so it is reported only when the whole line is below the
 floor. Everything else states no version this module can trust:
 
@@ -151,6 +188,10 @@ class _ImagePin:
     # The first affected version, for a defect that arrived after the image's
     # first tag (mcp-k6's prompt is absent before 0.3.0). None: every older tag.
     introduced: _Ver | None = None
+    # A pattern the tag must contain after its version, for a flaw only one kind of tag
+    # carries: ArcadeDB's native-image builds (`26.10.2-native`), or pre-releases of the
+    # fixed version pushed before the fix (LibreChat's `v0.8.8-rc1`). None: any tag.
+    suffix: str | None = None
 
 
 _PINS: tuple[_ImagePin, ...] = (
@@ -832,6 +873,302 @@ _PINS: tuple[_ImagePin, ...] = (
         (19, 5, 6), "from 19.5 below 19.5.6", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
         ("CVE-2026-123142",), introduced=(19, 5, 0),
     ),
+    # Flowise: CVE-2026-130796, the public chatflow route answers with the chatflow's MCP
+    # server token. The MCP server arrives in 3.1.3 (read in the npm tarballs, which the
+    # image installs with `npm install -g flowise`), and 3.1.4 is the last release, so the
+    # floor is the number after it. `latest` was built on 2026-07-29 at 16:24 UTC, six hours
+    # after npm had 3.1.4, and the 3.1.4 tag sixteen minutes later.
+    _ImagePin(
+        "AAK-MCP-FLOWISE-CVE-2026-130796-001", "Flowise", "flowiseai/flowise",
+        (3, 1, 5), "from 3.1.3, the last release included",
+        "No fixed release; FlowiseAI ended the project on 2026-08-31.",
+        ("CVE-2026-130796",), floating_affected=True, introduced=(3, 1, 3),
+    ),
+    # yt-mcp: CVE-2026-75612. Docker Hub has two tags, `1.7.0` and `latest`, both pushed on
+    # 2026-04-10, and the yt_mcp package in each is 1.7.0. That release has the record's
+    # second flaw, `get_project_health` writing a snapshot outside its directory, and not
+    # the first, `add_attachment`, which arrived in 1.16.0. The fix, v1.18.1, has no image.
+    _ImagePin(
+        "AAK-MCP-YTMCP-CVE-2026-75612-001", "yt-mcp", "velesnitski/yt-mcp",
+        (1, 18, 1), "below 1.18.1", "Fixed in v1.18.1, which has no image on Docker Hub.",
+        ("CVE-2026-75612",), floating_affected=True,
+    ),
+    # --- 2026-11-26 batch (servers) ---
+    # Tapo MCP server: `new_service` calls disable_allowed_hosts() at tapo-mcp-v0.3.1 and
+    # v0.4.0 and nowhere else read (absent at v0.3.0, where rmcp's loopback list applies,
+    # and from v0.5.0, which takes a configured list and refuses to start in the container
+    # with no key), so a rebinding page calls the tools when no TAPO_MCP_API_KEY is set
+    # (CVE-2026-77329). `0.3` and `0.4` were the 0.3.1 and 0.4.0 digests on 2026-11-26, and
+    # `latest` the 0.7.0 one, fixed.
+    _ImagePin(
+        "AAK-MCP-TAPO-CVE-2026-77329-001", "Tapo MCP server", "ghcr.io/mihai-dinculescu/tapo-mcp",
+        (0, 5, 0), "from 0.3.1 below 0.5.0", "Fixed in 0.5.0, or set TAPO_MCP_API_KEY.",
+        ("CVE-2026-77329",), introduced=(0, 3, 1),
+    ),
+    # mcp-server-kubernetes's image, for the npm row of the same rule: tagged `vX.Y.Z` (and
+    # `X.Y.Z` up to 2.4.3) by release. No v4.1.10 image; `latest` was the v4.2.3 digest.
+    _ImagePin(
+        "AAK-MCP-K8S-CVE-2026-134817-001", "mcp-server-kubernetes", "flux159/mcp-server-kubernetes",
+        (4, 1, 10), "from 0.3.0 up to 4.1.9", "Fixed in 4.2.0.",
+        ("CVE-2026-134817",), introduced=(0, 3, 0),
+    ),
+    # DBHub's image, for the two npm rows: tagged `X.Y.Z` by release (no 1.6.1 or 1.7.0).
+    # `latest` was pushed on 2026-11-25, after 2.1.0, fixed for the first.
+    _ImagePin(
+        "AAK-MCP-DBHUB-CVE-2026-134803-001", "DBHub", "bytebase/dbhub",
+        (1, 7, 0), "from 0.18.0 below 1.7.0", "Fixed in 1.7.0 (1.7.1 is the first image).",
+        ("CVE-2026-134803",), introduced=(0, 18, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-DBHUB-CVE-2026-136441-001", "DBHub", "bytebase/dbhub",
+        (0, 22, 6), "from 0.5.0 below 0.22.6",
+        "The record names no fixed release: run 1.7.1 or later and keep the HTTP port private.",
+        ("CVE-2026-136441",), introduced=(0, 5, 0),
+    ),
+    # obsidian-sync-mcp's image, for the npm row: tagged `vX.Y.Z` from v0.1.1. `latest` was
+    # the v0.13.0 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-MCP-OBSIDIANSYNC-CVE-2026-77283-001", "obsidian-sync-mcp",
+        "ghcr.io/es617/obsidian-sync-mcp", (0, 5, 7), "below 0.5.7",
+        "Fixed in 0.5.7, or set MCP_AUTH_TOKEN.", ("CVE-2026-77283",),
+    ),
+    # Jupyter MCP Server's image, for the PyPI row: tagged `X.Y.Z`, 1.0.1 included, which
+    # PyPI does not have. `latest` was the 2.2.6 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-MCP-JUPYTER-CVE-2026-77318-001", "Jupyter MCP Server", "datalayer/jupyter-mcp-server",
+        (1, 0, 3), "from 0.5.0 below 1.0.3", "Fixed in 1.0.3.",
+        ("CVE-2026-77318",), introduced=(0, 5, 0),
+    ),
+    # k8s-mcp-server (reza-gholizade, Go): the SSE server, the default mode, listens on
+    # every interface with no credential (CVE-2026-130007). Read in main.go: v1.0.4 is
+    # stdio only, v1.0.5 adds SSE, v1.0.25 calls `sse.Start(":" + port)` as it is, and
+    # v1.1.0 defaults to stdio and refuses HTTP without a 32-character MCP_AUTH_TOKEN.
+    # Images start at 1.0.6; `latest` was the 1.1.0 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-MCP-K8SMCPSERVER-CVE-2026-130007-001", "k8s-mcp-server", "ginnux/k8s-mcp-server",
+        (1, 1, 0), "from 1.0.5 below 1.1.0", "Fixed in 1.1.0, with MCP_AUTH_TOKEN set for HTTP.",
+        ("CVE-2026-130007",), introduced=(1, 0, 5),
+    ),
+    # sqlite-mcp (StacklokLabs, Go): read-only mode checks for a leading SELECT while the
+    # driver runs every statement, and describe_table interpolates its name into a PRAGMA
+    # (CVE-2026-130008). Both are in the source at v0.0.1, v0.1.0 and v0.1.1, every release
+    # before v0.1.2. `latest` was the 0.1.2 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-MCP-STACKLOKSQLITE-CVE-2026-130008-001", "sqlite-mcp",
+        "ghcr.io/stackloklabs/sqlite-mcp/server", (0, 1, 2), "below 0.1.2", "Fixed in 0.1.2.",
+        ("CVE-2026-130008",),
+    ),
+    # Obot: four flaws fixed in v0.27.0 (43a95224, 30c09dfd, 900e4f31, 092275d1, all in
+    # v0.27.0-rc1 and none in v0.26.3). Each arrives in another release, read in the source:
+    # the bare code exchange of mcpgateway/oauth/statemanager.go in v0.8.0 (absent at v0.7.1,
+    # CVE-2026-130764), the heredoc in pkg/mcp/docker.go in v0.9.0 (CVE-2026-130767), the
+    # registry's icon fetch in v0.14.0 (CVE-2026-130768), and pkg/mcp/oauth.go, which takes
+    # the resource the server names, in v0.26.0 (v0.25.6 passed the connection URL,
+    # CVE-2026-130766). One row per stretch, so the evidence names only the CVEs a tag has.
+    # HIGH throughout: CVE-2026-130764 covers the whole range. `latest` was v0.28.2 on
+    # 2026-11-26. The floors of the two older Obot rules are other flaws' fixes.
+    _ImagePin(
+        "AAK-MCP-OBOT-CVE-2026-130766-001", "Obot", "ghcr.io/obot-platform/obot",
+        (0, 9, 0), "from v0.8.0 below v0.27.0", "Fixed in v0.27.0.",
+        ("CVE-2026-130764",), introduced=(0, 8, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-OBOT-CVE-2026-130766-001", "Obot", "ghcr.io/obot-platform/obot",
+        (0, 14, 0), "from v0.9.0 below v0.27.0", "Fixed in v0.27.0.",
+        ("CVE-2026-130764", "CVE-2026-130767"), introduced=(0, 9, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-OBOT-CVE-2026-130766-001", "Obot", "ghcr.io/obot-platform/obot",
+        (0, 26, 0), "from v0.14.0 below v0.27.0", "Fixed in v0.27.0.",
+        ("CVE-2026-130764", "CVE-2026-130767", "CVE-2026-130768"), introduced=(0, 14, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-OBOT-CVE-2026-130766-001", "Obot", "ghcr.io/obot-platform/obot",
+        (0, 27, 0), "from v0.26.0 below v0.27.0", "Fixed in v0.27.0.",
+        ("CVE-2026-130766", "CVE-2026-130764", "CVE-2026-130767", "CVE-2026-130768"),
+        introduced=(0, 26, 0),
+    ),
+    # Pomerium: CVE-2026-135300, the MCP token endpoint never compared the secret of a client
+    # registered for client_secret_basic, the default method. Read in the source: internal/mcp
+    # is absent at v0.29.6, the empty case ships in v0.30.0 and is a log line at v0.33.6, and
+    # f86d7c00 (#6787) compares the secret in v0.34.0; v0.33 has no backport. The Cloud Run
+    # build carries `vX.Y.Z-cloudrun` tags. Every ingress-controller tag from v0.30.0 to
+    # v0.33.6 requires a Pomerium from v0.30.0 to v0.33.5 in its go.mod, and v0.34.0 requires
+    # v0.34.0; v0.29.6 requires v0.29.6. `latest` was the v0.34.1 digest of both Docker Hub
+    # images on 2026-11-26. Docker Hub floats two-part tags (`v0.33` was v0.33.6).
+    _ImagePin(
+        "AAK-MCP-POMERIUM-CVE-2026-135300-001", "Pomerium", "pomerium/pomerium",
+        (0, 34, 0), "from v0.30.0 below v0.34.0", "Fixed in v0.34.0.",
+        ("CVE-2026-135300",), introduced=(0, 30, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-POMERIUM-CVE-2026-135300-001", "Pomerium", "gcr.io/pomerium-io/pomerium",
+        (0, 34, 0), "from v0.30.0 below v0.34.0", "Fixed in v0.34.0.",
+        ("CVE-2026-135300",), introduced=(0, 30, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-POMERIUM-CVE-2026-135300-001", "Pomerium Ingress Controller",
+        "pomerium/ingress-controller",
+        (0, 34, 0), "from v0.30.0 below v0.34.0", "Fixed in v0.34.0.",
+        ("CVE-2026-135300",), introduced=(0, 30, 0),
+    ),
+    # LibreChat: CVE-2026-54031, the MCP OAuth client checks a URL and then follows redirects
+    # (and, to v0.8.8-rc4, connects to a literal address unchecked). Read in the source:
+    # packages/api/src/mcp/oauth is absent at v0.7.8 and ships in v0.7.9-rc1; v0.8.5 calls bare
+    # fetch; v0.8.6 to v0.8.8-rc4 call hardenedFetch with no `redirect`; 4d33d8c2 (#16514) sets
+    # `redirect: 'error'` in v0.8.8. CVE-2026-54032 joins it on v0.7.9 alone: the vendor's
+    # range is below v0.8.6, but only v0.7.9-rc1 and v0.7.9 mount a dialog that renders the
+    # description raw; from v0.8.0-rc1 to v0.8.5 nothing imports the file the record names,
+    # and 619f28d7 (#12927) is in v0.8.6-rc1. The third row per image is rc1 to rc4 of the
+    # fixed release, which read as 0.8.8. `ghcr.io/danny-avila/*` stops at v0.8.8-rc4 and its
+    # `latest` is the v0.8.7 digest; `ghcr.io/librechat-ai/*` and Docker Hub's are v0.8.9
+    # (2026-11-26). `registry.librechat.ai` answers with ghcr.io's token realm for both.
+    *(
+        _ImagePin(
+            "AAK-MCP-LIBRECHAT-CVE-2026-54031-001", "LibreChat", f"{registry}/{name}",
+            (0, 8, 0), "v0.7.9", "Fixed in v0.8.8.", ("CVE-2026-54031", "CVE-2026-54032"),
+            introduced=(0, 7, 9),
+        )
+        for registry in (
+            "ghcr.io/danny-avila", "registry.librechat.ai/danny-avila", "ghcr.io/librechat-ai",
+            "registry.librechat.ai/librechat-ai", "librechat",
+        )
+        for name in ("librechat", "librechat-api")
+    ),
+    *(
+        _ImagePin(
+            "AAK-MCP-LIBRECHAT-CVE-2026-54031-001", "LibreChat", f"{registry}/{name}",
+            (0, 8, 8), "from v0.7.9 below v0.8.8", "Fixed in v0.8.8.", ("CVE-2026-54031",),
+            floating_affected=registry.endswith("danny-avila"), introduced=(0, 8, 0),
+        )
+        for registry in (
+            "ghcr.io/danny-avila", "registry.librechat.ai/danny-avila", "ghcr.io/librechat-ai",
+            "registry.librechat.ai/librechat-ai", "librechat",
+        )
+        for name in ("librechat", "librechat-api")
+    ),
+    *(
+        _ImagePin(
+            "AAK-MCP-LIBRECHAT-CVE-2026-54031-001", "LibreChat", f"{registry}/{name}",
+            (0, 8, 9), "from v0.8.8-rc1 to v0.8.8-rc4", "Fixed in v0.8.8.", ("CVE-2026-54031",),
+            introduced=(0, 8, 8), suffix=r"^-rc[1-4](?!\d)",
+        )
+        for registry in (
+            "ghcr.io/danny-avila", "registry.librechat.ai/danny-avila", "ghcr.io/librechat-ai",
+            "registry.librechat.ai/librechat-ai", "librechat",
+        )
+        for name in ("librechat", "librechat-api")
+    ),
+    # ArcadeDB: the MCP module's authorization gaps fixed in 26.11.1 (289ef95608, 2026-11-02,
+    # and 100d8a021c, 2026-11-04). Read in the source and the server jars: no MCP classes in
+    # 26.2.1 or 26.2.2 (NVD starts CVE-2026-134329 at 26.2.1), MCP in 26.3.1, where get_schema
+    # lists every type (CVE-2026-134327) and the query tool's read-only check evaluates Groovy
+    # Gremlin (CVE-2026-134324); resolveDatabase, which tests existence before access, arrives
+    # in 26.4.2 (CVE-2026-134329). Headless and minimal leave Gremlin out and keep MCP, so
+    # CVE-2026-134324 reaches them through the upsert tools only, from 26.8.1. They stop at
+    # 26.10.1 and their `latest` is a 26.11.1-SNAPSHOT of 2026-10-05, before the fixes;
+    # `arcadedata/arcadedb:latest` was 26.12.1-SNAPSHOT on 2026-11-26, after them.
+    _ImagePin(
+        "AAK-MCP-ARCADEDB-CVE-2026-134327-001", "ArcadeDB", "arcadedata/arcadedb",
+        (26, 4, 2), "from 26.3.1 below 26.11.1", "Fixed in 26.11.1.",
+        ("CVE-2026-134327", "CVE-2026-134324"), introduced=(26, 3, 1),
+    ),
+    _ImagePin(
+        "AAK-MCP-ARCADEDB-CVE-2026-134327-001", "ArcadeDB", "arcadedata/arcadedb",
+        (26, 11, 1), "from 26.4.2 below 26.11.1", "Fixed in 26.11.1.",
+        ("CVE-2026-134327", "CVE-2026-134324", "CVE-2026-134329"), introduced=(26, 4, 2),
+    ),
+    *(
+        _ImagePin(
+            "AAK-MCP-ARCADEDB-CVE-2026-134327-001", "ArcadeDB", image, floor, label,
+            "Fixed in 26.11.1, which this image does not have; use arcadedata/arcadedb.",
+            cves, floating_affected=floor == (26, 11, 1), introduced=introduced,
+        )
+        for image in ("arcadedata/arcadedb-headless", "arcadedata/arcadedb-minimal")
+        for introduced, floor, label, cves in (
+            ((26, 3, 1), (26, 4, 2), "from 26.3.1 below 26.11.1", ("CVE-2026-134327",)),
+            ((26, 4, 2), (26, 8, 1), "from 26.4.2 below 26.11.1",
+             ("CVE-2026-134327", "CVE-2026-134329")),
+            ((26, 8, 1), (26, 11, 1), "from 26.8.1 below 26.11.1",
+             ("CVE-2026-134327", "CVE-2026-134329", "CVE-2026-134324")),
+        )
+    ),
+    # ArcadeDB native builds: CVE-2026-134337. SqlAstInspector walks the SQL AST by reflection
+    # and the native binary has no reflection metadata for it, so a write inside a SELECT
+    # passes for a read, the MCP tools' own read-only check included. NVD starts at 26.8.1;
+    # the class arrives in 26.10.1, the first release with `-native` tags on Docker Hub
+    # (26.10.1 and 26.10.2, each also `-native-amd64` and `-native-arm64`). 4ffa8ca240 adds the
+    # metadata (220 sql.parser entries) in 26.11.1. JVM tags are not affected, hence `suffix`.
+    _ImagePin(
+        "AAK-MCP-ARCADEDB-CVE-2026-134337-001", "ArcadeDB native image", "arcadedata/arcadedb",
+        (26, 11, 1), "from 26.10.1 below 26.11.1", "Fixed in 26.11.1.",
+        ("CVE-2026-134337",), introduced=(26, 10, 1), suffix=r"-native(?![a-z])",
+    ),
+    # SurrealDB: CVE-2026-134293, the MCP tools' identifier check ends a backtick-quoted name
+    # at the first backtick and the SurrealQL lexer honours a backslash before it. Read in the
+    # source: surrealdb/mcp is absent at v3.0.5 and ships in v3.1.0-beta.1 with
+    # `.find('`')`, unchanged at v3.3.5; ec41ae8f15 scans as the lexer does, in v4.0.0-beta.1
+    # and not v3.3.5 (no 3.x backport). Docker Hub floats `v3.1` to `v3.3`, which are reported;
+    # `v3` was v3.3.5 on 2026-11-26 and one number is not read. `latest` was v4.0.1.
+    _ImagePin(
+        "AAK-MCP-SURREALDB-CVE-2026-134293-001", "SurrealDB", "surrealdb/surrealdb",
+        (4, 0, 0), "from v3.1.0 below v4.0.0", "Fixed in v4.0.0.",
+        ("CVE-2026-134293",), introduced=(3, 1, 0),
+    ),
+    # Sim: CVE-2026-135162, the internal routes that create and update a workflow MCP
+    # server wrote `isPublic` for any workspace member with `write`, and a public server
+    # answers /api/mcp/serve/{serverId} with no credential. Neither route mentions
+    # `isPublic` at v0.5.60; both write it under `withMcpAuth('write')` at v0.5.61 and at
+    # v0.9.40; v0.9.41 asks for admin (3b6be5cd). GHCR has no v0.5.60. `latest` was the
+    # v0.9.66 digest on 2026-11-26. The second row is the name the project's Helm chart
+    # gives its values (`repository: simstudioai/simstudio`, the registry set globally);
+    # Docker Hub has no such repository.
+    _ImagePin(
+        "AAK-MCP-SIM-CVE-2026-135162-001", "Sim", "ghcr.io/simstudioai/simstudio",
+        (0, 9, 41), "from 0.5.61 below 0.9.41", "Fixed in v0.9.41.",
+        ("CVE-2026-135162",), introduced=(0, 5, 61),
+    ),
+    _ImagePin(
+        "AAK-MCP-SIM-CVE-2026-135162-001", "Sim", "simstudioai/simstudio",
+        (0, 9, 41), "from 0.5.61 below 0.9.41", "Fixed in v0.9.41.",
+        ("CVE-2026-135162",), introduced=(0, 5, 61),
+    ),
+    # sdcb Chats: CVE-2026-135432, `assigned-user-details` on an MCP server returns every
+    # assigned user's `CustomHeaders` to any one of them. NVD starts at 1.10.0; in the
+    # source McpController.cs is absent at 1.6.9.30 and has the same endpoint and filter
+    # at 1.7.0.154, 1.9.1.416 and 1.17.0.772 (it moved to src/BE/web before 1.10.0), so
+    # the start is 1.7.0. 1.17.1.799 asks for the owner or an admin (776a065b). Docker
+    # Hub tags `X.Y.Z`, `X.Y.Z.BUILD`, `X.Y` and `r-BUILD`; `1`, `1.17` and `latest` were
+    # the 1.17.1 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-MCP-SDCBCHATS-CVE-2026-135432-001", "sdcb Chats", "sdcb/chats",
+        (1, 17, 1), "from 1.7.0 below 1.17.1", "Fixed in 1.17.1.",
+        ("CVE-2026-135432",), introduced=(1, 7, 0),
+    ),
+    # FlowIntel: CVE-2026-133853, its chatbot keeps one MCP session and, from 3.3.0, one
+    # process-wide FLOWINTEL_API_KEY for every user. chatbot_core.py is absent at 3.1.0;
+    # 3.2.0 opens the session with the first caller's key and keeps it; 3.3.0 and 4.0.0
+    # swap it under overlapping requests. The fix (9eec395c, 2026-11-17) is on main and
+    # the record names 4.1.0, which had no tag and no image on 2026-11-26. `latest` was
+    # the 4.0.0 digest.
+    _ImagePin(
+        "AAK-MCP-FLOWINTEL-CVE-2026-133853-001", "FlowIntel", "ghcr.io/flowintel/flowintel",
+        (4, 1, 0), "from 3.2.0, the newest release included",
+        "Fixed in 4.1.0, not published on 2026-11-26.",
+        ("CVE-2026-133853",), floating_affected=True, introduced=(3, 2, 0),
+    ),
+    # AutoGPT Platform: CVE-2026-130178 (the outbound request guard lets `::` and other
+    # IPv6 forms of a blocked address through) and CVE-2026-133448 (chat and graph text is
+    # pre-processed by the Claude Code CLI, outside the tool allow-list and hooks). One
+    # range and one fix release, both HIGH, so one rule. At v0.7.1 and v0.8.4 request.py
+    # lists no `::/128` and neither SDK caller passes `verbatim_prompts`; v0.9.0 does both.
+    # v0.7.1 is the oldest release tag on Docker Hub, and each image's label names its
+    # platform tag's commit. `latest` was the v0.12.0 digest on 2026-11-26.
+    _ImagePin(
+        "AAK-AUTOGPT-CVE-2026-130178-001", "AutoGPT Platform", "significantgravitas/autogpt",
+        (0, 9, 0), "from 0.7.1 below 0.9.0", "Fixed in v0.9.0.",
+        ("CVE-2026-130178", "CVE-2026-133448"), introduced=(0, 7, 1),
+    ),
 )
 
 _MAX_FILE_BYTES = 2_000_000
@@ -883,6 +1220,8 @@ def _affected(tag: str | None, pin: _ImagePin) -> bool:
         return pin.floating_affected
     m = _VER_RE.match(tag)
     if not m:
+        return False
+    if pin.suffix is not None and not re.search(pin.suffix, tag[m.end():]):
         return False
     major, minor = int(m.group(1)), int(m.group(2))
     if m.group(3) is None:

@@ -29,6 +29,9 @@ OBOT = "AAK-MCP-OBOT-CVE-2026-101084-001"
 # CVE-2026-105138 (#926): v0.12.0 up to v0.26.2, so every Obot tag below the
 # CRITICAL pin's v0.25.0 floor from v0.12.0 on is reported by both rules.
 OBOT_STATIC = "AAK-MCP-OBOT-CVE-2026-105138-001"
+# CVE-2026-130766 and three more: v0.8.0 up to v0.27.0, so every Obot tag the two rules
+# above report from v0.8.0 on is reported by this one too.
+OBOT_OAUTH = "AAK-MCP-OBOT-CVE-2026-130766-001"
 METAMCP = "AAK-MCP-METAMCP-CVE-2026-79538-001"
 HEYM = "AAK-MCP-HEYM-CVE-2026-100858-001"
 MARK3LABS_FS = "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
@@ -74,7 +77,7 @@ def test_obot_registry_auth_cve_rides_the_existing_floor(tmp_path: Path) -> None
     """CVE-2026-101063 (#882) is fixed in v0.23.0, below the pin's v0.25.0 floor, so
     every version it affects is already reported: it joins the rule, no new pin."""
     ids = _write(tmp_path, "compose.yaml", "services:\n  o:\n    image: ghcr.io/obot-platform/obot:v0.22.0\n")
-    assert ids == [OBOT, OBOT_STATIC]
+    assert ids == [OBOT, OBOT_STATIC, OBOT_OAUTH]
 
 
 @pytest.mark.parametrize("case, line", [("vulnerable", 10), ("vulnerable-tagged", 5)])
@@ -115,16 +118,18 @@ def test_mark3labs_filesystem_tag_reading(tmp_path: Path, tag: str, fires: bool)
 )
 def test_obot_fixtures_fire(case: str, line: int) -> None:
     findings = scan(FIXTURES / "cve-2026-101084-obot" / case)[0]
-    # Every fixture here is also inside CVE-2026-105138's v0.12.0-v0.26.2 range.
-    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT, line), (OBOT_STATIC, line)]
+    # Every fixture here is also inside CVE-2026-105138's v0.12.0-v0.26.2 range, and
+    # inside CVE-2026-130766's rule, v0.8.0-v0.27.0.
+    assert [(f.rule_id, f.line_number) for f in findings] == [
+        (OBOT, line), (OBOT_STATIC, line), (OBOT_OAUTH, line)]
     assert OBOT in {f.rule_id for f in run_scan(FIXTURES / "cve-2026-101084-obot" / case).findings}
 
 
 def test_obot_v0_25_0_latest_enterprise_and_empty_helm_tag_are_quiet() -> None:
-    """Quiet for the CRITICAL pin. v0.25.0 is still inside CVE-2026-105138's range,
-    so the compose file reports that rule once."""
+    """Quiet for the CRITICAL pin. v0.25.0 is still inside CVE-2026-105138's range and
+    the v0.27.0 rule's, so the compose file reports each of those once."""
     root = FIXTURES / "cve-2026-101084-obot" / "negative"
-    assert _ids(root) == [OBOT_STATIC]
+    assert _ids(root) == [OBOT_STATIC, OBOT_OAUTH]
     assert OBOT not in {f.rule_id for f in run_scan(root).findings}
 
 
@@ -183,7 +188,7 @@ def test_metamcp_release_past_nvd_range_is_not_claimed(tmp_path: Path) -> None:
 
 def test_helm_registry_and_repository_are_joined(tmp_path: Path) -> None:
     values = "image:\n  registry: ghcr.io\n  repository: obot-platform/obot\n  tag: v0.22.1\n"
-    assert _write(tmp_path, "values.yaml", values) == [OBOT, OBOT_STATIC]
+    assert _write(tmp_path, "values.yaml", values) == [OBOT, OBOT_STATIC, OBOT_OAUTH]
 
 
 def test_helm_tag_is_read_as_written_not_as_a_float(tmp_path: Path) -> None:
@@ -191,7 +196,7 @@ def test_helm_tag_is_read_as_written_not_as_a_float(tmp_path: Path) -> None:
     fire; composed, it stays "0.30", a line above the v0.25.0 floor."""
     values = "image:\n  repository: ghcr.io/obot-platform/obot\n  tag: %s\n"
     assert _write(tmp_path, "values.yaml", values % "0.30") == []
-    assert _write(tmp_path, "values.yaml", values % "0.20") == [OBOT, OBOT_STATIC]
+    assert _write(tmp_path, "values.yaml", values % "0.20") == [OBOT, OBOT_STATIC, OBOT_OAUTH]
 
 
 def test_helm_repository_with_a_fixed_tag_is_not_read_as_latest(tmp_path: Path) -> None:
@@ -231,7 +236,8 @@ def test_one_finding_per_pin_per_file(tmp_path: Path) -> None:
         "  c:\n    image: ghcr.io/heymrun/heym:0.0.100\n"
     )
     findings = scan(_write_root(tmp_path, "compose.yml", compose))[0]
-    assert sorted((f.rule_id, f.line_number) for f in findings) == [(HEYM, 7), (OBOT, 3), (OBOT_STATIC, 3)]
+    assert sorted((f.rule_id, f.line_number) for f in findings) == [
+        (HEYM, 7), (OBOT, 3), (OBOT_STATIC, 3), (OBOT_OAUTH, 3)]
 
 
 def test_every_read_file_counts_as_scanned(tmp_path: Path) -> None:
@@ -336,9 +342,10 @@ def test_obot_static_secret_pin_is_its_own_medium_rule() -> None:
 def test_obot_static_secret_fixtures_positive_and_negative() -> None:
     root = FIXTURES / "cve-2026-105138-obot"
     findings = scan(root / "vulnerable")[0]
-    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT_STATIC, 6)]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT_STATIC, 6), (OBOT_OAUTH, 6)]
     assert OBOT_STATIC in {f.rule_id for f in run_scan(root / "vulnerable").findings}
-    assert _ids(root / "negative") == []
+    # v0.26.2 has this CVE's fix and not CVE-2026-130766's, which is v0.27.0.
+    assert _ids(root / "negative") == [OBOT_OAUTH]
 
 
 @pytest.mark.parametrize(("tag", "static", "critical"), [
