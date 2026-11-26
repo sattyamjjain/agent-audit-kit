@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-26T03:52:39Z",
+  "last_updated": "2026-11-26T18:14:36Z",
   "aak_version": "0.6.36",
-  "rule_count": 556,
+  "rule_count": 558,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -173,7 +173,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 151,
+      "rule_density": 153,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -949,6 +949,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-GITLAB-CVE-2026-135221-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-135221"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
           "severity": "medium",
           "cve_references": [
@@ -1145,6 +1156,17 @@
           ],
           "aicm_references": [
             "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PAIN001-CVE-2026-136620-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-136620"
+          ],
+          "aicm_references": [
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -3505,7 +3527,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 316,
+      "rule_density": 318,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4958,6 +4980,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-GITLAB-CVE-2026-135221-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-135221"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001",
           "severity": "critical",
           "cve_references": [
@@ -5890,6 +5923,17 @@
           ],
           "aicm_references": [
             "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PAIN001-CVE-2026-136620-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-136620"
+          ],
+          "aicm_references": [
+            "IVS-04",
             "STA-08"
           ]
         },

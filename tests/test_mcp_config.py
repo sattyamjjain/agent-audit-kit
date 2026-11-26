@@ -627,3 +627,45 @@ def test_is_loopback_url(url: str, loopback: bool) -> None:
     from agent_audit_kit.scanners._helpers import is_loopback_url
 
     assert is_loopback_url(url) is loopback
+
+
+def _mcp_007(tmp_path: Path, command: str, args: list[str]) -> list[str]:
+    (tmp_path / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"r": {"command": command, "args": args}}}), encoding="utf-8")
+    return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-MCP-007"]
+
+
+@pytest.mark.parametrize(("command", "args", "evidence"), [
+    # uvx takes PyPI specs: `==` is a pin, which the `@` test read as "no version pin".
+    ("uvx", ["mcp-runtime-report==1.0.0"], []),
+    ("uvx", ["mcp-runtime-report@1.0.0"], []),
+    ("uvx", ["--from", "git+https://github.com/o/r@0123456789abcdef0123456789abcdef01234567", "r"],
+     ["Server 'r' arg: r (no version pin)"]),
+    ("uvx", ["mcp-runtime-report"], ["Server 'r' arg: mcp-runtime-report (no version pin)"]),
+    ("uvx", ["mcp-runtime-report>=1.0"], ["Server 'r' arg: mcp-runtime-report>=1.0 (version range `>=1.0`)"]),
+    ("uvx", ["mcp-runtime-report@latest"], ["Server 'r' arg: mcp-runtime-report@latest (floating tag `latest`)"]),
+    # npm launchers keep the `@version` test.
+    ("npx", ["-y", "pkg@1.6.0"], []),
+    ("npx", ["-y", "pkg"], ["Server 'r' arg: pkg (no version pin)"]),
+    ("npx", ["-y", "@scope/pkg"], ["Server 'r' arg: @scope/pkg (no version pin)"]),
+    ("npx", ["-y", "pkg@latest"], []),
+])
+def test_mcp_007_judges_a_uvx_spec_as_pypi_reads_it(
+        tmp_path: Path, command: str, args: list[str], evidence: list[str]) -> None:
+    assert _mcp_007(tmp_path, command, args) == evidence
+
+
+def test_mcp_007_on_a_uvx_pin_is_gone_from_a_full_scan(tmp_path: Path) -> None:
+    from agent_audit_kit.engine import run_scan
+
+    # A name in no feed: the malicious-release feed lists mcp-runtime-report 1.0.0, and
+    # that finding stands both rules down.
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {
+        "r": {"command": "uvx", "args": ["aak-test-mcp-server==1.0.0"]},
+        "u": {"command": "uvx", "args": ["aak-test-mcp-server"]},
+    }}), encoding="utf-8")
+    # The unpinned launch is reported once, by AAK-SUPPLY-001, which AAK-MCP-007
+    # stands down for; the pinned one by neither.
+    hits = [f for f in run_scan(tmp_path).findings if f.rule_id in ("AAK-MCP-007", "AAK-SUPPLY-001")]
+    assert [(f.rule_id, f.evidence.split(" (")[0]) for f in hits] == [
+        ("AAK-SUPPLY-001", "Server 'u' arg: aak-test-mcp-server")]

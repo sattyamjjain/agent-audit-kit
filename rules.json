@@ -3419,9 +3419,9 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions. Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
+      "description": "Package name in args lacks an exact version when using npx/uvx: no @version suffix after npx, bunx or pnpx, no `==` version (or uv's `@version`) after uvx. Unpinned packages can silently update to malicious versions. Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
       "incident_references": [],
-      "limitations": "Looks for a package argument after npx, uvx, bunx or pnpx that has no `@version` suffix. Any suffix counts as a pin, including the floating tag `@latest`. The same package fetched through `cmd /c npx` is not checked.",
+      "limitations": "Looks for a package argument after npx, bunx or pnpx that has no `@version` suffix; there any suffix counts as a pin, including the floating tag `@latest`. After uvx an argument is read as a PyPI spec: `pkg==1.2.3`, uv's `pkg@1.2.3` and a git URL at a commit are pins, while no version, a range (`pkg>=1.0`) and `pkg@latest` are reported. Every argument that does not start with `-` or a path is judged, including a value an option of the server itself takes. The same package fetched through `cmd /c npx` is not checked.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -7077,6 +7077,37 @@
     },
     {
       "adversa_references": [
+        "ADV-SSRF-02"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-135221"
+      ],
+      "description": "GitLab serves MCP from the instance itself, and the Docker Hub image `gitlab/gitlab-ee` is one way it is run. Insufficient URL validation in the MCP server's OAuth handling let an authenticated user, under certain conditions, make the instance send requests to internal network resources (CVE-2026-135221, CVSS 3.1 6.3, CWE-918). GitLab's 19.6.2 patch release lists it as server-side request forgery in the MCP server OAuth token endpoint handler, in GitLab EE only, from 18.10 before 19.4.11, 19.5 before 19.5.9 and 19.6 before 19.6.2. The ranges are the vendor's; the fix was not read in the source.",
+      "incident_references": [],
+      "limitations": "Reads image references only: an `image:` value or any other mention of `gitlab/gitlab-ee:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm values mapping of `repository` and `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. `gitlab/gitlab-ce` is not reported: the record names EE alone. 19.3.10 and the other older releases of the 19.6.2 patch day are reported, as GitLab's range includes them. `latest` was the 19.6.2 image on 2026-11-25, so it and an untagged reference are not reported. The rule reads the tag, not whether the MCP server is on or reachable, so an instance no agent talks to is reported too. A Linux package, the GitLab Helm chart and its component images, and `docker.io/gitlab/...` or a mirror under another registry state no version this rule reads, and commented-out lines are skipped.",
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP05:2025",
+        "MCP04:2025"
+      ],
+      "remediation": "Run `gitlab/gitlab-ee` at 19.4.11, 19.5.9, 19.6.2 or later, pinned by version. The 19.3.10, 19.2.11, 19.1.11, 19.0.12 and 18.11.15 releases GitLab shipped the same day are inside the range it states for this flaw, so move to one of those three.",
+      "rule_id": "AAK-MCP-GITLAB-CVE-2026-135221-001",
+      "sarif_name": "GitlabMcpOauthSsrf",
+      "severity": "medium",
+      "title": "GitLab EE images from 18.10 below 19.4.11, 19.5 below 19.5.9 and 19.6 below 19.6.2: the MCP server's OAuth handling requests internal addresses for a user"
+    },
+    {
+      "adversa_references": [
         "ADV-AGENT-02"
       ],
       "aicm_references": [
@@ -9660,6 +9691,37 @@
       "sarif_name": "OpenHumanMcpToolDescriptionInjection",
       "severity": "high",
       "title": "OpenHuman core image 0.54.0 to 0.57.11: remote MCP tool descriptions reach the model unfiltered"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-06"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-136620"
+      ],
+      "description": "pain001-mcp (PyPI) is an MCP server that builds ISO 20022 pain.001 payment files. Its `commit_payment_batch` tool took an optional `output_file_path` and wrote the committed XML there as given, creating parent directories, so a caller that had staged a batch and reused the confirmation token the server issued could create or overwrite any file the server can write, through an absolute path, `..` or a symlink (CVE-2026-136620, CVSS 3.1 7.1, CWE-73, GHSA-hqw7-q8v2-pq3m). Read in the wheels: 0.0.71 has no `commit_payment_batch`, 0.0.72 and 0.0.79 write the path as given, and 0.0.80 resolves it inside one output directory, writes only `.xml` and never replaces a file.",
+      "incident_references": [],
+      "limitations": "Reports `pain001-mcp` from 0.0.72 below 0.0.80 where a version is stated: a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry at the project root, or a `uvx` launch in .mcp.json, mcp.json or claude_desktop_config.json, reporting a range that admits an affected version. `latest` was 0.0.91 on 2026-11-26, fixed, so `uvx pain001-mcp` with no version is not reported, although uv may still run a cached older copy. The name is not on npm. It reads the version, not whether the tool is exposed to an untrusted caller. A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is still judged, and reported without a line; a lockfile entry keeps its line at any depth.",
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP02:2025",
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `pain001-mcp` to 0.0.80 or later and pin it; `uvx pain001-mcp` with no version can keep running a cached older release. From 0.0.80 set `PAIN001_MCP_OUTPUT_DIR` to the one directory payment files belong in.",
+      "rule_id": "AAK-MCP-PAIN001-CVE-2026-136620-001",
+      "sarif_name": "Pain001McpCommitPathTraversal",
+      "severity": "high",
+      "title": "pain001-mcp from 0.0.72 below 0.0.80: commit_payment_batch writes its XML file to any path the caller names"
     },
     {
       "adversa_references": [
@@ -14308,7 +14370,7 @@
         "GHSA-g97f-vppp-p428",
         "MAL-2026-20068"
       ],
-      "limitations": "Reads each directory holding a SKILL.md (outside the skipped directories): the SKILL.md, a README.md and an INSTALL.md in that directory, and the string values of its SKILL.md frontmatter, skill.json, manifest.json and package.json. In the Markdown only commands are read: each line of a fenced code block, each single-backtick inline code span and each line starting `$ ` or `> `, so a command written in prose, or in another file the skill links, is not. A manifest string is read whole as a command line, prose included. Commands are split as shell words (whitespace when quoting does not close) and read at every word for a launcher AAK-MALICIOUS-RELEASE-002 reads (npx, bunx, pnpx, npm exec, pnpm dlx, yarn dlx, bun x, uvx, uv tool run, uv run --with, pipx run) and for an install verb: pip, pip3, python -m pip and uv pip install, uv add, pipx install, npm i, install and add, and pnpm, yarn and bun add. A requirements file (`-r`), an editable path (`-e`), a path, a URL and a git reference name no registry package and are not matched, and neither is a package a requirements file or a script the command runs would install. Packages are matched as AAK-MALICIOUS-RELEASE-001 and -002 match them, against the same feed: the cached copy `agent-audit-kit update` writes, else the bundled one, which lists takeovers of established packages and not new names such as mcp-aevo-server, so with the bundled copy alone that skill is silent. A finding's line is the first line holding the command, so a manifest string repeated on several lines reports the first. Only the first 2,000 string values of a manifest, 32 levels deep, are read, and a file over 512 KB is not read.",
+      "limitations": "Reads each directory holding a SKILL.md (outside the skipped directories): the SKILL.md, a README.md and an INSTALL.md in that directory, and the string values of its SKILL.md frontmatter, skill.json, manifest.json and package.json. In the Markdown only commands are read: each line of a fenced code block, each single-backtick inline code span and each line starting `$ ` or `> `, so a command written in prose, or in another file the skill links, is not. A manifest string is read whole as a command line, prose included. Commands are split as shell words (whitespace when quoting does not close) and read at every word for a launcher AAK-MALICIOUS-RELEASE-002 reads (npx, bunx, pnpx, npm exec, pnpm dlx, yarn dlx, bun x, uvx, uv tool run, uv run --with, pipx run) and for an install verb: pip, pip3, python -m pip and uv pip install, uv add, pipx install, npm i, install and add, and pnpm, yarn and bun add. A requirements file (`-r`), an editable path (`-e`), a path, a URL and a git reference name no registry package and are not matched, and neither is a package a requirements file or a script the command runs would install. Packages are matched as AAK-MALICIOUS-RELEASE-001 and -002 match them, against the same feed: the cached copy `agent-audit-kit update` writes, else the bundled one, which lists takeovers of established packages and the malicious agent and MCP packages GitHub reported from 23 Nov 2026 on (mcp-diag-7f3a), not older new names such as mcp-aevo-server, so with the bundled copy alone that skill is silent. A finding's line is the first line holding the command, so a manifest string repeated on several lines reports the first. Only the first 2,000 string values of a manifest, 32 levels deep, are read, and a file over 512 KB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -14317,7 +14379,7 @@
         "AST02"
       ],
       "owasp_mcp_references": [],
-      "remediation": "Remove the line from the skill, or replace it with a version you have reviewed, pinned exactly (`pkg==1.2.3`, `pkg@1.2.3`). Run `agent-audit-kit update` so the cached feed is current before trusting a clean result: the bundled copy lists only takeovers of established packages, and a newly registered malicious name reaches the scan through the cached feed. Treat a machine whose agent ran the skill as compromised, and rotate the credentials its environment held.",
+      "remediation": "Remove the line from the skill, or replace it with a version you have reviewed, pinned exactly (`pkg==1.2.3`, `pkg@1.2.3`). Run `agent-audit-kit update` so the cached feed is current before trusting a clean result: the bundled copy lists takeovers of established packages and the malicious agent and MCP packages GitHub reported from 23 Nov 2026 on, and any other newly registered malicious name reaches the scan through the cached feed. Treat a machine whose agent ran the skill as compromised, and rotate the credentials its environment held.",
       "rule_id": "AAK-SKILL-INSTALL-MALICIOUS-001",
       "sarif_name": "AgentSkillInstallsMaliciousPackage",
       "severity": "critical",

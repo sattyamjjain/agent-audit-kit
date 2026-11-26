@@ -18,6 +18,45 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-26 (unreleased): GitLab EE's MCP OAuth SSRF and pain001-mcp, 2 new rules
+
+Two records published on 25 Nov, read against NVD's API record and the CVE record as saved on
+2026-11-26 (tests/fixtures/nvd_cna), and against GitLab's 19.6.2 patch release and the pain001-mcp
+wheels. The watcher filed CVE-2026-136620 as #1286 and has not filed CVE-2026-135221. Each claim is
+measured on a firing fixture and a negative one, in tests/test_cve_batch_2026_11_26_intake.py and
+tests/test_container_image_pins.py.
+
+### CVE-2026-135221 (not filed): new image pin 2026-11-26
+
+**GitLab EE gets `AAK-MCP-GITLAB-CVE-2026-135221-001`: the Docker Hub image `gitlab/gitlab-ee`
+from 18.10 below 19.4.11, 19.5 below 19.5.9 and 19.6 below 19.6.2, MEDIUM.** Insufficient URL
+validation in the MCP server's OAuth handling let an authenticated user make the instance request
+internal network resources. GitLab's 19.6.2 patch release lists it under the MCP server OAuth token
+endpoint handler, so it is the app's own MCP code, the line CVE-2026-123142 was pinned on. Both the
+release post and the CNA record name EE alone, so `gitlab/gitlab-ce` gets no row. The ranges are
+the vendor's and were not read in the source. The same patch day shipped 19.3.10, 19.2.11,
+19.1.11, 19.0.12 and 18.11.15, which GitLab's stated range still includes, so the rule reports
+them. Docker Hub had `19.4.11-ee.0`, `19.5.9-ee.0` and `19.6.2-ee.0`, no `19.4.9-ee.0`, and
+`latest` was the 19.6.2 digest, fixed. The record maps to no registry package, so the advisory feed
+never carries it.
+
+### CVE-2026-136620 (#1286): new pin 2026-11-26
+
+**pain001-mcp gets `AAK-MCP-PAIN001-CVE-2026-136620-001`: PyPI `pain001-mcp` from 0.0.72 below
+0.0.80, HIGH.** The `commit_payment_batch` tool wrote the committed XML to `output_file_path` as
+given, so a caller that had staged a batch could create or overwrite any file the server can
+write. Read in the wheels: 0.0.71 has no `commit_payment_batch`, 0.0.72 and 0.0.79 write the path
+with its parents created, and 0.0.80 resolves it inside one output directory, writes only `.xml`
+and never replaces a file. The vendor's GHSA-hqw7-q8v2-pq3m gives the same range. `latest` was
+0.0.91, fixed, so a version must be stated, and npm has no `pain001-mcp`. The CNA record's
+packageURL maps it to PyPI, so `AAK-KNOWN-VULN-001` also reports it after `aak update`, and stands
+down where this rule reports the same line.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-135221 | 6.3 | GitLab EE (image `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-135221-001` (MEDIUM): 18.10 up to 19.4.10, 19.5 up to 19.5.8, 19.6 up to 19.6.1, on the vendor's ranges. | not filed |
+| CVE-2026-136620 | 7.1 | `pain001-mcp` (PyPI) | **New pin** `AAK-MCP-PAIN001-CVE-2026-136620-001` (HIGH): 0.0.72 up to 0.0.79, read in the wheels. | #1286 |
+
 ## 2026-11-26 (unreleased): the 77 records the watcher held back, 37 new rules
 
 With ten issues open from 15 to 25 Nov the watcher filed nothing new, and 77 records it would have

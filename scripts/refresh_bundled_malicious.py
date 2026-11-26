@@ -1,26 +1,42 @@
-"""Add the takeovers among GitHub's latest malware advisories to the bundled feed.
+"""Add the takeovers, and the malicious agent and MCP packages, among GitHub's latest
+malware advisories to the bundled feed.
 
 `agent_audit_kit/data/malicious_releases.json` is the malicious-release feed a
 scan reads when `agent-audit-kit update` has not built a cached copy: every
 fresh install, and every GitHub Action run that does not refresh the feeds. It
 lists established packages that were taken over (litellm, axios,
-@ethersphere/bee-js), not the typosquats the full OSV list from `update` carries.
-On 2026-11-18 it was six days old and passed agent-framework 1.26.2, published
-as malware that day. This script keeps it current, and
+@ethersphere/bee-js) and, since 2026-11-26, malicious packages in the agent and
+MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), not the other typosquats the full
+OSV list from `update` carries. On 2026-11-18 it was six days old and passed
+agent-framework 1.26.2, published as malware that day; on 2026-11-25 it passed
+four malicious MCP-named PyPI packages and the npm agent scaffolder
+create-ai-agent-setup, which a fresh install scanned clean because only
+takeovers were kept. This script keeps it current, and
 `.github/workflows/malicious-feed-bundle.yml` runs it every day:
 
 1. GitHub's global advisories of type `malware` for pip, npm, rust and go
    published in the last `--days` days (default 3, so a day the job does not run
    is caught up), paged through the Link header, with `GITHUB_TOKEN` or
    `GH_TOKEN` when one is set.
-2. For each package an advisory names, the registry's own release dates (PyPI's
+2. A package in the agent lane is kept before any registry request, whatever
+   versions the advisory lists, every version (`>= 0`) included: its name, split
+   on `-`, `_`, `.`, `/` and `@` (an npm scope and basename alike), holds a whole
+   token of `AGENT_LANE_TOKENS` (`mcp`, `claude`, `agent`, ...; `magentic` and
+   `reagent` hold none), or it is a package one of the scanner's pin tables
+   names, the list `scripts/cve_watcher.py`'s `pinned_packages` reads for the
+   watcher. A typosquat aimed at agent users is the threat those users scan for,
+   and a fresh install would otherwise pass it until `update` runs. At most
+   `LANE_CAP` (50) lane packages are kept a run, oldest advisory first; past that
+   each is `held`, a `REVIEW` line says how many, and `checked_at` is left as it
+   was, so the next run takes them up again.
+3. For every other package, the registry's own release dates (PyPI's
    JSON upload times, npm's `time`, crates.io's `created_at`, the Go module
    proxy's `.info` times). A package is kept only when the registry shows a
    release published at least `ESTABLISHED_DAYS` (30) days before the advisory
    that the advisory does not list: the shape of a takeover. A package whose
    only releases are the malicious ones, or that the registry no longer serves,
    is a typosquat, left to the full list `update` builds.
-3. For each kept package, the OSV `MAL-` record behind the advisory, found
+4. For each kept package, the OSV `MAL-` record behind the advisory, found
    through `https://api.osv.dev/v1/query` by package and matched by alias: the
    record that lists the GHSA id among its aliases, or whose id the advisory's
    references name (OSV's malware records seldom alias the GHSA GitHub later
@@ -28,12 +44,15 @@ as malware that day. This script keeps it current, and
    as `https://api.osv.dev/v1/vulns/<id>` returns it, as `update` would read it,
    with the GHSA id added to its aliases. With no OSV record, the advisory itself
    is written (`malicious_feed.github_entries`): its GHSA id as `id`, its URL as
-   `url`.
+   `url`. A record that lists every version is written as it is only for a lane
+   package whose advisory lists every version too; for a takeover it would report
+   the clean releases the package was kept for, so the advisory's versions are
+   written instead.
 
 Existing entries are never dropped or changed. When an entry is added, the new
 entries are appended, `generated_at` is set to the run's time, and a sentence
 naming the date and the ids is appended to `source`. Every run that decided every
-package (no lookup failed) and is not a dry run also sets `checked_at` to the
+package (no lookup failed, none held over the lane cap) and is not a dry run also sets `checked_at` to the
 run's time, entry or not: `generated_at` alone stood still after quiet days, and
 a scan read a bundled copy that had been checked that morning as stale.
 `malicious_feed.feed_staleness` measures from the later of the two. Every other
@@ -84,6 +103,22 @@ Opener = Callable[..., Any]
 ESTABLISHED_DAYS = 30
 DEFAULT_DAYS = 3
 
+#: Name tokens that put a package in the agent and MCP lane: kept whatever versions
+#: its advisory lists, without the takeover test. Reviewed 2026-11-26 against GitHub's
+#: malware advisories of 24 and 25 Nov (mcp-sysinfo-tools, mcp-runtime-report,
+#: mcp-env-report, mcp-diag-7f3a, create-ai-agent-setup, glbl-agent,
+#: @apexfdn/copilot-mcp, @guangnao/claude-cli). A whole token only: `magentic` and
+#: `reagent` are not `agent`. Add a token when a lane name was missed; each one widens
+#: what the bundle holds, and every name it admits ships in the wheel.
+AGENT_LANE_TOKENS = (
+    "mcp", "claude", "copilot", "codex", "cursor", "gemini", "agent", "agents",
+    "skill", "skills", "openclaw", "langchain", "llm", "ollama", "litellm",
+    "anthropic", "openai",
+)
+#: At most this many lane packages are kept a run, oldest advisory first.
+LANE_CAP = 50
+_TOKEN_SPLIT_RE = re.compile(r"[-_./@]+")
+
 GITHUB_ADVISORIES = "https://api.github.com/advisories?type=malware&ecosystem={ecosystem}&published={published}&per_page=100"
 #: GitHub's REST ecosystem names, and the registry each is in the feed.
 GITHUB_ECOSYSTEMS = {"pip": "PyPI", "npm": "npm", "rust": "crates.io", "go": "Go"}
@@ -114,9 +149,10 @@ class Decision(NamedTuple):
     ecosystem: str
     name: str
     advisory: str       # the GHSA id
-    outcome: str        # "kept", "dropped", "skipped" or "error"
+    outcome: str        # "kept", "dropped", "skipped", "held" or "error"
     reason: str
     entry: dict[str, Any] | None = None
+    lane: bool = False  # decided as an agent-lane package
 
     def line(self) -> str:
         return f"{self.outcome:<7} {self.ecosystem} {self.name} ({self.advisory}): {self.reason}"
@@ -359,9 +395,13 @@ def osv_record(opener: Opener, ecosystem: str, name: str, ghsa: str, references:
 
 
 def entry_for(opener: Opener, ecosystem: str, name: str, advisory: dict[str, Any],
-              timeout: float = 60.0) -> dict[str, Any] | None:
+              timeout: float = 60.0, allow_all_versions: bool = False) -> dict[str, Any] | None:
     """The feed entry for one kept package: from its OSV `MAL-` record, with the
-    GHSA id among its aliases, else from the GitHub advisory itself."""
+    GHSA id among its aliases, else from the GitHub advisory itself.
+
+    With `allow_all_versions`, a record whose row lists every version is written as
+    it is: the caller passes it for a lane package whose advisory lists every version
+    too, a package that was never clean."""
     ghsa = str(advisory.get("ghsa_id"))
     want = canonical_name(ecosystem, name)
     record = osv_record(opener, ecosystem, name, ghsa, advisory.get("references") or (), timeout)
@@ -369,7 +409,7 @@ def entry_for(opener: Opener, ecosystem: str, name: str, advisory: dict[str, Any
         rows = [e for e in osv_entries(record, ecosystem) if canonical_name(ecosystem, e["name"]) == want]
         # A record that lists every version would report the clean releases this
         # package was kept for; the advisory's own versions are written instead.
-        if rows and not rows[0].get("all_versions"):
+        if rows and (allow_all_versions or not rows[0].get("all_versions")):
             entry = rows[0]
             entry["aliases"] = sorted(set(entry["aliases"]) | {ghsa})
             return entry
@@ -386,15 +426,59 @@ def entry_for(opener: Opener, ecosystem: str, name: str, advisory: dict[str, Any
 # ---- the run ------------------------------------------------------------------------------
 
 
+def lane_tokens(name: str) -> list[str]:
+    """The whole tokens of a package name: `-`, `_`, `.`, `/` and `@` split it, so an
+    npm scope and its basename both count (`@apexfdn/copilot-mcp` is apexfdn,
+    copilot, mcp) and a Go module path is read by segment."""
+    return [t for t in _TOKEN_SPLIT_RE.split(name.lower()) if t]
+
+
+def _pinned_packages() -> frozenset[tuple[str, str]]:
+    """(feed ecosystem, canonical name) of every package the scanner's pin tables name,
+    as `scripts/cve_watcher.py` reads them for the watcher (with `ast`, importing
+    nothing the bundle job does not have)."""
+    global _PINNED
+    if _PINNED is None:
+        import importlib.util
+
+        path = Path(__file__).resolve().parent / "cve_watcher.py"
+        spec = importlib.util.spec_from_file_location("_aak_cve_watcher_names", path)
+        if spec is None or spec.loader is None:
+            raise RefreshError(f"cannot load {path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _PINNED = frozenset((eco, canonical_name(eco, n)) for eco, n in module.pinned_packages())
+    return _PINNED
+
+
+_PINNED: frozenset[tuple[str, str]] | None = None
+
+
+def agent_lane(ecosystem: str, name: str) -> str | None:
+    """Why a package is in the agent and MCP lane (its first lane token, or that a pin
+    table names it), or None when it is not."""
+    for token in lane_tokens(name):
+        if token in AGENT_LANE_TOKENS:
+            return token
+    if (ecosystem, canonical_name(ecosystem, name)) in _pinned_packages():
+        return "a package the pin tables name"
+    return None
+
+
 def decide_package(opener: Opener, advisory: dict[str, Any], ecosystem: str, name: str,
-                   specs: list[str], known: set[str], timeout: float = 60.0) -> Decision:
+                   specs: list[str], known: set[str], timeout: float = 60.0,
+                   lane_room: bool = True) -> Decision:
     """Keep, drop or skip one package one advisory names; a kept package's entry
-    ids and aliases join `known`."""
+    ids and aliases join `known`. A lane package is kept, or held when `lane_room`
+    is False, before the every-version drop and any registry request."""
     ghsa, published = str(advisory.get("ghsa_id")), _published(advisory)
     if advisory.get("withdrawn_at") or published is None:
         return Decision(ecosystem, name, ghsa, "skipped", "the advisory was withdrawn or has no publication time")
     if ghsa in known:
         return Decision(ecosystem, name, ghsa, "skipped", "already bundled")
+    lane = agent_lane(ecosystem, name)
+    if lane is not None:
+        return _decide_lane(opener, advisory, ecosystem, name, specs, known, timeout, lane, lane_room)
     if all(s.strip() == ">= 0" for s in specs):
         return Decision(ecosystem, name, ghsa, "dropped",
                         "the advisory lists every version (>= 0), so no clean release is outside it")
@@ -420,15 +504,40 @@ def decide_package(opener: Opener, advisory: dict[str, Any], ecosystem: str, nam
                     f"{version} was released {when:%Y-%m-%d}; {entry['id']} lists {lists}", entry)
 
 
+def _decide_lane(opener: Opener, advisory: dict[str, Any], ecosystem: str, name: str, specs: list[str],
+                 known: set[str], timeout: float, lane: str, lane_room: bool) -> Decision:
+    ghsa = str(advisory.get("ghsa_id"))
+    if not lane_room:
+        return Decision(ecosystem, name, ghsa, "held", f"agent lane: {lane}; over the {LANE_CAP} lane packages "
+                        "a run keeps, left for the next run", lane=True)
+    every = all(s.strip() == ">= 0" for s in specs)
+    try:
+        entry = entry_for(opener, ecosystem, name, advisory, timeout, allow_all_versions=every)
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        return Decision(ecosystem, name, ghsa, "error", f"{type(exc).__name__}: {exc}", lane=True)
+    if entry is None:
+        return Decision(ecosystem, name, ghsa, "error", "no entry could be written from OSV or the advisory", lane=True)
+    if entry["id"] in known:
+        return Decision(ecosystem, name, ghsa, "skipped", f"already bundled as {entry['id']}", lane=True)
+    known.update([entry["id"], *entry["aliases"]])
+    return Decision(ecosystem, name, ghsa, "kept",
+                    f"agent lane: {lane}; the advisory lists {', '.join(s.strip() for s in specs)}", entry, lane=True)
+
+
 def decide(opener: Opener, advisories: list[dict[str, Any]], known: set[str],
            timeout: float = 60.0) -> list[Decision]:
-    """A decision per (advisory, package), oldest advisory first."""
+    """A decision per (advisory, package), oldest advisory first; past `LANE_CAP`
+    kept lane packages, the rest of the lane is held."""
     decisions: list[Decision] = []
+    lane_kept = 0
     for advisory in sorted(advisories, key=lambda a: (str(a.get("published_at")), str(a.get("ghsa_id")))):
         if not isinstance(advisory.get("ghsa_id"), str):
             continue
         for (ecosystem, name), specs in packages(advisory).items():
-            decisions.append(decide_package(opener, advisory, ecosystem, name, specs, known, timeout))
+            decision = decide_package(opener, advisory, ecosystem, name, specs, known, timeout,
+                                      lane_room=lane_kept < LANE_CAP)
+            lane_kept += decision.lane and decision.outcome == "kept"
+            decisions.append(decision)
     return decisions
 
 
@@ -521,8 +630,9 @@ def refresh_bundled(
     decisions = decide(opener, advisories, known, timeout)
     added = [d.entry for d in decisions if d.outcome == "kept" and d.entry is not None]
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    # Checked means every package was decided: a lookup that failed checked nothing.
-    checked = None if any(d.outcome == "error" for d in decisions) else stamp
+    # Checked means every package was decided: a lookup that failed checked nothing,
+    # and a lane package held over the cap is left for the next run to decide.
+    checked = None if any(d.outcome in ("error", "held") for d in decisions) else stamp
     if dry_run or (not added and checked is None):
         return Outcome(decisions, added, False)
     if not added:
@@ -533,7 +643,8 @@ def refresh_bundled(
     named = ", ".join(ids[:-1]) + f" and {ids[-1]}" if len(ids) > 1 else ids[0]
     source = (
         f"{data.get('source', '').rstrip()} On {now:%Y-%m-%d}, scripts/refresh_bundled_malicious.py added "
-        f"{named}, takeovers of established packages among GitHub's malware advisories published since "
+        f"{named}, takeovers of established packages and malicious agent and MCP packages among GitHub's "
+        f"malware advisories published since "
         f"{since}, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record)."
     )
     _write(feed, render(text, data, added, generated, source, checked))
@@ -568,6 +679,9 @@ def main(argv: list[str] | None = None) -> int:
         print(decision.line())
     kept = [d for d in outcome.decisions if d.outcome == "kept"]
     errors = [d for d in outcome.decisions if d.outcome == "error"]
+    held = [d for d in outcome.decisions if d.outcome == "held"]
+    if held:
+        print(f"{'REVIEW':<7} lane cap reached, {len(held)} not added")
     state = ("written" if outcome.written else "checked_at set" if outcome.checked
              else "not written (--dry-run)" if args.dry_run and kept else "unchanged")
     print(f"{len(outcome.decisions)} packages: {len(kept)} kept, {len(errors)} could not be checked; "

@@ -33,10 +33,12 @@ neither source carries, are kept in every rebuilt copy. A failed rebuild leaves 
 writes nothing: the new file is written beside it and renamed over it only once
 it is complete.
 
-The bundled copy lists only established packages that were taken over (litellm,
-axios, agent-framework), not the typosquats the full OSV list carries.
-`scripts/refresh_bundled_malicious.py` adds new ones from GitHub's malware
-advisories on a daily schedule (`.github/workflows/malicious-feed-bundle.yml`).
+The bundled copy lists established packages that were taken over (litellm,
+axios, agent-framework) and, from 2026-11-26, malicious packages in the agent
+and MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), not the other typosquats the
+full OSV list carries. `scripts/refresh_bundled_malicious.py` adds new ones from
+GitHub's malware advisories on a daily schedule
+(`.github/workflows/malicious-feed-bundle.yml`).
 A scan reports how old the copy it read is (`feed_staleness`) and calls it stale
 past `DEFAULT_MAX_FEED_AGE_DAYS`, which `aak scan --max-feed-age` changes: the
 console prints a WARNING line, the SARIF run a warning notification, and

@@ -5,8 +5,10 @@ name: Bundled malicious-release feed
 # day scripts/refresh_bundled_malicious.py reads GitHub's malware advisories of
 # the last 3 days, keeps the established packages that were taken over (the
 # registry shows a release at least 30 days older than the advisory that the
-# advisory does not list) and appends their OSV records to the file. Typosquats
-# stay out; `agent-audit-kit update` builds the full list.
+# advisory does not list) and the malicious agent and MCP packages (a name token
+# such as mcp, claude or agent, or a package the pin tables name; at most 50 a
+# run), and appends their OSV records to the file. Other typosquats stay out;
+# `agent-audit-kit update` builds the full list.
 #
 # When the file changed, the job pushes it to the chore/malicious-feed-bundle
 # branch and opens a pull request (or updates the open one). A pull request
@@ -71,7 +73,7 @@ jobs:
           git config user.email 'agent-audit-kit-bot@users.noreply.github.com'
           git switch -c "$branch"
           git add agent_audit_kit/data/malicious_releases.json
-          git commit -m "chore(feeds): add takeovers from GitHub's malware advisories to the bundled feed"
+          git commit -m "chore(feeds): add takeovers and agent-lane packages from GitHub's malware advisories to the bundled feed"
           git push --force origin "HEAD:refs/heads/$branch"
           {
             echo "scripts/refresh_bundled_malicious.py, run by .github/workflows/malicious-feed-bundle.yml, kept these packages:"
