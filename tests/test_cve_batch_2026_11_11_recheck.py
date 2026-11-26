@@ -24,6 +24,7 @@ from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, scan
 
 FLOWISE = "AAK-FLOWISE-CVE-2026-119978-001"
 FLOWISE_MCP = "AAK-MCP-FLOWISE-CVE-2026-91931-001"
+FLOWISE_TOKEN = "AAK-MCP-FLOWISE-CVE-2026-130796-001"  # 3.1.3 and 3.1.4, 2026-11-26
 CHROME = "AAK-MCP-CHROMEBRIDGE-CVE-2026-102878-001"
 MCPHUB = "AAK-MCP-MCPHUB-CVE-2026-79748-001"
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,13 +97,14 @@ def test_flowise_s_text_says_the_project_ended() -> None:
 
 
 def test_flowise_fixtures() -> None:
-    """3.1.4, the last release, fires and nothing else in the pin table does (the
-    Custom MCP pin's floor is 3.1.4); 1.4.6, the first release with the route,
-    fires beside that pin; 1.4.5 has no route and gets only the older pin."""
+    """3.1.4, the last release, fires beside the MCP token pin (from 3.1.3) and
+    nothing else in the pin table does (the Custom MCP pin's floor is 3.1.4); 1.4.6,
+    the first release with the route, fires beside the Custom MCP pin; 1.4.5 has no
+    route and gets only that one."""
     root = CVES / "cve-2026-119978-flowise"
     newest = scan(root / "vulnerable")[0]
-    assert [(f.rule_id, f.file_path, f.line_number) for f in newest] == [
-        (FLOWISE, "package-lock.json", 12)]
+    assert {(f.rule_id, f.file_path, f.line_number) for f in newest} == {
+        (FLOWISE, "package-lock.json", 12), (FLOWISE_TOKEN, "package-lock.json", 12)}
     assert {f.rule_id for f in scan(root / "oldest")[0]} == {FLOWISE, FLOWISE_MCP}
     assert {f.rule_id for f in scan(root / "negative")[0]} == {FLOWISE_MCP}
 

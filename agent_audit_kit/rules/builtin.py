@@ -426,6 +426,43 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-CODEREVIEW-CVE-2026-68934-001": ["AIS-07", "STA-08"],
     "AAK-MCP-REBUILD-CVE-2026-129875-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-GITLAB-CVE-2026-123142-001": ["IAM-01", "STA-08"],
+    "AAK-AUTOGPT-CVE-2026-130178-001": ["AIS-07", "IVS-04", "STA-08"],
+    "AAK-MCP-FLOWINTEL-CVE-2026-133853-001": ["IAM-01", "CEK-08", "STA-08"],
+    "AAK-MCP-SDCBCHATS-CVE-2026-135432-001": ["IAM-01", "CEK-08", "STA-08"],
+    "AAK-MCP-SIM-CVE-2026-135162-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-IOTDB-CVE-2026-135747-001": ["DSP-17", "STA-08"],
+    "AAK-MCP-SURREALDB-CVE-2026-134293-001": ["AIS-07", "IAM-01", "STA-08"],
+    "AAK-MCP-ARCADEDB-CVE-2026-134337-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-ARCADEDB-CVE-2026-134327-001": ["IAM-01", "DSP-17", "STA-08"],
+    "AAK-MCP-LIBRECHAT-CVE-2026-54031-001": ["IVS-04", "AIS-07", "STA-08"],
+    "AAK-MCP-POMERIUM-CVE-2026-135300-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-OBOT-CVE-2026-130766-001": ["IAM-01", "IVS-04", "AIS-07", "STA-08"],
+    "AAK-MCP-STACKLOKSQLITE-CVE-2026-130008-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-K8SMCPSERVER-CVE-2026-130007-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-PYDANTICAI-HARNESS-CVE-2026-133161-001": ["AIS-07", "BCR-01", "STA-08"],
+    "AAK-PYDANTICAI-CVE-2026-133505-001": ["AIS-07", "IVS-04", "STA-08"],
+    "AAK-MCP-JUPYTER-CVE-2026-77318-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-TODOIST-CVE-2026-76807-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-OBSIDIANSYNC-CVE-2026-77283-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-MSSQL-CVE-2026-63129-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-DBHUB-CVE-2026-136441-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-DBHUB-CVE-2026-134803-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-K8S-CVE-2026-134817-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-SERVERFETCH-CVE-2026-134492-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-SERVERGIT-CVE-2026-134465-001": ["AIS-07", "IVS-04", "STA-08"],
+    "AAK-MCP-ASTROAIRFLOW-CVE-2026-133632-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-AWSECS-CVE-2026-135614-001": ["CEK-08", "DSP-17", "STA-08"],
+    "AAK-MCP-AWSDOCLOADER-CVE-2026-130901-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-TAPO-CVE-2026-77329-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-YTMCP-CVE-2026-75612-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-DOMSHELL-CVE-2026-75518-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-SSHMANAGER-CVE-2026-129995-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-CODEBASEMEMORY-CVE-2026-114499-001": ["STA-08"],
+    "AAK-MCP-CODEBASEMEMORY-CVE-2026-114494-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-FLYTO-CVE-2026-77312-001": ["AIS-07", "IVS-04", "STA-08"],
+    "AAK-CODEWHALE-CVE-2026-83816-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-NETWORKAI-CVE-2026-130750-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-FLOWISE-CVE-2026-130796-001": ["DSP-17", "IAM-01", "STA-08"],
     "AAK-STARTUP-HOOK-PTH-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-SITECUSTOMIZE-001": ["STA-08", "IVS-04"],
     "AAK-STARTUP-HOOK-DOCKERFILE-001": ["STA-08", "IVS-04"],
@@ -13851,9 +13888,11 @@ _r(
     "`codewhale`, so it has no fixed release of its own.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `codewhale` to >= 0.8.64 and pin it. If the manifest still names "
-    "`deepseek-tui`, that package is deprecated and its line ends before the fix: "
-    "migrate to `codewhale` >= 0.8.64 rather than upgrading in place. Until then, "
+    "Upgrade `codewhale` to 0.9.0 or later and pin it: 0.8.64 fixes these two tools, "
+    "but 0.8.64 to 0.8.67 carry the auto-approval flaws AAK-CODEWHALE-CVE-2026-83816-001 "
+    "reports. If the manifest still names `deepseek-tui`, that package is deprecated and "
+    "its line ends before the fix: migrate to `codewhale` 0.9.0 or later rather than "
+    "upgrading in place. Until then, "
     "treat any approval policy you have configured as not in force for `rlm_eval` or "
     "`exec_shell_interact` and remove those tools from the exposed tool set, since a "
     "policy the engine never consults offers no protection.",
@@ -15385,7 +15424,8 @@ _r(
     Category.SUPPLY_CHAIN,
     "Upgrade `flowise` to >= 3.1.4 and pin it; 3.1.4 clears these two CVEs only, since no "
     "Flowise release is free of CVE-2026-119978 or CVE-2026-130796 (see "
-    "AAK-FLOWISE-CVE-2026-119978-001). Treat the Custom MCP node's "
+    "AAK-FLOWISE-CVE-2026-119978-001 and AAK-MCP-FLOWISE-CVE-2026-130796-001). "
+    "Treat the Custom MCP node's "
     "`mcpServerConfig` as untrusted input even from authenticated users: "
     "allowlist the commands it may launch rather than validating the filename "
     "alone, and resolve them against a fixed directory instead of a "
@@ -19348,7 +19388,8 @@ _r(
     "server, keep the Flowise API off networks you do not trust, and plan the move off "
     "Flowise, or onto a fork that removes the package list from the custom function "
     "sandbox. The releases this rule reports from 3.1.3 carry a second flaw no release fixes "
-    "either, CVE-2026-130796 (NVD 2026-11-17, CVSS 3.1 8.2): an unauthenticated GET of "
+    "either, CVE-2026-130796, which AAK-MCP-FLOWISE-CVE-2026-130796-001 reports (NVD "
+    "2026-11-17, CVSS 3.1 8.2): an unauthenticated GET of "
     "`/api/v1/public-chatflows/:id` returns the bearer token of the chatflow's MCP server, and "
     "the token calls the chatflow through `/api/v1/mcp/:chatflowId` past its API key. Make no "
     "chatflow with an MCP server public, and treat any such token as already disclosed.",
@@ -22204,6 +22245,1632 @@ _r(
         "`docker.io/gitlab/...` or a mirror under another registry state no version this rule "
         "reads, and commented-out lines are skipped. CVE-2026-92874, an earlier scope flaw in "
         "the same server, is not part of this rule."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FLOWISE-CVE-2026-130796-001",
+    "Flowise from 3.1.3, no fix (the project has ended): an unauthenticated read of a public chatflow returns its MCP server's bearer token",
+    "Flowise (`flowise` on npm, and the `flowiseai/flowise` image), a low-code builder for LLM "
+    "apps and agents, can serve a chatflow as an MCP server from 3.1.3: clients call "
+    "`POST /api/v1/mcp/:chatflowId` with a bearer token that Flowise keeps in the chatflow's "
+    "`mcpServerConfig` column. `GET /api/v1/public-chatflows/:id` needs no login, and for a "
+    "chatflow marked public it answers with the whole database row, sanitizing only "
+    "`flowData`, so anyone who knows the chatflow's id reads the token. The token then runs "
+    "the chatflow through the MCP endpoint, past the API key set on the chatflow and at the "
+    "owner's model cost (CVE-2026-130796, CVSS 3.1 8.2, CWE-212). Checked in the npm tarballs: "
+    "the column, the `mcp-server` service and the endpoint are absent at 3.0.13, 3.1.0, 3.1.1 "
+    "and 3.1.2 and present at 3.1.3 and 3.1.4, and the handler returns `...chatflow` in both. "
+    "There is no fixed release and FlowiseAI will not ship one: 3.1.4 (2026-07-29) is the "
+    "last, and the project ended on 2026-08-31.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed version, and FlowiseAI will ship none. Make no chatflow with an MCP "
+    "server public, or turn the MCP server of a public chatflow off, which makes its token "
+    "refused. Treat the token of any chatflow that was both as disclosed and refresh it once "
+    "the chatflow is no longer public, since a new token is returned the same way. Block "
+    "`/api/v1/public-chatflows/` at the reverse proxy where nothing needs it, and plan the "
+    "move off Flowise.",
+    sarif_name="FlowisePublicChatflowMcpToken",
+    cve_references=["CVE-2026-130796"],
+    owasp_mcp_references=["MCP01:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reports an npm reference to `flowise` from 3.1.3, with or without a version, since no "
+        "later release is fixed and one that states none installs 3.1.4, `latest` on "
+        "2026-11-26: package.json, .mcp.json, mcp.json and claude_desktop_config.json, and the "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, at the project root only, "
+        "reporting a range that admits 3.1.3 or later. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`packages/app/package.json`). Reads image "
+        "references to `flowiseai/flowise` too, at the tags 3.1.3 and 3.1.4, `latest` and "
+        "untagged ones included (`latest` was built on 2026-07-29, after npm had 3.1.4; its "
+        "layers were not opened), in compose files, Kubernetes manifests, Helm values, "
+        "Dockerfiles and MCP configs; `docker.io/flowiseai/flowise`, a mirror under another "
+        "registry and `flowiseai/flowise-worker`, which runs the queue worker, are not matched. "
+        "It reads the version, not whether any chatflow is public or serves MCP, so a server "
+        "with neither is reported too. `flowise-components` and PyPI's `flowise` (FlowiseAI's "
+        "Python SDK) are not matched. Releases before 3.1.3 have no MCP server and are not "
+        "reported here; AAK-FLOWISE-CVE-2026-119978-001 reports those from 1.4.6. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-NETWORKAI-CVE-2026-130750-001",
+    "network-ai from 5.11.0 below 5.17.2: the MCP Streamable HTTP server lets localhost origins read its tool catalog on any bind address",
+    "Network-AI's MCP Streamable HTTP server (`McpStreamableServer` in "
+    "`lib/mcp-transport-http`) copies an `http://localhost` or `http://127.0.0.1` Origin into "
+    "`Access-Control-Allow-Origin` whatever interface it is bound to. A localhost Origin "
+    "means the same host only on a loopback bind, so on any other bind a page with a "
+    "localhost Origin in the victim's browser (a local web app or dev server) reads the two "
+    "routes that ask for no token: `GET /tools`, the whole tool catalog with its descriptions and "
+    "input schemas, and `GET /health` (CVE-2026-130750, CVSS 3.1 6.2, CWE-346, "
+    "GHSA-jw52-p54c-w7hj, which the vendor rates low). `/mcp` still asks for the bearer "
+    "token, so no tool can be called this way. It is the defect 5.15.2 fixed in the SSE "
+    "transport (GHSA-4pvg-m42h-c3x2), left in this one. Checked in the npm tarballs: the module "
+    "is absent at 5.10.0 and 5.10.2, first ships in 5.11.0, is the same file at 5.11.0, "
+    "5.15.2, 5.15.5, 5.17.0 and 5.17.1, and 5.17.2 reflects the Origin only when the server "
+    "is bound to loopback, as 6.0.0 and 6.0.1 do.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `network-ai` to 5.17.2 or later and pin it. Until then, leave "
+    "`McpStreamableServer` on its default host, 127.0.0.1, or put a proxy that drops "
+    "cross-origin requests and asks for a token on every route in front of it.",
+    sarif_name="NetworkAiStreamableCorsOriginReflection",
+    cve_references=["CVE-2026-130750"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `network-ai` from 5.11.0 below 5.17.2 where a project states the version: a "
+        "package.json or lockfile entry, or a versioned launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json. An unpinned reference resolves to 6.0.1, `latest` on "
+        "2026-11-26, which is fixed, and is not reported. It reads the version, not whether "
+        "the project builds a `McpStreamableServer` or where it binds it: the package's own "
+        "commands do not start that server, so a project that only runs `network-ai-server` "
+        "or the Claude Code hook is reported too. PyPI has no `network-ai`. Releases from "
+        "5.11.0 to 5.15.1 are also in AAK-MCP-NETWORKAI-CVE-2026-109332-001's range, and those "
+        "up to 5.15.4 in AAK-NETWORKAI-CVE-2026-120311-001's, so each is reported. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-CODEWHALE-CVE-2026-83816-001",
+    "CodeWhale below 0.9.0: the agent runs programs and scheduled jobs without the approval prompt",
+    "CodeWhale (`codewhale` on npm, codewhale-hq/Codewhale), a terminal coding agent, asks "
+    "before it runs a shell command, and two paths skip that. `exec_shell` downgrades a "
+    "command its classifier calls read-only to automatic approval, judging the base name with "
+    "its flags stripped, and the allowlist held `fd`, `rg` and `git grep`, which run another "
+    "program through `fd -x`, `rg --pre` and `git grep --open-files-in-pager`: text the agent "
+    "reads can make it run any program, a script in the repository included, with no prompt "
+    "in the default profile (CVE-2026-83816, CVSS 3.1 8.1, CWE-78/CWE-863, "
+    "GHSA-3mgh-93r5-r7jf). And a scheduled automation ran with `auto_approve` on when its "
+    "creator left it out, so one approval of a harmless-looking `automation_create` becomes a "
+    "recurring agent whose file writes and MCP writes, and shell commands where the call set "
+    "`allow_shell`, no one is asked about (CVE-2026-83817, CVSS 3.1 7.5, CWE-862/CWE-1188, "
+    "GHSA-8hp3-xxrg-v9c8). The maintainers say 0.8.67 and earlier are affected and 0.9.0 is "
+    "fixed. Read in the source at the tags: `is_parallel_readonly_command` is absent at "
+    "v0.8.59 and decides `exec_shell`'s approval from v0.8.60; an automation's `auto_approve` "
+    "is a constant `Some(true)` at v0.8.41, where the `codewhale` package begins, through "
+    "v0.8.64, and an option that defaults to true at v0.8.65, v0.8.66 and v0.8.67; v0.9.0 "
+    "(208421b9) refuses the flags that run a program and defaults the option to false.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `codewhale` to 0.9.0 or later and pin it, then list the automations that exist "
+    "and delete the ones you did not write, since one made before the upgrade may hold an "
+    "explicit `auto_approve`. Until then, run CodeWhale in a container, and not on a "
+    "repository or a page you do not trust.",
+    sarif_name="CodeWhaleApprovalPromptBypass",
+    cve_references=["CVE-2026-83816", "CVE-2026-83817"],
+    owasp_agentic_references=["ASI02", "ASI05", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports npm `codewhale` below 0.9.0 where a version is stated: at the project root "
+        "only, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that admits an "
+        "affected version included. `latest` was 0.10.4 on 2026-11-26, so a reference that "
+        "states none is not reported. 0.8.41 to 0.8.59 carry the automation flaw alone. It "
+        "reads the version, not the profile or whether any automation exists. An installation "
+        "from Homebrew, Cargo or a release archive states no version AAK reads here, and "
+        "neither does the image `ghcr.io/hmbown/codewhale`; a Cargo.lock that resolves the "
+        "crate `codewhale-tui` is read by AAK-KNOWN-VULN-001 after `aak update`. "
+        "`deepseek-tui`, the package's old name, is in neither advisory and is not reported "
+        "here, though the automation's constant is in its source at v0.8.39; below 0.8.41 "
+        "AAK-MCP-CODEWHALE-CVE-2026-75858-001 reports it, as it does `codewhale` below 0.8.64. "
+        "PyPI has no `codewhale`. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FLYTO-CVE-2026-77312-001",
+    "Flyto2 Core below 2.26.8: file modules write outside the sandbox, run_recipe loads workflows from anywhere, and the SSRF guard has gaps",
+    "Flyto2 Core (`flyto-core` on PyPI) is an execution kernel whose MCP server runs modules "
+    "and recipes for an agent. 2.26.8 fixes five flaws. `data.csv.write`, "
+    "`data.json_to_csv`, `file.copy` and `file.move` take the caller's path without the "
+    "`FLYTO_SANDBOX_DIR` check the 2.26.6 fix gave their siblings (GHSA-2956-977x-2w3r), so "
+    "a caller can overwrite a shell profile, a recipe or the server's own code "
+    "(CVE-2026-77312, CVSS 3.1 10.0, CWE-22, GHSA-p34x-fmph-9fjx). The MCP `run_recipe` tool "
+    "joins `recipe_name` onto the recipe directory with no containment check, so `../` runs "
+    "a YAML workflow from elsewhere, within the module policy (CVE-2026-77314, 6.3, "
+    "GHSA-mxcc-cr6x-2mvr). The SSRF guard resolves a host, checks the address and hands back "
+    "the name, so a DNS answer that changes before aiohttp connects reaches an internal "
+    "address (CVE-2026-77313 and CVE-2026-77316, 7.1 each, two reports of one gap), and "
+    "`http.paginate` follows the next-page URL a server returns unchecked (CVE-2026-77315, "
+    "8.5). Read in the wheels: 1.0.0 already opens the csv path and copies files as given, "
+    "1.13.0 has no SSRF guard and 1.14.2 has the one with the gap, `run_recipe` is an MCP "
+    "tool in 2.16.1 and `http.paginate` is there in 2.17.0; 2.26.7 has all five, and 2.26.8 "
+    "adds the path check to the four modules, a containment check to `load_recipe`, a "
+    "connector that refuses private addresses at connect time and a check of each next link.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `flyto-core` to 2.26.8 or later and pin it. The vendor has published more "
+    "advisories without a CVE id since, the last fixed in 2.41.0 (GHSA-3j3m-rp8w-pxpv), so "
+    "prefer the newest release. Until then, keep the MCP and HTTP servers on localhost, away "
+    "from agents that read untrusted text, and run them as a user who can write to nothing "
+    "that matters.",
+    sarif_name="Flyto2CoreSandboxAndSsrfGuardGaps",
+    cve_references=[
+        "CVE-2026-77312", "CVE-2026-77313", "CVE-2026-77314", "CVE-2026-77315", "CVE-2026-77316",
+    ],
+    owasp_mcp_references=["MCP05:2025", "MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `flyto-core` below 2.26.8 where a version is stated: a requirements*.txt "
+        "entry at any depth, a pyproject.toml, Pipfile or lockfile entry at the project root, "
+        "or a `uvx` launch in .mcp.json, mcp.json or claude_desktop_config.json, reporting a "
+        "range that admits an affected version. `latest` was 2.41.0 on 2026-11-26, so a "
+        "reference that states none is not reported here; AAK-MCP-FLYTO-CVE-2026-67425-001 "
+        "(below 2.26.6) reports that one, and each release below its own floor as well. PyPI "
+        "has no 2.26.6, so 2.26.7 is the release this rule adds. It reads the version, not "
+        "whether `FLYTO_SANDBOX_DIR` is set, the module policy or who can reach the server. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CODEBASEMEMORY-CVE-2026-114494-001",
+    "codebase-memory-mcp below 0.9.0: query_graph and an imported artifact corrupt memory, and detect_changes passes options to git",
+    "codebase-memory-mcp (DeusData), a code-intelligence MCP server, is a native binary that "
+    "npm's and PyPI's `codebase-memory-mcp` download at their own version. Its Cypher parser "
+    "takes any number of `RETURN` or `WITH` items while the executor indexes 32-element stack "
+    "arrays, so one `query_graph` call writes past them (CVE-2026-114494, CVSS 3.1 7.8, "
+    "GHSA-vpgh-g3jg-ggx9). Indexing a repository imports its `.codebase-memory/` artifact, "
+    "whose `original_size` allocates the buffer as 64 bits and reaches the Zstandard "
+    "decompressor as an `int`, so a crafted repository overflows the heap (CVE-2026-114495, "
+    "7.8, GHSA-8xwq-xv2x-853r). `detect_changes` checks `base_branch` for shell characters "
+    "and not for a leading dash, so `--output=PATH` makes `git diff` write a file of the "
+    "caller's choosing (CVE-2026-114496, 5.5, GHSA-2vj2-hwgx-6f23). Read in the source at the "
+    "tags: v0.6.0, the first version on npm, has the stack arrays and the unchecked dash; the "
+    "artifact import arrives in v0.6.1; v0.8.1 has all three; v0.9.0 refuses more than 32 "
+    "items, takes the size from the Zstandard frame and refuses a leading dash.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `codebase-memory-mcp` to 0.9.0 or later on npm or PyPI and pin it. 0.10.0 or "
+    "later also clears AAK-MCP-CODEBASEMEMORY-CVE-2026-114499-001, and the vendor recommends "
+    "0.12.1. Until then, do not index a repository you do not trust, and keep `query_graph` "
+    "and `detect_changes` from an agent that reads untrusted text.",
+    sarif_name="CodebaseMemoryMcpMemoryCorruption",
+    cve_references=["CVE-2026-114494", "CVE-2026-114495", "CVE-2026-114496"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports npm's and PyPI's `codebase-memory-mcp`, one project on one version line, "
+        "below 0.9.0 where a version is stated: requirements*.txt at any depth and, at the "
+        "project root only, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the lockfiles beside them, a range that admits an "
+        "affected version included. `latest` was 0.12.1 on both registries on 2026-11-26, so "
+        "an `npx` or `uvx` launch that states no version is not reported. The binary from the "
+        "install script, Homebrew, Scoop, the AUR, `go install` or a GitHub release states no "
+        "version AAK reads, and neither does an MCP config that runs it by path. The flaws "
+        "were read in the source and not run. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CODEBASEMEMORY-CVE-2026-114499-001",
+    "codebase-memory-mcp below 0.10.0: a .gitignore pattern stalls indexing, and on Windows the graph UI stops any process",
+    "codebase-memory-mcp (DeusData), a code-intelligence MCP server, matches .gitignore "
+    "patterns by recursive backtracking with no bound, so a repository with one crafted "
+    "pattern and a long path stalls indexing and, before its workers were isolated, the "
+    "server (CVE-2026-114499, CVSS 3.1 5.5, GHSA-cjhf-76h2-4hwg). On Windows the optional "
+    "graph UI's `POST /api/process-kill` hands any process id to `TerminateProcess`, because "
+    "the check that it is one of the server's own indexing jobs is compiled out there "
+    "(CVE-2026-114497, 5.5, GHSA-r2qv-x3rg-p49m). Read in the source at the tags: v0.6.0, the "
+    "first version on npm, has both; the route is gone in v0.9.1-rc.1; the matcher's budget of "
+    "20,000 steps is in v0.10.0 and not in v0.9.1-rc.1. So CVE-2026-114497 is fixed in npm's "
+    "0.9.1-rc.1, and on PyPI in 0.10.0: PyPI's 0.9.1rc1 asks GitHub for a release tagged "
+    "v0.9.1rc1, which does not exist.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `codebase-memory-mcp` to 0.10.0 or later on npm or PyPI and pin it; the vendor "
+    "recommends 0.12.1. Until then, do not index a repository you do not trust, and on Windows "
+    "leave the graph UI off.",
+    sarif_name="CodebaseMemoryMcpIndexStallProcessKill",
+    cve_references=["CVE-2026-114499", "CVE-2026-114497"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports npm's and PyPI's `codebase-memory-mcp`, one project on one version line, "
+        "below 0.10.0 where a version is stated: requirements*.txt at any depth and, at the "
+        "project root only, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the lockfiles beside them, a range that admits an "
+        "affected version included. `latest` was 0.12.1 on both registries on 2026-11-26, so "
+        "an `npx` or `uvx` launch that states no version is not reported. Every release below "
+        "0.9.0 is in AAK-MCP-CODEBASEMEMORY-CVE-2026-114494-001's range too, so both are "
+        "reported. npm's 0.9.1-rc.1 reads as 0.9.1 and is reported for the matcher, though it "
+        "has no process-kill route. It reads the version, not the platform or whether the UI "
+        "is on. The binary from the install script, Homebrew, Scoop, the AUR, `go install` or "
+        "a GitHub release states no version AAK reads. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SSHMANAGER-CVE-2026-129995-001",
+    "mcp-ssh-manager below 3.8.5: backup and database tool arguments reach remote shell commands, on readonly servers too",
+    "mcp-ssh-manager (bvisible, npm) runs commands on the servers it manages over SSH. Its "
+    "`ssh_backup_create`, `ssh_backup_restore`, `ssh_backup_schedule` and `ssh_backup_list` "
+    "tools put the caller's database, connection, path and schedule values into remote "
+    "command strings unquoted, so a `;` or `$()` in one runs commands as the configured SSH "
+    "user, and `ssh_backup_schedule` can leave one in cron (CVE-2026-129995, CVSS 3.1 8.8, "
+    "CWE-78, GHSA-qwwm-vrm9-4mw8). `ssh_backup_list` is not checked against the server's "
+    "policy, so it does this on a server set to `readonly` or `restricted` too. The database "
+    "tools `ssh_db_list`, `ssh_db_dump` and `ssh_db_import` had the same flaw up to 3.6.6, "
+    "`ssh_db_list` past `readonly` as well (CVE-2026-77383, CVSS 4.0 8.7, fixed in 3.6.7, "
+    "GHSA-4jx9-2fwj-pg4j). Read in the npm tarballs: 3.0.0, the first release, builds both "
+    "kinds of string with no quoting; `database-manager.js` quotes nothing in 3.6.6 and every "
+    "value in 3.6.7; `backup-manager.js` quotes nothing in 3.8.4, and 3.8.5 quotes its values "
+    "through `shell-quote.js`.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-ssh-manager` to 3.8.5 or later and pin it. The vendor has published more "
+    "advisories without a CVE id since, the last fixed in 4.3.6 (GHSA-wxcj-q5hp-wjrw), so "
+    "prefer the newest release. Until then, turn off the `backup` and `database` tool groups, "
+    "do not rely on `readonly` or `restricted` mode, and keep it from an agent that reads "
+    "untrusted text.",
+    sarif_name="McpSshManagerRemoteShellInjection",
+    cve_references=["CVE-2026-129995", "CVE-2026-77383"],
+    owasp_mcp_references=["MCP05:2025", "MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports npm `mcp-ssh-manager` below 3.8.5 where a version is stated: at the project "
+        "root only, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that admits an "
+        "affected version included. `latest` was 4.3.6 on 2026-11-26, so the README's own "
+        "`npx -y mcp-ssh-manager` is not reported. A release from 3.6.7 to 3.8.4 is reported "
+        "for CVE-2026-129995 alone, though the rule names both. It reads the version, not "
+        "which tool groups are on. The package is not on PyPI, and its Homebrew formula, its "
+        "desktop app and a checkout state no version AAK reads. The dependency is not read "
+        "when it is declared in a sub-directory manifest (`packages/app/package.json`). "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DOMSHELL-CVE-2026-75518-001",
+    "DOMShell below 2.0.8: domshell_eval, a tool labelled read-only, runs any JavaScript without --allow-write",
+    "DOMShell (`@apireno/domshell` on npm) lets an agent drive Chrome through MCP, with its "
+    "write tools behind `--allow-write`. The `domshell_eval` tool and the `eval` command were "
+    "classed as read-only, though they reach the same `Runtime.evaluate` call as the "
+    "write-tier `js` command with no side-effect check. A caller on a server started without "
+    "`--allow-write` can so change the page's DOM, window or global state, while the client's "
+    "approval prompt, the server's refusals and the audit log call it a read "
+    "(CVE-2026-75518, CVSS 4.0 4.8, CWE-863, GHSA-vg83-hcp4-5qcc). It gives a caller who "
+    "already has `--allow-write` nothing new. Read in the npm tarballs: 1.1.0, the first "
+    "release, describes `domshell_eval` as read-only and leaves `eval` out of "
+    "`WRITE_COMMANDS`, as do 2.0.0 and 2.0.7; the MCP `readOnlyHint` on the tool is absent in "
+    "2.0.0 and there in 2.0.6; 2.0.8 adds `eval` to the set and annotates the tool a write.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@apireno/domshell` to 2.0.8 or later and pin it. A session that called `eval` "
+    "without `--allow-write` is refused after the upgrade: read the page with `domshell_text`, "
+    "`domshell_cat` or `domshell_find` instead. Until then, treat `domshell_eval` as a write "
+    "tool and take it out of the client's auto-approve list.",
+    sarif_name="DomshellEvalReadTierBypass",
+    cve_references=["CVE-2026-75518"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04", "ASI09"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports npm `@apireno/domshell` below 2.0.8 where a version is stated: at the project "
+        "root only, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that admits an "
+        "affected version included. `latest` was 2.0.11 on 2026-11-26, so an `npx` launch that "
+        "states no version is not reported. It reads the version, not the flags: a launch that "
+        "passes `--allow-write`, as the README's own example does, already grants what the "
+        "flaw gives, and is reported too. The Chrome extension and the image the repository's "
+        "compose file builds state no version AAK reads, and neither registry has an unscoped "
+        "`domshell`. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-YTMCP-CVE-2026-75612-001",
+    "yt-mcp (velesnitski's YouTrack server) below 1.18.1: add_attachment uploads any file the server can read, and a health snapshot leaves its directory",
+    "yt-mcp (velesnitski/yt-mcp), an MCP server for YouTrack, is on no registry: its README "
+    "starts it from the repository with `uvx --from git+https://github.com/velesnitski/yt-mcp`, "
+    "or as the Docker Hub image `velesnitski/yt-mcp`. Its `add_attachment` tool opened the "
+    "caller's `file_path` after checking only that it exists and uploaded the bytes to an "
+    "issue, so text an agent reads can make it hand over any file the server process may read "
+    "(CVE-2026-75612, CVSS 3.1 7.5, CWE-22, GHSA-99mq-fjjc-6v9j). The record also covers "
+    "`get_project_health`, which put the caller's `project` into a snapshot's file name, so "
+    "`../` in it writes a JSON file elsewhere. Read in the source: `add_attachment` arrived in "
+    "version 1.16.0 (commit 4485f60e) and is in the v1.17.4 and v1.18.0 tags; v1.18.1 refuses "
+    "`file_path` unless `YOUTRACK_ATTACHMENT_ROOTS` allows its directory, and a project name "
+    "that is not a plain token. v1.7.0 has the snapshot write alone, and so do both image tags "
+    "on Docker Hub, `1.7.0` and `latest`: they were pushed on 2026-04-10 and hold version "
+    "1.7.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin the launch to v1.18.1 or later "
+    "(`uvx --from git+https://github.com/velesnitski/yt-mcp@v1.18.1 yt-mcp`). Docker Hub has no "
+    "fixed image, so build one from the repository at a fixed tag. Until then, set "
+    "`DISABLED_TOOLS=add_attachment,get_project_health`, and rotate any credential the server "
+    "process could read if an agent using it read untrusted text.",
+    sarif_name="YtMcpAttachmentFileRead",
+    cve_references=["CVE-2026-75612"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reads two things. A reference to `github.com/velesnitski/yt-mcp` that names a release "
+        "below v1.18.1: a git URL with `@v1.18.0` or `@refs/tags/v1.18.0`, a lockfile's git "
+        "source with `rev=` or `tag=`, an `/archive/` tarball, and a `tag`, `rev`, `ref` or "
+        "`reference` key beside a `git` or `url` key that names the repository (uv sources, "
+        "Poetry, Pipfile, poetry.lock), in requirements*.txt, `*.mcp.yaml` and `*.mcp.yml` at "
+        "any depth and, at the project root only, pyproject.toml, Pipfile, package.json, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the lockfiles beside them. And "
+        "the image `velesnitski/yt-mcp` at a tag below 1.18.1, `latest` and untagged included "
+        "(on 2026-11-26 `latest` held version 1.7.0), as an `image:` value or another mention "
+        "in YAML, a Helm `repository` and `tag`, a Dockerfile `FROM`, or `docker run` arguments "
+        "in `*mcp*.json` and `claude_desktop_config.json`, commented-out lines skipped. Both "
+        "images have the snapshot write and no `add_attachment`. The README's launch from the "
+        "repository with no tag, which fetches the default branch, is not reported, and "
+        "neither is a commit, a branch, a clone, or `docker.io/velesnitski/yt-mcp`. A quoted "
+        "`velesnitski/yt-mcp` alone in a JSON file the image reader opens is read as the "
+        "untagged image, even where it names the GitHub repository. PyPI has no `yt-mcp`, and "
+        "npm's is a YouTube server of another project and is not read. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-TAPO-CVE-2026-77329-001",
+    "Tapo MCP server image from 0.3.1 below 0.5.0: no Host or Origin check, so a web page can control the devices",
+    "Tapo's MCP server (mihai-dinculescu/tapo, the image "
+    "`ghcr.io/mihai-dinculescu/tapo-mcp`) lets an MCP client control TP-Link Tapo devices "
+    "over Streamable HTTP. Its `new_service` called rmcp's `disable_allowed_hosts()` and "
+    "put nothing in its place, the bearer check is added only when `TAPO_MCP_API_KEY` is "
+    "set, and the image binds 0.0.0.0, so a page a user visits can rebind its name to the "
+    "listener and call the tools: `control_device` switches devices and `take_snapshot` "
+    "reads a camera (CVE-2026-77329, CVSS 4.0 8.8, CWE-346, GHSA-2cwc-6wwp-62q6). The "
+    "README's `docker run` sets no key. A server started with the key is not affected by "
+    "this path. Read in the source at the release tags: the call is absent at "
+    "tapo-mcp-v0.3.0, where rmcp's loopback-only list applies, present at v0.3.1 and "
+    "v0.4.0, and gone at v0.5.0, which takes a configured list instead.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/mihai-dinculescu/tapo-mcp` at 0.5.0 or later, pinned by version. Until "
+    "then set `TAPO_MCP_API_KEY`, and keep the port off networks you do not control.",
+    sarif_name="TapoMcpDnsRebindDeviceControl",
+    cve_references=["CVE-2026-77329"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/mihai-dinculescu/tapo-mcp:TAG` in YAML (compose files, Kubernetes "
+        "manifests, MCP configs), a Helm values mapping of `repository` and `tag`, "
+        "Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` "
+        "and `claude_desktop_config.json`. Tags from 0.3.1 below 0.5.0 are reported, the "
+        "two-part `0.3` and `0.4` included, which were the 0.3.1 and 0.4.0 digests on "
+        "2026-11-26; `latest` was the 0.7.0 digest then, so it and an untagged reference "
+        "are not. The rule reads the tag, not whether `TAPO_MCP_API_KEY` is set, so a "
+        "deployment that sets it is reported too. The PyPI and crates.io packages named "
+        "`tapo` are the client library on its own version line and are not read, a server "
+        "built from source states no version AAK reads, and commented-out lines are "
+        "skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-AWSDOCLOADER-CVE-2026-130901-001",
+    "Document Loader MCP Server 1.0.10 to 1.0.20: a CI variable in the environment opens the whole filesystem",
+    "The AWS Labs Document Loader MCP Server confines the files its tools read to a base "
+    "directory, `DOCUMENT_BASE_DIR` or else the working directory. When that variable was "
+    "unset or empty and `CI`, `GITHUB_ACTIONS` or `PYTEST_CURRENT_TEST` was present, "
+    "`_get_base_directory` returned `/` instead, so in a CI job, where those variables are "
+    "always set, crafted document content an MCP client processes could have it read any "
+    "file of a supported type, and from 1.0.12 write PNG slide images outside the "
+    "directory (CVE-2026-130901, CVSS 3.1 5.3, CWE-22, GHSA-9wg4-8hq4-rfwv). Read in the "
+    "wheels: 1.0.9 has no base directory, 1.0.10 adds one with the bypass, 1.0.20 still "
+    "has it, and 1.0.21 drops it and resolves the directory before comparing.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.document-loader-mcp-server` to 1.0.21 or later and pin it. Until "
+    "then set `DOCUMENT_BASE_DIR` to the directory that holds the documents, and never to "
+    "`/`.",
+    sarif_name="AwsDocumentLoaderMcpCiBaseDirBypass",
+    cve_references=["CVE-2026-130901"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports `awslabs.document-loader-mcp-server` from 1.0.10 below 1.0.21 where a "
+        "version is stated: a requirements*.txt entry at any depth, a pyproject.toml, "
+        "Pipfile or lockfile entry at the project root, or a `uvx` launch in .mcp.json, "
+        "mcp.json or claude_desktop_config.json, reporting a range that admits an affected "
+        "version. `latest` was 1.0.27 on 2026-11-26, so the README's own `uvx "
+        "awslabs.document-loader-mcp-server@latest` is not reported. 1.0.9 and earlier, "
+        "which confine nothing, are outside the record's range and are not reported. It "
+        "reads the version, not the environment the server starts in, so one that never "
+        "runs under CI is reported too. PyPI has no 1.0.15. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep "
+        "in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-AWSECS-CVE-2026-135614-001",
+    "Amazon ECS MCP Server below 0.1.36: the troubleshooting tool returns task definition secrets the server is set to redact",
+    "The Amazon ECS MCP Server (awslabs.ecs-mcp-server) redacts what its tools return "
+    "unless `ALLOW_SENSITIVE_DATA` is set. Its `get_ecs_troubleshooting_guidance` tool put "
+    "the task definitions it looked up into `raw_data` whole, and the response filter only "
+    "replaced strings of a few shapes, keys, addresses and card numbers among them, so "
+    "container environment values and secret references came back in clear. Content an "
+    "agent reads can lead it to ask for that guidance, and whoever wrote it then gets the "
+    "values the operator's AWS credentials can describe (CVE-2026-135614, CVSS 3.1 5.5, "
+    "CWE-212, GHSA-ppc7-5jf2-gcfc). Read in the wheels: 0.1.1, the first on PyPI, and "
+    "0.1.35 return `raw_data[\"task_definitions\"]` unredacted, and 0.1.36 passes it through "
+    "`redact_unless_sensitive_data_allowed`.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.ecs-mcp-server` to 0.1.36 or later and pin it, then rotate "
+    "credentials kept as plaintext environment variables in task definitions it could "
+    "describe. The vendor gives no workaround.",
+    sarif_name="AwsEcsMcpTroubleshootingUnredacted",
+    cve_references=["CVE-2026-135614"],
+    owasp_mcp_references=["MCP01:2025", "MCP10:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reports `awslabs.ecs-mcp-server` below 0.1.36 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "`latest` was 0.1.39 on 2026-11-26, so `uvx awslabs.ecs-mcp-server@latest` is not "
+        "reported. It reads the version, not the server's settings, so one that runs with "
+        "`ALLOW_SENSITIVE_DATA=true`, which redacts nothing by choice, is reported too. "
+        "PyPI has no 0.1.8. A file over 2 MB, or a lockfile over 32 MiB, is not read. A "
+        "declaration nested more than 64 levels deep in package.json, a TOML manifest or "
+        "an MCP config (an MCP server more than 62) is still judged, and reported without "
+        "a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-ASTROAIRFLOW-CVE-2026-133632-001",
+    "astro-airflow-mcp 0.5.0 to 0.9.1: the telemetry subprocess runs a json.py from the current directory",
+    "astro-airflow-mcp (astronomer/agents, PyPI) is an MCP server for Apache Airflow and "
+    "the `af` command line tool. After each tool call or command it started "
+    "`sys.executable -c` with a script that imports `json`, in the current directory, "
+    "which Python searches first, so a `json.py` in a project someone else wrote ran with "
+    "the user's privileges (CVE-2026-133632, CVSS 3.1 7.8, CWE-427, GHSA-x6pc-xc3q-fpww). "
+    "Only a project whose files the user does not trust is a risk. Read in the wheels: "
+    "0.4.1 sends no telemetry, 0.5.0 and 0.9.1 start the child without `-I`, and 0.9.2 "
+    "passes it.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `astro-airflow-mcp` to 0.9.2 or later and pin it; `uvx astro-airflow-mcp` "
+    "with no version can keep running a cached older release. Until then set "
+    "`AF_TELEMETRY_DISABLED=1`.",
+    sarif_name="AstroAirflowMcpTelemetryCwdImport",
+    cve_references=["CVE-2026-133632"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `astro-airflow-mcp` from 0.5.0 below 0.9.2 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "`latest` was 0.9.2 on 2026-11-26, the fix, so `uvx astro-airflow-mcp` with no "
+        "version is not reported, although uv may still run a cached older copy. It reads "
+        "the version, not whether telemetry is disabled or the project is trusted. The "
+        "0.7.0 alphas read as 0.7.0 and are reported. A file over 2 MB, or a lockfile over "
+        "32 MiB, is not read. A declaration nested more than 64 levels deep in "
+        "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SERVERGIT-CVE-2026-134465-001",
+    "mcp-server-git below 2026.10.28: a nested gitdir file leaves the --repository directory",
+    "mcp-server-git, the reference Git MCP server, can be started with `--repository` to "
+    "confine its tools to one tree. `validate_repo_path` checked the path a caller gave "
+    "and then opened it with GitPython, which follows a `.git` file, so a nested directory "
+    "in the allowed tree holding a `gitdir:` pointer made the tools read committed content "
+    "from, and create branches in, a repository outside it (CVE-2026-134465, CVSS 4.0 5.8, "
+    "CWE-22, GHSA-w766-5x43-whvw). The caller has to be able to place that file, through a "
+    "filesystem server for example, and know the other repository's path. Read in the "
+    "wheels: the path check arrives in 2025.12.18 and is the only one through 2026.10.19, "
+    "and 2026.10.28 also checks the directories git then uses (`validate_opened_repo`). "
+    "Before 2025.12.18 the option limits nothing, so the vendor's range, below 2026.10.28, "
+    "holds for those releases as well.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-server-git` to 2026.10.28 or later and pin it. Until then do not rely on "
+    "`--repository` where an agent can also write files in the allowed tree: run the "
+    "server as a user that can read only that repository.",
+    sarif_name="McpServerGitNestedGitdirEscape",
+    cve_references=["CVE-2026-134465"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports PyPI `mcp-server-git` below 2026.10.28 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "Date versions are compared as year, month and day, and the 0.2 to 0.6 releases "
+        "sort below them. `latest` was 2026.11.18 on 2026-11-26, so the README's `uvx "
+        "mcp-server-git` is not reported. It reads the version, not the arguments, so a "
+        "server started without `--repository`, which has no boundary to leave, is "
+        "reported too. The `mcp/git` image had one tag, `latest`, on 2026-11-26 and is not "
+        "read, and npm's `mcp-server-git` is a security placeholder. A file over 2 MB, or "
+        "a lockfile over 32 MiB, is not read. A declaration nested more than 64 levels "
+        "deep in package.json, a TOML manifest or an MCP config (an MCP server more than "
+        "62) is still judged, and reported without a line; a lockfile entry keeps its line "
+        "at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SERVERFETCH-CVE-2026-134492-001",
+    "mcp-server-fetch 2026.10.10 to 2026.11.4: the SSRF guard takes IPv6 site-local addresses as public",
+    "mcp-server-fetch, the reference fetch MCP server, refuses to fetch a URL whose host "
+    "is not a public address. `_is_public_address` listed the special-purpose ranges and "
+    "fell back on Python's `ip.is_global`, which is true for the deprecated site-local "
+    "range fec0::/10, so a URL on such an address passed (CVE-2026-134492, CVSS 4.0 2.3, "
+    "CWE-918, GHSA-3rxj-6jhw-qfv7). Few hosts route that range, which is why the score is "
+    "low. Read in the wheels: 2026.8.18 has no address check, the guard arrives in "
+    "2026.10.10 without fec0::/10, 2026.11.4 still lacks it, and 2026.11.11 adds it.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-server-fetch` to 2026.11.11 or later and pin it.",
+    sarif_name="McpServerFetchSiteLocalSsrf",
+    cve_references=["CVE-2026-134492"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Reports PyPI `mcp-server-fetch` from 2026.10.10 below 2026.11.11 where a version "
+        "is stated: a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or "
+        "lockfile entry at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "Date versions are compared as year, month and day. `latest` was 2026.11.18 on "
+        "2026-11-26, so the README's `uvx mcp-server-fetch` is not reported. Releases "
+        "before 2026.10.10, which check no address at all, are outside the record's range "
+        "and are not reported. The `mcp/fetch` image had one tag, `latest`, on 2026-11-26 "
+        "and is not read, and npm's `mcp-server-fetch` is a security placeholder. A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more than "
+        "64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry "
+        "keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-K8S-CVE-2026-134817-001",
+    "mcp-server-kubernetes 0.3.0 to 4.1.9: an operand that begins with a dash reaches kubectl as a flag",
+    "mcp-server-kubernetes (Flux159, npm) builds kubectl command lines from tool "
+    "arguments. By 4.1.9 `kubectl_get`, `kubectl_describe`, `kubectl_delete`, "
+    "`kubectl_scale` and `kubectl_generic` refused an operand that begins with a dash, and "
+    "`exec_in_pod`, `kubectl_patch`, `kubectl_rollout`, `kubectl_logs`, `kubectl_create`, "
+    "`explain_resource`, `node_management` and `port_forward` did not. kubectl reads any "
+    "token that begins with `-` as a flag, so a client connected over SSE or Streamable "
+    "HTTP could pass `--filename=PATH` and have kubectl read files on the server host "
+    "(CVE-2026-134817, CVSS 3.1 7.1, CWE-88). Read in the npm tarballs: none of the eight "
+    "calls `assertNotFlagLike` at 4.1.9, and all do at 4.1.10 and 4.2.0, published the "
+    "same day with the same files but for the version string, so 4.1.10 is fixed although "
+    "the record says 4.2.0. `explain_resource`, the first of them, puts its operand on a "
+    "kubectl command line from 0.3.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-server-kubernetes` to 4.2.0 or later and pin it. Until then run it over "
+    "stdio for one trusted client, and keep files worth reading off the host it runs on.",
+    sarif_name="McpServerKubernetesOperandFlagInjection",
+    cve_references=["CVE-2026-134817"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports npm `mcp-server-kubernetes` from 0.3.0 below 4.1.10 where a version is "
+        "stated: at the project root only, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the package-lock.json, pnpm-lock.yaml and "
+        "yarn.lock lockfiles, a range that admits an affected version included. It also "
+        "reports `flux159/mcp-server-kubernetes` tags from 0.3.0 up to v4.1.9 in compose "
+        "files, Kubernetes manifests, Helm values, Dockerfiles and the `docker run` "
+        "arguments of MCP configs. `latest`, on npm and on Docker Hub, was 4.2.3 on "
+        "2026-11-26, so an `npx` launch that states no version and an untagged image are "
+        "not reported. It reads the version, not the transport. A release below 3.9.0 is "
+        "also reported by AAK-MCP-K8S-CVE-2026-61459-001, for its own flaw. npm 4.1.10 is "
+        "not reported here, and AAK-KNOWN-VULN-001 reports it after `aak update`, since "
+        "the CNA's range ends at 4.2.0. PyPI's `mcp-server-kubernetes` is another project. "
+        "The dependency is not read when it is declared in a sub-directory manifest "
+        "(`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DBHUB-CVE-2026-134803-001",
+    "DBHub 0.18.0 to 1.6.1: backslash-escaped quotes hide statements from the read-only check",
+    "DBHub (`@bytebase/dbhub` on npm, `bytebase/dbhub` on Docker Hub) runs an agent's SQL "
+    "and, in read-only mode, lets `execute_sql` run only statements its own scanner "
+    "classifies as reads. The scanner ended a quoted string at the first quote that is not "
+    "doubled, while MySQL and MariaDB strings, and PostgreSQL E strings, go on past a "
+    "quote escaped with a backslash. SQL the server runs therefore looked like text inside "
+    "a string, and a hidden `SET SESSION transaction_read_only = 0; COMMIT` turned off the "
+    "database's own read-only transaction, so a client limited to reads could change or "
+    "drop data (CVE-2026-134803, CVSS 3.1 8.1, CWE-436). Read in the npm tarballs: 0.17.0 "
+    "splits the query on every `;` and judges each piece, 0.18.0 brings the quote-aware "
+    "scanner (`scanSingleQuotedString`), 1.6.1 has it unchanged, and 1.7.0 reads backslash "
+    "escapes and judges MySQL and MariaDB text under three readings. The record gives no "
+    "lower bound.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@bytebase/dbhub` to 1.7.0 or later (the image to 1.7.1 or later) and pin it. "
+    "Either way connect DBHub with a database role that has no write privileges: the "
+    "read-only check is not a substitute for one.",
+    sarif_name="DbhubReadOnlyBackslashQuoteBypass",
+    cve_references=["CVE-2026-134803"],
+    owasp_mcp_references=["MCP02:2025", "MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Reports npm `@bytebase/dbhub` from 0.18.0 below 1.7.0 where a version is stated: "
+        "at the project root only, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the package-lock.json, pnpm-lock.yaml and "
+        "yarn.lock lockfiles, a range that admits an affected version included. It also "
+        "reports `bytebase/dbhub` tags from 0.18.0 below 1.7.0 in compose files, "
+        "Kubernetes manifests, Helm values, Dockerfiles and the `docker run` arguments of "
+        "MCP configs. npm's `latest` was 2.1.0 on 2026-11-26 and the image's was pushed "
+        "the day before, so a launch that states no version and an untagged image are not "
+        "reported. It reads the version, not whether read-only mode is on or which "
+        "database is behind it. Releases before 0.18.0 are not reported for this flaw; "
+        "AAK-KNOWN-VULN-001 reports them after `aak update`, since the CNA's range has no "
+        "lower bound. npm's unscoped `dbhub` and PyPI's `dbhub` are other projects. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-DBHUB-CVE-2026-136441-001",
+    "DBHub 0.5.0 to 0.22.5: the read-only decision rests on the first word of each SQL statement",
+    "ZDI published a 0-day against DBHub's MCP server (ZDI-26-1067, CVE-2026-136441, CVSS "
+    "3.0 9.8, CWE-863): an incorrect authorization decision when it parses untrusted SQL "
+    "lets a remote caller with no credential bypass authentication. ZDI reported it in "
+    "July 2025, got no fix, and names only the commit it looked at, 16e870ba (\"support "
+    "multi-sql statements\", 5 June 2025); its one mitigation is to restrict who can reach "
+    "the product. At that commit `execute_sql` splits the query on `;` and allows each "
+    "statement whose first word is on a list (`select`, `with`, `explain` and others). "
+    "Read in the npm tarballs: that check ships in 0.5.0 (0.4.11, the release before it, "
+    "has no splitter) and read-only mode rests on it, refined, through 0.22.5: none of the "
+    "releases read before 0.22.6 opens a read-only transaction on MySQL or MariaDB, and "
+    "the vendor's GHSA-mwwr-p57h-56pf, for releases below 0.22.6, says the database "
+    "setting was never applied on PostgreSQL. The range is that reading, not ZDI's, and "
+    "nobody has said which release, if any, ends what ZDI found.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Run `@bytebase/dbhub` 1.7.0 or later, or the image at 1.7.1 or later, pinned, and "
+    "treat it as unproven rather than fixed: keep the HTTP port on loopback or behind an "
+    "authenticating proxy, and give DBHub a database role that can do no more than the "
+    "agent should.",
+    sarif_name="DbhubFirstKeywordAuthorization",
+    cve_references=["CVE-2026-136441"],
+    owasp_mcp_references=["MCP07:2025", "MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-07", "ADV-AUTH-01"],
+    limitations=(
+        "Reports npm `@bytebase/dbhub` from 0.5.0 below 0.22.6 where a version is stated: "
+        "at the project root only, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the package-lock.json, pnpm-lock.yaml and "
+        "yarn.lock lockfiles, a range that admits an affected version included. It also "
+        "reports `bytebase/dbhub` tags from 0.5.0 below 0.22.6 in compose files, "
+        "Kubernetes manifests, Helm values, Dockerfiles and the `docker run` arguments of "
+        "MCP configs. npm's `latest` was 2.1.0 on 2026-11-26, so a launch that states no "
+        "version is not reported. The record names one commit, no release and no fix, and "
+        "neither ZDI nor the vendor describes the bypass, so whether 0.22.6 and later are "
+        "affected is not known and they are not reported; AAK-KNOWN-VULN-001 does not "
+        "report the record at all, as it maps to no package. 0.4.11 and earlier hold an "
+        "older form of the check and are not named either. It reads the version, not the "
+        "transport or the read-only setting. npm's unscoped `dbhub` and PyPI's `dbhub` are "
+        "other projects. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read. A declaration nested more than 64 levels deep in package.json, "
+        "a TOML manifest or an MCP config (an MCP server more than 62) is still judged, "
+        "and reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-MSSQL-CVE-2026-63129-001",
+    "MSSQL MCP servers on mssql-mcp-core (core and server below 0.6.0, reader and writer below 0.5.0): tool arguments reach T-SQL as given",
+    "The MSSQL MCP servers published as `@connorbritain/mssql-mcp-server`, `-reader` and "
+    "`-writer` share `@connorbritain/mssql-mcp-core`. Their tools put the caller's table, "
+    "column and index names and a free-form WHERE clause into T-SQL batches, binding only "
+    "data values: `update_data`, `delete_data`, `insert_data`, `execute_transaction`, "
+    "`create_table`, `create_index` and `drop_table`, and `list_databases`, through "
+    "`stateFilter`, in the reader tier. The row count and preview run before "
+    "`confirmUpdate` or `confirmDelete`, so an argument carries out stacked statements "
+    "before anyone confirms, and runs operating system commands when the login may use "
+    "`xp_cmdshell` (CVE-2026-63129, CVSS 3.1 8.8, CWE-89, GHSA-2m9m-6cr5-9x25). Read in "
+    "the npm tarballs: core 0.1.0 and 0.5.0, server 0.1.0 and 0.3.6 and writer 0.1.0, "
+    "which carried their own copy then, build `WHERE ${whereClause}`; reader 0.1.0 builds "
+    "`${stateFilter}`; later releases take it from core below 0.6.0; core 0.6.0 validates "
+    "identifiers, replaces the clause with bound filters and checks `stateFilter` against "
+    "a list.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@connorbritain/mssql-mcp-server` to 0.6.0 or later, `-reader` and `-writer` "
+    "to 0.5.0 or later (each then takes core 0.6), and pin them. Until then use a login "
+    "with the least privileges and with `xp_cmdshell` disabled: `READONLY=true` does not "
+    "close `list_databases`.",
+    sarif_name="MssqlMcpCoreSqlInjection",
+    cve_references=["CVE-2026-63129"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Reports npm `@connorbritain/mssql-mcp-server` and `@connorbritain/mssql-mcp-core` "
+        "below 0.6.0, and `@connorbritain/mssql-mcp-reader` and "
+        "`@connorbritain/mssql-mcp-writer` below 0.5.0, where a version is stated: at the "
+        "project root only, package.json, .mcp.json, mcp.json, claude_desktop_config.json "
+        "and the package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that "
+        "admits an affected version included. Each one's `latest` was fixed on 2026-11-26, "
+        "so an `npx` launch that states no version is not reported. One finding per file "
+        "for the first pair and one for the second. It reads the version, not the login or "
+        "`READONLY`. npm's and PyPI's unscoped `mssql-mcp-server` are other projects. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-OBSIDIANSYNC-CVE-2026-77283-001",
+    "obsidian-sync-mcp below 0.5.7: without MCP_AUTH_TOKEN any web page can read and change the vault",
+    "obsidian-sync-mcp (es617, npm and `ghcr.io/es617/obsidian-sync-mcp`) gives an MCP "
+    "client an Obsidian vault over HTTP, on 0.0.0.0 by default. Without `MCP_AUTH_TOKEN`, "
+    "the documented way to run it locally, it installs no `authenticate` check, and "
+    "nothing looks at `Host` or `Origin`, so a page the user visits reaches `/mcp` by DNS "
+    "rebinding, or directly by a cross-origin request to loopback, which the wildcard CORS "
+    "header lets it read, and lists, reads, writes, moves and deletes notes "
+    "(CVE-2026-77283, CVSS 4.0 8.8, CWE-350, GHSA-mx6p-3fg7-v6pj). A server with the token "
+    "set is not affected. Read in the npm tarballs: 0.1.0, the first release, and 0.5.6 "
+    "set `serverOptions.authenticate` only inside `if (AUTH_TOKEN)`, and 0.5.7 checks both "
+    "headers when there is no token.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `obsidian-sync-mcp` to 0.5.7 or later and pin it. On any version, set "
+    "`MCP_AUTH_TOKEN`, which closes this path.",
+    sarif_name="ObsidianSyncMcpDnsRebindNoAuth",
+    cve_references=["CVE-2026-77283"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports npm `obsidian-sync-mcp` below 0.5.7 where a version is stated: at the "
+        "project root only, package.json, .mcp.json, mcp.json, claude_desktop_config.json "
+        "and the package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that "
+        "admits an affected version included. It also reports "
+        "`ghcr.io/es617/obsidian-sync-mcp` tags below 0.5.7 in compose files, Kubernetes "
+        "manifests, Helm values, Dockerfiles and the `docker run` arguments of MCP "
+        "configs. `latest`, on npm and on the image, was 0.13.0 on 2026-11-26, so `npx "
+        "obsidian-sync-mcp` and an untagged image are not reported. It reads the version, "
+        "not whether `MCP_AUTH_TOKEN` is set, so a server that sets it is reported too. "
+        "The name is not on PyPI. The dependency is not read when it is declared in a "
+        "sub-directory manifest (`packages/app/package.json`). A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read. A declaration nested more than 64 levels deep "
+        "in package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-TODOIST-CVE-2026-76807-001",
+    "Todoist MCP server (@doist/todoist-mcp) 9.0.0 to 10.3.2: DNS rebinding reaches todoist-mcp-http",
+    "Todoist's MCP server ships an optional HTTP server, `todoist-mcp-http`, beside the "
+    "stdio one. It passed `POST /mcp` to the transport with no `Host` or `Origin` check "
+    "and no caller credential, and ran every tool under the operator's `TODOIST_API_KEY`, "
+    "so a page a user visits could rebind its name to 127.0.0.1 and read, create, complete "
+    "and delete tasks (CVE-2026-76807, CVSS 3.1 9.3, CWE-346, GHSA-833v-v58w-294h). The "
+    "stdio server is not affected. Read in the npm tarballs: `dist/main-http.js` has no "
+    "check in `@doist/todoist-mcp` 9.0.0, 10.0.0 and 10.3.2, and 10.3.3 adds a "
+    "trusted-host middleware in front of the route.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@doist/todoist-mcp` to 10.3.3 or later and pin it, or move to "
+    "`@todoist/mcp`, the name the project publishes under now (from 15.0.0). Replace "
+    "`@doist/todoist-ai`, the name before both, with it. Until then do not run the HTTP "
+    "server, or run it behind a proxy that checks `Host` and asks for a credential.",
+    sarif_name="TodoistMcpHttpDnsRebind",
+    cve_references=["CVE-2026-76807"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports npm `@doist/todoist-mcp` from 9.0.0 below 10.3.3 where a version is "
+        "stated: at the project root only, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the package-lock.json, pnpm-lock.yaml and "
+        "yarn.lock lockfiles, a range that admits an affected version included. `latest` "
+        "was 14.0.5 on 2026-11-26, so an `npx` launch that states no version is not "
+        "reported. It reads the version, not which server runs: a pinned stdio launch, "
+        "which the record says is not affected, is reported too. 0.0.1, an empty "
+        "placeholder, is not reported. `@doist/todoist-ai`, the package's name before this "
+        "one, carries the same route as `todoist-ai-http` from 7.3.0 (read at 7.3.0, 8.0.0 "
+        "and 8.12.3), and its 9.0.0, the last release, is a launcher that depends on "
+        "`@doist/todoist-mcp` `^9.0.0`, but the advisory does not name it, and it is not "
+        "read; a lockfile that resolves 9.0.0 of it also resolves `@doist/todoist-mcp` "
+        "9.0.0, which is reported. `@todoist/mcp` is not read: its 0.0.1 is a placeholder, "
+        "and 15.0.0, the next, has the check. npm's unscoped `todoist-mcp` and PyPI's are "
+        "other projects. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read. A declaration nested more than 64 levels deep in package.json, "
+        "a TOML manifest or an MCP config (an MCP server more than 62) is still judged, "
+        "and reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-JUPYTER-CVE-2026-77318-001",
+    "Jupyter MCP Server 0.5.0 to 1.0.2: /api/connect and /api/stop ask for no credential in streamable-http mode",
+    "Jupyter MCP Server (`jupyter-mcp-server` on PyPI, `datalayer/jupyter-mcp-server` on "
+    "Docker Hub) in standalone streamable-http mode registers `PUT /api/connect` and "
+    "`DELETE /api/stop` beside `/mcp`. `MCP_TOKEN` guards `/mcp` alone, so a caller on the "
+    "network with no token replaces the runtime and document URLs and their tokens, makes "
+    "the server connect to a Jupyter backend of its choosing, and stops the current kernel "
+    "(CVE-2026-77318, CVSS 4.0 7.3, CWE-306, GHSA-24pw-rf5p-mgp7). Read in the wheels: "
+    "0.4.0 has no such route, 0.5.0 adds `/api/connect` and 0.8.0 has `/api/stop`, 1.0.0 "
+    "brings `MCP_TOKEN`, 1.0.2 still reads it on `/mcp` only, and 1.0.3 asks for it on "
+    "both routes. Before 1.0.0 there is no token at all.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `jupyter-mcp-server` (the package or the image) to 1.0.3 or later and pin it. "
+    "Until then keep the port on loopback or behind a proxy that refuses `/api/`.",
+    sarif_name="JupyterMcpManagementRoutesNoAuth",
+    cve_references=["CVE-2026-77318"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `jupyter-mcp-server` from 0.5.0 below 1.0.3 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry "
+        "at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. It "
+        "also reports `datalayer/jupyter-mcp-server` tags from 0.5.0 below 1.0.3, 1.0.1 "
+        "included, which PyPI does not have, in compose files, Kubernetes manifests, Helm "
+        "values, Dockerfiles and the `docker run` arguments of MCP configs. `latest`, on "
+        "PyPI and on Docker Hub, was 2.2.6 on 2026-11-26, so `uvx "
+        "jupyter-mcp-server@latest` and an untagged image are not reported. It reads the "
+        "version, not the transport, so a server run over stdio or as a Jupyter extension "
+        "is reported too. CVE-2026-77359, the missing Host and Origin check on the same "
+        "routes, is not part of this rule: AAK-DNS-REBIND-003 reads that shape in source "
+        "code, and AAK-KNOWN-VULN-001 reports the package for it after `aak update`. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP "
+        "server more than 62) is still judged, and reported without a line; a lockfile "
+        "entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-PYDANTICAI-CVE-2026-133505-001",
+    "Pydantic AI 1.50.0 to 1.107.9 and 2.0 to 2.65.0: tool data shaped like a file is rebuilt as that file when history is reloaded",
+    "Pydantic AI (`pydantic-ai`, `pydantic-ai-slim`) rebuilds the files in a tool result "
+    "when stored message history is loaded, and took any JSON object in the serialized "
+    "shape of one of its file types for a file. Someone who controls data a tool returns, "
+    "such as a record an MCP server returns from another system, can so make the "
+    "application download a URL on its local network, or the model provider read an "
+    "`s3://` object or uploaded file with the application's credentials (CVE-2026-133505, "
+    "CVSS 3.1 5.9, CWE-843, GHSA-4cj4-hgwf-4hc4). It needs history that is serialized and "
+    "loaded again (stored, held by a UI adapter on the server, or run under Temporal, DBOS "
+    "or Prefect) and a model or provider that fetches such files. Read in the "
+    "`pydantic-ai-slim` wheels: 1.49.0 types a tool result's content `Any`, 1.50.0 types "
+    "it `ToolReturnContent`, and 1.107.10 and 2.66.0 rebuild only the files a result "
+    "recorded (`rebuild_unrecorded_tool_files` is absent at 1.107.9 and 2.65.0).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `pydantic-ai` and `pydantic-ai-slim` to 1.107.10 or later, or to 2.66.0 or "
+    "later on the 2.x line, and pin them. Until then run `sanitize_messages()` on stored "
+    "history before reusing it, or have tools return third-party data as a JSON string.",
+    sarif_name="PydanticAiToolDataRebuiltAsFile",
+    cve_references=["CVE-2026-133505"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports `pydantic-ai` and `pydantic-ai-slim` from 1.50.0 below 1.107.10, and from "
+        "2.0.0 below 2.66.0, where a version is stated: a requirements*.txt entry at any "
+        "depth, a pyproject.toml, Pipfile or lockfile entry at the project root, or a "
+        "`uvx` launch in .mcp.json, mcp.json or claude_desktop_config.json, reporting a "
+        "range that admits an affected version. One finding per file for the two names, "
+        "with or without extras. The 2.0.0 betas read as 2.0.0 and are reported. `latest` "
+        "was 2.75.0 on 2026-11-26, so a reference that states no version is not reported. "
+        "It reads the version, not whether the application stores and reloads history or "
+        "which model it uses. History saved by an affected release is read under the fixed "
+        "release's stricter rules, which no version shows. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read. A declaration nested more than 64 levels deep in "
+        "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+_r(
+    "AAK-PYDANTICAI-HARNESS-CVE-2026-133161-001",
+    "Pydantic AI Harness 0.4.0 to 0.69.0: strip_ansi takes quadratic time on a long tool result line",
+    "Pydantic AI Harness (`pydantic-ai-harness`) can strip ANSI escapes from tool output, "
+    "with `strip_ansi=True` on its `ToolOutputLimits` capability (`OverflowingToolOutput` "
+    "before 0.13.0). The pattern takes time quadratic in the length of a line, on the "
+    "event loop and before the capability's own size limit applies, so a result of a few "
+    "hundred kilobytes with many unterminated escapes stops every request and agent run in "
+    "the process for tens of seconds to minutes (CVE-2026-133161, CVSS 3.1 7.5, CWE-1333, "
+    "GHSA-m4cr-m4qc-9hh3). The attacker needs only to place text in what a tool returns: a "
+    "fetched page, a file, or an MCP server's reply. Read in the wheels: 0.3.0 has no "
+    "`strip_ansi`, 0.4.0 and 0.69.0 carry the same pattern, and 0.70.0 replaces it.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `pydantic-ai-harness` to 0.70.0 or later and pin it. On Pydantic AI 1.x the "
+    "harness stops at 0.4.0, so move to 2.x, or leave `strip_ansi` at its default, "
+    "`False`.",
+    sarif_name="PydanticAiHarnessAnsiStripQuadratic",
+    cve_references=["CVE-2026-133161"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports `pydantic-ai-harness` from 0.4.0 below 0.70.0 where a version is stated: "
+        "a requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile "
+        "entry at the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "`latest` was 0.75.0 on 2026-11-26, so a reference that states no version is not "
+        "reported. It reads the version, not the code, so a project that leaves "
+        "`strip_ansi` off, the default, is reported too. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read. A declaration nested more than 64 levels deep in "
+        "package.json, a TOML manifest or an MCP config (an MCP server more than 62) is "
+        "still judged, and reported without a line; a lockfile entry keeps its line at any "
+        "depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-K8SMCPSERVER-CVE-2026-130007-001",
+    "k8s-mcp-server image from 1.0.5 below 1.1.0: the default SSE listener runs Kubernetes tools for anyone who reaches it",
+    "k8s-mcp-server (reza-gholizade/k8s-mcp-server, a Go server whose README runs the "
+    "Docker Hub image `ginnux/k8s-mcp-server`) serves MCP over SSE unless told otherwise, "
+    "on every interface at port 8080, and its SSE server was created with no "
+    "authentication. The session id `GET /sse` hands out is the only thing `POST /message` "
+    "asks for, so any client that reaches the port lists and calls the tools under the "
+    "server's cluster credentials, the ones that create, delete and change resources "
+    "included, since read-only mode is off by default (CVE-2026-130007, CVSS 4.0 7.9, "
+    "CWE-306, GHSA-m932-63jc-4jqq). Read in the source at the release tags: v1.0.4 serves "
+    "stdio only, v1.0.5 adds SSE, v1.0.25 still starts it with no check, and v1.1.0 "
+    "defaults to stdio and 127.0.0.1 and asks for a bearer token and an allowed Origin "
+    "over HTTP.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ginnux/k8s-mcp-server` at 1.1.0 or later, pinned by version, and set "
+    "`MCP_AUTH_TOKEN` (32 characters or more) if you serve it over HTTP. Until then run it "
+    "with `--mode stdio`, or keep the port private, and give it a service account with the "
+    "least rights it needs.",
+    sarif_name="K8sMcpServerSseNoAuth",
+    cve_references=["CVE-2026-130007"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ginnux/k8s-mcp-server:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 1.0.5 below 1.1.0 are reported; `latest` "
+        "was the 1.1.0 digest on 2026-11-26, so it and an untagged reference are not. The "
+        "rule reads the tag, not the mode, so an image run with `--mode stdio` or behind "
+        "an authenticating proxy is reported too. A binary or a local build states no "
+        "version this rule reads; a go.mod that requires the module is "
+        "AAK-KNOWN-VULN-001's after `aak update`. npm's and PyPI's `k8s-mcp-server` are "
+        "other projects, `docker.io/ginnux/k8s-mcp-server` is not matched, and "
+        "commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-STACKLOKSQLITE-CVE-2026-130008-001",
+    "sqlite-mcp image below 0.1.2: read-only mode runs chained statements and ATTACH DATABASE",
+    "sqlite-mcp (StacklokLabs/sqlite-mcp, a Go server shipped as "
+    "`ghcr.io/stackloklabs/sqlite-mcp/server`) opens a database read-only by default. "
+    "`execute_query` checked only that the text begins with SELECT, and the driver runs "
+    "every statement in it, while `describe_table` put its `table_name` into `PRAGMA "
+    "table_info(...)` as given. Either way a caller can run `ATTACH DATABASE`, which opens "
+    "a file read-write whatever `mode=ro` says, so it can change the protected database, "
+    "read other SQLite files, or create one anywhere the process can write "
+    "(CVE-2026-130008, CVSS 3.1 8.2, CWE-89, CWE-863, GHSA-q433-mp6c-8v4f). The server "
+    "asks for no credential and listens on port 8080 on every interface. Read in the "
+    "source at the release tags: both are in v0.0.1, v0.1.0 and v0.1.1, every release "
+    "before the fix, and v0.1.2 binds the table name, sets `query_only` and turns ATTACH "
+    "off in the engine.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/stackloklabs/sqlite-mcp/server` at 0.1.2 or later, pinned by version. "
+    "Until then keep the port on loopback or behind an authenticating proxy, and mount "
+    "only the database you mean to expose, read-only.",
+    sarif_name="StacklokSqliteMcpReadOnlyBypass",
+    cve_references=["CVE-2026-130008"],
+    owasp_mcp_references=["MCP02:2025", "MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/stackloklabs/sqlite-mcp/server:TAG` in YAML (compose files, Kubernetes "
+        "manifests, MCP configs), a Helm values mapping of `repository` and `tag`, "
+        "Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` "
+        "and `claude_desktop_config.json`. Tags below 0.1.2 are reported (0.0.1, 0.1.0 and "
+        "0.1.1 exist); `latest` was the 0.1.2 digest on 2026-11-26, so it and an untagged "
+        "reference are not. The rule reads the tag, not whether the server runs with "
+        "`--read-write` or behind a proxy. A binary or a local build states no version "
+        "this rule reads; a go.mod that requires the module is AAK-KNOWN-VULN-001's after "
+        "`aak update`. npm's and PyPI's `sqlite-mcp`, PyPI's `mcp-server-sqlite` and the "
+        "`mcp/sqlite` image are other projects, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-OBOT-CVE-2026-130766-001",
+    "Obot image from v0.8.0 below v0.27.0: a remote MCP server can take a user's token for another service, and OAuth and icon requests reach internal hosts",
+    "Obot (`ghcr.io/obot-platform/obot`), a self-hosted MCP gateway, is the OAuth client of every "
+    "remote MCP server its users connect. Four flaws there and in how it starts servers are "
+    "fixed in v0.27.0. From v0.26.0 it asked for a token for the `resource` the server's "
+    "protected resource metadata named, without checking that it matched the server, so a "
+    "malicious server names another service and the authorization server the victim already "
+    "uses and is sent the victim's token for it (CVE-2026-130766, CVSS 3.1 8.0, CWE-346, "
+    "GHSA-x3hf-v55x-jcp6). From v0.8.0 the token exchange and refresh went to whatever "
+    "endpoint the server advertised through a client that has no egress checks and follows "
+    "redirects, so a Power User reaches cloud metadata and private hosts and reads their error "
+    "bodies (CVE-2026-130764, CVSS 3.1 7.6, CWE-918, GHSA-57qx-69p6-3w3g). From v0.9.0 the "
+    "Docker backend wrote file-type configuration values into a shell script as heredocs that "
+    "end at `EOF`, so a value with that line runs the rest as commands in the init container "
+    "(CVE-2026-130767, CVSS 3.1 6.4, CWE-78, GHSA-2mfp-9vv3-q737). From v0.14.0 the registry "
+    "fetched server icon URLs with no egress checks, and from v0.23.0 the checks on remote "
+    "server URLs let `0.0.0.0`, `::` and IPv6 transition addresses through (CVE-2026-130768, "
+    "CVSS 3.1 4.1, CWE-184, GHSA-r3m3-5rmh-h3fm). Checked in the source at each tag: "
+    "`mcpgateway/oauth/statemanager.go`, with its bare `conf.Exchange`, is absent at v0.7.1 and "
+    "in v0.8.0; `pkg/mcp/docker.go` and its heredoc are in v0.9.0; the registry's "
+    "`http.DefaultClient` icon fetch is in v0.14.0; v0.25.6 passes the connection URL as the "
+    "resource and v0.26.0 the advertised one; and the fixes (43a95224, 30c09dfd, 900e4f31, "
+    "092275d1) are in v0.27.0-rc1 and not in v0.26.3.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/obot-platform/obot` v0.27.0 or later, pinned by version. Until then let only "
+    "trusted accounts add remote MCP servers, revoke tokens granted through remote servers you "
+    "do not trust, and block the container's egress to loopback, private and cloud metadata "
+    "addresses.",
+    sarif_name="ObotOauthResourceTokenTheftSsrf",
+    cve_references=["CVE-2026-130766", "CVE-2026-130764", "CVE-2026-130767", "CVE-2026-130768"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Tags from v0.8.0 below v0.27.0 are reported, and the "
+        "evidence names the CVEs the tag's release has. A pre-release tag reads as its release, "
+        "so v0.26.0-alpha1, which predates the resource flaw, is listed with it; every "
+        "v0.27.0 pre-release has the fixes. `latest` (or no tag) is not reported: it was "
+        "v0.28.2 on 2026-11-26. Tags below v0.25.0 also fire AAK-MCP-OBOT-CVE-2026-101084-001, "
+        "and tags from v0.12.0 below v0.26.2 AAK-MCP-OBOT-CVE-2026-105138-001, for other flaws. "
+        "The rule reads the tag, not whether the Docker backend is used or who may add remote "
+        "servers. The enterprise image `ghcr.io/obot-platform/obot-enterprise` is a different "
+        "image and is not matched, and a go.mod that requires the Go module is left to "
+        "AAK-KNOWN-VULN-001 after `aak update`."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-POMERIUM-CVE-2026-135300-001",
+    "Pomerium images from v0.30.0 below v0.34.0: the MCP token endpoint never checks a client_secret_basic client's secret",
+    "Pomerium, an identity-aware proxy, is the OAuth authorization server for the MCP routes it "
+    "protects. It runs as the Docker Hub image `pomerium/pomerium`, as the Cloud Run build "
+    "`gcr.io/pomerium-io/pomerium`, and inside `pomerium/ingress-controller` in Kubernetes. Its "
+    "token endpoint, `/.pomerium/mcp/token`, compared the secret of a client registered for "
+    "`client_secret_post` and had an empty case for `client_secret_basic`, the method a client "
+    "that named none was registered with, so whoever holds an intercepted authorization code or "
+    "refresh token redeems it with any secret and gets the victim's access token "
+    "(CVE-2026-135300, CVSS 3.1 7.4, CWE-287). Checked in the source at each tag: "
+    "`internal/mcp` is absent at v0.29.6 and ships in v0.30.0 with the empty case; v0.33.6 only "
+    "logs there; f86d7c00 (#6787) reads the Basic credentials and compares them in constant "
+    "time, in v0.34.0 and in no v0.33 tag. Each ingress-controller tag from v0.30.0 to v0.33.6 "
+    "requires a Pomerium in that range in its go.mod, and v0.34.0 requires v0.34.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `pomerium/pomerium` or `pomerium/ingress-controller` v0.34.0 or later, pinned by "
+    "version. A client that registered without naming a method and never sent its secret will "
+    "get `invalid_client` after the upgrade and has to register again. Until then, turn the "
+    "`mcp` runtime flag off or revoke MCP refresh tokens that may have been exposed.",
+    sarif_name="PomeriumMcpClientSecretNotVerified",
+    cve_references=["CVE-2026-135300"],
+    owasp_mcp_references=["MCP07:2025", "MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Tags from v0.30.0 below v0.34.0 are reported for the three "
+        "images, `-cloudrun` tags included. A tag whose version follows a prefix (`nonroot-`, "
+        "`debug-`, `amd64-`, `arm64v8-`) does not start with a version and is not read, nor is "
+        "`main`. `latest` (or no tag) is not reported: it was the v0.34.1 image of "
+        "`pomerium/pomerium` and of `pomerium/ingress-controller` on 2026-11-26. The rule reads "
+        "the tag, not the `mcp` runtime flag, which is off by default, so a proxy with no MCP "
+        "route is reported too. `docker.io/pomerium/...` is not matched, and a go.mod that "
+        "requires the Go module is left to AAK-KNOWN-VULN-001 after `aak update`."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-LIBRECHAT-CVE-2026-54031-001",
+    "LibreChat images from v0.7.9 below v0.8.8: MCP OAuth requests follow redirects to internal addresses, and v0.7.9's MCP config dialog renders HTML unsanitized",
+    "LibreChat, a self-hosted chat app that connects to MCP servers, runs as the images "
+    "`librechat` and `librechat-api`. Its MCP OAuth client, `packages/api/src/mcp/oauth`, checks "
+    "the URL it is about to call and then follows redirects without checking where they lead, "
+    "in discovery, client registration, token, refresh and revocation requests, so whoever "
+    "can start MCP OAuth against an endpoint they control sends the server's requests to "
+    "internal or private addresses (CVE-2026-54031, CVSS 3.1 6.3, CWE-918, "
+    "GHSA-f7xq-83jc-cgrj). The MCP transport itself checks each redirect and is not affected. "
+    "Checked in the source at each tag: the OAuth client is absent at v0.7.8 and ships in "
+    "v0.7.9-rc1; v0.8.5 calls bare `fetch`; v0.8.6 to v0.8.8-rc4 call `hardenedFetch`, which "
+    "guards name resolution, sets no `redirect` and does not look at a literal address; "
+    "4d33d8c2 (#16514) sets `redirect: 'error'` and refuses blocked literal addresses, in "
+    "v0.8.8 and not in v0.8.8-rc4. v0.7.9 also puts an MCP server's variable description into "
+    "the page with `dangerouslySetInnerHTML` and no sanitizer, so script in it runs in the "
+    "LibreChat origin (CVE-2026-54032, CVSS 3.1 6.1, CWE-79, GHSA-vfg3-f8h3-2683). The vendor's "
+    "range for that one is below v0.8.6, the first release with 619f28d7 (#12927), which runs "
+    "the text through DOMPurify in v0.8.6-rc1. Read in the source, the description is the "
+    "`customUserVars` text an administrator writes in librechat.yaml, which the fix commit "
+    "calls admin-supplied; the advisory says a remote MCP server supplies it, and no path from "
+    "one was found.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run LibreChat v0.8.8 or later, pinned by version, from `ghcr.io/librechat-ai` or Docker "
+    "Hub's `librechat`: `ghcr.io/danny-avila/librechat` and `librechat-api` stop at v0.8.8-rc4, "
+    "and their `latest` is v0.8.7. Until then keep `MCP_SERVERS.CREATE` off for ordinary users, "
+    "list only MCP servers you trust, and block the container's egress to loopback, private and "
+    "cloud metadata addresses.",
+    sarif_name="LibreChatMcpOauthRedirectSsrf",
+    cve_references=["CVE-2026-54031", "CVE-2026-54032"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Read for `librechat` and `librechat-api` under "
+        "`ghcr.io/danny-avila`, `ghcr.io/librechat-ai`, `registry.librechat.ai/danny-avila`, "
+        "`registry.librechat.ai/librechat-ai` and Docker Hub's `librechat`. Tags from v0.7.9 "
+        "below v0.8.8 are reported, pre-releases included, and so are v0.8.8-rc1 to "
+        "v0.8.8-rc4, pushed before the fix. CVE-2026-54032 is named in the evidence of v0.7.9 "
+        "and v0.7.9-rc1 alone. Its vendor range is below v0.8.6, but from v0.8.0-rc1 to v0.8.5 "
+        "nothing in the source imports the dialog file the record names, and the dialog in use "
+        "sanitizes the description or shows it as text; the admin banner, the record's second "
+        "sink, is not MCP and is not what this rule reports, so a tag below v0.7.9, which has "
+        "the banner and no dialog, is not reported. The rule's own CVE list is the same for "
+        "every tag, and only the evidence line says which the tag has. Both flaws were read and "
+        "not run. `latest` (or no tag) was v0.8.9 under "
+        "`librechat-ai` and Docker Hub on 2026-11-26 and is not reported there; under "
+        "`danny-avila` it was the v0.8.7 image and is reported. The compose files in "
+        "LibreChat's own repository run `librechat-dev` and `librechat-dev-api`, tagged by "
+        "commit, and the Helm chart leaves `image.tag` empty; neither states a release. The "
+        "rule reads the tag, not whether any MCP server uses OAuth or who may add one. "
+        "`docker.io/librechat/...` is not matched."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-ARCADEDB-CVE-2026-134327-001",
+    "ArcadeDB images from 26.3.1 below 26.11.1: MCP get_schema ignores per-type permissions, and MCP tools write past their configuration or confirm databases the caller may not see",
+    "ArcadeDB, a multi-model database, serves MCP from its own server, in the images "
+    "`arcadedata/arcadedb`, `arcadedata/arcadedb-headless` and `arcadedata/arcadedb-minimal`. "
+    "Three records are fixed in 26.11.1. The `get_schema` tool and the schema resource render every type of a database, so a user "
+    "denied a type reads its properties, indexes, inheritance and a view's SQL, as the "
+    "PostgreSQL wire catalog and GraphQL introspection also let them (CVE-2026-134327, CVSS 3.1 "
+    "6.5, CWE-862, GHSA-vpxw-wqc5-hvvj). The read-only `query` tool decides whether a Gremlin "
+    "script writes by evaluating it on the `auto` or `groovy` engine, so a server administrator's "
+    "script commits its write and is classified as a read, and the upsert tools create types "
+    "with `allowSchemaChange` off (CVE-2026-134324, CVSS 3.1 4.9, CWE-863, GHSA-r946-225c-5x88, "
+    "GHSA-6jr9-6vw5-xjf6). `resolveDatabase` tests whether a database exists before whether the "
+    "caller may open it, and answers the two differently (CVE-2026-134329, CVSS 3.1 4.3, "
+    "CWE-204, GHSA-34v6-3chg-hcjq). Checked in the source at each tag: MCP is absent at 26.2.1 "
+    "and ships in 26.3.1, whose `GetSchemaTool` walks `schema.getTypes()` and whose "
+    "`ArcadeGremlin.parse()` executes the statement; `MCPToolUtils` with the existence test "
+    "first arrives in 26.4.2, later than NVD's 26.2.1; the upsert tools arrive in 26.8.1; "
+    "289ef95608 and 100d8a021c fix all three in 26.11.1 and not in 26.10.2.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `arcadedata/arcadedb` 26.11.1 or later, pinned by version; `arcadedb-headless` and "
+    "`arcadedb-minimal` have no such image, so move off them. Until then keep "
+    "`allowedUsers` to accounts that may read every type and database, and "
+    "`arcadedb.gremlin.engine` at `java`.",
+    sarif_name="ArcadedbMcpPermissionBypass",
+    cve_references=["CVE-2026-134327", "CVE-2026-134324", "CVE-2026-134329"],
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Tags from 26.3.1 below 26.11.1 of the three Docker Hub images "
+        "are reported, and the evidence names the CVEs the tag's release has. On 2026-11-26 "
+        "`arcadedata/arcadedb:latest` was a 26.12.1-SNAPSHOT and is not reported; `latest` and "
+        "untagged references of the headless and minimal images are, because it is a "
+        "26.11.1-SNAPSHOT of 2026-10-05, though the tag `26.11.1-SNAPSHOT` itself reads as "
+        "26.11.1 and is not. Headless, minimal and the native builds leave Gremlin out, and "
+        "`arcadedb.gremlin.engine` at `java` does not evaluate Groovy, so CVE-2026-134324 needs "
+        "the upsert tools there. MCP is off by default and lists `root` alone; the rule reads "
+        "the tag, not that setting. The records name Maven packages, and a Maven or Gradle "
+        "coordinate (`com.arcadedb`), a JAR or a tarball is not read. PyPI's `arcadedb-embedded` "
+        "is not read either, since no advisory names it, though its wheels bundle the server "
+        "jars: the MCP classes are absent at 26.2.1, inside `arcadedb-server` at 26.3.1 and in "
+        "an `arcadedb-mcp` jar at 26.8.1, 26.10.2 and 26.10.2.post1, the wheels read, and PyPI "
+        "marks it deprecated, replaced by `arcadedb`. `docker.io/arcadedata/...` is not matched. "
+        "Earlier ArcadeDB MCP flaws (CVE-2026-68578, CVE-2026-67357, CVE-2026-75845) are not "
+        "part of this rule."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-ARCADEDB-CVE-2026-134337-001",
+    "ArcadeDB native images 26.10.1 and 26.10.2: a write nested in a SELECT passes the read-only checks, MCP read-only mode included",
+    "ArcadeDB's native-image builds, the `-native` tags of `arcadedata/arcadedb`, decide whether "
+    "a statement writes by walking its syntax tree with reflection, and the native binary has no "
+    "reflection metadata for those classes, so the walk sees only the root and calls the "
+    "statement a read. An authenticated client then commits an INSERT placed in a SELECT's "
+    "projection, LET clause or subquery through `POST /api/v1/query`, and the MCP `query`, "
+    "`execute_command` and `sample_records` tools go by the same verdict when they decide whether "
+    "`allowInsert` and the other MCP permissions apply, so an agent given read-only access can "
+    "write (CVE-2026-134337, CVSS 3.1 8.8, CWE-693, GHSA-84m7-76gh-rm42, "
+    "GHSA-ww64-52x2-w3x2). The JVM build of the same release refuses every one. The vendor ran "
+    "the query endpoint on 26.10.2 and read the MCP path in the code. Checked in the source: "
+    "`SqlAstInspector` is absent at 26.8.1 and 26.9.1 and arrives in 26.10.1, and 4ffa8ca240 "
+    "registers the parser classes in `reachability-metadata.json` in 26.11.1 and not in 26.10.2. "
+    "Docker Hub's first native tags are 26.10.1's, so NVD's 26.8.1 start changes nothing here.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `arcadedata/arcadedb` 26.11.1-native or later, or a JVM build, pinned by version. Until "
+    "then do not rely on MCP read-only mode or on the query endpoint to keep a client from "
+    "writing; give it a database user without write permission.",
+    sarif_name="ArcadedbNativeReadOnlyBypass",
+    cve_references=["CVE-2026-134337"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Reads `arcadedata/arcadedb` tags from 26.10.1 below 26.11.1 "
+        "that carry `-native`: 26.10.1-native, 26.10.2-native and their `-amd64` and `-arm64` "
+        "forms. A tag without it is the JVM build, which is not affected, and is not reported "
+        "here. `latest-native` states no version and is not read; it was 26.12.1-SNAPSHOT on "
+        "2026-11-26. The flaw is in the engine's statement check, which the MCP tools share with "
+        "the query endpoint, so the rule reports an instance with MCP off too. A release binary "
+        "or an image built from the native archive states no version AAK reads, and "
+        "`docker.io/arcadedata/arcadedb` is not matched."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SURREALDB-CVE-2026-134293-001",
+    "SurrealDB image from v3.1.0 below v4.0.0: an escaped backtick in an MCP tool argument injects SurrealQL",
+    "SurrealDB (`surrealdb/surrealdb`) has an MCP server of its own, `surrealdb/mcp`, which "
+    "`surreal mcp` starts over stdio and the server has an HTTP route for. Its tools put a "
+    "caller's table or record name into SurrealQL after `validate_identifier`, whose `consume_backtick_ident` ends a "
+    "backtick-quoted name at the first backtick, while the SurrealQL lexer reads a backslash "
+    "before it as part of the name, so an argument with an escaped backtick passes the check as "
+    "a short name and runs the rest as statements (CVE-2026-134293, CVSS 3.1 8.2, CWE-89, "
+    "GHSA-cr79-9p8r-p5wx). Checked in the source at each tag: `surrealdb/mcp` is absent at "
+    "v3.0.5, the check ships in v3.1.0-beta.1 and is the same at v3.3.5, and ec41ae8f15 scans "
+    "the name as the lexer does in v4.0.0-beta.1 and is not in v3.3.5.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `surrealdb/surrealdb` v4.0.0 or later, pinned by version. Until then give MCP clients a "
+    "database user limited to what they may read, so an injected statement can do no more.",
+    sarif_name="SurrealdbMcpIdentifierInjection",
+    cve_references=["CVE-2026-134293"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Tags from v3.1.0 below v4.0.0 are reported, `-dev` builds, "
+        "pre-releases and the floating `v3.1`, `v3.2` and `v3.3` included; v4.0.0-beta.1 already "
+        "has the fix. The one-number tag `v3`, which was v3.3.5 on 2026-11-26, is not read. "
+        "`latest` (or no tag) is not reported: it was v4.0.1 on 2026-11-26. The rule reads the "
+        "tag, not whether an MCP client uses the server. A binary from the install script "
+        "states no version AAK reads, npm's and PyPI's `surrealdb` are client SDKs, and a "
+        "Cargo.lock that resolves the `surrealdb` crate is left to AAK-KNOWN-VULN-001 after "
+        "`aak update`. `docker.io/surrealdb/surrealdb` is not matched."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-IOTDB-CVE-2026-135747-001",
+    "Apache IoTDB MCP Server below 0.3.0: the database password is written to the startup log",
+    "Apache IoTDB MCP Server (PyPI `iotdb-mcp-server`) built a dictionary of its connection "
+    "settings, the password included, and logged it whole at INFO as the module loads. The "
+    "log goes to standard error, which MCP clients capture for a server they start, so anyone "
+    "who can read that log reads the IoTDB credential (CVE-2026-135747, CWE-532; the ASF "
+    "rates it low and no record gives a score). Read in the PyPI wheels, of which there are "
+    "two: 0.2.0 has `\"password\": config.password` in the dictionary and "
+    "`logger.info(f\"IoTDB Config: {db_config}\")`, and 0.3.0 (2026-11-24) logs "
+    "`config.safe_dict()`, which puts `***` in the password's place.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `iotdb-mcp-server` to 0.3.0 or later and pin it, then change the IoTDB password "
+    "an affected release logged and remove the logs that hold it.",
+    sarif_name="ApacheIotdbMcpPasswordInStartupLog",
+    cve_references=["CVE-2026-135747"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reports PyPI `iotdb-mcp-server` below 0.3.0 where a version is stated: a "
+        "requirements*.txt entry at any depth, a pyproject.toml, Pipfile or lockfile entry at "
+        "the project root, or a `uvx` launch in .mcp.json, mcp.json or "
+        "claude_desktop_config.json, reporting a range that admits an affected version. "
+        "`latest` was 0.3.0 on 2026-11-26, so a launch that states none is not reported. The "
+        "launch the README documents, `uv --directory <clone> run server.py`, and the image it "
+        "has the reader build state no version AAK reads, so a checkout from before the line "
+        "was masked (9b54a17b, 2026-09-07) is not reported. npm has no package of this name. "
+        "After `aak update`, AAK-KNOWN-VULN-001 reports the same release at MEDIUM, the severity "
+        "it gives a record with no score, beside this finding. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SIM-CVE-2026-135162-001",
+    "Sim image from 0.5.61 below 0.9.41: a write-level member can make a workflow MCP server public",
+    "Sim (simstudioai/sim), an agent workflow platform, serves deployed workflows as MCP tools "
+    "at `/api/mcp/serve/{serverId}`, and the image `ghcr.io/simstudioai/simstudio` is how it is "
+    "deployed. A server marked `isPublic` answers there with no credential. The internal "
+    "routes that create and update such a server, `POST /api/mcp/workflow-servers` and "
+    "`PATCH /api/mcp/workflow-servers/{id}`, asked for workspace `write` alone, where the v2 "
+    "operations ask for `admin`, so a write-level member could turn a private server into an "
+    "endpoint anyone runs its workflows through (CVE-2026-135162, CVSS 3.1 5.4, CWE-863). Read "
+    "in the source at the release tags: neither route mentions `isPublic` at v0.5.60, both "
+    "write it for `write` at v0.5.61 and v0.9.40, and v0.9.41 lets only an admin change it "
+    "(3b6be5cd, simstudioai/sim#9576).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `ghcr.io/simstudioai/simstudio` v0.9.41 or later, pinned by version. Until then, "
+    "review which workflow MCP servers are public in each workspace and give `write` only to "
+    "members trusted to publish one.",
+    sarif_name="SimWorkflowMcpServerVisibility",
+    cve_references=["CVE-2026-135162"],
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/simstudioai/simstudio:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. The chart's own `repository: simstudioai/simstudio`, "
+        "with no registry, is read too. Tags from v0.5.61 below v0.9.41 are reported, the "
+        "`-amd64` and `-arm64` builds included. `latest` was the v0.9.66 image on 2026-11-26, "
+        "so it and an untagged reference are not reported, and `staging` and `sha-` tags state "
+        "no version. The project's compose file names `${SIM_VERSION:-latest}` and its chart "
+        "leaves `tag` empty, so neither states one until an operator does. The rule reads the "
+        "tag, not whether any workflow is served over MCP. The other Sim images (`realtime`, "
+        "`migrations`) are not read, mirrors under another registry are not matched, and "
+        "commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-SDCBCHATS-CVE-2026-135432-001",
+    "sdcb Chats image from 1.7.0 below 1.17.1: a user assigned an MCP server reads the other users' tokens for it",
+    "Sdcb Chats (sdcb/chats), a self-hosted AI chat server, lets an administrator assign one "
+    "MCP server to several users, each with headers of their own, and the Docker Hub image "
+    "`sdcb/chats` is how it is deployed. The endpoint that lists a server's "
+    "`assigned-user-details` checked only that the caller owns the server or is assigned to "
+    "it, and returned the `CustomHeaders` of every assigned user, so an ordinary assigned "
+    "user reads the others' bearer tokens and acts as them against that MCP server "
+    "(CVE-2026-135432, CVSS 3.1 6.5, CWE-863, sdcb/chats#148). NVD's range starts at 1.10.0. "
+    "Read in the source at the release tags: `McpController.cs` is absent at 1.6.9.30, and "
+    "1.7.0.154, 1.9.1.416, 1.10.0.522 and 1.17.0.772 carry the same endpoint behind the same "
+    "filter (the file moved to `src/BE/web` between 1.9.1 and 1.10.0), so the range starts at "
+    "1.7.0. 1.17.1.799 asks for the owner or an administrator (776a065b).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Run `sdcb/chats` 1.17.1 or later, pinned by version, then replace the per-user tokens an "
+    "affected release held for MCP servers assigned to more than one user.",
+    sarif_name="SdcbChatsMcpAssignedUserHeaders",
+    cve_references=["CVE-2026-135432"],
+    owasp_mcp_references=["MCP01:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`sdcb/chats:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm "
+        "values mapping of `repository` and `tag`, Dockerfile and Containerfile `FROM`, and "
+        "`docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. Tags from "
+        "1.7.0 below 1.17.1 are reported, the two-part `1.7` to `1.16` among them. `latest`, "
+        "`1` and `1.17` were the 1.17.1 image on 2026-11-26, so they and an untagged reference "
+        "are not reported. A tag is judged by its first three numbers, so `1.17.0.791-linux-x64`, "
+        "a build of the fix commit, is reported, and the 2.0.0 preview builds up to 2.0.0.789, "
+        "which predate the fix, are not. `r-N` tags state no version. The rule reads the tag, "
+        "not whether any MCP server is assigned to more than one user. A native executable "
+        "states no version AAK reads, `docker.io/sdcb/chats` is not matched, and commented-out "
+        "lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-FLOWINTEL-CVE-2026-133853-001",
+    "FlowIntel image from 3.2.0 below 4.1.0: every chatbot user shares one MCP session and API key",
+    "FlowIntel (flowintel/flowintel), a case management platform for security analysts, has a "
+    "chatbot that calls the FlowIntel API through an MCP server it starts over stdio, and "
+    "ships as the image `ghcr.io/flowintel/flowintel`. The chatbot kept one MCP session for "
+    "the whole process, and from 3.3.0 also wrote the current user's key to the process's "
+    "`FLOWINTEL_API_KEY`, so a tool call could run as another user, or under the key of one "
+    "whose access had been revoked, and read that user's private cases (CVE-2026-133853, CVSS "
+    "4.0 6.0, CWE-290). Read in the source at the release tags: `app/chatbot/chatbot_core.py` "
+    "is absent at 3.1.0; 3.2.0 opens the session with the first caller's key and keeps it for "
+    "everyone; 3.3.0 and 4.0.0 restart the session when the key changes, under requests that "
+    "may still be using it. The fix (9eec395c, 2026-11-17), a session and a child process for "
+    "each call, is on main. The record names 4.1.0, which had no tag and no image on "
+    "2026-11-26, when `latest` was the 4.0.0 image.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Leave the chatbot off (`ENABLE_CHATBOT` is false by default) until a release with "
+    "9eec395c is published, which the record says is 4.1.0, then run it pinned by version. If "
+    "the chatbot was on, rotate its users' FlowIntel API keys.",
+    sarif_name="FlowintelChatbotSharedMcpSession",
+    cve_references=["CVE-2026-133853"],
+    owasp_mcp_references=["MCP01:2025", "MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-TOKEN-09"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`ghcr.io/flowintel/flowintel:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from 3.2.0 below 4.1.0 are reported, `latest` and "
+        "untagged references included (`latest` was the 4.0.0 digest on 2026-11-26), and tags "
+        "below 3.2.0 are not. A `latest` rebuilt with the fix is still reported until this "
+        "rule changes. The rule reads the tag, not `ENABLE_CHATBOT`, so a deployment with the "
+        "chatbot off is reported too. A server installed from a checkout, or an image built "
+        "locally as `flowintel:latest`, states no version AAK reads. Mirrors under another "
+        "registry are not matched, and commented-out lines are skipped."
+    ),
+)
+
+
+_r(
+    "AAK-AUTOGPT-CVE-2026-130178-001",
+    "AutoGPT Platform image from 0.7.1 below 0.9.0: IPv6 forms pass the SSRF guard, and chat text runs Claude Code CLI commands",
+    "The AutoGPT Platform (Significant-Gravitas/AutoGPT) runs agents built from blocks, and "
+    "AutoPilot, an assistant on the Claude Agent SDK. Its single-container image is Docker "
+    "Hub's `significantgravitas/autogpt`. Two flaws share one range and one fix release. The "
+    "guard in `backend/util/request.py`, which blocks, web fetch, MCP servers, webhooks and "
+    "OAuth pass their outbound hosts through, did not reject the IPv6 unspecified address "
+    "`::`, which Linux connects to `::1`, or the 6to4, NAT64, Teredo and IPv4-compatible forms "
+    "of a blocked address, so a signed-in user can reach services on the backend's loopback or "
+    "network (CVE-2026-130178, CVSS 3.1 7.7, CWE-918, GHSA-3c7g-v5hv-wwv4). And AutoPilot and "
+    "the graph orchestrator's `extended_thinking` mode handed chat and prompt text to the "
+    "Claude Code CLI as typed input: a message that starts with `/` ran a CLI command or "
+    "bundled skill, and `@path` attached a file of the host, both before the model and outside "
+    "the tool allow-list and PreToolUse hooks (CVE-2026-133448, CVSS 3.1 7.1, CWE-77, "
+    "GHSA-hf7q-6hwp-f6v2). Read in the source at the platform tags: v0.7.1 and v0.8.4 list no "
+    "`::/128` and pass no `verbatim_prompts`, and v0.9.0 has both (84e02380, 4a75ca0f and "
+    "9caf6447).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Run `significantgravitas/autogpt` v0.9.0 or later, pinned by version. The vendor names no "
+    "complete workaround for the CLI flaw: look for mention attachments in the stored CLI "
+    "sessions, check the CLI's settings.json, and rotate what they could have exposed.",
+    sarif_name="AutogptPlatformSsrfAndCliPreprocessing",
+    cve_references=["CVE-2026-130178", "CVE-2026-133448"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads image references only: an `image:` value or any other mention of "
+        "`significantgravitas/autogpt:TAG` in YAML (compose files, Kubernetes manifests, MCP "
+        "configs), a Helm values mapping of `repository` and `tag`, Dockerfile and "
+        "Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and "
+        "`claude_desktop_config.json`. Tags from v0.7.1, the oldest release tag on Docker Hub, "
+        "below v0.9.0 are reported. `latest` was the v0.12.0 image on 2026-11-26, so it and an "
+        "untagged reference are not reported, and `sha-` and `canary-sha-` tags state no "
+        "version. The rule reads the tag, not the deployment: the vendor says the image binds "
+        "its internal services to IPv4 loopback, so the SSRF reaches one only where something "
+        "else listens on `::1` or the network, while the CLI flaw applies to the image as "
+        "shipped. A Compose checkout builds its own images and states no version AAK reads. "
+        "`significantgravitas/auto-gpt` and PyPI's `agpt` are AutoGPT Classic, and PyPI's and "
+        "npm's `autogpt` are other projects; none of the four is matched. "
+        "`docker.io/significantgravitas/autogpt` is not matched, and commented-out lines are "
+        "skipped."
     ),
 )
 
