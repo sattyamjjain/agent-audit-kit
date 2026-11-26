@@ -844,9 +844,11 @@ _r(
         "`@version` suffix; there any suffix counts as a pin, including the floating tag "
         "`@latest`. After uvx an argument is read as a PyPI spec: `pkg==1.2.3`, uv's "
         "`pkg@1.2.3` and a git URL at a commit are pins, while no version, a range "
-        "(`pkg>=1.0`) and `pkg@latest` are reported. Every argument that does not start "
-        "with `-` or a path is judged, including a value an option of the server "
-        "itself takes. The same package fetched through `cmd /c npx` is not checked."
+        "(`pkg>=1.0`) and `pkg@latest` are reported, and a local path (`~/...`, a drive "
+        "letter) is not. Every argument that does not start with `-`, `/`, `./` or `../` "
+        "is judged, including a value an option of the server itself takes, which is "
+        "reported as having no version pin. The same package fetched through `cmd /c npx` "
+        "is not checked."
     ),
 )
 

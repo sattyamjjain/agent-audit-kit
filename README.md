@@ -8,7 +8,7 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-558-blue.svg" alt="Rules: 558"></a>
-  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.3-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.3"></a>
+  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.4-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.4"></a>
   <!-- fp-badge --><a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
 
@@ -217,7 +217,7 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497, Node.js's 11 Nov 2026 security release).
 
-<!-- test-count:total -->6,284<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->6,328<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->558<!-- /rule-count --> rules

@@ -644,6 +644,14 @@ def _mcp_007(tmp_path: Path, command: str, args: list[str]) -> list[str]:
     ("uvx", ["mcp-runtime-report"], ["Server 'r' arg: mcp-runtime-report (no version pin)"]),
     ("uvx", ["mcp-runtime-report>=1.0"], ["Server 'r' arg: mcp-runtime-report>=1.0 (version range `>=1.0`)"]),
     ("uvx", ["mcp-runtime-report@latest"], ["Server 'r' arg: mcp-runtime-report@latest (floating tag `latest`)"]),
+    ("uvx", ["mcp-runtime-report[cli]>=1.0"], ["Server 'r' arg: mcp-runtime-report[cli]>=1.0 (version range `>=1.0`)"]),
+    # An option's value is judged too, and named as no version pin, never a "tag".
+    ("uvx", ["serena", "--project-name", "Jira AI bot"],
+     ["Server 'r' arg: serena (no version pin)", "Server 'r' arg: Jira AI bot (no version pin)"]),
+    ("uvx", ["mcp-neo4j-memory==0.1.0", "--db-url", "neo4j+s://db.example.io"],
+     ["Server 'r' arg: neo4j+s://db.example.io (no version pin)"]),
+    # A home-relative path is a path, as `/`, `./` and `../` are.
+    ("uvx", ["mcp-outline==1.10.1", "--project", "~/Projects/notes/"], []),
     # npm launchers keep the `@version` test.
     ("npx", ["-y", "pkg@1.6.0"], []),
     ("npx", ["-y", "pkg"], ["Server 'r' arg: pkg (no version pin)"]),

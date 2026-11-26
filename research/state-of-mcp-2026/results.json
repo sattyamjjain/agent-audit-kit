@@ -10,8 +10,8 @@
   "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 787,
-    "B": 1281,
+    "A": 788,
+    "B": 1280,
     "C": 96,
     "D": 52,
     "F": 87
@@ -23,8 +23,8 @@
   "severity_totals": {
     "critical": 1293,
     "high": 208,
-    "medium": 4936,
-    "low": 652
+    "medium": 4935,
+    "low": 650
   },
   "transport_distribution": {
     "streamable-http": 1726,
@@ -264,7 +264,7 @@
       "pct": 7.8
     },
     "AAK-MCP-007": {
-      "configs": 109,
+      "configs": 108,
       "pct": 4.7
     },
     "AAK-MCP-STDIO-LAUNCHER-INJECT-001": {

@@ -9,7 +9,7 @@
 > deterministic, Apache-2.0; the exact ruleset is the committed
 > [`rules.json`](../../rules.json) bundle at this repo's HEAD) over a
 > content-deduplicated corpus of public MCP configs, and is the figure of report
-> version 1.3. Raw aggregate: [`results.json`](results.json). External figures are
+> version 1.4. Raw aggregate: [`results.json`](results.json). External figures are
 > attributed to their sources, not measured by us.
 >
 > **On the corpus.** Two provenance-tracked sources — a GitHub Code Search crawl of
@@ -40,15 +40,15 @@
 
 | Grade | Configs | Share | Cumulative |
 |:-----:|--------:|------:|-----------:|
-| **A** | <!-- report:grade-a -->787<!-- /report --> | <!-- report:grade-a-pct -->34.2<!-- /report -->% | <!-- report:grade-a-cum -->34.2<!-- /report -->% |
-| **B** | <!-- report:grade-b -->1,281<!-- /report --> | <!-- report:grade-b-pct -->55.6<!-- /report -->% | <!-- report:grade-b-cum -->89.8<!-- /report -->% |
+| **A** | <!-- report:grade-a -->788<!-- /report --> | <!-- report:grade-a-pct -->34.2<!-- /report -->% | <!-- report:grade-a-cum -->34.2<!-- /report -->% |
+| **B** | <!-- report:grade-b -->1,280<!-- /report --> | <!-- report:grade-b-pct -->55.6<!-- /report -->% | <!-- report:grade-b-cum -->89.8<!-- /report -->% |
 | **C** | <!-- report:grade-c -->96<!-- /report --> | <!-- report:grade-c-pct -->4.2<!-- /report -->% | <!-- report:grade-c-cum -->94.0<!-- /report -->% |
 | **D** | <!-- report:grade-d -->52<!-- /report --> | <!-- report:grade-d-pct -->2.3<!-- /report -->% | <!-- report:grade-d-cum -->96.2<!-- /report -->% |
 | **F** | <!-- report:grade-f -->87<!-- /report --> | <!-- report:grade-f-pct -->3.8<!-- /report -->% | 100% |
 
 - **Median grade: <!-- report:median-grade -->B<!-- /report -->**, the grade of config <!-- report:median-rank -->1,152<!-- /report --> of <!-- report:corpus -->2,303<!-- /report --> ranked best
-  first (cumulative A = <!-- report:grade-a -->787<!-- /report -->, A+B = <!-- report:grade-ab-n -->2,068<!-- /report -->).
-- **Top 10% (the best <!-- report:top-decile-n -->230<!-- /report --> configs): none below <!-- report:top-decile-grade -->A<!-- /report -->** (A alone holds <!-- report:grade-a -->787<!-- /report -->).
+  first (cumulative A = <!-- report:grade-a -->788<!-- /report -->, A+B = <!-- report:grade-ab-n -->2,068<!-- /report -->).
+- **Top 10% (the best <!-- report:top-decile-n -->230<!-- /report --> configs): none below <!-- report:top-decile-grade -->A<!-- /report -->** (A alone holds <!-- report:grade-a -->788<!-- /report -->).
 - **<!-- report:grade-df-pct -->6.0<!-- /report -->% (<!-- report:grade-df-n -->139<!-- /report -->) land at D or F.**
 
 The grade is AAK's penalty-based score (start at 100; deduct 20/CRITICAL,
@@ -63,7 +63,7 @@ posture is. No penalty re-weighting is done in this report (that's a follow-up).
 
 ## Severity + category prevalence
 
-**All findings:** <!-- report:findings-critical -->1,293<!-- /report --> critical · <!-- report:findings-high -->208<!-- /report --> high · <!-- report:findings-medium -->4,936<!-- /report --> medium · <!-- report:findings-low -->652<!-- /report --> low.
+**All findings:** <!-- report:findings-critical -->1,293<!-- /report --> critical · <!-- report:findings-high -->208<!-- /report --> high · <!-- report:findings-medium -->4,935<!-- /report --> medium · <!-- report:findings-low -->650<!-- /report --> low.
 **Per-config:** <!-- report:critical-pct -->51.5<!-- /report -->% have ≥1 critical; <!-- report:high-pct -->4.8<!-- /report -->% have ≥1 high.
 
 <!-- report:category-table -->

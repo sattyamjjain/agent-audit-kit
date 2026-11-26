@@ -3421,7 +3421,7 @@
       "cve_references": [],
       "description": "Package name in args lacks an exact version when using npx/uvx: no @version suffix after npx, bunx or pnpx, no `==` version (or uv's `@version`) after uvx. Unpinned packages can silently update to malicious versions. Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
       "incident_references": [],
-      "limitations": "Looks for a package argument after npx, bunx or pnpx that has no `@version` suffix; there any suffix counts as a pin, including the floating tag `@latest`. After uvx an argument is read as a PyPI spec: `pkg==1.2.3`, uv's `pkg@1.2.3` and a git URL at a commit are pins, while no version, a range (`pkg>=1.0`) and `pkg@latest` are reported. Every argument that does not start with `-` or a path is judged, including a value an option of the server itself takes. The same package fetched through `cmd /c npx` is not checked.",
+      "limitations": "Looks for a package argument after npx, bunx or pnpx that has no `@version` suffix; there any suffix counts as a pin, including the floating tag `@latest`. After uvx an argument is read as a PyPI spec: `pkg==1.2.3`, uv's `pkg@1.2.3` and a git URL at a commit are pins, while no version, a range (`pkg>=1.0`) and `pkg@latest` are reported, and a local path (`~/...`, a drive letter) is not. Every argument that does not start with `-`, `/`, `./` or `../` is judged, including a value an option of the server itself takes, which is reported as having no version pin. The same package fetched through `cmd /c npx` is not checked.",
       "owasp_agentic_references": [
         "ASI04"
       ],
