@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
@@ -232,17 +233,9 @@ def _server_declares_auth(headers: Any) -> bool:
             return True
     return False
 
-MCP_CONFIG_FILES = [
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    ".windsurf/mcp.json",
-    ".continue/config.json",
-    ".roo/mcp.json",
-    ".kiro/mcp.json",
-    "mcp.json",
-]
+# Every client's MCP config at the project root (`discovery.MCP_SERVER_CONFIGS`),
+# the list each root-anchored reader shares; the glob below adds the rest.
+MCP_CONFIG_FILES = list(MCP_SERVER_CONFIGS)
 
 # Config files that use a different key structure or format
 _YAML_CONFIG_FILES = [

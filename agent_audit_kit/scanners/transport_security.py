@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
@@ -19,13 +20,7 @@ from agent_audit_kit.scanners._helpers import (
 )
 
 # ---- MCP config file discovery (mirrors mcp_config.py) ----
-_MCP_CONFIG_FILES: list[str] = [
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    "mcp.json",
-]
+_MCP_CONFIG_FILES: list[str] = list(MCP_SERVER_CONFIGS)
 
 # ---- AAK-TRANSPORT-001: cleartext URLs (excluding localhost / loopback) ----
 #

@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
@@ -163,8 +164,11 @@ PACKAGE_FETCHERS = frozenset({"npx", "uvx", "bunx", "pnpx"})
 # The client configs AAK-SUPPLY-001 and AAK-SUPPLY-006 read, at the project root.
 # AAK-SUPPLY-006 kept a list of its own, .mcp.json and .vscode/mcp.json, so a
 # vulnerable launch in Cursor's, Amazon Q's or the root mcp.json was never looked
-# up, though AAK-SUPPLY-001 judged its pin in all five.
-_MCP_CONFIGS = (".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".amazonq/mcp.json", "mcp.json")
+# up, though AAK-SUPPLY-001 judged its pin in all five. Those five were a list of
+# their own too, so a launch in `.windsurf/mcp.json`, `.roo/mcp.json` or
+# `.kiro/mcp.json` got AAK-MCP-007 from mcp_config, which reads all of them, and
+# no AAK-SUPPLY-001 for it to stand down for: one launch, two verdicts by folder.
+_MCP_CONFIGS = MCP_SERVER_CONFIGS
 
 
 _find_line_number = find_line_number
@@ -1349,7 +1353,7 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
     for name in (
         "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
         "package.json", "package-lock.json",
-        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+        *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
     ):
         p = project_root / name
         if p.is_file():
@@ -1428,7 +1432,7 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
     for name in (
         "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
         "package.json", "package-lock.json",
-        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+        *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
     ):
         p = project_root / name
         if p.is_file():
@@ -1538,13 +1542,7 @@ def _check_azure_mcp_auth(
 ) -> list[Finding]:
     findings: list[Finding] = []
     candidates: list[Path] = []
-    for name in (
-        ".mcp.json",
-        ".cursor/mcp.json",
-        ".vscode/mcp.json",
-        ".amazonq/mcp.json",
-        "mcp.json",
-    ):
+    for name in MCP_SERVER_CONFIGS:
         p = project_root / name
         if p.is_file():
             candidates.append(p)
@@ -1899,7 +1897,7 @@ def _check_agent_zero_pin(project_root: Path, scanned_files: set[str]) -> list[F
     for name in (
         "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
         "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
-        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+        *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
     ):
         p = project_root / name
         if p.is_file():

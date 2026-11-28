@@ -28,6 +28,7 @@ from typing import Iterable
 
 import yaml
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 
 from ._helpers import (
@@ -82,13 +83,7 @@ def _load_trust(project_root: Path) -> set[tuple[str, str]]:
     return out
 
 
-_MCP_CONFIG_FILES: tuple[str, ...] = (
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    "mcp.json",
-)
+_MCP_CONFIG_FILES: tuple[str, ...] = MCP_SERVER_CONFIGS
 
 
 def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:

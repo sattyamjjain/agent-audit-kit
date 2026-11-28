@@ -91,6 +91,7 @@ _RULE_UNPINNED = "AAK-MALICIOUS-RELEASE-002"
 # How many listed versions an AAK-MALICIOUS-RELEASE-002 finding names per entry.
 _SHOWN_VERSIONS = 10
 
+# File names matched at every depth, not discovery.MCP_SERVER_CONFIGS' root paths (its `mcp.json` ones match).
 _MANIFEST_NAMES = frozenset({"pyproject.toml", "pipfile", "package.json", ".mcp.json", "mcp.json",
                              "claude_desktop_config.json"})
 # Lockfile name -> (registry, the name `_lockfile_raw_entries` reads it under).

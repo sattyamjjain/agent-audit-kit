@@ -31,6 +31,7 @@ RULE = "AAK-MCP-TOOLBOX-HOSTS-001"
 _PACKAGE = "@toolbox-sdk/server"
 _FIXED = (0, 25, 0)
 _FLAGS = ("--allowed-hosts", "--allowed-origins")
+# File names matched at every depth, not discovery.MCP_SERVER_CONFIGS' root paths (its `mcp.json` ones match).
 _CONFIG_NAMES = frozenset({".mcp.json", "mcp.json", "claude_desktop_config.json"})
 
 

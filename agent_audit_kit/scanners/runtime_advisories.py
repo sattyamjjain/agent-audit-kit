@@ -709,6 +709,7 @@ _VERSION_FILES = frozenset({".nvmrc", ".node-version", ".python-version", ".tool
 _RUNTIME_YAML = frozenset({"app.yaml", "app.yml", "serverless.yml", "serverless.yaml"})
 
 
+# Matches file names at every depth, not discovery.MCP_SERVER_CONFIGS' root paths (its `mcp.json` ones match).
 def _is_mcp_config(name: str) -> bool:
     low = name.lower()
     return low in (".mcp.json", "mcp.json", "claude_desktop_config.json") or low.endswith(".mcp.json")

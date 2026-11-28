@@ -55,6 +55,7 @@ import json
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
@@ -81,18 +82,11 @@ TOOL_FIELDS = ("name", "description", "inputSchema", "annotations", "title", "ou
 #: ``env`` keys follow them.
 LAUNCH_FIELDS = ("command", "args", "url", "type")
 
-_CONFIG_NAMES = (
-    ".mcp.json",
-    "mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    ".windsurf/mcp.json",
-    ".kiro/mcp.json",
-    ".roo/mcp.json",
-    ".continue/config.json",
-    ".goose/config.json",
-)
+#: The configs `pin` and `verify` read: every MCP server config the scanners read
+#: (`discovery.MCP_SERVER_CONFIGS`), plus `.goose/config.json`, which no scanner
+#: reads but this list always has, so a pin file holding its servers does not
+#: report them all removed.
+_CONFIG_NAMES = (*MCP_SERVER_CONFIGS, ".goose/config.json")
 
 
 def _hash_tool(name: str, description: str, input_schema: str) -> str:

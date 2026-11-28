@@ -28,6 +28,7 @@ import json
 import re
 from pathlib import Path
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
@@ -49,9 +50,7 @@ _LANG_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".rs", ".java
 # iterates in an order that changes with each process's hash seed, so two runs
 # of `aak scan` listed the same findings in different orders.
 _CONFIG_NAMES = (
-    ".mcp.json", "mcp.json", "claude_desktop_config.json",
-    ".cursor/mcp.json", ".vscode/mcp.json", ".windsurf/mcp.json",
-    ".amazonq/mcp.json", ".roo/mcp.json", ".kiro/mcp.json",
+    *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
     "package.json", "pyproject.toml",
 )
 _CONFIG_GLOBS = ("*.mcp.json", "*.mcp.yaml", "*.mcp.yml")

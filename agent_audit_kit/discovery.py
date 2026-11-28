@@ -57,6 +57,62 @@ AGENT_CONFIGS: dict[str, list[str]] = {
     "ZCode": list(ZCODE_WORKSPACE_CONFIG_NAMES),
 }
 
+# AGENT_CONFIGS entries that hold a server map without being named `mcp.json`.
+# Continue's is read as one by mcp_config and mcp_sampling_capability. Goose's
+# `.goose/config.json` is not: no scanner parses it, and Goose keeps its servers
+# as `extensions` in YAML.
+_SERVER_MAP_CONFIGS_NOT_NAMED_MCP = frozenset({".continue/config.json"})
+
+#: The project-relative paths of the files that hold an MCP server map
+#: (`mcpServers`, or VS Code's `servers`), in AGENT_CONFIGS order, then the root
+#: `mcp.json`. Every scanner that reads "the MCP configs" at the project root
+#: reads this tuple, so a server is judged the same wherever it is declared and a
+#: new client location is added here once.
+#:
+#: `.claude/mcp.json` is deliberately absent: Claude Code's MCP documentation
+#: names `.mcp.json` at the project root as the project-scoped config, and no
+#: client loads `.claude/mcp.json`. The scanners that glob `*mcp*.json` still
+#: read it, as they read any such file below the root.
+MCP_SERVER_CONFIGS: tuple[str, ...] = tuple(dict.fromkeys(
+    [
+        path
+        for paths in AGENT_CONFIGS.values()
+        for path in paths
+        if path.endswith("mcp.json") or path in _SERVER_MAP_CONFIGS_NOT_NAMED_MCP
+    ]
+    + ["mcp.json"]
+))
+
+_MCP_SERVER_CONFIG_SET = frozenset(MCP_SERVER_CONFIGS)
+_MCP_SERVER_CONFIG_NAMES = frozenset(path.rsplit("/", 1)[-1] for path in MCP_SERVER_CONFIGS)
+
+
+def is_mcp_server_config(path: Path, project_root: Path) -> bool:
+    """Whether `path` is one of `MCP_SERVER_CONFIGS` of the project at `project_root`.
+
+    Matched by the path below the root, in POSIX form, never by the file name:
+    `.cursor/settings.json` is not one, and neither is `sub/.cursor/mcp.json`,
+    a nested project's config, which the root-anchored readers have never read
+    (the scanners that glob `*mcp*.json` read it as any other such file). A path
+    outside `project_root` is not one. The name is compared first, so a walk
+    that asks this of every file pays a set lookup for most of them.
+
+    Args:
+        path: The file, absolute or relative to the working directory.
+        project_root: The root of the project being scanned.
+
+    Returns:
+        True when the path below `project_root` is listed in `MCP_SERVER_CONFIGS`.
+    """
+    if path.name not in _MCP_SERVER_CONFIG_NAMES:
+        return False
+    try:
+        rel = path.relative_to(project_root)
+    except ValueError:
+        return False
+    return rel.as_posix() in _MCP_SERVER_CONFIG_SET
+
+
 USER_AGENT_CONFIGS: dict[str, list[str]] = {
     "Claude Code (user)": ["~/.claude.json", "~/.claude/settings.json"],
     "Gemini CLI (user)": ["~/.gemini/settings.json"],
@@ -136,7 +192,9 @@ def discover_agents(
                     # the file, hooks included. So does ZCode, whose workspace
                     # files hold MCP servers under names without "mcp" in them.
                     zcode = is_zcode_workspace_config(fp)
-                    is_mcp_config = "mcp" in fp.name.lower()
+                    # Continue's `.continue/config.json` holds a server map
+                    # without "mcp" in its name; it was counted as none.
+                    is_mcp_config = "mcp" in fp.name.lower() or is_mcp_server_config(fp, project_root)
                     try:
                         text = read_text_capped(fp, CONFIG_MAX_BYTES, encoding=None, errors="replace")
                         data = loads_jsonc(text, fp) if is_mcp_config else loads_json(text, fp)

@@ -489,6 +489,7 @@ try:
 except ImportError:  # Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
@@ -2646,10 +2647,14 @@ _PINS: tuple[_Pin, ...] = (
          requires_version=True, ecosystem="py"),
 )
 
+# The manifests and lockfiles at the project root, then every MCP server config
+# (`discovery.MCP_SERVER_CONFIGS`) and Claude Desktop's config. The MCP configs
+# were `.mcp.json` and `mcp.json` alone, so a launch of a pinned package in
+# `.cursor/mcp.json` passed that AAK-SUPPLY-001 judged in the same file.
 _CANDIDATE_NAMES = (
     "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
     "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
-    ".mcp.json", "mcp.json", "claude_desktop_config.json",
+    *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
 )
 _CANDIDATE_GLOBS = ("requirements*.txt", "*.mcp.yaml", "*.mcp.yml")
 
