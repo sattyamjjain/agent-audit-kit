@@ -22,11 +22,11 @@ while any such issue is open.
 
 Two records published on 25 Nov, read against NVD's API record and the CVE record as saved on
 2026-11-26 (tests/fixtures/nvd_cna), and against GitLab's 19.6.2 patch release and the pain001-mcp
-wheels. The watcher filed CVE-2026-136620 as #1286 and has not filed CVE-2026-135221. Each claim is
-measured on a firing fixture and a negative one, in tests/test_cve_batch_2026_11_26_intake.py and
-tests/test_container_image_pins.py.
+wheels. The watcher filed CVE-2026-136620 as #1286 and, at 21:31Z that day, CVE-2026-135221 as
+#1290. Each claim is measured on a firing fixture and a negative one, in
+tests/test_cve_batch_2026_11_26_intake.py and tests/test_container_image_pins.py.
 
-### CVE-2026-135221 (not filed): new image pin 2026-11-26
+### CVE-2026-135221 (#1290): new image pin 2026-11-26
 
 **GitLab EE gets `AAK-MCP-GITLAB-CVE-2026-135221-001`: the Docker Hub image `gitlab/gitlab-ee`
 from 18.10 below 19.4.11, 19.5 below 19.5.9 and 19.6 below 19.6.2, MEDIUM.** Insufficient URL
@@ -54,7 +54,7 @@ down where this rule reports the same line.
 
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
-| CVE-2026-135221 | 6.3 | GitLab EE (image `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-135221-001` (MEDIUM): 18.10 up to 19.4.10, 19.5 up to 19.5.8, 19.6 up to 19.6.1, on the vendor's ranges. | not filed |
+| CVE-2026-135221 | 6.3 | GitLab EE (image `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-135221-001` (MEDIUM): 18.10 up to 19.4.10, 19.5 up to 19.5.8, 19.6 up to 19.6.1, on the vendor's ranges. | #1290 |
 | CVE-2026-136620 | 7.1 | `pain001-mcp` (PyPI) | **New pin** `AAK-MCP-PAIN001-CVE-2026-136620-001` (HIGH): 0.0.72 up to 0.0.79, read in the wheels. | #1286 |
 
 ## 2026-11-26 (unreleased): the 77 records the watcher held back, 37 new rules
