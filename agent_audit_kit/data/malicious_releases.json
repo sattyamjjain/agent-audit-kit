@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-11-26T18:11:08Z",
-  "checked_at": "2026-11-26T18:11:08Z",
-  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go. On 2026-11-18, scripts/refresh_bundled_malicious.py added MAL-2026-19223, MAL-2026-19224, MAL-2026-19235, MAL-2026-19258, MAL-2026-19922, MAL-2026-19939, MAL-2026-19941, MAL-2026-19943, MAL-2026-19945, MAL-2026-20043, MAL-2026-20044, MAL-2026-20062, MAL-2026-20101, MAL-2026-20107, MAL-2026-20108 and MAL-2026-20129, takeovers of established packages among GitHub's malware advisories published since 2026-11-12, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-20258, MAL-2026-20276, MAL-2026-20293, GHSA-xgr8-c5gp-x7xf and GHSA-jcx6-j558-wppc, takeovers of established packages among GitHub's malware advisories published since 2026-11-17, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-25, scripts/refresh_bundled_malicious.py added MAL-2026-20341, MAL-2026-20345, MAL-2026-20348, MAL-2026-20349, MAL-2026-20347, MAL-2026-20344, MAL-2026-20376, MAL-2026-18934, MAL-2026-20426, MAL-2026-20424, MAL-2026-20425, MAL-2026-20432, MAL-2026-20430, MAL-2026-20431, MAL-2026-20515 and MAL-2026-20548, takeovers of established packages among GitHub's malware advisories published since 2026-11-22, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-26, scripts/refresh_bundled_malicious.py added MAL-2026-20381, MAL-2026-20505, MAL-2026-13209, MAL-2026-20601, MAL-2026-20611, MAL-2026-20616, MAL-2026-20617, MAL-2026-20604, MAL-2026-20605, MAL-2026-20618, MAL-2026-20623, MAL-2026-20629 and MAL-2026-20659, takeovers of established packages and malicious agent and MCP packages among GitHub's malware advisories published since 2026-11-23, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).",
+  "generated_at": "2026-11-28T09:57:15Z",
+  "checked_at": "2026-11-28T09:57:15Z",
+  "source": "Bundled with agent-audit-kit: OSV MAL-2026-2144, MAL-2026-18425, MAL-2026-2307, MAL-2026-2306, MAL-2026-18776, MAL-2026-18773 and MAL-2026-19085 as https://api.osv.dev/v1/vulns/<id> gave them on 2026-10-28, 2026-11-01, 2026-11-07 (MAL-2026-2307 and MAL-2026-2306), 2026-11-10 (MAL-2026-18776) and 2026-11-12 (MAL-2026-18773 and MAL-2026-19085), the image index digest from LiteLLM's incident post (https://docs.litellm.ai/blog/security-incident-oct-21-2026, read 2026-10-28), and the anthropic.claude-code builds Cursor's notice names (https://cursor.com/blog/claude-code-extension-security-notice, read 2026-11-01), and the two Docker Hub repositories The Hacker News's ARTEX report calls backdoored (https://thehackernews.com/2026/11/backdoored-docker-image-for-artex-ai.html, read 2026-11-10), every build of which is listed. `aak update` rebuilds a cached copy from OSV's MAL- records for PyPI, npm, crates.io and Go. On 2026-11-18, scripts/refresh_bundled_malicious.py added MAL-2026-19223, MAL-2026-19224, MAL-2026-19235, MAL-2026-19258, MAL-2026-19922, MAL-2026-19939, MAL-2026-19941, MAL-2026-19943, MAL-2026-19945, MAL-2026-20043, MAL-2026-20044, MAL-2026-20062, MAL-2026-20101, MAL-2026-20107, MAL-2026-20108 and MAL-2026-20129, takeovers of established packages among GitHub's malware advisories published since 2026-11-12, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-20258, MAL-2026-20276, MAL-2026-20293, GHSA-xgr8-c5gp-x7xf and GHSA-jcx6-j558-wppc, takeovers of established packages among GitHub's malware advisories published since 2026-11-17, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-25, scripts/refresh_bundled_malicious.py added MAL-2026-20341, MAL-2026-20345, MAL-2026-20348, MAL-2026-20349, MAL-2026-20347, MAL-2026-20344, MAL-2026-20376, MAL-2026-18934, MAL-2026-20426, MAL-2026-20424, MAL-2026-20425, MAL-2026-20432, MAL-2026-20430, MAL-2026-20431, MAL-2026-20515 and MAL-2026-20548, takeovers of established packages among GitHub's malware advisories published since 2026-11-22, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-26, scripts/refresh_bundled_malicious.py added MAL-2026-20381, MAL-2026-20505, MAL-2026-13209, MAL-2026-20601, MAL-2026-20611, MAL-2026-20616, MAL-2026-20617, MAL-2026-20604, MAL-2026-20605, MAL-2026-20618, MAL-2026-20623, MAL-2026-20629 and MAL-2026-20659, takeovers of established packages and malicious agent and MCP packages among GitHub's malware advisories published since 2026-11-23, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record). On 2026-11-28, scripts/refresh_bundled_malicious.py added MAL-2026-20321, MAL-2026-20675, MAL-2026-20687, MAL-2026-20689, MAL-2026-20701, MAL-2026-20714, MAL-2026-20713, MAL-2026-20726, MAL-2026-20727, MAL-2026-20728, MAL-2026-20729, MAL-2026-20734 and MAL-2026-20744, takeovers of established packages and malicious agent, MCP and model-runtime packages among GitHub's malware advisories published since 2026-11-21, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).",
   "entries": [
     {
       "id": "MAL-2026-2144",
@@ -519,6 +519,124 @@
       "versions": ["12.3.0"],
       "modified": "2026-11-26T17:30:42.536982941Z",
       "url": "https://osv.dev/vulnerability/MAL-2026-20659"
+    },
+    {
+      "id": "MAL-2026-20321",
+      "aliases": ["GHSA-r9wp-474x-c72c"],
+      "ecosystem": "npm",
+      "name": "@pkgship/frps-windows-amd64",
+      "versions": ["0.71.1"],
+      "modified": "2026-11-21T03:30:06.653763533Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20321"
+    },
+    {
+      "id": "MAL-2026-20675",
+      "aliases": ["GHSA-77f3-h5vp-26hp"],
+      "ecosystem": "npm",
+      "name": "tavern-ai-sdk",
+      "versions": ["1.0.0"],
+      "modified": "2026-11-27T00:45:05.210456971Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20675"
+    },
+    {
+      "id": "MAL-2026-20687",
+      "aliases": ["GHSA-xpw5-gfcw-m3cj"],
+      "ecosystem": "npm",
+      "name": "@omnitron-dev/omnitron",
+      "versions": ["0.4.18"],
+      "modified": "2026-11-27T06:30:03.963989319Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20687"
+    },
+    {
+      "id": "MAL-2026-20689",
+      "aliases": ["GHSA-r75h-6wx8-q4r6"],
+      "ecosystem": "PyPI",
+      "name": "vk-mlp-agent",
+      "versions": ["9999.0"],
+      "modified": "2026-11-27T11:15:06.222991452Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20689"
+    },
+    {
+      "id": "MAL-2026-20701",
+      "aliases": ["GHSA-v8mr-2vmh-3xp3"],
+      "ecosystem": "npm",
+      "name": "agentkpalive",
+      "versions": [],
+      "modified": "2026-11-27T15:30:21.521031382Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20701",
+      "all_versions": true
+    },
+    {
+      "id": "MAL-2026-20714",
+      "aliases": ["GHSA-hppc-2rc4-mqpj"],
+      "ecosystem": "npm",
+      "name": "biatec-avm-gas-station",
+      "versions": ["1.1.1", "1.1.2"],
+      "modified": "2026-11-27T16:32:13.580143327Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20714"
+    },
+    {
+      "id": "MAL-2026-20713",
+      "aliases": ["GHSA-cjhw-w6p8-f9x8"],
+      "ecosystem": "npm",
+      "name": "@selorax/app-sdk",
+      "versions": ["2.1.0"],
+      "modified": "2026-11-27T16:32:13.536631984Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20713"
+    },
+    {
+      "id": "MAL-2026-20726",
+      "aliases": ["GHSA-mw5q-2wh2-m4fr"],
+      "ecosystem": "PyPI",
+      "name": "qwen-tts-cpu",
+      "versions": ["0.3.0"],
+      "modified": "2026-11-27T20:15:07.041464263Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20726"
+    },
+    {
+      "id": "MAL-2026-20727",
+      "aliases": ["GHSA-v3pr-5www-qwjr"],
+      "ecosystem": "PyPI",
+      "name": "qwen-tts-runtime",
+      "versions": ["0.3.0"],
+      "modified": "2026-11-27T20:15:07.040055232Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20727"
+    },
+    {
+      "id": "MAL-2026-20728",
+      "aliases": ["GHSA-2jf9-97qh-w762"],
+      "ecosystem": "PyPI",
+      "name": "qwentts-gradio",
+      "versions": ["0.3.0"],
+      "modified": "2026-11-27T20:15:07.041182285Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20728"
+    },
+    {
+      "id": "MAL-2026-20729",
+      "aliases": ["GHSA-pvmc-r95f-wwf2"],
+      "ecosystem": "PyPI",
+      "name": "qwenvox-tts-3",
+      "versions": ["0.3.0"],
+      "modified": "2026-11-27T20:15:07.039228065Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20729"
+    },
+    {
+      "id": "MAL-2026-20734",
+      "aliases": ["GHSA-ghxr-rx67-45jh"],
+      "ecosystem": "npm",
+      "name": "itsa-jsext",
+      "versions": ["2.0.3"],
+      "modified": "2026-11-27T22:30:04.669078958Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20734"
+    },
+    {
+      "id": "MAL-2026-20744",
+      "aliases": ["GHSA-9r6j-mj8j-37g7"],
+      "ecosystem": "npm",
+      "name": "@jayhackpro/jayshield",
+      "versions": ["1.2.1"],
+      "modified": "2026-11-28T01:30:04.830983176Z",
+      "url": "https://osv.dev/vulnerability/MAL-2026-20744"
     }
   ],
   "oci": [

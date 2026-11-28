@@ -18,16 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent_audit_kit import __version__
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.scanners._helpers import iter_mcp_servers, loads_jsonc
 
 
-_MCP_CONFIG_NAMES = (
-    ".mcp.json",
-    "mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".windsurf/mcp.json",
-)
+_MCP_CONFIG_NAMES = MCP_SERVER_CONFIGS
 _PKG_NPM_RE = re.compile(r"@[\w\-./]+@[\d][\w\-.+]*")
 _PKG_AT_RE = re.compile(r"[\w\-./]+@[\d][\w\-.+]*")
 

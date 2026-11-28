@@ -31,9 +31,10 @@ pattern is `read_file -> http.post`.
 
 The scanner builds a per-scan tool graph from:
 
-- MCP server names + arg strings in `.mcp.json` /
-  `.cursor/mcp.json` / `.vscode/mcp.json` / `.amazonq/mcp.json` /
-  `mcp.json`
+- MCP server names + arg strings in the MCP client configs at the project
+  root: `.mcp.json` / `.cursor/mcp.json` / `.vscode/mcp.json` /
+  `.windsurf/mcp.json` / `.amazonq/mcp.json` / `.continue/config.json` /
+  `.roo/mcp.json` / `.kiro/mcp.json` / `mcp.json`
 - Function names of `@tool` / `@mcp.tool` / `@server.tool` decorated
   Python functions in the repo, bare or with empty parentheses
 

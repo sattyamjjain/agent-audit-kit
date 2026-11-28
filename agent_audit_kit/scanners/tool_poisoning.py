@@ -6,6 +6,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
@@ -20,13 +21,7 @@ from agent_audit_kit.scanners._helpers import (
 from agent_audit_kit.scanners.agent_config import _send_to_url
 
 # ---- MCP config file discovery (mirrors mcp_config.py) ----
-_MCP_CONFIG_FILES: list[str] = [
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    "mcp.json",
-]
+_MCP_CONFIG_FILES: list[str] = list(MCP_SERVER_CONFIGS)
 
 # ---- AAK-POISON-001: Invisible Unicode categories and explicit codepoints ----
 _INVISIBLE_CATEGORIES = frozenset({"Cf", "Mn"})

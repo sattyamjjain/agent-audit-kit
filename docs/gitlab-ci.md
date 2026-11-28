@@ -16,6 +16,7 @@ agent-security-scan:
     - changes:
         - "*.mcp.json"
         - "**/mcp*.json"
+        - ".continue/config.json"
         - ".claude/**"
         - "package.json"
         - "pyproject.toml"

@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, make_finding, read_text_capped
 
@@ -71,10 +72,7 @@ def _config_candidates(project_root: Path) -> list[Path]:
     """Find DocsGPT-named MCP config files."""
     out: list[Path] = []
     for name in (
-        ".mcp.json",
-        ".cursor/mcp.json",
-        ".vscode/mcp.json",
-        "mcp.json",
+        *MCP_SERVER_CONFIGS,
         "docsgpt.config.json",
         "docsgpt-mcp.json",
         ".docsgpt/config.json",

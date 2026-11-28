@@ -525,6 +525,7 @@ def _runs_mcp_server(
     declared, manifests = _declares_sdk(context, sdk)
     if declared:
         return f"`{manifests[0]}` beside it declares an MCP SDK"
+    # One file beside a Dockerfile at any depth, a hint the image is an MCP project, not the root list.
     if (context / ".mcp.json").is_file():
         return "an `.mcp.json` sits beside it"
     return None
@@ -638,6 +639,7 @@ def _mcp_project(lock_dir: Path, packages: dict, sdk: dict[Path, tuple[bool, lis
     declared, manifests = _declares_sdk(lock_dir, sdk)
     if declared:
         return f"`{manifests[0]}` declares an MCP SDK"
+    # A hint beside a lockfile at any depth, as for a Dockerfile above, not the root list.
     config = lock_dir / ".mcp.json"
     if config.is_file():
         try:

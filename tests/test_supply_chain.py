@@ -1418,8 +1418,17 @@ def test_an_ignored_path_takes_only_its_own_findings(tmp_path: Path) -> None:
 
 
 def test_a_config_only_aak_mcp_007_reads_keeps_it(tmp_path: Path) -> None:
-    _write(tmp_path, ".windsurf/mcp.json", {"mcpServers": {"fs": _NPX}})
+    """`.claude/mcp.json` is no client's config, so it is not in
+    `discovery.MCP_SERVER_CONFIGS` and AAK-SUPPLY-001 does not read it; the
+    `*mcp*.json` glob AAK-MCP-007 reads does. This used `.windsurf/mcp.json`,
+    which AAK-SUPPLY-001 now reads as it reads `.mcp.json`."""
+    _write(tmp_path, ".claude/mcp.json", {"mcpServers": {"fs": _NPX}})
     assert _launches(tmp_path) == [("AAK-MCP-007", "low", _NPX_EVIDENCE)]
+
+
+def test_windsurf_gets_the_root_verdict(tmp_path: Path) -> None:
+    _write(tmp_path, ".windsurf/mcp.json", {"mcpServers": {"fs": _NPX}})
+    assert [rule for rule, _, _ in _launches(tmp_path)] == ["AAK-SUPPLY-001"]
 
 
 def test_the_same_spec_under_another_server_is_another_launch(tmp_path: Path) -> None:

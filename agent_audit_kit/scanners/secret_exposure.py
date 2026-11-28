@@ -454,6 +454,8 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # Both server maps: VS Code keeps its servers under `servers` in
     # .vscode/mcp.json, and reading `mcpServers` alone passed every literal there.
     data: Any = None
+    # Skips `.mcp.json` by name, as the rule text says (AAK-MCP-003 reports its env literals). The
+    # other MCP configs keep this rule, and with it the `aak fix` rewrite AAK-MCP-003 does not offer.
     if suffix == ".json" and file_path.name != ".mcp.json":
         try:
             data = loads_jsonc(content, file_path)

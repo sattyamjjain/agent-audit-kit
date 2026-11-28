@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-11-26T18:14:36Z",
+  "last_updated": "2026-11-28T10:30:20Z",
   "aak_version": "0.6.36",
-  "rule_count": 558,
+  "rule_count": 562,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -173,7 +173,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 153,
+      "rule_density": 156,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -635,6 +635,18 @@
           ],
           "aicm_references": [
             "DSP-10",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-BAGEL-CVE-2026-138027-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-138027"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "IVS-04",
             "STA-08"
           ]
@@ -1440,6 +1452,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-138033"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-WHATSAPP-CVE-2026-46555-001",
           "severity": "high",
           "cve_references": [
@@ -1448,6 +1471,17 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-WHODB-CVE-2026-138032-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-138032"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },
@@ -1755,7 +1789,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 167,
+      "rule_density": 168,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -2194,6 +2228,18 @@
             "CVE-2026-8355"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-138026"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-D365FO-CVE-2026-114123-001",
@@ -3527,7 +3573,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 318,
+      "rule_density": 322,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4287,6 +4333,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-BAGEL-CVE-2026-138027-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-138027"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-BETTERAUTH-CVE-2026-53512-001",
           "severity": "high",
           "cve_references": [
@@ -4558,6 +4616,18 @@
             "CVE-2026-49986"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-138026"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-D365FO-CVE-2026-114123-001",
@@ -6635,6 +6705,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-138033"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-VOICEMODE-CVE-2026-79535-001",
           "severity": "medium",
           "cve_references": [
@@ -6654,6 +6735,17 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-WHODB-CVE-2026-138032-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-138032"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },

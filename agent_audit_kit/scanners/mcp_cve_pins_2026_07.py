@@ -465,6 +465,19 @@ available) before shipping:
     the database password. PyPI only, a stated version required)
   - pain001-mcp                    0.0.72 <= v < 0.0.80  (CVE-2026-136620; the
     commit_payment_batch tool wrote to any path. PyPI only, a stated version required)
+  - @cryptoapis-io/mcp-*, fourteen packages: aml < 0.2.0; blockchain-events,
+    blockchain-fees, broadcast and prepare-transactions < 0.5.0; address-history,
+    address-latest, block-data, contracts, hd-wallet, market-data, simulate,
+    transactions-data and utils < 0.4.0  (CVE-2026-138026; Streamable HTTP on 0.0.0.0
+    with no credential spent the operator's API key. One rule, a row per package, a
+    stated version required)
+  - bagel-mcp                      <  2.5.5   (CVE-2026-138027; query_messages ran SQL on an
+    unsandboxed DuckDB connection. PyPI only, a stated version required)
+  - @clidey/whodb-cli, @clidey/whodb, whodb  0.88.0 <= v < 0.132.0  (CVE-2026-138032;
+    SELECT ... INTO passed read-only mode and the write confirmation. npm only, a stated
+    version required; the binary and image are a launch row for AAK-KNOWN-VULN-002)
+  - mcp-video-analyzer             <  0.10.1  (CVE-2026-138033; the direct video adapter
+    fetched any address. npm only, a stated version required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -489,6 +502,7 @@ try:
 except ImportError:  # Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
@@ -2644,12 +2658,104 @@ _PINS: tuple[_Pin, ...] = (
          ("pain001-mcp",), (0, 0, 80), introduced=(0, 0, 72),
          fix_label="0.0.80 (affected from 0.0.72)",
          requires_version=True, ecosystem="py"),
+    # Crypto APIs MCP servers (@cryptoapis-io/mcp-*): run with `--transport http` and
+    # `--api-key`, each listened on 0.0.0.0 by default and served `/mcp` to any caller with
+    # the operator's API key (CVE-2026-138026, HIGH). One rule, a row per package, each at
+    # its own fix as the CNA record and the vendor's GHSA-mhj6-wq83-cqf5 name it. Read in
+    # the tarballs: mcp-address-history 0.1.0 and 0.3.1 and mcp-blockchain-events 0.4.0
+    # mount an express route with no credential check; mcp-address-history 0.4.0 and
+    # mcp-blockchain-events 0.5.0 hand HTTP to @cryptoapis-io/mcp-shared 0.4.0, which binds
+    # 127.0.0.1 and refuses a wider bind with a startup key and no `--auth-token`. Each fix
+    # is the package's 2026-09-24 release and requires mcp-shared 0.4.0. Each `latest` is
+    # fixed, so a stated version is required. Scoped names, so no PyPI twin.
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-address-history",
+         ("@cryptoapis-io/mcp-address-history",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-address-latest",
+         ("@cryptoapis-io/mcp-address-latest",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-aml",
+         ("@cryptoapis-io/mcp-aml",), (0, 2, 0), fix_label="0.2.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-block-data",
+         ("@cryptoapis-io/mcp-block-data",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-blockchain-events",
+         ("@cryptoapis-io/mcp-blockchain-events",), (0, 5, 0), fix_label="0.5.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-blockchain-fees",
+         ("@cryptoapis-io/mcp-blockchain-fees",), (0, 5, 0), fix_label="0.5.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-broadcast",
+         ("@cryptoapis-io/mcp-broadcast",), (0, 5, 0), fix_label="0.5.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-contracts",
+         ("@cryptoapis-io/mcp-contracts",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-hd-wallet",
+         ("@cryptoapis-io/mcp-hd-wallet",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-market-data",
+         ("@cryptoapis-io/mcp-market-data",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-prepare-transactions",
+         ("@cryptoapis-io/mcp-prepare-transactions",), (0, 5, 0), fix_label="0.5.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-simulate",
+         ("@cryptoapis-io/mcp-simulate",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-transactions-data",
+         ("@cryptoapis-io/mcp-transactions-data",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    _Pin("AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001", "@cryptoapis-io/mcp-utils",
+         ("@cryptoapis-io/mcp-utils",), (0, 4, 0), fix_label="0.4.0",
+         requires_version=True, ecosystem="js"),
+    # Bagel: `query_messages`, annotated read-only, ran the caller's SQL on an ordinary
+    # DuckDB connection, so `read_csv_auto`, `COPY ... TO` and httpfs read and wrote files
+    # and made requests (CVE-2026-138027, HIGH). Read in the wheels: 2.5.1, the first PyPI
+    # release, and 2.5.4 pass the statement to `relation.query`; 2.5.5 accepts one SELECT
+    # and runs it on a connection with external access off and its configuration locked.
+    # Not on npm; PyPI's `bagel` is Neurobagel's. `latest` is 2.5.6. The GHCR images are not
+    # read here.
+    _Pin("AAK-MCP-BAGEL-CVE-2026-138027-001", "bagel-mcp", ("bagel-mcp",), (2, 5, 5),
+         fix_label="2.5.5", requires_version=True, ecosystem="py"),
+    # WhoDB CLI: `whodb_query` let a statement past read-only mode and the write
+    # confirmation when it began with SELECT and wrote through INTO, OUTFILE or DUMPFILE
+    # (CVE-2026-138032, MEDIUM). The gates are the CLI's own MCP code (cli/pkg/mcp
+    # validation.go and tools.go); from 0.123.0 they ask core/src/sqlguard, whose callers at
+    # 0.131.0 are the CLI's alone. The CNA names the GitHub project; the CLI ships on npm as
+    # @clidey/whodb-cli, whose every release requires its platform binaries at its own
+    # number. @clidey/whodb and whodb are wrappers whose every release (0.1.0, then 0.127.0
+    # to 0.139.0) requires exactly @clidey/whodb-cli at its own number, so each wrapper's
+    # version is the CLI's and one row judges the three names; 0.1.0 of all three ships no
+    # binary (the linux-x64 package is 328 bytes). Read at the tags and in the npm
+    # linux-x64 binaries: 0.87.0 has whodb_query and no statement check, 0.88.0 adds
+    # `ValidateSQLStatement` on the first keyword, 0.131.0 asks sqlguard's keyword list
+    # without those three words, and 0.132.0 (`understoodRead`) calls any statement its
+    # read grammar does not parse a write. `latest` is 0.139.0. The `whodb` binary and the
+    # `clidey/whodb-cli` image are a launch row in data/cna_package_map.json.
+    _Pin("AAK-MCP-WHODB-CVE-2026-138032-001", "@clidey/whodb-cli / @clidey/whodb / whodb",
+         ("@clidey/whodb-cli", "@clidey/whodb", "whodb"), (0, 132, 0), introduced=(0, 88, 0),
+         fix_label="0.132.0 (affected from 0.88.0)", requires_version=True, ecosystem="js"),
+    # mcp-video-analyzer: a URL ending in a video extension went to the direct adapter,
+    # which fetched it with no host, scheme or address check and followed redirects, so a
+    # tool call reached loopback, private and cloud metadata addresses (CVE-2026-138033,
+    # MEDIUM). Read in the tarballs: 0.2.0, the first release, and 0.10.0 call `fetch(url)`
+    # as given; 0.10.1 checks every hop with `assertPublicUrl` and follows redirects by
+    # hand. Not on PyPI. `latest` is 0.12.0.
+    _Pin("AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001", "mcp-video-analyzer",
+         ("mcp-video-analyzer",), (0, 10, 1), fix_label="0.10.1",
+         requires_version=True, ecosystem="js"),
 )
 
+# The manifests and lockfiles at the project root, then every MCP server config
+# (`discovery.MCP_SERVER_CONFIGS`) and Claude Desktop's config. The MCP configs
+# were `.mcp.json` and `mcp.json` alone, so a launch of a pinned package in
+# `.cursor/mcp.json` passed that AAK-SUPPLY-001 judged in the same file.
 _CANDIDATE_NAMES = (
     "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
     "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
-    ".mcp.json", "mcp.json", "claude_desktop_config.json",
+    *MCP_SERVER_CONFIGS, "claude_desktop_config.json",
 )
 _CANDIDATE_GLOBS = ("requirements*.txt", "*.mcp.yaml", "*.mcp.yml")
 

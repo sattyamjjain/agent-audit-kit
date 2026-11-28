@@ -18,15 +18,147 @@ while any such issue is open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-11-28 (unreleased): Crypto APIs, Bagel, WhoDB and mcp-video-analyzer, 4 new rules
+
+Five VulnCheck records published on 27 Nov, read against NVD's API record and the CVE record as
+saved on 2026-11-28 (tests/fixtures/nvd_cna), and against the npm tarballs, the bagel-mcp wheels
+and WhoDB's release tags. The watcher has filed none of them. Four are version pins; WhoDB's
+binary and image are also a launch row for `AAK-KNOWN-VULN-002`; bigcommerce-api-mcp ships
+nothing AAK can read. Each claim is measured on a firing fixture and a negative one, in
+tests/test_cve_batch_2026_11_28.py.
+
+### CVE-2026-138026 (not filed): new pin 2026-11-28
+
+**Crypto APIs gets `AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001`: fourteen npm packages
+`@cryptoapis-io/mcp-*`, each below its own fix, HIGH.** Run with `--transport http` and
+`--api-key`, each server listened on 0.0.0.0 by default and served `/mcp` with no credential check,
+so anyone who reached the port called its tools with the operator's key. The record names
+fourteen packages, one more than the order counted, and the vendor's GHSA-mhj6-wq83-cqf5 names the
+same fourteen with the same fixes: `mcp-aml` 0.2.0; `mcp-blockchain-events`, `mcp-blockchain-fees`,
+`mcp-broadcast` and `mcp-prepare-transactions` 0.5.0; the other nine 0.4.0. One rule, a row per
+package, so each is judged at its own fix and a file that lists two affected packages reports both.
+
+Read in the tarballs: `mcp-address-history` 0.1.0 and 0.3.1 and `mcp-blockchain-events` 0.4.0 mount
+an express route on `/mcp` with no check and default `--host` to 0.0.0.0; `mcp-address-history`
+0.4.0 and `mcp-blockchain-events` 0.5.0 hand HTTP to `@cryptoapis-io/mcp-shared` 0.4.0, which binds
+127.0.0.1 and refuses a wider bind that has a startup key and no `--auth-token`. npm's registry
+agrees for all fourteen: each fix is the package's 2026-09-24 release and requires mcp-shared 0.4.0,
+every release before it requires an mcp-shared below 0.4.0, and each package's first release is
+0.1.0. Every `latest` (0.4.0, 0.5.0 or 0.6.0) is fixed, so a version must be stated. The names are
+scoped, so there is no PyPI twin. The CNA record's packageURLs map all fourteen to npm, so
+`AAK-KNOWN-VULN-001` also reports them after `aak update`, and stands down where this rule reports
+the same line.
+
+### CVE-2026-138027 (not filed): new pin 2026-11-28
+
+**Bagel gets `AAK-MCP-BAGEL-CVE-2026-138027-001`: PyPI `bagel-mcp` below 2.5.5, HIGH.** The
+`query_messages` tool, annotated read-only, ran the caller's SQL on an ordinary DuckDB connection,
+so `read_csv_auto`, `COPY ... TO` and httpfs read and wrote files and made requests. Read in the
+wheels: 2.5.1, the first release on PyPI, and 2.5.4 pass the statement to `relation.query` on the
+thread's default connection; 2.5.5 accepts one SELECT and runs it on a connection with external
+access and extension autoloading off and its configuration locked. The vendor's
+GHSA-gx2g-3pch-43q5 gives the same range and also fixes an rsync command injection that has no CVE
+id. `latest` was 2.5.6, fixed, so a version must be stated, and the rule reads the README's
+`uvx --from "bagel-mcp[ros]==<v>" bagel-mcp` form. npm has no `bagel-mcp`; PyPI's `bagel` is
+Neurobagel's. The CNA record's packageURL maps it to PyPI, so `AAK-KNOWN-VULN-001` also reports it
+after `aak update`, and stands down where this rule reports the same line.
+
+Extelligence also publishes images on GHCR (`ghcr.io/extelligence-ai/bagel/px4`, `.../ros2-humble`)
+tagged by release from 2.0.0 to 2.5.6, the flaw being in Bagel's own MCP tool. They are not read
+here: an image pin needs the tags at both ends read first, and this batch read only the wheels.
+
+### CVE-2026-138032 (not filed): new pin 2026-11-28
+
+**WhoDB gets `AAK-MCP-WHODB-CVE-2026-138032-001`: npm `@clidey/whodb-cli`, `@clidey/whodb` and
+`whodb` from 0.88.0 below 0.132.0, MEDIUM.** The MCP server's `whodb_query` tool decided what a
+write is from keywords, and INTO, OUTFILE and DUMPFILE were not among them, so a statement that
+begins with SELECT and writes ran without the approval `--confirm-writes` asks for, and past
+read-only mode where the database did not refuse it.
+
+The flaw is in WhoDB's own MCP code, so it is pinned. The two gates are `cli/pkg/mcp/validation.go`
+(read-only) and `cli/pkg/mcp/tools.go` (`--confirm-writes`, `!sqlguard.IsReadOnly`). From 0.88.0 the
+first did its own first-keyword test; from 0.123.0, by the vendor's account, both ask
+`core/src/sqlguard`, which sits under `core/` but at 0.131.0 is called by the CLI alone: the MCP
+tools, `cli/pkg/mcp/read_tools.go` and the CLI's own read-only mode
+(`cli/internal/database/manager.go`). The web app's GraphQL resolvers
+(`core/graph/schema.resolvers.go`), its AI stream handler and `core/src/bamlconfig/chat_baml.go` do
+not call it at 0.131.0, and the only MCP source tree in the repository at that tag is `cli/pkg/mcp`.
+
+The record's packageURL is `pkg:github/clidey/whodb`, which no package row can override, but the CLI
+ships on npm as `@clidey/whodb-cli` (0.1.0 and 0.87.0, then 0.88.0, the record's lower bound, to
+0.139.0), each release requiring its platform binaries at its own number. `@clidey/whodb` and
+`whodb` are wrappers: every one of their thirteen releases (0.1.0, then 0.127.0 to 0.139.0) requires
+exactly `@clidey/whodb-cli` at its own number, not a range, so a wrapper's version is the CLI's and
+each is judged on its own; their affected releases are 0.127.0 to 0.131.0. 0.1.0 of all three ships
+no binary at all (the linux-x64 package is 328 bytes). All three name clidey/whodb as their
+repository. One row reads the three names, so a lockfile with a wrapper and the CLI reports once.
+
+Read at the tags and in the npm linux-x64 binaries: 0.87.0 has the `whodb_query` tool and no
+statement check (no `validation.go`, no `mcp.ValidateSQLStatement` symbol), 0.88.0 adds
+`ValidateSQLStatement` judging the first keyword, 0.131.0 asks sqlguard's list of mutating keywords,
+and 0.132.0 (commit 9de47fb) calls any statement its read grammar cannot parse a write
+(`sqlguard.understoodRead` is in the 0.132.0 binary and not in 0.131.0). The vendor's
+GHSA-pvf2-6h4x-r24j and GHSA-6mr5-wx6p-65fg name 0.134.0 as patched with ranges that end at 0.131.0;
+the rule follows the record and the code, 0.132.0. `latest` was 0.139.0, so a version must be
+stated.
+
+Each mechanism reads its own launch forms. The pin reads manifests and `npx` launches: a
+package.json dependency or script, an `npx -y @clidey/whodb-cli@<v>` launch in an MCP config, and
+lockfile entries. The binary from Homebrew, the install script or `npm install -g`, and the Docker
+Hub image `clidey/whodb-cli`, state no version the pin reads, so `data/cna_package_map.json` gets a
+reviewed launch row for clidey/whodb, read by `AAK-KNOWN-VULN-002` only after `aak update`: argv[0]
+`whodb` or `whodb-cli` in an MCP config, by name or path, reported as a launch whose release it
+cannot read (MEDIUM), and the image in `docker`, `podman` or `nerdctl run` arguments, compose files,
+Kubernetes manifests, Helm values and Dockerfiles, reported at MEDIUM for a tag from 0.88.0 below
+0.132.0 and as unreadable for `latest` or no tag. Docker Hub has tags 0.90.0 to 0.139.0, and 0.132.0
+only as `0.132.0-amd64` and `0.132.0-arm64`, which semver reads as pre-releases of 0.132.0, so those
+two are reported though fixed. The `clidey/whodb` web image holds no MCP server and is not in the
+row. No image pin: the launch row covers the image, and the bundled feed does not carry the record
+until `aak update`.
+
+### CVE-2026-138033 (not filed): new pin 2026-11-28
+
+**mcp-video-analyzer gets `AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001`: npm `mcp-video-analyzer`
+below 0.10.1, MEDIUM.** A URL whose path ends in a video extension went to the direct adapter,
+which fetched it with no host, scheme or address check and followed redirects. Read in the
+tarballs: 0.2.0, the first release and the record's lower bound, and 0.10.0 call `fetch(url)` as
+given; 0.10.1 checks every hop with `assertPublicUrl`, follows redirects by hand and blocks
+metadata addresses even when `MCP_ALLOW_PRIVATE_URLS` is set. The vendor's GHSA-hpmc-4g74-v53v
+gives the same fix. `latest` was 0.12.0, fixed, so a version must be stated. PyPI has no
+`mcp-video-analyzer`. The CNA record's packageURL maps it to npm, so `AAK-KNOWN-VULN-001` also
+reports it after `aak update`, and stands down where this rule reports the same line.
+
+### CVE-2026-138034 (not filed): out of scope 2026-11-28
+
+**bigcommerce-api-mcp: out of scope, no rule and no launch row.** Before 1.0.1 the `/sse` and
+`/messages` routes skipped the `authenticateRequest` middleware, so anyone who reached the port
+called the tools with the operator's BigCommerce API key; commit 6680235 wires it in. The record's
+packageURL is `pkg:github/isaacgounton/bigcommerce-api-mcp`, and nothing a project writes names an
+affected release: npm and PyPI have no `bigcommerce-api-mcp`, the package.json has no `bin`, the
+README runs `node <clone>/mcpServer.js` from a git clone and builds a local image it tags
+`bigcommerce-mcp`, the owner's Docker Hub namespace holds one other image and GHCR serves no public
+image under either name, and the repository has one tag, `v1.0.1`, the fix and no GitHub release.
+1.0.0 lived only in package.json, untagged. A launch row would match no command, image or tagged
+repository reference. A published package or image, or a tag of an affected release, would reopen
+it.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-138026 | 7.3 | `@cryptoapis-io/mcp-*`, fourteen packages (npm) | **New pin** `AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001` (HIGH): `mcp-aml` up to 0.1.0; `mcp-blockchain-events`, `-blockchain-fees`, `-broadcast`, `-prepare-transactions` up to 0.4.x; the other nine up to 0.3.x, read in the tarballs and npm's registry. | not filed |
+| CVE-2026-138027 | 7.5 | `bagel-mcp` (PyPI) | **New pin** `AAK-MCP-BAGEL-CVE-2026-138027-001` (HIGH): up to 2.5.4, read in the wheels. | not filed |
+| CVE-2026-138032 | 5.3 | WhoDB CLI (`@clidey/whodb-cli`, `@clidey/whodb`, `whodb` on npm; binary and image `clidey/whodb-cli`) | **New pin** `AAK-MCP-WHODB-CVE-2026-138032-001` (MEDIUM): 0.88.0 up to 0.131.0, read at the tags and in the npm binaries; a reviewed launch row for `AAK-KNOWN-VULN-002`. | not filed |
+| CVE-2026-138033 | 6.1 | `mcp-video-analyzer` (npm) | **New pin** `AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001` (MEDIUM): 0.2.0 up to 0.10.0, read in the tarballs. | not filed |
+| CVE-2026-138034 | 7.5 | bigcommerce-api-mcp (GitHub only) | **Out of scope**: no package, image or tag of an affected release to read; a published artifact or an affected tag would reopen it. | not filed |
+
 ## 2026-11-26 (unreleased): GitLab EE's MCP OAuth SSRF and pain001-mcp, 2 new rules
 
 Two records published on 25 Nov, read against NVD's API record and the CVE record as saved on
 2026-11-26 (tests/fixtures/nvd_cna), and against GitLab's 19.6.2 patch release and the pain001-mcp
-wheels. The watcher filed CVE-2026-136620 as #1286 and has not filed CVE-2026-135221. Each claim is
-measured on a firing fixture and a negative one, in tests/test_cve_batch_2026_11_26_intake.py and
-tests/test_container_image_pins.py.
+wheels. The watcher filed CVE-2026-136620 as #1286 and, at 21:31Z that day, CVE-2026-135221 as
+#1290. Each claim is measured on a firing fixture and a negative one, in
+tests/test_cve_batch_2026_11_26_intake.py and tests/test_container_image_pins.py.
 
-### CVE-2026-135221 (not filed): new image pin 2026-11-26
+### CVE-2026-135221 (#1290): new image pin 2026-11-26
 
 **GitLab EE gets `AAK-MCP-GITLAB-CVE-2026-135221-001`: the Docker Hub image `gitlab/gitlab-ee`
 from 18.10 below 19.4.11, 19.5 below 19.5.9 and 19.6 below 19.6.2, MEDIUM.** Insufficient URL
@@ -54,7 +186,7 @@ down where this rule reports the same line.
 
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
-| CVE-2026-135221 | 6.3 | GitLab EE (image `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-135221-001` (MEDIUM): 18.10 up to 19.4.10, 19.5 up to 19.5.8, 19.6 up to 19.6.1, on the vendor's ranges. | not filed |
+| CVE-2026-135221 | 6.3 | GitLab EE (image `gitlab/gitlab-ee`) | **New image pin** `AAK-MCP-GITLAB-CVE-2026-135221-001` (MEDIUM): 18.10 up to 19.4.10, 19.5 up to 19.5.8, 19.6 up to 19.6.1, on the vendor's ranges. | #1290 |
 | CVE-2026-136620 | 7.1 | `pain001-mcp` (PyPI) | **New pin** `AAK-MCP-PAIN001-CVE-2026-136620-001` (HIGH): 0.0.72 up to 0.0.79, read in the wheels. | #1286 |
 
 ## 2026-11-26 (unreleased): the 77 records the watcher held back, 37 new rules

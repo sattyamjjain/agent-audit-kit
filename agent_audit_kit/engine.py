@@ -592,8 +592,12 @@ def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding
     key: both rules point at the first line holding the spec, so two servers
     launching one package share it. AAK-MCP-007 keeps every finding
     AAK-SUPPLY-001 does not match, which covers the configs it alone reads
-    (`.windsurf/mcp.json`, any `*mcp*.json` below the root) and arguments
-    AAK-SUPPLY-001 does not judge as a package.
+    (any `*mcp*.json` outside `discovery.MCP_SERVER_CONFIGS`, such as
+    `.claude/mcp.json` or one below the root) and arguments AAK-SUPPLY-001
+    does not judge as a package. Both read every path of that list, so a launch
+    there gets the same verdict in each: `.windsurf/mcp.json`, `.roo/mcp.json`
+    and `.kiro/mcp.json` were read by AAK-MCP-007 alone, and the AAK-MCP-007
+    finding stood where `.mcp.json` got AAK-SUPPLY-001.
 
     As in the composition pass, it stands down only for a finding at or above
     its own severity, so the `--severity` floor can never hide a launch that

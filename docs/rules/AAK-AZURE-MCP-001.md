@@ -17,9 +17,10 @@
 
 ## What it catches
 
-An `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`,
-`.amazonq/mcp.json`, `mcp.json`, or any file under `.azure-mcp/`
-references an Azure MCP endpoint (host matches `*.azure.com`,
+An MCP client config at the project root (`.mcp.json`, `.cursor/mcp.json`,
+`.vscode/mcp.json`, `.windsurf/mcp.json`, `.amazonq/mcp.json`,
+`.continue/config.json`, `.roo/mcp.json`, `.kiro/mcp.json`, `mcp.json`), or any
+file under `.azure-mcp/`, references an Azure MCP endpoint (host matches `*.azure.com`,
 `*.azurewebsites.net`, `*.cognitiveservices.azure.com`,
 `*.openai.azure.com`, or contains `azure-mcp` / `azure_mcp`) without
 one of the recognised auth markers:

@@ -54,6 +54,7 @@ RULE_ANNOTATION = "AAK-MCP-ANNOTATION-MISMATCH-001"
 RULE_STATE = "AAK-MCP-REQUESTSTATE-001"
 
 _JS_EXTS = (".ts", ".tsx", ".js", ".mjs", ".cjs")
+# File names matched at every depth, not discovery.MCP_SERVER_CONFIGS' root paths (its `mcp.json` ones match).
 _CONFIG_NAMES = frozenset({".mcp.json", "mcp.json", "claude_desktop_config.json"})
 # A config in one of these is not what anyone launches.
 _NOT_DEPLOYED = frozenset({"test", "tests", "fixtures", "fixture", "example", "examples", "sample", "samples", "demo"})

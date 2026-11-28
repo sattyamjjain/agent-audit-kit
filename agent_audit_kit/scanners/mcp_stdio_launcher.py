@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     CONFIG_MAX_BYTES,
@@ -45,15 +46,7 @@ from agent_audit_kit.scanners._helpers import (
 _RULE_ID = "AAK-MCP-STDIO-LAUNCHER-INJECT-001"
 
 # Standard MCP config file names (mirrors mcp_config.py / tool_poisoning.py).
-_MCP_CONFIG_FILES: tuple[str, ...] = (
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    ".windsurf/mcp.json",
-    ".roo/mcp.json",
-    "mcp.json",
-)
+_MCP_CONFIG_FILES: tuple[str, ...] = MCP_SERVER_CONFIGS
 
 # Shell-style interpreters that execute code passed on the command line.
 _SHELL_LAUNCHERS = frozenset({"npx", "node", "bash", "sh", "python", "python3"})

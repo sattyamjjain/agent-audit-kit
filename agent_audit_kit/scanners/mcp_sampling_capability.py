@@ -32,6 +32,7 @@ from pathlib import Path
 
 import yaml
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 
 from ._helpers import (
@@ -89,17 +90,7 @@ _CONSENT_MARKERS = (
 )
 
 # Config-file location for explicit per-server sampling allow-listing.
-_MCP_CONFIG_FILES = (
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".vscode/mcp.json",
-    ".amazonq/mcp.json",
-    ".windsurf/mcp.json",
-    ".continue/config.json",
-    ".roo/mcp.json",
-    ".kiro/mcp.json",
-    "mcp.json",
-)
+_MCP_CONFIG_FILES = MCP_SERVER_CONFIGS
 
 
 def _sampling_hits(project_root: Path) -> list[tuple[Path, int]]:

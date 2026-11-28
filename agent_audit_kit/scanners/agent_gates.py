@@ -766,6 +766,7 @@ def _ask_findings(project_root: Path, scanned: set[str]) -> list[Finding]:
 # -- AAK-AGENT-SUBAGENT-TOOLS-001 -----------------------------------------------------------------
 
 _AGENTS_DIR = ".claude/agents"
+# Claude Code's own files only: a subagent is Claude Code's, and loads no other client's MCP config.
 _SERVER_FILES = (".mcp.json", ".claude/settings.json", ".claude/settings.local.json")
 _WRITE_KINDS = {
     **dict.fromkeys(("gmail", "mail", "email", "smtp", "sendgrid", "mailgun", "outlook", "postmark"), "mail"),

@@ -986,3 +986,29 @@ def test_a_fresh_install_reports_the_agent_lane_malware_from_the_bundled_feed() 
         ("requirements.txt", 2, "AAK-MALICIOUS-RELEASE-001"),   # mcp-env-report
     ]
     assert "AAK-MCP-007" not in {f.rule_id for f in result.findings}
+
+
+# ---- model-runtime names and agent-token typosquats in the bundled feed (2026-11-28) -----------
+
+
+def test_a_fresh_install_reports_the_27_nov_model_lane_malware_from_the_bundled_feed(tmp_path: Path) -> None:
+    """vk-mlp-agent 9999.0 (GHSA-r75h-6wx8-q4r6, PyPI, dependency-confusion shape) and
+    agentkpalive (GHSA-v8mr-2vmh-3xp3, npm, every version, a typosquat of agentkeepalive):
+    malware GitHub listed on 27 Nov 2026, which the 28 Nov refresh took into the bundle
+    (agentkpalive through the typosquat test, the qwen-tts names through the model list).
+    No cache exists (HOME is empty per test) and nothing runs `update`, so the scan reads
+    the bundled feed; on #1288's bundle it reported neither."""
+    (tmp_path / "requirements.txt").write_text(
+        "vk-mlp-agent==9999.0\nqwen-tts-runtime==0.3.0\nrequests==2.32.3\n", encoding="utf-8")
+    (tmp_path / "package.json").write_text(json.dumps(
+        {"name": "model-lane-fixture", "private": True,
+         "dependencies": {"agentkpalive": "^4.6.0", "agentkeepalive": "^4.6.0"}}, indent=2), encoding="utf-8")
+    result = run_scan(tmp_path)
+    assert result.data_feeds["maliciousReleases"]["origin"] == "bundled"
+    hits = sorted((f.file_path, f.line_number, f.rule_id) for f in result.findings
+                  if f.rule_id.startswith("AAK-MALICIOUS-RELEASE"))
+    assert hits == [
+        ("package.json", 5, "AAK-MALICIOUS-RELEASE-001"),       # agentkpalive, a range: every version is listed
+        ("requirements.txt", 1, "AAK-MALICIOUS-RELEASE-001"),   # vk-mlp-agent==9999.0
+        ("requirements.txt", 2, "AAK-MALICIOUS-RELEASE-001"),   # qwen-tts-runtime==0.3.0
+    ]

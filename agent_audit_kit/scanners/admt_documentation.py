@@ -66,6 +66,7 @@ import re
 from pathlib import Path
 from typing import Any, Iterable
 
+from agent_audit_kit.discovery import MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
@@ -80,10 +81,10 @@ _DECL_EXTS = {".py"}
 _DOC_EXTS = {".md", ".txt", ".rst", ".html"}
 _MAX_FILE_BYTES = 512_000
 
-_MCP_CONFIG_NAMES = (
-    ".mcp.json", "mcp.json", "claude_desktop_config.json",
-    ".cursor/mcp.json", ".vscode/mcp.json", ".windsurf/mcp.json",
-)
+_MCP_CONFIG_NAMES = (*MCP_SERVER_CONFIGS, "claude_desktop_config.json")
+# The names the walk below reads at every depth. Not taken from the list above:
+# `.continue/config.json` would make it read every `config.json` in the tree.
+_NESTED_CONFIG_NAMES = frozenset({".mcp.json", "mcp.json", "claude_desktop_config.json"})
 
 # An inference that materially influences an outcome. 6-1-1701(3)(b)(IV) carves
 # out systems that summarise or present information for human review and do NOT
@@ -257,9 +258,8 @@ def _mcp_config_paths(project_root: Path) -> list[Path]:
         if path.is_file() and path not in seen:
             seen.add(path)
             out.append(path)
-    basenames = {Path(name).name for name in _MCP_CONFIG_NAMES}
     for path in sorted(project_root.rglob("*")):
-        if path in seen or not path.is_file() or path.name not in basenames:
+        if path in seen or not path.is_file() or path.name not in _NESTED_CONFIG_NAMES:
             continue
         if in_skip_dir(path, project_root):
             continue

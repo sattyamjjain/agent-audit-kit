@@ -76,6 +76,21 @@
         "fctrid/ai-agent-for-okta"
       ],
       "reviewed": "2026-10-31"
+    },
+    {
+      "vendor": "clidey",
+      "product": "whodb",
+      "repo": "https://github.com/clidey/whodb",
+      "commands": [
+        "whodb",
+        "whodb-cli"
+      ],
+      "go_modules": [],
+      "images": [
+        "clidey/whodb-cli"
+      ],
+      "reviewed": "2026-11-28",
+      "checked": "cli/README.md at 0.131.0 puts `\"command\": \"whodb\"` with `mcp serve` in an MCP config, says the command was renamed from `whodb-cli`, which the installer, Homebrew formula, npm package and Docker image still provide as an alias, and offers the image pre-built as `docker pull clidey/whodb-cli:latest` beside a local build its Docker MCP example runs with `mcp serve`. Docker Hub's clidey/whodb-cli is tagged by release (0.90.0 to 0.139.0 on 2026-11-28). No Go module is listed: the CLI's module, github.com/clidey/whodb/cli, has no `cli/v...` tags to name a release by, and the README builds it from a clone. The `clidey/whodb` web image (core/Dockerfile) holds no MCP server. The npm packages are AAK-MCP-WHODB-CVE-2026-138032-001's rows, not this one's."
     }
   ]
 }

@@ -149,7 +149,7 @@ def test_gitlab_record_maps_to_no_package() -> None:
 
 
 @pytest.mark.parametrize(("cve", "issue", "says"), [
-    (GITLAB, "not filed", GITLAB_PIN), (PAIN, "#1286", PAIN_PIN),
+    (GITLAB, "#1290", GITLAB_PIN), (PAIN, "#1286", PAIN_PIN),
 ])
 def test_every_record_has_one_ledger_row(cve: str, issue: str, says: str) -> None:
     rows = [line for line in LEDGER.read_text(encoding="utf-8").splitlines() if line.startswith(f"| {cve} ")]

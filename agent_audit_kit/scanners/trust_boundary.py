@@ -179,6 +179,7 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
         # (through 0.6.24) made the fix report a change that cleared nothing (#1060).
         if "enabledMcpjsonServers" not in data and data.get("enableAllProjectMcpServers") is not True:
             # Only flag if there's an .mcp.json in the project (servers exist to allowlist)
+            # `.mcp.json` alone: `enabledMcpjsonServers` allowlists that file's servers and no other client's.
             mcp_json = project_root / ".mcp.json"
             if mcp_json.is_file():
                 findings.append(_make_finding(

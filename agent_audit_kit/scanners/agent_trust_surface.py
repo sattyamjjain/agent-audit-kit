@@ -48,6 +48,7 @@ from typing import Any, NamedTuple
 
 import yaml
 
+from agent_audit_kit.discovery import AGENT_CONFIGS, MCP_SERVER_CONFIGS
 from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
@@ -156,11 +157,18 @@ _SHELL_PAYLOAD_RE = re.compile(
     re.I,
 )
 
+# The MCP configs of the agents above that a CI job runs headless (Claude Code,
+# Cursor's cursor-agent), not every client's in `MCP_SERVER_CONFIGS`: a headless
+# run loads its own config, never Windsurf's or Kiro's. Named through discovery
+# so each path is spelt once.
+_HEADLESS_MCP_CONFIGS: tuple[str, ...] = tuple(
+    path for agent in ("Claude Code", "Cursor") for path in AGENT_CONFIGS[agent] if path in MCP_SERVER_CONFIGS
+)
+
 # Repo-resident surfaces a headless agent auto-trusts on load; named in the CI
 # findings so the amplifier is tied to the surfaces the per-file scanners flag.
 _AUTOTRUST_SURFACES: tuple[str, ...] = (
-    ".mcp.json",
-    ".cursor/mcp.json",
+    *_HEADLESS_MCP_CONFIGS,
     ".gemini/settings.json",
     ".vscode/tasks.json",
     ".claude",
