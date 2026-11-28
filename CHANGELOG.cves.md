@@ -73,30 +73,48 @@ here: an image pin needs the tags at both ends read first, and this batch read o
 `whodb` from 0.88.0 below 0.132.0, MEDIUM.** The MCP server's `whodb_query` tool decided what a
 write is from keywords, and INTO, OUTFILE and DUMPFILE were not among them, so a statement that
 begins with SELECT and writes ran without the approval `--confirm-writes` asks for, and past
-read-only mode where the database did not refuse it. The record's packageURL is
-`pkg:github/clidey/whodb`, which no package row can override, but the CLI that holds the MCP server
+read-only mode where the database did not refuse it.
+
+The flaw is in WhoDB's own MCP code, so it is pinned. The two gates are `cli/pkg/mcp/validation.go`
+(read-only) and `cli/pkg/mcp/tools.go` (`--confirm-writes`, `!sqlguard.IsReadOnly`). From 0.88.0 the
+first did its own first-keyword test; from 0.123.0, by the vendor's account, both ask
+`core/src/sqlguard`, which sits under `core/` but at 0.131.0 is called by the CLI alone: the MCP
+tools, `cli/pkg/mcp/read_tools.go` and the CLI's own read-only mode
+(`cli/internal/database/manager.go`). The web app's GraphQL resolvers
+(`core/graph/schema.resolvers.go`), its AI stream handler and `core/src/bamlconfig/chat_baml.go` do
+not call it at 0.131.0, and the only MCP source tree in the repository at that tag is `cli/pkg/mcp`.
+
+The record's packageURL is `pkg:github/clidey/whodb`, which no package row can override, but the CLI
 ships on npm as `@clidey/whodb-cli` (0.1.0 and 0.87.0, then 0.88.0, the record's lower bound, to
-0.139.0), and `@clidey/whodb` and `whodb` are wrappers that require the same version of it; all
-three name clidey/whodb as their repository. One row reads the three names, so a lockfile with a
-wrapper and the CLI reports once.
+0.139.0), each release requiring its platform binaries at its own number. `@clidey/whodb` and
+`whodb` are wrappers: every one of their thirteen releases (0.1.0, then 0.127.0 to 0.139.0) requires
+exactly `@clidey/whodb-cli` at its own number, not a range, so a wrapper's version is the CLI's and
+each is judged on its own; their affected releases are 0.127.0 to 0.131.0. 0.1.0 of all three ships
+no binary at all (the linux-x64 package is 328 bytes). All three name clidey/whodb as their
+repository. One row reads the three names, so a lockfile with a wrapper and the CLI reports once.
 
-Read at the tags: 0.87.0 has no statement check (`cli/pkg/mcp/validation.go` arrives in 0.88.0),
-0.88.0 judges a statement by its first keyword, 0.131.0 by `sqlguard`'s list of mutating keywords,
-and 0.132.0 (commit 9de47fb) calls any statement its read grammar cannot parse a write. The npm
-linux-x64 binaries agree: `sqlguard.understoodRead` is in 0.132.0 and not in 0.131.0. The vendor's
-GHSA-pvf2-6h4x-r24j and GHSA-6mr5-wx6p-65fg name 0.134.0 as patched with ranges that end at
-0.131.0; the rule follows the record and the code, 0.132.0. `latest` was 0.139.0, so a version must
-be stated.
+Read at the tags and in the npm linux-x64 binaries: 0.87.0 has the `whodb_query` tool and no
+statement check (no `validation.go`, no `mcp.ValidateSQLStatement` symbol), 0.88.0 adds
+`ValidateSQLStatement` judging the first keyword, 0.131.0 asks sqlguard's list of mutating keywords,
+and 0.132.0 (commit 9de47fb) calls any statement its read grammar cannot parse a write
+(`sqlguard.understoodRead` is in the 0.132.0 binary and not in 0.131.0). The vendor's
+GHSA-pvf2-6h4x-r24j and GHSA-6mr5-wx6p-65fg name 0.134.0 as patched with ranges that end at 0.131.0;
+the rule follows the record and the code, 0.132.0. `latest` was 0.139.0, so a version must be
+stated.
 
-The binary from Homebrew or the install script and the Docker Hub image `clidey/whodb-cli` state no
-version this pin reads, so `data/cna_package_map.json` gets a reviewed launch row for clidey/whodb:
-commands `whodb` and `whodb-cli`, image `clidey/whodb-cli`. After `aak update`,
-`AAK-KNOWN-VULN-002` reports an image tag from 0.88.0 below 0.132.0 at MEDIUM, and an MCP config
-that runs `whodb` by name, or the image as `latest`, as a launch whose release it cannot read, also
-MEDIUM. Docker Hub has tags 0.90.0 to 0.139.0, and 0.132.0 only as `0.132.0-amd64` and
-`0.132.0-arm64`, which semver reads as pre-releases of 0.132.0, so those two are reported though
-fixed. The `clidey/whodb` web image holds no MCP server and is not in the row. No image pin: the
-launch row covers the image, and the bundled feed does not carry the record until `aak update`.
+Each mechanism reads its own launch forms. The pin reads manifests and `npx` launches: a
+package.json dependency or script, an `npx -y @clidey/whodb-cli@<v>` launch in an MCP config, and
+lockfile entries. The binary from Homebrew, the install script or `npm install -g`, and the Docker
+Hub image `clidey/whodb-cli`, state no version the pin reads, so `data/cna_package_map.json` gets a
+reviewed launch row for clidey/whodb, read by `AAK-KNOWN-VULN-002` only after `aak update`: argv[0]
+`whodb` or `whodb-cli` in an MCP config, by name or path, reported as a launch whose release it
+cannot read (MEDIUM), and the image in `docker`, `podman` or `nerdctl run` arguments, compose files,
+Kubernetes manifests, Helm values and Dockerfiles, reported at MEDIUM for a tag from 0.88.0 below
+0.132.0 and as unreadable for `latest` or no tag. Docker Hub has tags 0.90.0 to 0.139.0, and 0.132.0
+only as `0.132.0-amd64` and `0.132.0-arm64`, which semver reads as pre-releases of 0.132.0, so those
+two are reported though fixed. The `clidey/whodb` web image holds no MCP server and is not in the
+row. No image pin: the launch row covers the image, and the bundled feed does not carry the record
+until `aak update`.
 
 ### CVE-2026-138033 (not filed): new pin 2026-11-28
 

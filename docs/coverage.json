@@ -4330,6 +4330,38 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-138027"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP02:2025 Privilege Escalation via Scope Creep",
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-BAGEL-CVE-2026-138027-001",
+      "severity": "high",
+      "title": "Bagel (bagel-mcp) below 2.5.5: query_messages, annotated read-only, runs unsandboxed DuckDB SQL that reads and writes files"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-53512",
         "CVE-2026-53518",
         "CVE-2026-67333",
@@ -5174,6 +5206,34 @@
       "rule_id": "AAK-MCP-CORTEX-CVE-2026-49986-001",
       "severity": "high",
       "title": "neuro-cortex-memory 3.17.0 or earlier (CLAUDE_PROJECT_DIR treated as a trusted source root)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-138026"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001",
+      "severity": "high",
+      "title": "Crypto APIs MCP servers (@cryptoapis-io/mcp-*) below 0.2.0, 0.4.0 or 0.5.0 by package: over Streamable HTTP any caller spends the operator's API key"
     },
     {
       "category": "supply-chain",
@@ -11333,6 +11393,37 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-138033"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001",
+      "severity": "medium",
+      "title": "mcp-video-analyzer below 0.10.1: the direct video adapter fetches loopback, private and cloud metadata addresses"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-79535"
       ],
       "eu_ai_act": [
@@ -11392,6 +11483,38 @@
       "rule_id": "AAK-MCP-WHATSAPP-CVE-2026-46555-001",
       "severity": "high",
       "title": "WhatsApp MCP (verygoodplugins/whatsapp-mcp) below 0.2.1 (unauthenticated loopback bridge + media_path traversal \u2192 file exfil)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-138032"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP02:2025 Privilege Escalation via Scope Creep",
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-WHODB-CVE-2026-138032-001",
+      "severity": "medium",
+      "title": "WhoDB CLI from 0.88.0 below 0.132.0: SELECT ... INTO passes the MCP server's read-only mode and write confirmation"
     },
     {
       "category": "supply-chain",
@@ -14366,35 +14489,35 @@
       "mcp-config": 70,
       "mcp-server-card": 4,
       "secret-exposure": 22,
-      "supply-chain": 289,
+      "supply-chain": 293,
       "taint-analysis": 15,
       "tool-poisoning": 34,
       "transport-security": 19,
       "trust-boundary": 27
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 321,
+      "Art. 10 - Data Governance": 325,
       "Art. 13 - Transparency": 35,
       "Art. 14 - Human Oversight": 23,
-      "Art. 15 - Robustness & Security": 438,
-      "Art. 9 - Risk Management": 292
+      "Art. 15 - Robustness & Security": 442,
+      "Art. 9 - Risk Management": 295
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 320,
-      "Constrain and sandbox tool execution (p.11)": 273,
-      "Design for boundaries (p.10)": 422,
+      "Choose supported MCP projects when possible (p.10)": 324,
+      "Constrain and sandbox tool execution (p.11)": 276,
+      "Design for boundaries (p.10)": 426,
       "Filter and monitor output pipelines and chained execution (p.12)": 147,
       "Instrument for logging and detection (p.13)": 28,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 392,
-      "Sign and verify MCP messages (p.12)": 405,
-      "Track and patch MCP related vulnerabilities (p.13)": 325,
-      "Validate parameters (p.11)": 277
+      "Scan local network for open or vulnerable MCP servers (p.14)": 396,
+      "Sign and verify MCP messages (p.12)": 409,
+      "Track and patch MCP related vulnerabilities (p.13)": 329,
+      "Validate parameters (p.11)": 280
     },
     "by_owasp_agentic": {
       "ASI01": 19,
-      "ASI02": 153,
-      "ASI03": 167,
-      "ASI04": 318,
+      "ASI02": 156,
+      "ASI03": 168,
+      "ASI04": 322,
       "ASI05": 127,
       "ASI06": 6,
       "ASI07": 27,
@@ -14404,25 +14527,25 @@
     },
     "by_owasp_mcp": {
       "MCP01:2025": 50,
-      "MCP02:2025": 32,
+      "MCP02:2025": 34,
       "MCP03:2025": 16,
-      "MCP04:2025": 252,
-      "MCP05:2025": 150,
+      "MCP04:2025": 256,
+      "MCP05:2025": 153,
       "MCP06:2025": 5,
-      "MCP07:2025": 129,
+      "MCP07:2025": 130,
       "MCP08:2025": 2,
       "MCP09:2025": 5,
       "MCP10:2025": 21
     },
     "by_severity": {
       "critical": 108,
-      "high": 252,
+      "high": 254,
       "info": 5,
       "low": 24,
-      "medium": 169
+      "medium": 171
     },
-    "total_cves_covered": 574,
-    "total_rules": 558
+    "total_cves_covered": 578,
+    "total_rules": 562
   },
   "tool": "agent-audit-kit"
 }

@@ -235,9 +235,16 @@ def test_bagel_npm_manifest_is_not_judged(tmp_path: Path) -> None:
     ("@clidey/whodb-cli@0.132.0", False),
     ("@clidey/whodb-cli@0.139.0", False),  # `latest` on 2026-11-28
     ("@clidey/whodb-cli", False),          # `latest` is fixed, so a version must be stated
-    ("@clidey/whodb@0.129.0", True),       # the wrapper requires the same version of the CLI
+    # Every wrapper release requires exactly @clidey/whodb-cli at its own number (npm's registry,
+    # 2026-11-28), so a wrapper's version is the CLI's: 0.127.0 is the first affected one.
+    ("@clidey/whodb@0.127.0", True),
+    ("@clidey/whodb@0.131.0", True),
+    ("@clidey/whodb@0.132.0", False),
+    ("whodb@0.127.0", True),
     ("whodb@0.131.0", True),
-    ("whodb@0.1.0", False),                # requires @clidey/whodb-cli 0.1.0, before 0.88.0
+    ("whodb@0.132.0", False),
+    ("whodb@0.1.0", False),                # requires @clidey/whodb-cli 0.1.0, which ships no binary
+    ("@clidey/whodb-cli@0.1.0", False),
 ])
 def test_whodb_launches(tmp_path: Path, spec: str, fires: bool) -> None:
     assert (WHODB_PIN in _pin_ids(_mcp(tmp_path, "npx", ["-y", spec, "mcp", "serve"]))) is fires

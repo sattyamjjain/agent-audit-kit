@@ -222,3 +222,12 @@ def test_the_guard_sees_the_scanners() -> None:
     scanners = sorted((PACKAGE / "scanners").glob("*.py"))
     assert len(scanners) > 100
     assert _collection_literals_naming(PACKAGE / "discovery.py", ".cursor/mcp.json")
+
+
+def test_the_readme_lists_the_locations_the_scanners_read() -> None:
+    """The README's location list is MCP_SERVER_CONFIGS, in its order, so a location
+    added to the one list is added to what the README promises in the same change."""
+    readme = (PACKAGE.parent / "README.md").read_text(encoding="utf-8")
+    start, end = "<!-- mcp-config-locations -->", "<!-- /mcp-config-locations -->"
+    listed = readme[readme.index(start) + len(start):readme.index(end)]
+    assert [part.strip("` \n") for part in listed.replace(" and ", ", ").split(",")] == list(MCP_SERVER_CONFIGS)

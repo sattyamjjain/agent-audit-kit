@@ -2721,13 +2721,18 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="2.5.5", requires_version=True, ecosystem="py"),
     # WhoDB CLI: `whodb_query` let a statement past read-only mode and the write
     # confirmation when it began with SELECT and wrote through INTO, OUTFILE or DUMPFILE
-    # (CVE-2026-138032, MEDIUM). The CNA names the GitHub project; the CLI, which holds the
-    # MCP server, ships on npm as @clidey/whodb-cli, and @clidey/whodb and whodb are
-    # wrappers that require the same version of it, so one row. Read at the tags: 0.87.0
-    # checks no statement, 0.88.0 judges one by its first keyword, 0.131.0 by a shared
-    # keyword list without those three words, and 0.132.0 calls any statement its read
-    # grammar does not parse a write; the npm linux-x64 binaries of 0.131.0 and 0.132.0
-    # differ the same way. `latest` is 0.139.0. The `whodb` binary and the
+    # (CVE-2026-138032, MEDIUM). The gates are the CLI's own MCP code (cli/pkg/mcp
+    # validation.go and tools.go); from 0.123.0 they ask core/src/sqlguard, whose callers at
+    # 0.131.0 are the CLI's alone. The CNA names the GitHub project; the CLI ships on npm as
+    # @clidey/whodb-cli, whose every release requires its platform binaries at its own
+    # number. @clidey/whodb and whodb are wrappers whose every release (0.1.0, then 0.127.0
+    # to 0.139.0) requires exactly @clidey/whodb-cli at its own number, so each wrapper's
+    # version is the CLI's and one row judges the three names; 0.1.0 of all three ships no
+    # binary (the linux-x64 package is 328 bytes). Read at the tags and in the npm
+    # linux-x64 binaries: 0.87.0 has whodb_query and no statement check, 0.88.0 adds
+    # `ValidateSQLStatement` on the first keyword, 0.131.0 asks sqlguard's keyword list
+    # without those three words, and 0.132.0 (`understoodRead`) calls any statement its
+    # read grammar does not parse a write. `latest` is 0.139.0. The `whodb` binary and the
     # `clidey/whodb-cli` image are a launch row in data/cna_package_map.json.
     _Pin("AAK-MCP-WHODB-CVE-2026-138032-001", "@clidey/whodb-cli / @clidey/whodb / whodb",
          ("@clidey/whodb-cli", "@clidey/whodb", "whodb"), (0, 132, 0), introduced=(0, 88, 0),
