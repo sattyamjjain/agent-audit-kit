@@ -427,6 +427,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-REBUILD-CVE-2026-129875-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-GITLAB-CVE-2026-123142-001": ["IAM-01", "STA-08"],
     "AAK-MCP-PAIN001-CVE-2026-136620-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-BAGEL-CVE-2026-138027-001": ["AIS-07", "IVS-04", "STA-08"],
+    "AAK-MCP-WHODB-CVE-2026-138032-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GITLAB-CVE-2026-135221-001": ["IVS-04", "STA-08"],
     "AAK-AUTOGPT-CVE-2026-130178-001": ["AIS-07", "IVS-04", "STA-08"],
     "AAK-MCP-FLOWINTEL-CVE-2026-133853-001": ["IAM-01", "CEK-08", "STA-08"],
@@ -23953,6 +23957,183 @@ _r(
         "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
         "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
         "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CRYPTOAPIS-CVE-2026-138026-001",
+    "Crypto APIs MCP servers (@cryptoapis-io/mcp-*) below 0.2.0, 0.4.0 or 0.5.0 by package: over Streamable HTTP any caller spends the operator's API key",
+    "Crypto APIs publishes fourteen MCP servers on npm as `@cryptoapis-io/mcp-*`. Run with "
+    "`--transport http` and `--api-key`, each listened on 0.0.0.0 unless told otherwise and "
+    "served `/mcp` with no credential check, so anyone who could reach the port called its "
+    "tools with the operator's key: paid credits spent, account data read, event "
+    "subscriptions redirected, HD wallet xPubs deleted (CVE-2026-138026, CVSS 3.1 7.3, "
+    "CWE-306, GHSA-mhj6-wq83-cqf5). The CNA record and the vendor's advisory name the same "
+    "fourteen packages and fixes: `mcp-aml` 0.2.0; `mcp-blockchain-events`, "
+    "`mcp-blockchain-fees`, `mcp-broadcast` and `mcp-prepare-transactions` 0.5.0; the other "
+    "nine 0.4.0. Read in the npm tarballs: `mcp-address-history` 0.1.0 and 0.3.1 and "
+    "`mcp-blockchain-events` 0.4.0 mount an express route with no check, and "
+    "`mcp-address-history` 0.4.0 and `mcp-blockchain-events` 0.5.0 hand HTTP to "
+    "`@cryptoapis-io/mcp-shared` 0.4.0, which binds 127.0.0.1 and refuses a wider bind that "
+    "has a startup key and no `--auth-token`. Every fix is the package's 2026-09-24 release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade each `@cryptoapis-io/mcp-*` server to its fixed release or later (`mcp-aml` "
+    "0.2.0; `mcp-blockchain-events`, `mcp-blockchain-fees`, `mcp-broadcast` and "
+    "`mcp-prepare-transactions` 0.5.0; the rest 0.4.0) and pin it. To serve HTTP beyond "
+    "loopback on a fixed release, set `MCP_AUTH_TOKEN`, or leave `--api-key` out so each "
+    "client sends its own key.",
+    sarif_name="CryptoApisMcpHttpNoAuth",
+    cve_references=["CVE-2026-138026"],
+    owasp_mcp_references=["MCP07:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports each of the fourteen npm packages below its own fix where a version is "
+        "stated: at the project root only, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the package-lock.json, pnpm-lock.yaml and yarn.lock "
+        "lockfiles, a range that admits an affected version included. One finding per "
+        "package per file. Each package's `latest` was fixed on 2026-11-28 (0.4.0, 0.5.0 or "
+        "0.6.0), so an `npx` launch that states no version is not reported. It reads the "
+        "version, not the transport or the flags, so a server run over stdio, which the flaw "
+        "does not reach, is reported too. `@cryptoapis-io/mcp-shared`, which the fixed "
+        "releases serve HTTP through, is not named by the record and not read. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-BAGEL-CVE-2026-138027-001",
+    "Bagel (bagel-mcp) below 2.5.5: query_messages, annotated read-only, runs unsandboxed DuckDB SQL that reads and writes files",
+    "Bagel (`bagel-mcp` on PyPI) is an MCP server that answers questions about robotics, "
+    "drone and IoT recordings. Its `query_messages` tool, annotated read-only, ran the SQL "
+    "statement it was given on an ordinary DuckDB connection, so `read_csv_auto`, "
+    "`COPY ... TO` and the httpfs extension read and wrote files and sent requests to any "
+    "host; a model steered by text planted in recorded logs or topics could make that call "
+    "(CVE-2026-138027, CVSS 3.1 7.5, CWE-749, GHSA-gx2g-3pch-43q5). Read in the wheels: "
+    "2.5.1, the first release on PyPI, and 2.5.4 pass the statement to `relation.query` on "
+    "the thread's default connection; 2.5.5 accepts a single SELECT and runs it on a "
+    "separate connection opened with external access and extension autoloading off and its "
+    "configuration locked. The vendor's advisory also covers an rsync command injection "
+    "fixed in the same release; the record names only the SQL flaw.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `bagel-mcp` to 2.5.5 or later and pin it; `uvx --from bagel-mcp bagel-mcp` "
+    "with no version can keep running a cached older release.",
+    sarif_name="BagelMcpUnsandboxedDuckdbSql",
+    cve_references=["CVE-2026-138027"],
+    owasp_mcp_references=["MCP02:2025", "MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Reports `bagel-mcp` below 2.5.5 where a version is stated: a requirements*.txt "
+        "entry at any depth, a pyproject.toml, Pipfile or lockfile entry at the project root, "
+        "or a `uvx` launch in .mcp.json, mcp.json or claude_desktop_config.json, the README's "
+        "`uvx --from \"bagel-mcp[ros]==2.5.4\" bagel-mcp` form included, reporting a range "
+        "that admits an affected version. `latest` was 2.5.6 on 2026-11-28, so the README's "
+        "unversioned `uvx --from \"bagel-mcp[ros]\" bagel-mcp` is not reported, although uv "
+        "may still run a cached older copy. The name is not on npm, and PyPI's `bagel` is "
+        "another project. Extelligence's images on GHCR (`ghcr.io/extelligence-ai/bagel/...`, "
+        "tagged by release from 2.0.0) are not read. It reads the version, not whether the "
+        "tool is exposed to untrusted content. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-WHODB-CVE-2026-138032-001",
+    "WhoDB CLI from 0.88.0 below 0.132.0: SELECT ... INTO passes the MCP server's read-only mode and write confirmation",
+    "The WhoDB CLI (`@clidey/whodb-cli` on npm, with the wrappers `@clidey/whodb` and "
+    "`whodb`) runs an MCP server whose `whodb_query` tool refuses writes in read-only mode "
+    "and holds them for approval under `--confirm-writes`. It decided what a write is from "
+    "keywords, and INTO, OUTFILE and DUMPFILE were not among them, so a statement that "
+    "begins with SELECT and writes, PostgreSQL's `SELECT ... INTO` a table or MySQL's "
+    "`SELECT ... INTO OUTFILE`, ran without the approval and past read-only mode wherever "
+    "the database itself did not refuse it, creating tables, or files on the database host "
+    "(CVE-2026-138032, CVSS 3.1 5.3, CWE-863, GHSA-pvf2-6h4x-r24j, GHSA-6mr5-wx6p-65fg). "
+    "The CNA names the GitHub project. Read at the release tags: 0.87.0 checks no "
+    "statement, 0.88.0 judges one by its first keyword, 0.131.0 by a shared keyword list "
+    "without those three words, and 0.132.0 treats any statement its read grammar cannot "
+    "parse as a write; the npm linux-x64 binaries of 0.131.0 and 0.132.0 differ the same "
+    "way. The vendor's advisories name 0.134.0 as patched, with ranges that end at 0.131.0.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the WhoDB CLI to 0.132.0 or later (the vendor's advisories name 0.134.0) and "
+    "pin it. Either way connect it with a database account that cannot create tables and "
+    "has no MySQL `FILE` privilege: read-only mode and the confirmation are not a "
+    "substitute for one.",
+    sarif_name="WhodbMcpSelectIntoReadOnlyBypass",
+    cve_references=["CVE-2026-138032"],
+    owasp_mcp_references=["MCP02:2025", "MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Reports npm `@clidey/whodb-cli`, `@clidey/whodb` and `whodb` from 0.88.0 below "
+        "0.132.0 where a version is stated: at the project root only, package.json, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the package-lock.json, "
+        "pnpm-lock.yaml and yarn.lock lockfiles, a range that admits an affected version "
+        "included. One finding per file for the three names. `latest` was 0.139.0 on "
+        "2026-11-28, so `npx @clidey/whodb` with no version is not reported. Releases before "
+        "0.88.0, which check no statement at all, are outside the record's range and are not "
+        "reported, and neither are 0.132.0 and 0.133.0, which carry the fix commit although "
+        "the vendor's advisories name 0.134.0. It reads the version, not whether the MCP "
+        "server runs or with which flags. The `whodb` binary from Homebrew or the install "
+        "script and the Docker Hub image `clidey/whodb-cli` state no version this rule reads: "
+        "AAK-KNOWN-VULN-002 reports them after `aak update` through a launch row, an MCP "
+        "config that runs `whodb` by name as a launch whose release it cannot read. "
+        "The desktop app and the `clidey/whodb` web image are not read. The dependency is not "
+        "read when it is declared in a sub-directory manifest (`packages/app/package.json`). "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read. A declaration nested more "
+        "than 64 levels deep in package.json, a TOML manifest or an MCP config (an MCP server "
+        "more than 62) is still judged, and reported without a line; a lockfile entry keeps "
+        "its line at any depth."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-VIDEOANALYZER-CVE-2026-138033-001",
+    "mcp-video-analyzer below 0.10.1: the direct video adapter fetches loopback, private and cloud metadata addresses",
+    "mcp-video-analyzer (npm) is an MCP server that pulls transcripts, frames and text out "
+    "of videos. Any http(s) URL whose path ends in a video extension went to its direct "
+    "adapter, which downloaded it with `fetch` and no check of the host, scheme or address, "
+    "following redirects, so a tool call such as `get_frames`, prompted by injected text or "
+    "not, reached loopback, private networks and cloud metadata endpoints, wrote the "
+    "response to disk and could return rendered screenshots of it (CVE-2026-138033, CVSS "
+    "3.1 6.1, CWE-918, GHSA-hpmc-4g74-v53v). Read in the npm tarballs: 0.2.0, the first "
+    "release, and 0.10.0 call `fetch(url)` as given; 0.10.1 checks every hop with "
+    "`assertPublicUrl`, follows redirects by hand, and blocks metadata addresses even when "
+    "`MCP_ALLOW_PRIVATE_URLS` lets private ones through.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-video-analyzer` to 0.10.1 or later and pin it, and leave "
+    "`MCP_ALLOW_PRIVATE_URLS` unset unless the server must reach a private host.",
+    sarif_name="McpVideoAnalyzerDirectUrlSsrf",
+    cve_references=["CVE-2026-138033"],
+    owasp_mcp_references=["MCP05:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Reports npm `mcp-video-analyzer` below 0.10.1 where a version is stated: at the "
+        "project root only, package.json, .mcp.json, mcp.json, claude_desktop_config.json "
+        "and the package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, a range that "
+        "admits an affected version included. `latest` was 0.12.0 on 2026-11-28, so `npx "
+        "mcp-video-analyzer` with no version is not reported. The name is not on PyPI. It "
+        "reads the version, not whether the server can reach an internal address. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`packages/app/package.json`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read. A declaration nested more than 64 levels deep in package.json, a TOML "
+        "manifest or an MCP config (an MCP server more than 62) is still judged, and "
+        "reported without a line; a lockfile entry keeps its line at any depth."
     ),
 )
 

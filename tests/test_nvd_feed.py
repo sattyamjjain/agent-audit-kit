@@ -770,12 +770,16 @@ LAUNCH_CVES = ("CVE-2026-62863", "CVE-2026-63377", "CVE-2026-63378")
 def test_the_launch_rows_name_what_each_repository_says_to_run() -> None:
     """MoLing's README puts `/usr/local/bin/moling` in an MCP config and its go.mod
     declares github.com/gojue/moling; TAKO's docker-compose.yml runs
-    fctrid/ai-agent-for-okta, and neither README names anything else."""
+    fctrid/ai-agent-for-okta, and neither README names anything else. WhoDB's CLI README
+    runs `whodb mcp serve` (once `whodb-cli`, still an alias) and pulls
+    `clidey/whodb-cli` (tests/test_cve_batch_2026_11_28.py)."""
     assert nvd_feed.load_launch_map() == (
         nvd_feed.LaunchRow("gojue", "moling", "github.com/gojue/moling", ("moling",), ("github.com/gojue/moling",),
                            (), "2026-10-31"),
         nvd_feed.LaunchRow("fctr-id", "okta-ai-agent", "github.com/fctr-id/okta-ai-agent", (), (),
                            ("fctrid/ai-agent-for-okta",), "2026-10-31"),
+        nvd_feed.LaunchRow("clidey", "whodb", "github.com/clidey/whodb", ("whodb", "whodb-cli"), (),
+                           ("clidey/whodb-cli",), "2026-11-28"),
     )
 
 
