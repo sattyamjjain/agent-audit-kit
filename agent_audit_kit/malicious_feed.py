@@ -35,8 +35,10 @@ it is complete.
 
 The bundled copy lists established packages that were taken over (litellm,
 axios, agent-framework) and, from 2026-11-26, malicious packages in the agent
-and MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), not the other typosquats the
-full OSV list carries. `scripts/refresh_bundled_malicious.py` adds new ones from
+and MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), joined on 2026-11-28 by
+packages named after the models and runtimes wired into agents (qwen-tts-runtime)
+and typosquats of agent-host dependencies (agentkpalive), not the other
+typosquats the full OSV list carries. `scripts/refresh_bundled_malicious.py` adds new ones from
 GitHub's malware advisories on a daily schedule
 (`.github/workflows/malicious-feed-bundle.yml`).
 A scan reports how old the copy it read is (`feed_staleness`) and calls it stale

@@ -5,9 +5,10 @@ name: Bundled malicious-release feed
 # day scripts/refresh_bundled_malicious.py reads GitHub's malware advisories of
 # the last 3 days, keeps the established packages that were taken over (the
 # registry shows a release at least 30 days older than the advisory that the
-# advisory does not list) and the malicious agent and MCP packages (a name token
-# such as mcp, claude or agent, or a package the pin tables name; at most 50 a
-# run), and appends their OSV records to the file. Other typosquats stay out;
+# advisory does not list) and the malicious agent, MCP and model-runtime packages
+# (a name token such as mcp, claude, agent, qwen or gradio, a typosquat of an
+# agent-host dependency such as agentkeepalive, or a package the pin tables name;
+# at most 50 a run), and appends their OSV records to the file. Other typosquats stay out;
 # `agent-audit-kit update` builds the full list.
 #
 # When the file changed, the job pushes it to the chore/malicious-feed-bundle

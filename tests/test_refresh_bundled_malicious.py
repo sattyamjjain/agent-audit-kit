@@ -161,7 +161,8 @@ def test_a_takeover_of_an_established_package_is_kept(feed: Path) -> None:
     assert data["source"].startswith(original["source"])
     assert data["source"].endswith(
         "On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-90001, takeovers of established "
-        "packages and malicious agent and MCP packages among GitHub's malware advisories published since "
+        "packages and malicious agent, MCP and model-runtime packages among GitHub's malware advisories "
+        "published since "
         "2026-11-17, each as "
         "https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).")
     # Every other byte is kept: the old file with the two header values replaced, and
@@ -394,23 +395,85 @@ def test_every_bundled_entry_is_read_and_the_added_ones_have_the_takeover_or_lan
 # ---- the agent and MCP lane (2026-11-26) -----------------------------------------------------
 
 
+AGENT, MODEL, SQUAT = "AGENT_LANE_TOKENS", "MODEL_LANE_TOKENS", "AGENT_HOST_DEPENDENCIES"
+
+
 @pytest.mark.parametrize(("ecosystem", "name", "lane"), [
-    ("npm", "@apexfdn/copilot-mcp", "copilot"),
-    ("npm", "@guangnao/claude-cli", "claude"),
-    ("npm", "create-ai-agent-setup", "agent"),
-    ("PyPI", "mcp-diag-7f3a", "mcp"),
-    ("PyPI", "glbl-agent", "agent"),
+    ("npm", "@apexfdn/copilot-mcp", ("copilot", AGENT)),
+    ("npm", "@guangnao/claude-cli", ("claude", AGENT)),
+    ("npm", "create-ai-agent-setup", ("agent", AGENT)),
+    ("PyPI", "mcp-diag-7f3a", ("mcp", AGENT)),
+    ("PyPI", "glbl-agent", ("agent", AGENT)),
     ("PyPI", "Open_AI.Tools", None),         # `open` and `ai`, not `openai`
-    ("PyPI", "openai-helpers", "openai"),
-    ("Go", "github.com/acme/mcp-go", "mcp"),
-    ("npm", "@skills/pack", "skills"),       # a scope token counts
-    ("PyPI", "magentic-utils", None),         # whole tokens only
+    ("PyPI", "openai-helpers", ("openai", AGENT)),
+    ("Go", "github.com/acme/mcp-go", ("mcp", AGENT)),
+    ("npm", "@skills/pack", ("skills", AGENT)),       # a scope token counts
+    ("PyPI", "magentic-utils", None),         # whole tokens only, and no agent-token prefix
     ("npm", "reagent-lib", None),
     ("npm", "@prime0/ajjv", None),
-    ("PyPI", "gpt-researcher", "a package the pin tables name"),   # no token, but pinned
+    ("PyPI", "gpt-researcher", ("gpt-researcher", script.PIN_TABLES)),   # no token, but pinned
+    # 2026-11-28: the model and runtime list, and agent-token typosquats.
+    ("PyPI", "llama-index-tools-x", ("llama", MODEL)),
+    ("npm", "tavern-ai-sdk", ("ai-sdk", MODEL)),      # `sdk` counts beside `ai`
+    ("npm", "@ai-sdk/helpers", ("ai-sdk", MODEL)),
+    ("npm", "acme-sdk", None),                         # and only there
+    ("PyPI", "mlp-agent-qwen", ("agent", AGENT)),      # the agent list is read first
+    ("npm", "openaii", ("openaii", SQUAT)),
+    ("npm", "langchian", None),    # two edits from langchain, but no agent token starts it
+    ("npm", "agentkeepalive-x", ("agentkeepalive", SQUAT)),
+    ("npm", "agentkit", None),     # starts with `agent`, three or more edits from every name
 ])
-def test_which_names_are_in_the_agent_lane(ecosystem: str, name: str, lane: str | None) -> None:
-    assert script.agent_lane(ecosystem, name) == lane
+def test_which_names_are_in_the_agent_lane(ecosystem: str, name: str, lane: tuple[str, str] | None) -> None:
+    match = script.agent_lane(ecosystem, name)
+    assert (match if match is None else (match.token, match.source)) == lane
+
+
+# The 27 Nov 2026 malware advisories the order names, as GitHub listed them (the GHSA ids
+# are test-only stand-ins: the real ones are in the bundled feed after the 28 Nov refresh).
+MODEL_LANE_CASES = [
+    ("pip", "vk-mlp-agent", "= 9999.0", "agent (AGENT_LANE_TOKENS)"),
+    ("pip", "qwen-tts-runtime", "= 0.3.0", "qwen (MODEL_LANE_TOKENS)"),
+    ("pip", "qwen-tts-cpu", "= 0.3.0", "qwen (MODEL_LANE_TOKENS)"),
+    ("pip", "qwentts-gradio", "= 0.3.0", "qwentts (MODEL_LANE_TOKENS)"),
+    ("pip", "qwenvox-tts-3", "= 0.3.0", "tts (MODEL_LANE_TOKENS)"),
+    ("npm", "agentkpalive", ">= 0", "agentkpalive (AGENT_HOST_DEPENDENCIES; 2 edits from agentkeepalive)"),
+    ("npm", "tavern-ai-sdk", "= 1.0.0", "ai-sdk (MODEL_LANE_TOKENS)"),
+]
+
+
+def test_the_27_nov_model_and_typosquat_names_are_kept_with_the_list_that_admitted_them(feed: Path) -> None:
+    advisories: dict[str, list[dict]] = {"pip": [], "npm": []}
+    for i, (ecosystem, name, spec, _lane) in enumerate(MODEL_LANE_CASES):
+        advisories[ecosystem].append(_advisory(f"GHSA-test-0028-{i:04d}", ecosystem, name, spec))
+    network = Network(advisories=advisories,
+                      refuse=("https://pypi.org", "https://registry.npmjs.org"))
+    outcome = script.refresh_bundled(feed, opener=network, now=NOW)
+    reasons = {d.name: (d.outcome, d.reason) for d in outcome.decisions}
+    for _ecosystem, name, spec, lane in MODEL_LANE_CASES:
+        assert reasons[name] == ("kept", f"agent lane: {lane}; the advisory lists {spec}"), name
+    assert outcome.written and outcome.checked
+    bundled = malicious_feed.parse_feed(json.loads(feed.read_text()), "bundled", feed)
+    assert bundled.match("PyPI", "vk-mlp-agent", "9999.0") and bundled.match("PyPI", "qwen-tts-cpu", "0.3.0")
+    assert bundled.match("npm", "agentkpalive", "1.0.0") and not bundled.match("PyPI", "qwen-tts-cpu", "0.2.0")
+
+
+@pytest.mark.parametrize("name", ["magentic", "reagent", "waveferry", "toneharbor"])
+def test_names_outside_both_lists_take_the_takeover_test(feed: Path, name: str) -> None:
+    """waveferry and toneharbor are generic audio names from the same 27 Nov batch."""
+    assert script.agent_lane("PyPI", name) is None
+    network = Network(advisories={"pip": [_advisory("GHSA-aaaa-bbbb-0104", "pip", name, ">= 0")]},
+                      refuse=("https://pypi.org", "https://api.osv.dev"))
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    assert decision.outcome == "dropped" and "every version (>= 0)" in decision.reason
+
+
+@pytest.mark.parametrize(("a", "b", "distance"), [
+    ("agentkpalive", "agentkeepalive", 2), ("openaii", "openai", 1), ("anthropic", "anthropic", 0),
+    ("agentkit", "agentkeepalive", 3),   # past the limit of 2: reported as 3
+    ("", "abc", 3), ("kitten", "sitting", 3),
+])
+def test_edit_distance(a: str, b: str, distance: int) -> None:
+    assert script.edit_distance(a, b, 2) == min(distance, 3)
 
 
 def _osv_every(ident: str, ecosystem: str, name: str, aliases: list[str]) -> dict:
@@ -429,7 +492,7 @@ def test_an_every_version_lane_package_is_kept_as_osv_lists_it(feed: Path) -> No
         refuse=("https://registry.npmjs.org",))
     outcome = script.refresh_bundled(feed, opener=network, now=NOW)
     [decision] = outcome.decisions
-    assert (decision.outcome, decision.reason) == ("kept", "agent lane: copilot; the advisory lists >= 0")
+    assert (decision.outcome, decision.reason) == ("kept", "agent lane: copilot (AGENT_LANE_TOKENS); the advisory lists >= 0")
     entry = json.loads(feed.read_text())["entries"][-1]
     assert (entry["id"], entry["all_versions"], entry["versions"], entry["aliases"]) == (
         "MAL-2026-90505", True, [], [ghsa])
@@ -446,7 +509,7 @@ def test_a_lane_package_with_listed_versions_is_kept_without_the_registry(feed: 
         osv={"@guangnao/claude-cli": [_osv("MAL-2026-93209", "npm", "@guangnao/claude-cli", versions, [ghsa])]},
         refuse=("https://registry.npmjs.org",))
     [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
-    assert (decision.outcome, decision.reason) == ("kept", "agent lane: claude; the advisory lists <= 1.0.17")
+    assert (decision.outcome, decision.reason) == ("kept", "agent lane: claude (AGENT_LANE_TOKENS); the advisory lists <= 1.0.17")
     entry = json.loads(feed.read_text())["entries"][-1]
     assert entry["id"] == "MAL-2026-93209" and "all_versions" not in entry
     assert sorted(entry["versions"]) == sorted(versions)
@@ -459,7 +522,7 @@ def test_a_lane_package_with_no_osv_record_is_written_from_the_advisory(feed: Pa
         ghsa, "npm", "create-ai-agent-setup", "= 2.0.0-alpha.0", "= 2.0.0", "= 2.1.0")]},
         refuse=("https://registry.npmjs.org",))
     [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
-    assert decision.outcome == "kept" and decision.reason.startswith("agent lane: agent;")
+    assert decision.outcome == "kept" and decision.reason.startswith("agent lane: agent (AGENT_LANE_TOKENS);")
     entry = json.loads(feed.read_text())["entries"][-1]
     assert (entry["id"], entry["versions"], entry["url"]) == (
         ghsa, ["2.0.0", "2.0.0-alpha.0", "2.1.0"], f"https://github.com/advisories/{ghsa}")

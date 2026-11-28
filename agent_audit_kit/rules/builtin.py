@@ -14418,7 +14418,8 @@ _r(
     "Remove the line from the skill, or replace it with a version you have reviewed, pinned exactly "
     "(`pkg==1.2.3`, `pkg@1.2.3`). Run `agent-audit-kit update` so the cached feed is current before "
     "trusting a clean result: the bundled copy lists takeovers of established packages and the malicious "
-    "agent and MCP packages GitHub reported from 23 Nov 2026 on, and any other newly registered malicious "
+    "agent, MCP and model-runtime packages GitHub reported from 21 Nov 2026 on, and any other newly "
+    "registered malicious "
     "name reaches the scan through the cached feed. Treat a machine whose "
     "agent ran the skill as compromised, and rotate the credentials its environment held.",
     sarif_name="AgentSkillInstallsMaliciousPackage",
@@ -14441,8 +14442,9 @@ _r(
         "registry package and are not matched, and neither is a package a requirements file or a "
         "script the command runs would install. Packages are matched as AAK-MALICIOUS-RELEASE-001 and "
         "-002 match them, against the same feed: the cached copy `agent-audit-kit update` writes, else "
-        "the bundled one, which lists takeovers of established packages and the malicious agent and MCP "
-        "packages GitHub reported from 23 Nov 2026 on (mcp-diag-7f3a), not older new names such as "
+        "the bundled one, which lists takeovers of established packages and the malicious agent, MCP and "
+        "model-runtime packages GitHub reported from 21 Nov 2026 on (mcp-diag-7f3a, qwen-tts-runtime), "
+        "not older new names such as "
         "mcp-aevo-server, so with the bundled copy alone that skill is silent. A finding's line is the "
         "first line holding the command, so a manifest string repeated on several lines reports the "
         "first. Only the first 2,000 string values of a manifest, 32 levels deep, are read, and a "

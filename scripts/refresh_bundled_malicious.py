@@ -1,13 +1,15 @@
-"""Add the takeovers, and the malicious agent and MCP packages, among GitHub's latest
-malware advisories to the bundled feed.
+"""Add the takeovers, and the malicious agent, MCP and model-runtime packages, among
+GitHub's latest malware advisories to the bundled feed.
 
 `agent_audit_kit/data/malicious_releases.json` is the malicious-release feed a
 scan reads when `agent-audit-kit update` has not built a cached copy: every
 fresh install, and every GitHub Action run that does not refresh the feeds. It
 lists established packages that were taken over (litellm, axios,
 @ethersphere/bee-js) and, since 2026-11-26, malicious packages in the agent and
-MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), not the other typosquats the full
-OSV list from `update` carries. On 2026-11-18 it was six days old and passed
+MCP lane (mcp-diag-7f3a, @apexfdn/copilot-mcp), since 2026-11-28 also those named
+after the models and runtimes wired into agents (qwen-tts-runtime) and typosquats of
+agent-host dependencies (agentkpalive), not the other typosquats the full OSV list
+from `update` carries. On 2026-11-18 it was six days old and passed
 agent-framework 1.26.2, published as malware that day; on 2026-11-25 it passed
 four malicious MCP-named PyPI packages and the npm agent scaffolder
 create-ai-agent-setup, which a fresh install scanned clean because only
@@ -22,10 +24,15 @@ takeovers were kept. This script keeps it current, and
    versions the advisory lists, every version (`>= 0`) included: its name, split
    on `-`, `_`, `.`, `/` and `@` (an npm scope and basename alike), holds a whole
    token of `AGENT_LANE_TOKENS` (`mcp`, `claude`, `agent`, ...; `magentic` and
-   `reagent` hold none), or it is a package one of the scanner's pin tables
-   names, the list `scripts/cve_watcher.py`'s `pinned_packages` reads for the
-   watcher. A typosquat aimed at agent users is the threat those users scan for,
-   and a fresh install would otherwise pass it until `update` runs. At most
+   `reagent` hold none), a whole token of `MODEL_LANE_TOKENS` (`qwen`, `tts`,
+   `gradio`, ...) or `ai` beside `sdk`, or a token that starts with an agent token
+   of five letters or more and is at most two edits from an
+   `AGENT_HOST_DEPENDENCIES` name (agentkpalive), or it is a package one of the
+   scanner's pin tables names, the list `scripts/cve_watcher.py`'s
+   `pinned_packages` reads for the watcher. Each decision names the list that
+   admitted the package. A typosquat aimed at agent users is the threat those
+   users scan for, and a fresh install would otherwise pass it until `update`
+   runs. At most
    `LANE_CAP` (50) lane packages are kept a run, oldest advisory first; past that
    each is `held`, a `REVIEW` line says how many, and `checked_at` is left as it
    was, so the next run takes them up again.
@@ -115,9 +122,33 @@ AGENT_LANE_TOKENS = (
     "skill", "skills", "openclaw", "langchain", "llm", "ollama", "litellm",
     "anthropic", "openai",
 )
+#: Name tokens of the models and runtimes people wire into agents, the second list
+#: that puts a package in the lane. Reviewed 2026-11-28 against GitHub's malware
+#: advisories of 27 Nov (qwen-tts-runtime, qwen-tts-cpu, qwentts-gradio,
+#: qwenvox-tts-3), which no agent token admitted. The intake reads malware
+#: advisories only, so a wider list admits more confirmed malware into the wheel,
+#: never a clean package; `LANE_CAP` still bounds a run. Kept apart from
+#: `AGENT_LANE_TOKENS` so a decision says which list admitted the package.
+MODEL_LANE_TOKENS = (
+    "qwen", "qwentts", "tts", "gradio", "llama", "mistral", "deepseek", "whisper",
+    "vllm", "transformers", "huggingface", "hf", "diffusers",
+)
+#: Adjacent token pairs that count as a `MODEL_LANE_TOKENS` entry: `sdk` alone is
+#: every vendor's, beside `ai` it is an AI SDK lure (tavern-ai-sdk, `@ai-sdk/...`).
+MODEL_LANE_PAIRS = (("ai", "sdk"),)
+#: Dependencies agent hosts install. A name token that starts with an
+#: `AGENT_LANE_TOKENS` entry of `TYPOSQUAT_PREFIX` letters or more and is at most
+#: `TYPOSQUAT_EDITS` edits from one of these is admitted as its typosquat:
+#: agentkpalive (agentkeepalive, two deletions) is; `magentic` and `reagent` start
+#: with no agent token and are not.
+AGENT_HOST_DEPENDENCIES = ("agentkeepalive", "langchain", "litellm", "openai", "anthropic")
+TYPOSQUAT_PREFIX = 5
+TYPOSQUAT_EDITS = 2
 #: At most this many lane packages are kept a run, oldest advisory first.
 LANE_CAP = 50
 _TOKEN_SPLIT_RE = re.compile(r"[-_./@]+")
+#: The list a pin-table match is reported under.
+PIN_TABLES = "the pin tables"
 
 GITHUB_ADVISORIES = "https://api.github.com/advisories?type=malware&ecosystem={ecosystem}&published={published}&per_page=100"
 #: GitHub's REST ecosystem names, and the registry each is in the feed.
@@ -454,14 +485,67 @@ def _pinned_packages() -> frozenset[tuple[str, str]]:
 _PINNED: frozenset[tuple[str, str]] | None = None
 
 
-def agent_lane(ecosystem: str, name: str) -> str | None:
-    """Why a package is in the agent and MCP lane (its first lane token, or that a pin
-    table names it), or None when it is not."""
-    for token in lane_tokens(name):
+class LaneMatch(NamedTuple):
+    """Why a package is in the lane: the token that admitted it and the list it is in."""
+
+    token: str   # the matching token, `ai-sdk` for a pair, the package name for a pin match
+    source: str  # "AGENT_LANE_TOKENS", "MODEL_LANE_TOKENS", "AGENT_HOST_DEPENDENCIES" or PIN_TABLES
+    detail: str = ""  # for a typosquat, how far it is from which dependency
+
+    def describe(self) -> str:
+        if self.source == PIN_TABLES:
+            return "a package the pin tables name"
+        return f"{self.token} ({self.source}{'; ' + self.detail if self.detail else ''})"
+
+
+def edit_distance(a: str, b: str, limit: int) -> int:
+    """Levenshtein distance of `a` and `b`, or `limit + 1` once it is past `limit`."""
+    if abs(len(a) - len(b)) > limit:
+        return limit + 1
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        if min(current) > limit:
+            return limit + 1
+        previous = current
+    return min(previous[-1], limit + 1)
+
+
+def _typosquat(token: str) -> LaneMatch | None:
+    """`token` as a typosquat of an agent-host dependency, or None."""
+    if not any(token.startswith(t) for t in AGENT_LANE_TOKENS if len(t) >= TYPOSQUAT_PREFIX):
+        return None
+    for dependency in AGENT_HOST_DEPENDENCIES:
+        distance = edit_distance(token, dependency, TYPOSQUAT_EDITS)
+        if distance <= TYPOSQUAT_EDITS:
+            edits = "edit" if distance == 1 else "edits"
+            return LaneMatch(token, "AGENT_HOST_DEPENDENCIES", f"{distance} {edits} from {dependency}")
+    return None
+
+
+def agent_lane(ecosystem: str, name: str) -> LaneMatch | None:
+    """Why a package is in the lane, or None when it is not: its first token in
+    `AGENT_LANE_TOKENS`, else its first in `MODEL_LANE_TOKENS` or `MODEL_LANE_PAIRS`,
+    else a token that is a typosquat of an `AGENT_HOST_DEPENDENCIES` name, else a pin
+    table naming it."""
+    tokens = lane_tokens(name)
+    for token in tokens:
         if token in AGENT_LANE_TOKENS:
-            return token
+            return LaneMatch(token, "AGENT_LANE_TOKENS")
+    for index, token in enumerate(tokens):
+        if token in MODEL_LANE_TOKENS:
+            return LaneMatch(token, "MODEL_LANE_TOKENS")
+        pair = tuple(tokens[index:index + 2])
+        if len(pair) == 2 and (pair in MODEL_LANE_PAIRS or pair[::-1] in MODEL_LANE_PAIRS):
+            return LaneMatch("-".join(pair), "MODEL_LANE_TOKENS")
+    for token in tokens:
+        squat = _typosquat(token)
+        if squat is not None:
+            return squat
     if (ecosystem, canonical_name(ecosystem, name)) in _pinned_packages():
-        return "a package the pin tables name"
+        return LaneMatch(canonical_name(ecosystem, name), PIN_TABLES)
     return None
 
 
@@ -505,8 +589,8 @@ def decide_package(opener: Opener, advisory: dict[str, Any], ecosystem: str, nam
 
 
 def _decide_lane(opener: Opener, advisory: dict[str, Any], ecosystem: str, name: str, specs: list[str],
-                 known: set[str], timeout: float, lane: str, lane_room: bool) -> Decision:
-    ghsa = str(advisory.get("ghsa_id"))
+                 known: set[str], timeout: float, match: LaneMatch, lane_room: bool) -> Decision:
+    ghsa, lane = str(advisory.get("ghsa_id")), match.describe()
     if not lane_room:
         return Decision(ecosystem, name, ghsa, "held", f"agent lane: {lane}; over the {LANE_CAP} lane packages "
                         "a run keeps, left for the next run", lane=True)
@@ -643,7 +727,8 @@ def refresh_bundled(
     named = ", ".join(ids[:-1]) + f" and {ids[-1]}" if len(ids) > 1 else ids[0]
     source = (
         f"{data.get('source', '').rstrip()} On {now:%Y-%m-%d}, scripts/refresh_bundled_malicious.py added "
-        f"{named}, takeovers of established packages and malicious agent and MCP packages among GitHub's "
+        f"{named}, takeovers of established packages and malicious agent, MCP and model-runtime packages "
+        f"among GitHub's "
         f"malware advisories published since "
         f"{since}, each as https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record)."
     )
