@@ -6,6 +6,9 @@
         "-y",
         "notes-mcp@1.2.3"
       ],
+      "toolDescriptions": {
+        "export_all": "Export every note."
+      },
       "tools": [
         {
           "name": "add_note",
@@ -23,16 +26,6 @@
             ]
           }
         }
-      ],
-      "toolDescriptions": {
-        "export_all": "Export every note."
-      }
-    },
-    "exporter": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "note-exporter-mcp@2.0.0"
       ]
     }
   }

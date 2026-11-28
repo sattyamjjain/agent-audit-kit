@@ -1143,3 +1143,64 @@ def test_siyuan_package_names_stay_quiet(tmp_path: Path) -> None:
     (tmp_path / "package.json").write_text('{"dependencies": {"siyuan": "1.2.7"}}', encoding="utf-8")
     (tmp_path / "requirements.txt").write_text("siyuan==0.1.2\n", encoding="utf-8")
     assert SIYUAN not in {f.rule_id for f in run_scan(tmp_path).findings}
+
+
+# ---- GitLab EE, CVE-2026-135221: the MCP server's OAuth handling (2026-11-26) ---------------
+
+GITLAB_SSRF = "AAK-MCP-GITLAB-CVE-2026-135221-001"
+GITLAB_SCOPE = "AAK-MCP-GITLAB-CVE-2026-123142-001"
+
+
+def _gitlab(tmp_path: Path, image: str) -> list[tuple[str, str]]:
+    (tmp_path / "compose.yaml").write_text(f"services:\n  g:\n    image: {image}\n", encoding="utf-8")
+    return sorted((f.rule_id, f.evidence) for f in scan(tmp_path)[0]
+                  if f.rule_id in (GITLAB_SSRF, GITLAB_SCOPE))
+
+
+def test_gitlab_ssrf_rows_are_ee_alone() -> None:
+    from agent_audit_kit.scanners.container_image_pins import _PINS
+
+    rows = [p for p in _PINS if p.rule_id == GITLAB_SSRF]
+    assert {(p.image, p.introduced, p.floor, p.floating_affected) for p in rows} == {
+        ("gitlab/gitlab-ee", (18, 10, 0), (19, 4, 11), False),
+        ("gitlab/gitlab-ee", (19, 5, 0), (19, 5, 9), False),
+        ("gitlab/gitlab-ee", (19, 6, 0), (19, 6, 2), False),
+    }
+
+
+@pytest.mark.parametrize(("version", "rules"), [
+    # The two tags the 25 Nov sweep scanned clean.
+    ("19.4.9", {GITLAB_SSRF}), ("19.6.1", {GITLAB_SSRF}),
+    # Each fixed release, and the first of each affected line.
+    ("19.4.11", set()), ("19.5.9", set()), ("19.6.2", set()),
+    ("18.10.0", {GITLAB_SSRF, GITLAB_SCOPE}), ("19.5.0", {GITLAB_SSRF, GITLAB_SCOPE}), ("19.6.0", {GITLAB_SSRF}),
+    ("19.4.10", {GITLAB_SSRF}), ("19.5.8", {GITLAB_SSRF}),
+    # 135221's range starts at 18.10, below 19.3.0, so 19.3.0 carries both flaws; 18.9 only
+    # CVE-2026-123142's, and 18.3 neither.
+    ("19.3.0", {GITLAB_SSRF, GITLAB_SCOPE}), ("18.9.5", {GITLAB_SCOPE}), ("18.3.6", set()),
+    # Shipped on the 19.6.2 patch day, still inside the range GitLab states.
+    ("19.3.10", {GITLAB_SSRF}), ("18.11.15", {GITLAB_SSRF, GITLAB_SCOPE}),
+])
+def test_gitlab_ee_ssrf_tags(tmp_path: Path, version: str, rules: set[str]) -> None:
+    found = _gitlab(tmp_path, f"gitlab/gitlab-ee:{version}-ee.0")
+    assert {rule for rule, _ in found} == rules
+    ssrf = [evidence for rule, evidence in found if rule == GITLAB_SSRF]
+    assert len(ssrf) == (1 if GITLAB_SSRF in rules else 0)
+
+
+@pytest.mark.parametrize("image", [
+    "gitlab/gitlab-ce:19.6.1-ce.0",   # the record names EE alone
+    "gitlab/gitlab-ee:latest",        # the 19.6.2 digest on 2026-11-25
+    "gitlab/gitlab-ee",
+    "docker.io/gitlab/gitlab-ee:19.6.1-ee.0",
+])
+def test_gitlab_ee_ssrf_references_not_reported(tmp_path: Path, image: str) -> None:
+    assert GITLAB_SSRF not in {rule for rule, _ in _gitlab(tmp_path, image)}
+
+
+def test_gitlab_ee_ssrf_finding_names_the_cve(tmp_path: Path) -> None:
+    (tmp_path / "compose.yaml").write_text(
+        "services:\n  g:\n    image: gitlab/gitlab-ee:19.6.1-ee.0\n", encoding="utf-8")
+    (finding,) = [f for f in run_scan(tmp_path).findings if f.rule_id == GITLAB_SSRF]
+    assert finding.cve_references == ["CVE-2026-135221"]
+    assert finding.severity.value == "medium" and finding.line_number == 3

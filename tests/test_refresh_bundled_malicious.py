@@ -161,7 +161,8 @@ def test_a_takeover_of_an_established_package_is_kept(feed: Path) -> None:
     assert data["source"].startswith(original["source"])
     assert data["source"].endswith(
         "On 2026-11-20, scripts/refresh_bundled_malicious.py added MAL-2026-90001, takeovers of established "
-        "packages among GitHub's malware advisories published since 2026-11-17, each as "
+        "packages and malicious agent and MCP packages among GitHub's malware advisories published since "
+        "2026-11-17, each as "
         "https://api.osv.dev/v1/vulns/<id> gave it (the GitHub advisory where OSV had no record).")
     # Every other byte is kept: the old file with the two header values replaced, and
     # `checked_at` on the line after `generated_at`, is the new file without the
@@ -370,15 +371,151 @@ def test_which_versions_an_advisory_lists(ecosystem: str, specs: list[str], vers
 # ---- the committed bundled feed ----------------------------------------------------------------
 
 
-def test_every_bundled_entry_is_read_and_the_added_ones_have_the_takeover_shape() -> None:
+def test_every_bundled_entry_is_read_and_the_added_ones_have_the_takeover_or_lane_shape() -> None:
+    """A takeover lists its malicious releases, never every version or a range; a
+    lane package may list every version, since it never had a clean release."""
     data = json.loads(malicious_feed.BUNDLED_FEED.read_text())
     entries = data["entries"]
     assert len({e["id"] for e in entries}) == len(entries)
     assert malicious_feed.parse_feed(data, "bundled", malicious_feed.BUNDLED_FEED).entry_count == len(entries)
     for entry in entries[7:]:  # after the seven hand-picked entries: the script's
         assert entry["id"] in data["source"], entry["id"]
-        assert entry["versions"] and not entry.get("all_versions") and not entry.get("ranges"), entry["id"]
+        assert not entry.get("ranges"), entry["id"]
+        if script.agent_lane(entry["ecosystem"], entry["name"]) is None:
+            assert entry["versions"] and not entry.get("all_versions"), entry["id"]
+        else:
+            assert entry["versions"] or entry.get("all_versions") is True, entry["id"]
         assert any(a.startswith("GHSA-") for a in [entry["id"], *entry["aliases"]]), entry["id"]
         assert entry["url"] in (f"https://osv.dev/vulnerability/{entry['id']}",
                                 f"https://github.com/advisories/{entry['id']}")
     assert malicious_feed.parse_generated_at(data["generated_at"]) is not None
+
+
+# ---- the agent and MCP lane (2026-11-26) -----------------------------------------------------
+
+
+@pytest.mark.parametrize(("ecosystem", "name", "lane"), [
+    ("npm", "@apexfdn/copilot-mcp", "copilot"),
+    ("npm", "@guangnao/claude-cli", "claude"),
+    ("npm", "create-ai-agent-setup", "agent"),
+    ("PyPI", "mcp-diag-7f3a", "mcp"),
+    ("PyPI", "glbl-agent", "agent"),
+    ("PyPI", "Open_AI.Tools", None),         # `open` and `ai`, not `openai`
+    ("PyPI", "openai-helpers", "openai"),
+    ("Go", "github.com/acme/mcp-go", "mcp"),
+    ("npm", "@skills/pack", "skills"),       # a scope token counts
+    ("PyPI", "magentic-utils", None),         # whole tokens only
+    ("npm", "reagent-lib", None),
+    ("npm", "@prime0/ajjv", None),
+    ("PyPI", "gpt-researcher", "a package the pin tables name"),   # no token, but pinned
+])
+def test_which_names_are_in_the_agent_lane(ecosystem: str, name: str, lane: str | None) -> None:
+    assert script.agent_lane(ecosystem, name) == lane
+
+
+def _osv_every(ident: str, ecosystem: str, name: str, aliases: list[str]) -> dict:
+    return {"id": ident, "modified": "2026-11-24T10:00:00Z", "aliases": aliases,
+            "affected": [{"package": {"ecosystem": ecosystem, "name": name},
+                          "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}]}]}]}
+
+
+def test_an_every_version_lane_package_is_kept_as_osv_lists_it(feed: Path) -> None:
+    """@apexfdn/copilot-mcp (GHSA-8q2p-w9w5-552h, MAL-2026-20505): every version, and no
+    registry request, since the takeover test is not asked."""
+    ghsa = "GHSA-test-0000-0001"  # the real ids are in the bundled feed now
+    network = Network(
+        advisories={"npm": [_advisory(ghsa, "npm", "@apexfdn/copilot-mcp", ">= 0")]},
+        osv={"@apexfdn/copilot-mcp": [_osv_every("MAL-2026-90505", "npm", "@apexfdn/copilot-mcp", [ghsa])]},
+        refuse=("https://registry.npmjs.org",))
+    outcome = script.refresh_bundled(feed, opener=network, now=NOW)
+    [decision] = outcome.decisions
+    assert (decision.outcome, decision.reason) == ("kept", "agent lane: copilot; the advisory lists >= 0")
+    entry = json.loads(feed.read_text())["entries"][-1]
+    assert (entry["id"], entry["all_versions"], entry["versions"], entry["aliases"]) == (
+        "MAL-2026-90505", True, [], [ghsa])
+    feed_ = malicious_feed.parse_feed(json.loads(feed.read_text()), "bundled", feed)
+    assert feed_.match("npm", "@apexfdn/copilot-mcp", "1.0.0") and outcome.checked
+
+
+def test_a_lane_package_with_listed_versions_is_kept_without_the_registry(feed: Path) -> None:
+    """@guangnao/claude-cli (GHSA-vfqh-3659-q56x): 1.0.0 to 1.0.17, every release it has."""
+    ghsa = "GHSA-test-0000-0002"
+    versions = [f"1.0.{i}" for i in range(18)]
+    network = Network(
+        advisories={"npm": [_advisory(ghsa, "npm", "@guangnao/claude-cli", "<= 1.0.17")]},
+        osv={"@guangnao/claude-cli": [_osv("MAL-2026-93209", "npm", "@guangnao/claude-cli", versions, [ghsa])]},
+        refuse=("https://registry.npmjs.org",))
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    assert (decision.outcome, decision.reason) == ("kept", "agent lane: claude; the advisory lists <= 1.0.17")
+    entry = json.loads(feed.read_text())["entries"][-1]
+    assert entry["id"] == "MAL-2026-93209" and "all_versions" not in entry
+    assert sorted(entry["versions"]) == sorted(versions)
+
+
+def test_a_lane_package_with_no_osv_record_is_written_from_the_advisory(feed: Path) -> None:
+    """create-ai-agent-setup (GHSA-4c46-v99r-6h9r): three listed releases, no OSV record."""
+    ghsa = "GHSA-test-0000-0003"
+    network = Network(advisories={"npm": [_advisory(
+        ghsa, "npm", "create-ai-agent-setup", "= 2.0.0-alpha.0", "= 2.0.0", "= 2.1.0")]},
+        refuse=("https://registry.npmjs.org",))
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    assert decision.outcome == "kept" and decision.reason.startswith("agent lane: agent;")
+    entry = json.loads(feed.read_text())["entries"][-1]
+    assert (entry["id"], entry["versions"], entry["url"]) == (
+        ghsa, ["2.0.0", "2.0.0-alpha.0", "2.1.0"], f"https://github.com/advisories/{ghsa}")
+
+
+def test_a_lane_record_listing_every_version_is_narrowed_to_the_advisory(feed: Path) -> None:
+    """A lane package whose advisory lists some versions keeps those, never OSV's
+    every version: an established lane package taken over still has clean releases."""
+    ghsa = "GHSA-aaaa-bbbb-0101"
+    network = Network(
+        advisories={"pip": [_advisory(ghsa, "pip", "aak-mcp-old", "= 3.1.0")]},
+        osv={"aak-mcp-old": [_osv_every("MAL-2026-90101", "PyPI", "aak-mcp-old", [ghsa])]})
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    entry = json.loads(feed.read_text())["entries"][-1]
+    assert decision.outcome == "kept"
+    assert (entry["id"], entry["versions"], entry.get("all_versions")) == (ghsa, ["3.1.0"], None)
+
+
+@pytest.mark.parametrize("name", ["@prime0/ajjv", "magentic-utils"])
+def test_an_every_version_advisory_outside_the_lane_is_still_dropped(feed: Path, name: str) -> None:
+    network = Network(advisories={"npm": [_advisory("GHSA-aaaa-bbbb-0102", "npm", name, ">= 0")]},
+                      refuse=("https://registry.npmjs.org", "https://api.osv.dev"))
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    assert decision.outcome == "dropped" and "every version (>= 0)" in decision.reason
+
+
+def test_a_package_a_pin_table_names_is_in_the_lane(feed: Path) -> None:
+    network = Network(advisories={"pip": [_advisory("GHSA-aaaa-bbbb-0103", "pip", "gpt-researcher", "= 9.9.9")]})
+    [decision] = script.refresh_bundled(feed, opener=network, now=NOW).decisions
+    assert (decision.outcome, decision.reason) == (
+        "kept", "agent lane: a package the pin tables name; the advisory lists = 9.9.9")
+
+
+def _lane_flood(count: int) -> Network:
+    advisories = []
+    for i in range(count):
+        advisory = _advisory(f"GHSA-lane-{i:04d}-aaaa", "npm", f"aak-mcp-flood-{i}", "= 1.0.0")
+        advisory["published_at"] = _iso(PUBLISHED - timedelta(minutes=count - i))   # 0 is the oldest
+        advisories.append(advisory)
+    return Network(advisories={"npm": advisories}, refuse=("https://registry.npmjs.org",))
+
+
+def test_past_the_lane_cap_the_newest_are_held_and_checked_at_is_not_set(feed: Path) -> None:
+    outcome = script.refresh_bundled(feed, opener=_lane_flood(51), now=NOW)
+    assert [d.outcome for d in outcome.decisions].count("kept") == 50
+    [held] = [d for d in outcome.decisions if d.outcome == "held"]
+    assert held.name == "aak-mcp-flood-50"
+    assert outcome.written and not outcome.checked
+    data = json.loads(feed.read_text())
+    assert "checked_at" not in data and len(outcome.added) == 50
+
+
+def test_main_prints_the_review_line_when_the_cap_is_reached(feed: Path, monkeypatch: pytest.MonkeyPatch,
+                                                            capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(urllib.request, "urlopen", _lane_flood(52))
+    assert script.main(["--feed", str(feed)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert "REVIEW  lane cap reached, 2 not added" in lines
+    assert lines[-1].startswith("52 packages: 50 kept, 0 could not be checked;")

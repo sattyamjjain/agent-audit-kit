@@ -29,7 +29,8 @@ The pin-and-verify pair, run on a schedule rather than once.
 
 ```bash
 # At approval: record a SHA-256 fingerprint of every tool's name,
-# description and input schema.
+# description, input and output schemas, annotations and title, and
+# of every server's launch command, args and URL.
 agent-audit-kit pin .
 
 # Later, and repeatedly: compare the live surface against the pin.

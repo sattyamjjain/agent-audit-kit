@@ -1,0 +1,11 @@
+{
+  "name": "m",
+  "owner": {"name": "o"},
+  "plugins": [
+    {
+      "name": "notes",
+      "source": "./notes",
+      "description": "Add a note. Documentation: https://example.com/notes"
+    }
+  ]
+}

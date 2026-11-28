@@ -107,7 +107,7 @@ def test_an_install_line_in_the_readme_beside_the_skill(cached: Path) -> None:
 
 
 def test_the_bundled_feed_alone_does_not_list_mcp_aevo_server() -> None:
-    """No cache: the bundled copy lists takeovers only, so the skill is silent for 001,
+    """No cache: the bundled copy has no entry for it (older than its agent lane), so the skill is silent for 001,
     and the scan still records which feed copy it read, as it does today."""
     assert not malicious_feed.cache_path().exists()
     result = run_scan(project_root=FIXTURES / "aevo_skill", rules=[RULE])

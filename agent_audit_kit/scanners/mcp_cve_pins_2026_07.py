@@ -463,6 +463,8 @@ available) before shipping:
     stripping. A stated version is required. Not an MCP surface)
   - iotdb-mcp-server               <  0.3.0  (CVE-2026-135747; the startup log line held
     the database password. PyPI only, a stated version required)
+  - pain001-mcp                    0.0.72 <= v < 0.0.80  (CVE-2026-136620; the
+    commit_payment_batch tool wrote to any path. PyPI only, a stated version required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -2632,6 +2634,15 @@ _PINS: tuple[_Pin, ...] = (
     # a stated version is required.
     _Pin("AAK-MCP-IOTDB-CVE-2026-135747-001", "iotdb-mcp-server", ("iotdb-mcp-server",),
          (0, 3, 0), fix_label="0.3.0, then change the IoTDB password it logged",
+         requires_version=True, ecosystem="py"),
+    # pain001-mcp: `commit_payment_batch` writes the committed XML to `output_file_path` as
+    # given, parents created, so a caller can create or overwrite any file the server can
+    # write (CVE-2026-136620). Read in the wheels: 0.0.71 has no such tool, 0.0.72 and
+    # 0.0.79 write the path as given, and 0.0.80 resolves it inside one output directory
+    # and never replaces a file. Not on npm. `latest` is 0.0.91.
+    _Pin("AAK-MCP-PAIN001-CVE-2026-136620-001", "pain001-mcp",
+         ("pain001-mcp",), (0, 0, 80), introduced=(0, 0, 72),
+         fix_label="0.0.80 (affected from 0.0.72)",
          requires_version=True, ecosystem="py"),
 )
 

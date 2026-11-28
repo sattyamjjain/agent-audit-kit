@@ -27,7 +27,7 @@ from agent_audit_kit.scanners._helpers import (
     wildcard_dns_ip,
     zcode_workspace_configs,
 )
-from agent_audit_kit.scanners._launchers import launch_evidence
+from agent_audit_kit.scanners._launchers import Launched, launch_evidence, pin_problem, py_spec
 
 # Patterns for secret-like keys in MCP server env blocks
 SECRET_KEY_PATTERNS = re.compile(
@@ -40,6 +40,9 @@ SHELL_WRAPPERS = ("sh -c", "bash -c", "cmd /c", "cmd.exe /c")
 
 # npx-like package fetchers
 PACKAGE_FETCHERS = ("npx", "uvx", "bunx", "pnpx")
+# A PyPI requirement as uvx reads it: a name, optional extras, then nothing, or a
+# version clause, uv's `@version`, a marker or a parenthesised specifier.
+_PY_SPEC_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\s*(?:\[[^\]]*\]\s*)?(?:$|[=<>!~@;(])")
 
 # Well-known binaries that are acceptable without absolute paths
 KNOWN_BINARIES = frozenset({
@@ -378,6 +381,24 @@ def _check_server(
             if isinstance(arg, str) and not arg.startswith("-"):
                 # Skip path-like arguments
                 if arg.startswith("/") or arg.startswith("./") or arg.startswith("../"):
+                    continue
+                # uvx takes PyPI specs, which pin with `==`: the npm test below read
+                # `mcp-runtime-report==1.0.0` as unpinned because it has no `@`. Its
+                # specs are judged as AAK-SUPPLY-001 judges them: an exact version
+                # (`pkg==1.2.3`, uv's `pkg@1.2.3`) or a commit is a pin, a range
+                # (`pkg>=1.0`), a tag (`pkg@latest`) or no version is not.
+                if cmd_bin == "uvx":
+                    problem = pin_problem(Launched("py", arg, "uvx"))
+                    # An argument that is no PyPI spec at all (an option's value such
+                    # as `Jira AI bot`, or a `neo4j+s://` URL) names no version, so
+                    # "floating tag `AI bot`" would mislead: it keeps the old wording.
+                    if problem is not None and py_spec(arg).kind == "registry" and not _PY_SPEC_RE.match(arg):
+                        problem = "no version pin"
+                    if problem is not None:
+                        findings.append((_make_finding(
+                            "AAK-MCP-007", file_path,
+                            launch_evidence(server_name, str(shown_arg(args, index)), problem),
+                        ), arg))
                     continue
                 # Check if it looks like a package name without @version
                 if arg and "@" not in arg:

@@ -12,8 +12,8 @@ Nothing here was cut; it is the same content with a home of its own.
 | `agent-audit-kit scan . --ci` | CI mode: SARIF + `--fail-on high` |
 | `agent-audit-kit discover` | Find the AI agent configs in your home directory |
 | `agent-audit-kit discover .` | Same, plus the project's own per-platform configs (`.mcp.json`, `.cursor/mcp.json`, ...) |
-| `agent-audit-kit pin .` | Pin tool definitions (SHA-256 hashes) |
-| `agent-audit-kit verify .` | Check tools against pins (detect rug pulls) |
+| `agent-audit-kit pin .` | Pin tool definitions and server launches (SHA-256 hashes) |
+| `agent-audit-kit verify .` | Check tools and servers against pins (detect rug pulls) |
 | `agent-audit-kit fix . --dry-run` | Auto-fix common misconfigurations |
 | `agent-audit-kit suggest run.sarif --pr` | Markdown remediation body for `gh pr create --body-file -` |
 | `agent-audit-kit suggest run.sarif --auto-pr` | Apply allow-listed mechanical fixes on a branch and open a **draft** PR |
@@ -170,7 +170,9 @@ agent-audit-kit pin .
 agent-audit-kit verify .
 ```
 
-Detects: tool definitions changed (AAK-RUGPULL-001), new tools added (AAK-RUGPULL-002), tools removed (AAK-RUGPULL-003). `verify` exits 1 when it finds any of them and 0 when every tool matches its pin, so the CI line above fails the job on drift. `watch --once` exits the same way (through 0.6.22 it exited 0 after printing a drift); the long-running `watch` reports each drift and keeps watching.
+A pin covers each tool's `name`, `description`, `inputSchema`, `annotations`, `title` and `outputSchema`, and each server's launch: `command`, `args`, `url`, `type` and the names of its `env` keys, never their values. Every server is pinned, with or without a `tools` list, so a server whose tools arrive only at run time still has a launch to compare. A pin file written before this format (entries without `"v"`) is still compared, on the name, description and input schema it recorded, and `verify` and `scan` print a note on stderr until you run `pin` again.
+
+Detects: tool definitions or server launches changed (AAK-RUGPULL-001), new tools or servers added (AAK-RUGPULL-002), tools or servers removed (AAK-RUGPULL-003). `verify` exits 1 when it finds any of them and 0 when every tool matches its pin, so the CI line above fails the job on drift. `watch --once` exits the same way (through 0.6.22 it exited 0 after printing a drift); the long-running `watch` reports each drift and keeps watching.
 
 A pin file that exists but cannot be read (not valid JSON, not UTF-8, not a map of pins) is never a pass: `verify` and `watch --once` exit 2, `watch` prints "not verified", and `scan` files `AAK-INTERNAL-SCANNER-FAIL` against the pin file and exits 1 as incomplete. Restore the file from git rather than re-pinning blind: `pin` accepts whatever the config declares now. `verify` and `watch --once` also exit 2 when the check itself fails, as on an MCP config they cannot decode.
 

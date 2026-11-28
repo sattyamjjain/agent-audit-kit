@@ -1,10 +1,20 @@
 {
+  "notes/": {
+    "v": 2,
+    "kind": "server",
+    "name": "notes",
+    "hash": "6d9263f2b111278ba43c848be7da83fbb66174aaf2ac82a0b15de61f685af1df"
+  },
   "notes/add_note": {
-    "hash": "fd6c2bfe8133e478aa84c85735c6bd81aa358fb00323fc66f0e49e5ccc8ac351",
-    "name": "add_note"
+    "v": 2,
+    "kind": "tool",
+    "name": "add_note",
+    "hash": "c4cb86b1bdb1abac22092181e8d5102f64d0b693b0e69e09c92490a882b655f1"
   },
   "notes/delete_note": {
-    "hash": "ff6ca88ff36a16042273bfc15145acc6ba638af6892c2e80bdd55f41fb8e4f36",
-    "name": "delete_note"
+    "v": 2,
+    "kind": "tool",
+    "name": "delete_note",
+    "hash": "8960f6fd889f5d99b70f35b08b824c5d901495a44124a01a94c893732d00859f"
   }
 }

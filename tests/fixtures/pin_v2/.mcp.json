@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "files": {
+      "command": "npx",
+      "args": ["-y", "files-mcp@1.2.0"],
+      "env": {"FILES_ROOT": "/srv/files"},
+      "tools": [
+        {
+          "name": "read_file",
+          "description": "Read a file.",
+          "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}},
+          "annotations": {"readOnlyHint": true, "destructiveHint": false},
+          "title": "Read file",
+          "outputSchema": {"type": "object"}
+        }
+      ]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch==2025.4.7"]
+    },
+    "docs": {
+      "type": "http",
+      "url": "https://docs.example.com/mcp"
+    }
+  }
+}

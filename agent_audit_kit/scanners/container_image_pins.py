@@ -62,7 +62,8 @@ Hub image `getrebuild/rebuild` and as a Java archive; npm's and PyPI's `rebuild`
 other projects. GitLab, whose instance serves MCP, ships as the Docker Hub images
 `gitlab/gitlab-ce` and `gitlab/gitlab-ee`, tagged `X.Y.Z-ce.0` and `X.Y.Z-ee.0`, and as
 Linux packages and a Helm chart, which are not read; npm's `@zereight/mcp-gitlab` is a
-third party's server for it.
+third party's server for it. CVE-2026-135221 is in EE alone, so its rows name only
+`gitlab/gitlab-ee`.
 Flowise, whose chatflows can be served as MCP servers, ships as the Docker Hub image
 `flowiseai/flowise`, tagged by release, and as the npm package `flowise`, which has a row
 in `mcp_cve_pins_2026_07` for the same rule; `flowiseai/flowise-worker` runs the queue
@@ -872,6 +873,28 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-GITLAB-CVE-2026-123142-001", "GitLab EE", "gitlab/gitlab-ee",
         (19, 5, 6), "from 19.5 below 19.5.6", "Fixed in 19.3.9, 19.4.8 and 19.5.6.",
         ("CVE-2026-123142",), introduced=(19, 5, 0),
+    ),
+    # GitLab EE: CVE-2026-135221, the MCP server's OAuth handling validated a URL too
+    # loosely, so an authenticated user could have the instance request internal addresses.
+    # GitLab's 19.6.2 patch release and its CNA record name EE only, from 18.10 before
+    # 19.4.11, 19.5 before 19.5.9 and 19.6 before 19.6.2; not read in the source. The same
+    # release's 19.3.10, 19.2.11, 19.1.11, 19.0.12 and 18.11.15 sit inside the first range
+    # as GitLab states it, so they are reported. Docker Hub had every fixed tag on
+    # 2026-11-25 and no 19.4.9; `latest` was the 19.6.2 digest, fixed.
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-135221-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 4, 11), "from 18.10 below 19.4.11", "Fixed in 19.4.11, 19.5.9 and 19.6.2.",
+        ("CVE-2026-135221",), introduced=(18, 10, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-135221-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 5, 9), "from 19.5 below 19.5.9", "Fixed in 19.4.11, 19.5.9 and 19.6.2.",
+        ("CVE-2026-135221",), introduced=(19, 5, 0),
+    ),
+    _ImagePin(
+        "AAK-MCP-GITLAB-CVE-2026-135221-001", "GitLab EE", "gitlab/gitlab-ee",
+        (19, 6, 2), "from 19.6 below 19.6.2", "Fixed in 19.4.11, 19.5.9 and 19.6.2.",
+        ("CVE-2026-135221",), introduced=(19, 6, 0),
     ),
     # Flowise: CVE-2026-130796, the public chatflow route answers with the chatflow's MCP
     # server token. The MCP server arrives in 3.1.3 (read in the npm tarballs, which the

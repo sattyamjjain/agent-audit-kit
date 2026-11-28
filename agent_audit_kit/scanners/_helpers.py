@@ -54,6 +54,33 @@ INTERPOLATION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A local secret named in text an agent reads: AAK-SKILL-003 and -006 in a
+# SKILL.md, and AAK-POISON-002's exfiltration arm in a tool, skill or plugin
+# description. Moved here from skill_poisoning.py so tool_poisoning.py can share
+# it without importing the module that imports it.
+#
+# The whole alternation used to sit inside `\b(?:...)\b`. `\b` needs a word
+# character on one side, so in front of a `~`, `.` or `$` it held only after a
+# word character: `~/.ssh`, `.aws/credentials` and `.netrc` never matched after
+# a space, a slash or a quote (`curl -T ~/.aws/credentials ...` scanned clean),
+# while `config.netrc` did. Word-led tokens keep `\b`; each symbol-led path gets
+# a lookbehind that refuses a word character or another path character before
+# it, which is the boundary it was meant to have. `$HOME/.ssh` and
+# `${HOME}/.ssh` are spelled out beside `~/.ssh`.
+#
+# `$HOME` and a bare `~/` were in the list too, and dead for the same reason.
+# They are not brought back: a home directory on its own is not local data.
+# Every install line names one (`~/.local/bin`, `$HOME/.bun`), and
+# AAK-SKILL-003 pairs this pattern with any `curl` anywhere in the file, so
+# restoring them would report most skills that document an install. The
+# credential files under the home directory are what both rules mean.
+LOCAL_SECRET_RE = re.compile(
+    r"\b(?:process\.env|os\.environ|id_rsa|id_ed25519|read(?:Text|File))\b"
+    r"|(?<![\w.-])\.(?:aws/credentials|netrc)\b"
+    r"|(?<![\w~/.$-])(?:~|\$HOME|\$\{HOME\})/\.ssh\b",
+    re.IGNORECASE,
+)
+
 # Block comments (`/\*.*?\*/`, `<!--[\s\S]*?-->`) do not nest, so an opener after
 # the last closer can never close. A lazy pattern still read from each such
 # opener to the end of the text, so a file of unclosed `/*` grew with the square

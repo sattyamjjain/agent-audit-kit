@@ -956,3 +956,33 @@ def test_each_server_launching_the_package_is_its_own_finding(tmp_path: Path) ->
         (UNPINNED, "Server 'a' arg: local-commander-agent"),
         (UNPINNED, "Server 'b' arg: local-commander-agent"),
     ]
+
+
+# ---- the agent and MCP lane in the bundled feed (2026-11-26) ---------------------------------
+
+AGENT_LANE_FIXTURE = Path(__file__).parent / "fixtures" / "agent_lane_malware"
+
+
+def test_a_fresh_install_reports_the_agent_lane_malware_from_the_bundled_feed() -> None:
+    """GitHub's malware advisories of 24 and 25 Nov for MCP and agent package names, which
+    the bundle took in once `scripts/refresh_bundled_malicious.py` kept the agent lane.
+    No cache exists (HOME is empty per test), so the scan reads the bundled feed: on main
+    before the lane it read none of them, and the uvx `==` launch was also a LOW
+    AAK-MCP-007 "no version pin"."""
+    result = run_scan(AGENT_LANE_FIXTURE)
+    assert result.data_feeds["maliciousReleases"]["origin"] == "bundled"
+    hits = sorted((f.file_path, f.line_number, f.rule_id) for f in result.findings
+                  if f.severity is Severity.CRITICAL)
+    assert hits == [
+        (".claude/skills/helper/SKILL.md", 11, "AAK-SKILL-INSTALL-MALICIOUS-001"),   # @apexfdn/copilot-mcp
+        (".claude/skills/helper/SKILL.md", 12, "AAK-SKILL-INSTALL-MALICIOUS-001"),   # mcp-diag-7f3a
+        (".mcp.json", 3, "AAK-MALICIOUS-RELEASE-001"),   # @apexfdn/copilot-mcp, every version
+        (".mcp.json", 4, "AAK-MALICIOUS-RELEASE-001"),   # @guangnao/claude-cli 1.0.17
+        (".mcp.json", 5, "AAK-MALICIOUS-RELEASE-001"),   # uvx mcp-runtime-report==1.0.0
+        ("package.json", 5, "AAK-MALICIOUS-RELEASE-001"),
+        ("package.json", 6, "AAK-MALICIOUS-RELEASE-001"),
+        ("package.json", 7, "AAK-MALICIOUS-RELEASE-001"),   # create-ai-agent-setup 2.1.0
+        ("requirements.txt", 1, "AAK-MALICIOUS-RELEASE-001"),   # mcp-sysinfo-tools
+        ("requirements.txt", 2, "AAK-MALICIOUS-RELEASE-001"),   # mcp-env-report
+    ]
+    assert "AAK-MCP-007" not in {f.rule_id for f in result.findings}

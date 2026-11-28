@@ -1287,9 +1287,13 @@ def test_no_scanner_calls_a_recursive_parser_directly() -> None:
         if path.name == "_helpers.py":
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        imports_frontmatter = "_parse_frontmatter" in {
-            alias.name for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
+        # The name skill_composition's YAML `_parse_frontmatter` is bound to here,
+        # under an `as` too: skill_poisoning has a line parser of its own by that
+        # name, which takes no path, and imports the YAML one as another.
+        frontmatter_names = {
+            alias.asname or alias.name for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
             and node.module == "agent_audit_kit.scanners.skill_composition" for alias in node.names
+            if alias.name == "_parse_frontmatter"
         }
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
@@ -1300,8 +1304,7 @@ def test_no_scanner_calls_a_recursive_parser_directly() -> None:
                 if (func.value.id, func.attr) in _RAW_PARSERS:
                     offenders.append(f"{where} {func.value.id}.{func.attr}")
             elif isinstance(func, ast.Name):
-                takes_path = func.id in _PATH_TAKING_HELPERS or (
-                    func.id == "_parse_frontmatter" and imports_frontmatter)
+                takes_path = func.id in _PATH_TAKING_HELPERS or func.id in frontmatter_names
                 if takes_path and len(node.args) + len(node.keywords) < 2:
                     offenders.append(f"{where} {func.id} without a path")
     assert not offenders, offenders
