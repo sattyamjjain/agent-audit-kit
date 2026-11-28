@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>MCP Security Index — agent-audit-kit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, Segoe UI, Inter, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color:#0c0c0d; }
+  h1 { font-size: 1.6rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  th, td { padding: .55rem .7rem; border-bottom: 1px solid #e6e6e9; font-size: .95rem; text-align: left; }
+  th { background: #f6f6f8; font-weight: 600; }
+  .grade { display: inline-block; padding: 2px 8px; border-radius: 4px; color: white; font-weight: 600; }
+  .grade-A { background: #16a34a; } .grade-B { background: #65a30d; } .grade-C { background: #ca8a04; }
+  .grade-D { background: #ea580c; } .grade-F { background: #dc2626; }
+  .muted { color: #6b7280; font-size: .85rem; }
+  .badge { font-size: .75rem; padding: 1px 6px; border-radius: 3px; background:#f3f4f6; color:#374151; margin-left:.4rem; }
+</style>
+</head><body>
+<h1>MCP Security Index</h1>
+<p class="muted">Weekly grade across 141 public MCP servers. Scanner:
+<a href="https://github.com/sattyamjjain/agent-audit-kit">agent-audit-kit</a>. Snapshot: 2026-11-23T19:29+00:00.</p>
+<p class="muted">Grades and severity counts are public from a server's first scan. We publish rule IDs and
+per-rule counts 90 days after we privately tell the maintainer, or sooner if a fix ships. See our
+<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
+
+<h2 style="margin-top:1.5rem;font-size:1.1rem">Week-over-week grade distribution</h2>
+<svg viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="grade distribution trend">
+<line x1="50" y1="150" x2="705" y2="150" stroke="#9ca3af" />
+<line x1="50" y1="20" x2="50" y2="150" stroke="#9ca3af" />
+<text x="5" y="30" font-size="9" fill="#374151">147</text>
+<text x="5" y="150" font-size="9" fill="#374151">0</text>
+<polyline fill="none" stroke="#16a34a" stroke-width="2" points="50.0,110.2 109.5,111.1 169.1,111.1 228.6,120.8 288.2,111.1 347.7,110.2 407.3,113.7 466.8,112.9 526.4,109.3 585.9,111.1 645.5,107.6 705.0,99.6" />
+<text x="708" y="103.59183673469389" font-size="10" fill="#16a34a">A</text>
+<polyline fill="none" stroke="#65a30d" stroke-width="2" points="50.0,137.6 109.5,135.9 169.1,135.0 228.6,140.3 288.2,134.1 347.7,134.1 407.3,118.2 466.8,114.6 526.4,116.4 585.9,116.4 645.5,113.7 705.0,121.7" />
+<text x="708" y="125.70068027210884" font-size="10" fill="#65a30d">B</text>
+<polyline fill="none" stroke="#ca8a04" stroke-width="2" points="50.0,131.4 109.5,135.9 169.1,132.3 228.6,134.1 288.2,133.2 347.7,130.5 407.3,132.3 466.8,133.2 526.4,131.4 585.9,128.8 645.5,127.9 705.0,132.3" />
+<text x="708" y="136.312925170068" font-size="10" fill="#ca8a04">C</text>
+<polyline fill="none" stroke="#ea580c" stroke-width="2" points="50.0,137.6 109.5,134.1 169.1,133.2 228.6,134.1 288.2,132.3 347.7,135.9 407.3,139.4 466.8,139.4 526.4,139.4 585.9,139.4 645.5,144.7 705.0,142.0" />
+<text x="708" y="146.0408163265306" font-size="10" fill="#ea580c">D</text>
+<polyline fill="none" stroke="#dc2626" stroke-width="2" points="50.0,104.9 109.5,104.9 169.1,110.2 228.6,98.7 288.2,113.7 347.7,112.9 407.3,118.2 466.8,119.9 526.4,125.2 585.9,126.1 645.5,127.9 705.0,129.7" />
+<text x="708" y="133.65986394557822" font-size="10" fill="#dc2626">F</text>
+<text x="50" y="170" font-size="9" fill="#374151">2026-09-07</text>
+<text x="650" y="170" font-size="9" fill="#374151">2026-11-23</text>
+</svg>
+
+<table>
+<thead><tr><th>#</th><th>Server</th><th>Grade</th><th>Score</th><th>Criticals</th><th>Highs</th><th>Last scanned</th></tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="server/huaweiide__codearts-ide-web-sdk.html">HuaweiIDE/codearts-ide-web-sdk/.codemate/mcp/mcp_settings.json</a> <span class="badge">no-findings</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>100/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="server/arch3rpro__1panel-appstore.html">arch3rPro/1Panel-Appstore/apps/mcphub/latest/mcp_settings.json</a> <span class="badge">no-findings</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>100/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="server/circuit-synth__circuit-synth.html">circuit-synth/circuit-synth/.claude/mcp_settings.json</a> <span class="badge">no-findings</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>100/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="server/sheawinkler__contextlattice.html">sheawinkler/ContextLattice/config/mcp/cline_mcp_settings.json</a> <span class="badge">no-findings</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>100/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="server/agentorchestrator__agentbase.html">AgentOrchestrator/AgentBase</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="server/assafwoo__homebrew-pandafilter.html">AssafWoo/homebrew-pandafilter</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>7</td>
+<td><a href="server/beatapi__beatdesign.html">BeatAPI/BeatDesign/integrations/cline/mcp_settings.json.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>8</td>
+<td><a href="server/maartensmeets__mcp-server-fetch.html">MaartenSmeets/mcp-server-fetch/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>9</td>
+<td><a href="server/pierrekieffer__http-tanker.html">PierreKieffer/http-tanker</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>10</td>
+<td><a href="server/synerise__synerise-design.html">Synerise/synerise-design</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>11</td>
+<td><a href="server/triv3__mcp-kali-server.html">TriV3/MCP-Kali-Server/.claude/mcp_settings.json.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>12</td>
+<td><a href="server/zproger__conceptloom.html">Zproger/ConceptLoom/adapters/claude-code/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>13</td>
+<td><a href="server/aegntic__aegntic-mcp.html">aegntic/aegntic-MCP/quick-data/.mcp.json.sample</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>14</td>
+<td><a href="server/agenticsorg__edge-agents.html">agenticsorg/edge-agents/settings/sample_cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>15</td>
+<td><a href="server/alla2001__material-painter.html">alla2001/material-painter</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>16</td>
+<td><a href="server/alphaplapplap__mcp-memory-service.html">alphaplapplap/mcp-memory-service/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>17</td>
+<td><a href="server/aws-solutions-library-samples__accelerated-intelligent-document-processing-on-aws.html">aws-solutions-library-samples/accelerated-intelligent-document-processing-on-aws/lib/idp_mcp_connector_pkg/settings/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>18</td>
+<td><a href="server/aws-solutions-library-samples__accelerated-intelligent-document-processing-on-aws.html">aws-solutions-library-samples/accelerated-intelligent-document-processing-on-aws/lib/idp_mcp_connector_pkg/settings/kiro_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>19</td>
+<td><a href="server/cyberagiinc__devdocs.html">cyberagiinc/DevDocs/claude_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>20</td>
+<td><a href="server/cyberagiinc__devdocs.html">cyberagiinc/DevDocs/config/claude_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>21</td>
+<td><a href="server/davebream__claude-of-alexandria.html">davebream/claude-of-alexandria/.mcp.json.bak</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>22</td>
+<td><a href="server/disler__quick-data-mcp.html">disler/quick-data-mcp/quick-data-mcp/.mcp.json.sample</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>23</td>
+<td><a href="server/maazbin__jobpilot.html">maazbin/jobpilot/.mcp.json.disabled</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>24</td>
+<td><a href="server/minyang-chen__ai-powered-development.html">minyang-chen/AI-powered-Development/lightRAG_MCP_Server/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>25</td>
+<td><a href="server/seoskillsai__seo-skills-ai.html">seoskillsai/seo-skills-ai/config/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>26</td>
+<td><a href="server/tubone24__midi-mcp-server.html">tubone24/midi-mcp-server/examples/cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>27</td>
+<td><a href="server/vobase__vobase.html">vobase/vobase</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>28</td>
+<td><a href="server/vtrivedy__claude-banana-story-agent.html">vtrivedy/claude-banana-story-agent/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>29</td>
+<td><a href="server/weiserman__rap-skills.html">weiserman/rap-skills/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>95/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>30</td>
+<td><a href="server/daniellavrushin__b4.html">DanielLavrushin/b4/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>93/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>31</td>
+<td><a href="server/dicklesworthstone__mcp_agent_mail_rust.html">Dicklesworthstone/mcp_agent_mail_rust/docs/examples/mcp/factory.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>93/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>32</td>
+<td><a href="server/orcasecurity__orca-skills.html">orcasecurity/orca-skills/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>93/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>33</td>
+<td><a href="server/18534516725__agent-doctor.html">18534516725/Agent-Doctor/adapters/roo-code/mcp_settings.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>34</td>
+<td><a href="server/2mawi2__para.html">2mawi2/para/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>35</td>
+<td><a href="server/abilityai__agent-corbin.html">Abilityai/agent-corbin/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>36</td>
+<td><a href="server/edgehop__edgehop.html">EdgeHop/EdgeHop/.mcp.json.sample</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>37</td>
+<td><a href="server/projectliminality__dreamtalk.html">ProjectLiminality/DreamTalk/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>38</td>
+<td><a href="server/timothyvang__verdict-dfir.html">TimothyVang/verdict-dfir/.mcp.json.docker</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>39</td>
+<td><a href="server/agenticsorg__edge-agents.html">agenticsorg/edge-agents/settings/sparc2_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>40</td>
+<td><a href="server/aws-samples__aws-generativeai-partner-samples.html">aws-samples/aws-generativeai-partner-samples/veeam/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>41</td>
+<td><a href="server/cklose2000__pinescript-mcp-server.html">cklose2000/pinescript-mcp-server/.mcp.json.windows.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>42</td>
+<td><a href="server/disler__nano-agent.html">disler/nano-agent/.mcp.json.sample</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>43</td>
+<td><a href="server/dreamrec__tdpilot.html">dreamrec/TDPilot/.mcp.json.claude-desktop-template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>44</td>
+<td><a href="server/flankerhqd__jebmcp.html">flankerhqd/jebmcp/antigravity_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>45</td>
+<td><a href="server/flankerhqd__jebmcp.html">flankerhqd/jebmcp/sample_cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>46</td>
+<td><a href="server/joaoh82__rustunnel.html">joaoh82/rustunnel/integrations/cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>47</td>
+<td><a href="server/korovin-aa97__talkthrough-mcp.html">korovin-aa97/talkthrough-mcp</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>48</td>
+<td><a href="server/lilhammerfun__clumsies.html">lilhammerfun/clumsies/packages/clumsies/.mcp.json.tpl</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>49</td>
+<td><a href="server/major7apps__pensyve.html">major7apps/pensyve/integrations/cline/cline_mcp_settings.json.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>50</td>
+<td><a href="server/minyang-chen__ai-powered-development.html">minyang-chen/AI-powered-Development/tariff-news-server/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>51</td>
+<td><a href="server/ready-to-release__eac.html">ready-to-release/eac/templates/claude/setup/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>52</td>
+<td><a href="server/sergeiledvanov__mcp-wise.html">sergeiledvanov/mcp-wise/.mcp.json.stdio</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>53</td>
+<td><a href="server/sfncat__mcp-joern.html">sfncat/mcp-joern/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>54</td>
+<td><a href="server/sfncat__mcp-joern.html">sfncat/mcp-joern/sample_cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>55</td>
+<td><a href="server/sumioshi__wacrew.html">sumioshi/wacrew/.mcp.json.remote.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>56</td>
+<td><a href="server/waka-man__gmail_mcp_server.html">waka-man/gmail_mcp_server/cline_mcp_settings.json.sample</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>57</td>
+<td><a href="server/wuisabel-gif__memwhale.html">wuisabel-gif/MemWhale/integrations/cline/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-A">A</span></td>
+<td>90/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>58</td>
+<td><a href="server/lemma-work__lemma-platform.html">lemma-work/lemma-platform</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>88/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>59</td>
+<td><a href="server/guangminju__mellos-mapping.html">GuangminJu/mellos-mapping</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>60</td>
+<td><a href="server/junkdoge-joe__after-effects-mcp.html">JUNKDOGE-JOE/after-effects-mcp/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>61</td>
+<td><a href="server/alphaplapplap__mcp-memory-service.html">alphaplapplap/mcp-memory-service/.mcp.json.backup</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>62</td>
+<td><a href="server/aws-samples__sample-agent-assisted-sdlc.html">aws-samples/sample-agent-assisted-sdlc/coding-assistants/codex/plugin/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>63</td>
+<td><a href="server/aws-samples__sample-agent-assisted-sdlc.html">aws-samples/sample-agent-assisted-sdlc/coding-assistants/kiro/plugin/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>64</td>
+<td><a href="server/bitrix24__b24phpsdk.html">bitrix24/b24phpsdk/.claude/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>65</td>
+<td><a href="server/cklose2000__pinescript-mcp-server.html">cklose2000/pinescript-mcp-server/.mcp.json.mac.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>66</td>
+<td><a href="server/d2a8k3u__claude-code-memory.html">d2a8k3u/claude-code-memory/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>67</td>
+<td><a href="server/developerhost__my-dq-portfolio.html">developerhost/my-dq-portfolio/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>68</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.chrome</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>69</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.playwright</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>70</td>
+<td><a href="server/lancejames221b__agent-hivemind.html">lancejames221b/agent-hivemind/.mcp.json.disabled</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>71</td>
+<td><a href="server/louis49__melchizedek.html">louis49/melchizedek/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>72</td>
+<td><a href="server/lucasgerads__spicelib-mcp.html">lucasgerads/spicelib-mcp/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>73</td>
+<td><a href="server/lucaslorentz__durabletask-extensions.html">lucaslorentz/durabletask-extensions</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>74</td>
+<td><a href="server/qut-dmrc__buttermilk.html">qut-dmrc/buttermilk/.mcp.json.disabled</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>75</td>
+<td><a href="server/safedep__vet.html">safedep/vet/internal/endpoint/aitool/fixtures/agents/home/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>76</td>
+<td><a href="server/safedep__vet.html">safedep/vet/internal/endpoint/aitool/fixtures/agents/home/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>77</td>
+<td><a href="server/samuelzxu__claude-evolve.html">samuelzxu/claude-evolve/.mcp.json.plugin</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>85/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>78</td>
+<td><a href="server/automattic__wp-calypso.html">Automattic/wp-calypso</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>79</td>
+<td><a href="server/jubakitiashvili__context-mem.html">JubaKitiashvili/context-mem/configs/roo-code/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>80</td>
+<td><a href="server/dycuong03__unity-agent-team.html">dyCuong03/unity-agent-team/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>81</td>
+<td><a href="server/gtkx-org__gtkx.html">gtkx-org/gtkx/packages/create-gtkx/src/templates/.mcp.json.ejs</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>82</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.shadcn</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>83</td>
+<td><a href="server/wanxingai__lightagent.html">wanxingai/LightAgent/mcp/lightagent_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>83/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>84</td>
+<td><a href="server/consiliency__code-index-mcp.html">Consiliency/Code-Index-MCP/.mcp.json.fixed</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>85</td>
+<td><a href="server/timothyvang__verdict-dfir.html">TimothyVang/verdict-dfir/.mcp.json.sift</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>86</td>
+<td><a href="server/xtrcomsu__xt-forge.html">XtrComSu/xt-forge/integrations/cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>87</td>
+<td><a href="server/geeksville__starbash.html">geeksville/starbash/.cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>88</td>
+<td><a href="server/geeksville__touchy-pad.html">geeksville/touchy-pad/.cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>89</td>
+<td><a href="server/quazardous__nelson-mcp.html">quazardous/nelson-mcp/.mcp.json-dist</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-B">B</span></td>
+<td>80/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>90</td>
+<td><a href="server/kangkangithub__sjtj-v1_3.html">Kangkangithub/SJTJ-v1.3/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>78/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>91</td>
+<td><a href="server/assemblyai__blurt.html">AssemblyAI/blurt</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>92</td>
+<td><a href="server/consiliency__code-index-mcp.html">Consiliency/Code-Index-MCP/.mcp.json.backup</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>0</td>
+<td>2</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>93</td>
+<td><a href="server/ahostbr__kuroryuu-public.html">ahostbr/kuroryuu-public/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>94</td>
+<td><a href="server/appwrite__sdk-generator.html">appwrite/sdk-generator/templates/claude-plugin/.mcp.json.twig</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>95</td>
+<td><a href="server/appwrite__sdk-generator.html">appwrite/sdk-generator/templates/codex-plugin/.mcp.json.twig</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>96</td>
+<td><a href="server/appwrite__sdk-generator.html">appwrite/sdk-generator/templates/cursor-plugin/.mcp.json.twig</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>97</td>
+<td><a href="server/awaik__direct-mcp-ai-project.html">awaik/direct-mcp-ai-project/.cline/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>98</td>
+<td><a href="server/bex-co__beancount-io.html">bex-co/beancount-io/backend-cluster/backend-v2/docs/marketplace-submissions/cline/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>99</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.context7</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>100</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.figma</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>101</td>
+<td><a href="server/karlost__freelomcp.html">karlost/FreeloMCP/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>102</td>
+<td><a href="server/seyka-ai__yandex-tools-mcp.html">seyka-ai/yandex-tools-mcp</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>75/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>103</td>
+<td><a href="server/friendsofshopware__shopmon.html">FriendsOfShopware/shopmon</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>73/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>104</td>
+<td><a href="server/mamift__linqtoxsdcore.html">mamift/LinqToXsdCore</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>73/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>105</td>
+<td><a href="server/nft-maker-one__claude_course.html">nft-maker-one/claude_course/day7_mcp/.mcp.json.bak</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>73/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>106</td>
+<td><a href="server/consiliency__code-index-mcp.html">Consiliency/Code-Index-MCP/.mcp.json.docker</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>70/100</td>
+<td>0</td>
+<td>2</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>107</td>
+<td><a href="server/consiliency__code-index-mcp.html">Consiliency/Code-Index-MCP/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>70/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>108</td>
+<td><a href="server/moonwell-fi__moonwell-contracts-v2.html">moonwell-fi/moonwell-contracts-v2</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>70/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>109</td>
+<td><a href="server/safedep__vet.html">safedep/vet/internal/endpoint/aitool/fixtures/agents/home/.cline/data/settings/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-C">C</span></td>
+<td>70/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>110</td>
+<td><a href="server/opendatahub-io__opendatahub-operator.html">opendatahub-io/opendatahub-operator</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>68/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>111</td>
+<td><a href="server/yoshiiryo1__document-templates-for-aws.html">YoshiiRyo1/document-templates-for-aws</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>66/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>112</td>
+<td><a href="server/tpierrain__kenjaku.html">tpierrain/kenjaku/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>66/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>113</td>
+<td><a href="server/flux-frontiers__agent_kg.html">Flux-Frontiers/agent_kg/.mcp.json.bak</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>65/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>114</td>
+<td><a href="server/shunwuyu__ai_lesson.html">shunwuyu/ai_lesson/cline_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>63/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>115</td>
+<td><a href="server/aifundteam__genai-starter.html">AIFundTeam/genai-starter/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>60/100</td>
+<td>1</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>116</td>
+<td><a href="server/blessedrebus__krawl.html">BlessedRebuS/Krawl/src/templates/deception/.mcp.json.html</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>60/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>117</td>
+<td><a href="server/blessedrebus__krawl.html">BlessedRebuS/Krawl/src/templates/deception/@fs__app__.mcp.json.html</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>60/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>118</td>
+<td><a href="server/blessedrebus__krawl.html">BlessedRebuS/Krawl/src/templates/deception/@fs__root__.mcp.json.html</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-D">D</span></td>
+<td>60/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>119</td>
+<td><a href="server/jnarowski__agentcmd.html">jnarowski/agentcmd/.mcp.json.design</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>58/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>120</td>
+<td><a href="server/abilityai__agent-cornelius.html">Abilityai/agent-cornelius/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>55/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>121</td>
+<td><a href="server/catlog22__maestro-flow.html">catlog22/maestro-flow/.mcp.json.bak</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>55/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>122</td>
+<td><a href="server/treylom__knowledge-manager.html">treylom/knowledge-manager/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>55/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>123</td>
+<td><a href="server/google__mcp-security.html">google/mcp-security/cline_mcp_settings.json.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>50/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>124</td>
+<td><a href="server/godzilla675__agentic-ai-tool-suite.html">Godzilla675/agentic-ai-tool-suite/example_mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>45/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>125</td>
+<td><a href="server/zenobia000__claude-godzilla-z.html">Zenobia000/claude-Godzilla-z/.mcp.json.windows.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>40/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>126</td>
+<td><a href="server/huangjunsen0406__xiaozhi-mcphub.html">huangjunsen0406/xiaozhi-mcphub/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>40/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>127</td>
+<td><a href="server/jsjfai__agentdns-node.html">jsjfai/AgentDNS-Node/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>40/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>128</td>
+<td><a href="server/samanhappy__mcphub.html">samanhappy/mcphub/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>40/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>129</td>
+<td><a href="server/plurigrid__asi.html">plurigrid/asi/ies/music-topos/.mcp.json.bak</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>25/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>130</td>
+<td><a href="server/steppied__agents_v1.html">SteppieD/agents.v1/mcp/mcp_settings.json</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>22/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>131</td>
+<td><a href="server/gavinmcfall__home-ops.html">gavinmcfall/home-ops/.mcp.json.disabled</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>21/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>132</td>
+<td><a href="server/yfgaia__dify-plus.html">YFGaia/dify-plus</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>15/100</td>
+<td>1</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>133</td>
+<td><a href="server/zenobia000__claude-godzilla-z.html">Zenobia000/claude-Godzilla-z/.mcp.json.linux.example</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>10/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>134</td>
+<td><a href="server/dnyoussef__context-cascade.html">DNYoussef/context-cascade/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>6/100</td>
+<td>2</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>135</td>
+<td><a href="server/abilityai__agent-ruby.html">Abilityai/agent-ruby/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>136</td>
+<td><a href="server/andrewaltimit__template-repo.html">AndrewAltimit/template-repo/.mcp.json.full</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>8</td>
+<td>5</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>137</td>
+<td><a href="server/dnyoussef__context-cascade.html">DNYoussef/context-cascade/.mcp.json.archived</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>138</td>
+<td><a href="server/thewaywithin__agent-11.html">TheWayWithin/agent-11/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>139</td>
+<td><a href="server/assafkip__investigators-copilot.html">assafkip/investigators-copilot/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>1</td>
+<td>3</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>140</td>
+<td><a href="server/jpiece3__lead-magnet-quiz-workflow.html">jpiece3/lead-magnet-quiz-workflow/.claude/.mcp.json.template</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>0</td>
+<td>0</td>
+<td class="muted">2026-11-23</td>
+</tr>
+<tr>
+<td>141</td>
+<td><a href="server/tbuczen__larpilot.html">tbuczen/LARPilot/.mcp.json.dist</a> <span class="badge">withheld</span></td>
+<td><span class="grade grade-F">F</span></td>
+<td>0/100</td>
+<td>0</td>
+<td>1</td>
+<td class="muted">2026-11-23</td>
+</tr>
+</tbody>
+</table>
+<p class="muted" style="margin-top:2rem">
+Data: <a href="data/index.json">index.json</a> (weekly).
+Prior snapshots: <a href="data/history.json">history.json</a>.
+Index code: <a href="https://github.com/sattyamjjain/agent-audit-kit/tree/main/benchmarks">benchmarks/</a>.
+</p>
+</body></html>
